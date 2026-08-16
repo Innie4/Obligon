@@ -28,10 +28,10 @@ export function Hero() {
           </p>
 
           <div className="mt-6 flex flex-col items-start gap-4 sm:flex-row lg:mt-10">
-            <LandingButton href="#get-started" icon="arrow">
+            <LandingButton href="/login#signup" icon="arrow">
               Join the Future
             </LandingButton>
-            <LandingButton href="#product" variant="secondary" icon="chevron">
+            <LandingButton href="/solutions/fuelvista" variant="secondary" icon="chevron">
               Our Solutions
             </LandingButton>
           </div>

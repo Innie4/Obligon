@@ -1,9 +1,16 @@
 import { Menu } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { LandingButton } from "./Button";
 import { assets } from "./assets";
 
-const navItems = ["Home", "Product", "Pricing", "About Us", "Partners"];
+const navItems = [
+  { label: "Home", href: "/" },
+  { label: "Product", href: "/solutions/fuelvista" },
+  { label: "Pricing", href: "/#pricing" },
+  { label: "About Us", href: "/#get-started" },
+  { label: "Partners", href: "/#partners" }
+];
 
 export function Header() {
   return (
@@ -13,31 +20,31 @@ export function Header() {
     >
       <nav className="mx-auto flex h-full max-w-[1280px] items-center justify-between px-5 sm:px-8 lg:px-16">
         <div className="flex h-[62px] items-center gap-12">
-          <a className="relative block h-[62px] w-[93px]" href="#" aria-label="Obligon home">
+          <Link className="relative block h-[62px] w-[93px]" href="/" aria-label="Obligon home">
             <Image src={assets.obligonLogo} fill sizes="93px" alt="Obligon" className="object-contain" priority />
-          </a>
+          </Link>
 
           <div className="hidden items-center gap-8 lg:flex">
             {navItems.map((item) => (
-              <a
-                key={item}
+              <Link
+                key={item.label}
                 className="text-xs font-semibold tracking-[0.6px] text-obligon-text transition hover:text-obligon-green"
-                href={item === "Home" ? "#" : `#${item.toLowerCase().replaceAll(" ", "-")}`}
+                href={item.href}
               >
-                {item}
-              </a>
+                {item.label}
+              </Link>
             ))}
           </div>
         </div>
 
         <div className="hidden items-center gap-4 md:flex">
-          <a
+          <Link
             className="inline-flex h-8 items-center justify-center px-4 text-xs font-semibold tracking-[0.6px] text-obligon-text"
-            href="#login"
+            href="/login"
           >
             Login
-          </a>
-          <LandingButton className="h-9 px-6" href="#get-started">
+          </Link>
+          <LandingButton className="h-9 px-6" href="/login#signup">
             Get Started
           </LandingButton>
         </div>

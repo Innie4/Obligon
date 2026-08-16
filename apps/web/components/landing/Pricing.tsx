@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import { assets } from "./assets";
 
@@ -165,8 +166,8 @@ export function Pricing() {
                 ))}
               </ul>
 
-              <a
-                href="#get-started"
+              <Link
+                href="/login#signup"
                 className={`mt-auto inline-flex h-14 items-center justify-center rounded-lg px-6 text-base font-bold ${
                   plan.dark
                     ? "bg-white text-obligon-navy"
@@ -176,7 +177,7 @@ export function Pricing() {
                 }`}
               >
                 {plan.cta}
-              </a>
+              </Link>
             </article>
           ))}
         </div>

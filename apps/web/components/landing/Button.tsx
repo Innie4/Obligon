@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { assets } from "./assets";
 
 type LandingButtonProps = {
@@ -25,15 +26,23 @@ export function LandingButton({
 }: LandingButtonProps) {
   const iconSrc = icon === "arrow" ? assets.arrowUpRight : icon === "chevron" ? assets.checkSmall : null;
 
-  return (
-    <a
-      className={`inline-flex h-[58px] max-w-full items-center justify-center gap-4 rounded-lg px-8 text-center text-xs font-semibold tracking-[0.6px] transition duration-200 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-obligon-lime focus:ring-offset-2 ${variantClasses[variant]} ${className}`}
-      href={href}
-    >
+  const classNames = `inline-flex h-[58px] max-w-full items-center justify-center gap-4 rounded-lg px-8 text-center text-xs font-semibold tracking-[0.6px] transition duration-200 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-obligon-lime focus:ring-offset-2 ${variantClasses[variant]} ${className}`;
+  const content = (
+    <>
       <span>{children}</span>
       {iconSrc ? (
         <Image src={iconSrc} width={icon === "arrow" ? 16 : 12} height={icon === "arrow" ? 16 : 8} alt="" />
       ) : null}
+    </>
+  );
+
+  return href.startsWith("/") ? (
+    <Link className={classNames} href={href}>
+      {content}
+    </Link>
+  ) : (
+    <a className={classNames} href={href}>
+      {content}
     </a>
   );
 }

@@ -1,18 +1,33 @@
 import Image from "next/image";
+import Link from "next/link";
 import { assets } from "./assets";
 
 const footerColumns = [
   {
     title: "Company",
-    links: ["About Us", "Our Mission", "Partners", "Contact"]
+    links: [
+      { label: "About Us", href: "/#get-started" },
+      { label: "Careers", href: "/careers" },
+      { label: "Partners", href: "/#partners" },
+      { label: "Contact", href: "/support" }
+    ]
   },
   {
     title: "Product",
-    links: ["FuelVista Card", "Pricing Plans", "API Docs", "Enterprise"]
+    links: [
+      { label: "FuelVista Card", href: "/solutions/fuelvista" },
+      { label: "EnergyVista", href: "/solutions/energyvista" },
+      { label: "GenVista", href: "/solutions/genvista" },
+      { label: "Pricing Plans", href: "/#pricing" }
+    ]
   },
   {
     title: "Legal",
-    links: ["Privacy Policy", "Terms of Use", "Compliance"]
+    links: [
+      { label: "Privacy Policy", href: "/privacy-policy" },
+      { label: "Terms of Service", href: "/terms-of-service" },
+      { label: "Cookie Policy", href: "/cookie-policy" }
+    ]
   }
 ];
 
@@ -22,7 +37,7 @@ export function Footer() {
       <div className="mx-auto w-full max-w-landing min-w-0 px-5 sm:px-8 lg:px-0">
         <div className="grid gap-12 lg:grid-cols-[2fr_1fr_1fr_1fr] lg:gap-12">
           <div>
-            <a className="relative block h-10 w-[60px]" href="#" aria-label="Obligon home">
+            <Link className="relative block h-10 w-[60px]" href="/" aria-label="Obligon home">
               <Image
                 src={assets.obligonLogo}
                 fill
@@ -30,7 +45,7 @@ export function Footer() {
                 sizes="60px"
                 className="object-contain"
               />
-            </a>
+            </Link>
             <p className="mt-8 max-w-sm text-base leading-[26px] text-white/60">
               Obligon Limited is a Nigerian-based energy and technology firm committed to efficiency, transparency, and
               innovation.
@@ -54,10 +69,10 @@ export function Footer() {
               <h3 className="text-xs font-normal uppercase tracking-[1.2px] text-obligon-lime">{column.title}</h3>
               <ul className="mt-6 space-y-4">
                 {column.links.map((link) => (
-                  <li key={link}>
-                    <a className="text-sm leading-5 text-white/60 transition hover:text-white" href="#contact">
-                      {link}
-                    </a>
+                  <li key={link.label}>
+                    <Link className="text-sm leading-5 text-white/60 transition hover:text-white" href={link.href}>
+                      {link.label}
+                    </Link>
                   </li>
                 ))}
               </ul>

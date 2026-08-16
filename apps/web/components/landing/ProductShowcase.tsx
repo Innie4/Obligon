@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { assets } from "./assets";
 
 const benefits = ["Secure EMV Chip", "Multi-Station Access", "Real-time Alerts", "Daily Limits"];
@@ -31,12 +32,12 @@ export function ProductShowcase() {
                   &#8358;2,000 <span className="font-sans text-lg text-white/40">/ Vehicle</span>
                 </p>
               </div>
-              <a
-                href="#order-cards"
+              <Link
+                href="/login#signup"
                 className="inline-flex h-12 items-center justify-center rounded-lg bg-white px-6 text-base font-bold text-obligon-navy"
               >
                 Order Cards
-              </a>
+              </Link>
             </div>
 
             <div className="mt-8 grid gap-x-4 gap-y-4 sm:grid-cols-2">

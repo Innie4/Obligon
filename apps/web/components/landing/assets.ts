@@ -17,6 +17,7 @@ export const assets = {
   obligonMark: figmaAsset("obligon-mark.png"),
   socialAt: figmaAsset("social-at.svg"),
   socialGlobe: figmaAsset("social-globe.svg"),
+  stationPhoto: figmaAsset("station-photo.jpeg"),
   truck: figmaAsset("truck.svg"),
   zap: figmaAsset("zap.svg")
 } as const;
