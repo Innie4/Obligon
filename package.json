@@ -1,0 +1,15 @@
+{
+  "name": "obligon-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "dev": "pnpm --filter @obligon/web dev",
+    "build": "pnpm --filter @obligon/web build",
+    "lint": "pnpm --filter @obligon/web lint"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

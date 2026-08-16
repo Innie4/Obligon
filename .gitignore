@@ -1,0 +1,12 @@
+node_modules/
+.next/
+out/
+dist/
+.env*
+!.env.example
+
+.chrome-qa-profile*/
+apps/web/public/assets/qa/
+
+*.log
+*.tsbuildinfo
