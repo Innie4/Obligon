@@ -1,7 +1,10 @@
+"use client";
+
 import Image from "next/image";
+import { useState } from "react";
 import { assets } from "./assets";
 
-const plans = [
+const organizationPlans = [
   {
     name: "Starter",
     price: "150k",
@@ -33,7 +36,42 @@ const plans = [
   }
 ];
 
+const individualPlans = [
+  {
+    name: "Pay As You Go",
+    price: "0",
+    suffix: "setup",
+    features: ["No monthly fee", "Pay only for fuel used", "Access to 850+ stations"],
+    cta: "Start Free"
+  },
+  {
+    name: "Personal",
+    price: "75k",
+    suffix: "/year",
+    features: ["1 Vehicle", "Monthly statements", "200 Partner Stations"],
+    cta: "Go Personal",
+    recommended: true
+  },
+  {
+    name: "Pro Driver",
+    price: "120k",
+    suffix: "/year",
+    features: ["Up to 3 Vehicles", "Fuel spend alerts", "500 Partner Stations"],
+    cta: "Go Pro"
+  },
+  {
+    name: "Family Fleet",
+    price: "Custom",
+    features: ["Up to 10 Vehicles", "Shared wallet", "Full Network Access"],
+    cta: "Custom Quote",
+    dark: true
+  }
+];
+
 export function Pricing() {
+  const [tab, setTab] = useState<"individual" | "organization">("individual");
+  const plans = tab === "individual" ? individualPlans : organizationPlans;
+
   return (
     <section id="pricing" className="bg-obligon-mist py-20 lg:py-32" data-node-id="2:71">
       <div className="mx-auto w-full max-w-[1216px] min-w-0 px-5 sm:px-8">
@@ -49,12 +87,25 @@ export function Pricing() {
 
         <div className="mt-10 flex justify-center">
           <div className="flex rounded-full border border-[#e5e7eb] bg-[#f3f4f6] p-[5px]">
-            <button className="h-[42px] rounded-full px-8 text-sm font-semibold text-[#4b5563]" type="button">
+            <button
+              type="button"
+              onClick={() => setTab("individual")}
+              className={`h-[42px] rounded-full px-8 text-sm font-semibold transition ${
+                tab === "individual"
+                  ? "border border-[#e5e7eb] bg-white text-[#060b19] shadow-[0_1px_1px_rgba(0,0,0,0.05)]"
+                  : "text-[#4b5563]"
+              }`}
+            >
               Individual
             </button>
             <button
-              className="h-[42px] rounded-full border border-[#e5e7eb] bg-white px-8 text-sm font-semibold text-[#060b19] shadow-[0_1px_1px_rgba(0,0,0,0.05)]"
               type="button"
+              onClick={() => setTab("organization")}
+              className={`h-[42px] rounded-full px-8 text-sm font-semibold transition ${
+                tab === "organization"
+                  ? "border border-[#e5e7eb] bg-white text-[#060b19] shadow-[0_1px_1px_rgba(0,0,0,0.05)]"
+                  : "text-[#4b5563]"
+              }`}
             >
               Organization
             </button>
@@ -115,7 +166,7 @@ export function Pricing() {
               </ul>
 
               <a
-                href="#get-started"
+                href="/login"
                 className={`mt-auto inline-flex h-14 items-center justify-center rounded-lg px-6 text-base font-bold ${
                   plan.dark
                     ? "bg-white text-obligon-navy"
