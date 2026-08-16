@@ -1,6 +1,4 @@
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
-
-export const figmaAsset = (name: string) => `${basePath}/assets/figma/${name}`;
+export const figmaAsset = (name: string) => `/assets/figma/${name}`;
 
 export const assets = {
   arrowUpRight: figmaAsset("arrow-up-right.svg"),
