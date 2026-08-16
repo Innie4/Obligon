@@ -20,9 +20,9 @@ export function AuthShell({ children, compact = false }: AuthShellProps) {
           <Link href={routes.support} className="inline-flex size-9 items-center justify-center rounded-lg border border-obligon-border bg-white" aria-label="Help">
             <CircleHelp size={17} />
           </Link>
-          <button className="inline-flex size-9 items-center justify-center rounded-lg border border-obligon-border bg-white" type="button" aria-label="Notifications">
+          <Link href={routes.notifications} className="inline-flex size-9 items-center justify-center rounded-lg border border-obligon-border bg-white" aria-label="Notifications">
             <Bell size={17} />
-          </button>
+          </Link>
         </div>
       </header>
 
@@ -63,4 +63,3 @@ export function AuthShell({ children, compact = false }: AuthShellProps) {
     </main>
   );
 }
-

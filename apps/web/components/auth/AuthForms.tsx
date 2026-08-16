@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
-import { Check, ShieldCheck } from "lucide-react";
+import { Check, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { Input } from "@/components/site/Input";
 import { routes } from "@/components/site/routes";
 
@@ -43,6 +43,8 @@ const roleLabels: Record<SignupRole, string> = {
 export function AuthForms() {
   const router = useRouter();
   const [role, setRole] = React.useState<SignupRole>("customer");
+  const [showPassword, setShowPassword] = React.useState(false);
+  const [selectedFuelTypes, setSelectedFuelTypes] = React.useState<string[]>(["PMS Petrol", "AGO Diesel"]);
 
   function submitLogin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -52,6 +54,12 @@ export function AuthForms() {
   function submitSignup(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     router.push(routes.authSuccess);
+  }
+
+  function toggleFuelType(fuelType: string) {
+    setSelectedFuelTypes((current) =>
+      current.includes(fuelType) ? current.filter((item) => item !== fuelType) : [...current, fuelType]
+    );
   }
 
   return (
@@ -66,7 +74,25 @@ export function AuthForms() {
         </div>
         <div className="mt-6 space-y-4">
           <Input label="Corporate Email" name="loginEmail" placeholder="james@enterprise.ng" type="email" />
-          <Input label="Password" name="password" placeholder="Enter password" type="password" />
+          <label className="block">
+            <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Password</span>
+            <div className="relative mt-2">
+              <input
+                name="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter password"
+                className="h-12 w-full rounded-lg border border-obligon-border bg-white px-4 pr-12 text-sm text-obligon-navy outline-none transition placeholder:text-[#92929c] focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((visible) => !visible)}
+                className="absolute right-3 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-obligon-text transition hover:bg-obligon-mist hover:text-obligon-navy"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </label>
         </div>
         <div className="mt-4 flex items-center justify-between text-sm">
           <label className="inline-flex items-center gap-2 text-obligon-text">
@@ -119,21 +145,30 @@ export function AuthForms() {
           <div className="mt-5">
             <p className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Available Fuel Type</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              {["PMS Petrol", "AGO Diesel", "DPK Kerosene", "LPG Gas"].map((item, index) => (
-                <button
-                  key={item}
-                  type="button"
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold ${
-                    index < 2
-                      ? "border-obligon-green bg-obligon-green/10 text-obligon-green"
-                      : "border-obligon-border bg-white text-obligon-text"
-                  }`}
-                >
-                  {index < 2 ? <Check size={14} /> : null}
-                  {item}
-                </button>
-              ))}
+              {["PMS Petrol", "AGO Diesel", "DPK Kerosene", "LPG Gas"].map((item) => {
+                const selected = selectedFuelTypes.includes(item);
+
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => toggleFuelType(item)}
+                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold transition ${
+                      selected
+                        ? "border-obligon-green bg-obligon-green/10 text-obligon-green"
+                        : "border-obligon-border bg-white text-obligon-text hover:border-obligon-green hover:text-obligon-green"
+                    }`}
+                  >
+                    {selected ? <Check size={14} /> : null}
+                    {item}
+                  </button>
+                );
+              })}
             </div>
+            {selectedFuelTypes.map((fuelType) => (
+              <input key={fuelType} type="hidden" name="fuelTypes" value={fuelType} />
+            ))}
           </div>
         ) : null}
 
