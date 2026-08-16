@@ -30,7 +30,7 @@ export function ClosingCta() {
           </p>
           <div className="flex flex-col gap-4 sm:flex-row">
             <a
-              href="/login"
+              href="#contact"
               className="inline-flex h-[58px] items-center justify-center rounded-lg bg-obligon-green px-8 text-base font-bold text-white shadow-green"
             >
               Get Started
