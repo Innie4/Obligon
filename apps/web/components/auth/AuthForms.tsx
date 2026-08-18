@@ -45,6 +45,7 @@ export function AuthForms() {
   const [role, setRole] = React.useState<SignupRole>("customer");
   const [showPassword, setShowPassword] = React.useState(false);
   const [selectedFuelTypes, setSelectedFuelTypes] = React.useState<string[]>(["PMS Petrol", "AGO Diesel"]);
+  const [fuelError, setFuelError] = React.useState(false);
 
   function submitLogin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -53,6 +54,21 @@ export function AuthForms() {
 
   function submitSignup(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (!event.currentTarget.reportValidity()) {
+      return;
+    }
+
+    if (role === "partner") {
+      if (selectedFuelTypes.length === 0) {
+        setFuelError(true);
+        return;
+      }
+
+      router.push(routes.dashboard);
+      return;
+    }
+
     router.push(routes.authSuccess);
   }
 
@@ -60,6 +76,7 @@ export function AuthForms() {
     setSelectedFuelTypes((current) =>
       current.includes(fuelType) ? current.filter((item) => item !== fuelType) : [...current, fuelType]
     );
+    setFuelError(false);
   }
 
   return (
@@ -73,7 +90,7 @@ export function AuthForms() {
           <ShieldCheck className="text-obligon-green" size={28} />
         </div>
         <div className="mt-6 space-y-4">
-          <Input label="Corporate Email" name="loginEmail" placeholder="james@enterprise.ng" type="email" />
+          <Input label="Corporate Email" name="loginEmail" placeholder="james@enterprise.ng" type="email" required />
           <label className="block">
             <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Password</span>
             <div className="relative mt-2">
@@ -81,6 +98,7 @@ export function AuthForms() {
                 name="password"
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter password"
+                required
                 className="h-12 w-full rounded-lg border border-obligon-border bg-white px-4 pr-12 text-sm text-obligon-navy outline-none transition placeholder:text-[#92929c] focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20"
               />
               <button
@@ -125,7 +143,10 @@ export function AuthForms() {
             <button
               key={key}
               type="button"
-              onClick={() => setRole(key)}
+              onClick={() => {
+                setRole(key);
+                setFuelError(false);
+              }}
               className={`h-10 rounded-full text-xs font-bold transition sm:text-sm ${
                 role === key ? "bg-white text-obligon-green shadow-sm" : "text-obligon-text hover:text-obligon-navy"
               }`}
@@ -137,7 +158,7 @@ export function AuthForms() {
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           {signupFields[role].map((field) => (
-            <Input key={field.name} {...field} />
+            <Input key={field.name} {...field} required />
           ))}
         </div>
 
@@ -169,6 +190,11 @@ export function AuthForms() {
             {selectedFuelTypes.map((fuelType) => (
               <input key={fuelType} type="hidden" name="fuelTypes" value={fuelType} />
             ))}
+            {fuelError ? (
+              <p className="mt-2 text-xs font-semibold text-[#93000a]">
+                Select at least one available fuel type before submitting a partner application.
+              </p>
+            ) : null}
           </div>
         ) : null}
 
