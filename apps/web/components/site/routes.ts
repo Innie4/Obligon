@@ -11,7 +11,7 @@ export const routes = {
   careers: "/careers",
   support: "/support",
   dashboard: "/dashboard",
-  notifications: "/notifications",
+  notifications: "/dashboard/notifications",
   fuelvista: "/solutions/fuelvista",
   energyvista: "/solutions/energyvista",
   genvista: "/solutions/genvista"

@@ -1,10 +1,10 @@
 import { DashboardScreen } from "@/components/dashboard/DashboardScreen";
 import { PartnershipShell } from "@/components/dashboard/PartnershipShell";
 
-export default function NotificationsPage() {
+export default function FuelPricingPage() {
   return (
     <PartnershipShell>
-      <DashboardScreen pageKey="notifications" />
+      <DashboardScreen pageKey="pricing" />
     </PartnershipShell>
   );
 }
