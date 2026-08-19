@@ -7,6 +7,7 @@ dist/
 
 .chrome-qa-profile*/
 apps/web/public/assets/qa/
+.codex-figma/
 
 *.log
 *.tsbuildinfo

@@ -24,374 +24,238 @@ export type DashboardIcon =
   | "bell"
   | "settings";
 
-export type DashboardStat = {
+export type StatusTone = "success" | "pending" | "failed" | "info" | "neutral";
+
+export type Metric = {
   label: string;
   value: string;
-  delta: string;
-  tone?: "green" | "blue" | "amber" | "red";
+  delta?: string;
+  helper?: string;
+  tone?: StatusTone;
 };
 
-export type DashboardRow = {
-  id: string;
-  primary: string;
-  secondary: string;
-  amount: string;
-  status: "Live" | "Pending" | "Paid" | "Flagged" | "Open" | "Resolved" | "Active" | "Draft";
-  meta: string;
+export type TableRow = {
+  cells: string[];
+  status?: string;
+  tone?: StatusTone;
+  action?: string;
 };
 
-export type DashboardPanel = {
-  title: string;
-  body: string;
-  value?: string;
-  items?: string[];
-};
-
-export type DashboardPageData = {
+export type DashboardPageCopy = {
   key: DashboardPageKey;
   title: string;
-  kicker: string;
-  description: string;
-  primaryAction: string;
-  modalTitle: string;
-  modalBody: string;
-  stats: DashboardStat[];
-  panels: DashboardPanel[];
-  tableTitle: string;
-  rows: DashboardRow[];
-  filters: string[];
+  kicker?: string;
+  description?: string;
+  primaryAction?: string;
+  tabs?: string[];
+  searchPlaceholder?: string;
+  userName?: string;
+  userRole?: string;
 };
 
 export const dashboardNav: Array<{ key: DashboardPageKey; label: string; href: string; icon: DashboardIcon }> = [
-  { key: "overview", label: "Overview", href: "/dashboard", icon: "overview" },
-  { key: "settlements", label: "Settlements & Payouts", href: "/dashboard/settlements", icon: "wallet" },
-  { key: "station", label: "Station Profile", href: "/dashboard/station-profile", icon: "station" },
-  { key: "pricing", label: "Fuel Pricing", href: "/dashboard/fuel-pricing", icon: "pricing" },
+  { key: "overview", label: "Dashboard", href: "/dashboard", icon: "overview" },
   { key: "transactions", label: "Transactions", href: "/dashboard/transactions", icon: "transactions" },
-  { key: "reports", label: "Reports & Analytics", href: "/dashboard/reports", icon: "reports" },
+  { key: "station", label: "Fuel Stations", href: "/dashboard/station-profile", icon: "station" },
+  { key: "reports", label: "Analytics", href: "/dashboard/reports", icon: "reports" },
+  { key: "settlements", label: "Partners", href: "/dashboard/settlements", icon: "wallet" },
+  { key: "pricing", label: "Fuel Pricing", href: "/dashboard/fuel-pricing", icon: "pricing" },
   { key: "staff", label: "Staff Management", href: "/dashboard/staff", icon: "staff" },
   { key: "verification", label: "Card Verification POS", href: "/dashboard/card-verification", icon: "pos" },
   { key: "disputes", label: "Disputes & Support", href: "/dashboard/disputes", icon: "support" },
   { key: "notifications", label: "Notifications", href: "/dashboard/notifications", icon: "bell" },
-  { key: "settings", label: "Settings", href: "/dashboard/settings", icon: "settings" }
+  { key: "settings", label: "System Settings", href: "/dashboard/settings", icon: "settings" }
 ];
 
-const commonRows: DashboardRow[] = [
-  {
-    id: "TX-23891",
-    primary: "PMS sale - Zenith Logistics",
-    secondary: "Pump 03 / Attendant: Efe",
-    amount: "₦482,000",
-    status: "Live",
-    meta: "Today, 10:24 AM"
-  },
-  {
-    id: "TX-23876",
-    primary: "AGO bulk dispense",
-    secondary: "Bay 02 / Card ending 4492",
-    amount: "₦1,240,000",
-    status: "Paid",
-    meta: "Today, 8:15 AM"
-  },
-  {
-    id: "TX-23811",
-    primary: "Manual review hold",
-    secondary: "Location mismatch detected",
-    amount: "₦186,500",
-    status: "Flagged",
-    meta: "Yesterday"
-  }
-];
-
-export const dashboardPages: Record<DashboardPageKey, DashboardPageData> = {
+export const pageCopy: Record<DashboardPageKey, DashboardPageCopy> = {
   overview: {
     key: "overview",
-    title: "Partnership Overview",
-    kicker: "Retail Partner Command Center",
-    description: "Monitor station health, volume, settlement readiness, dispute pressure, and live customer activity from one control surface.",
-    primaryAction: "Request Settlement",
-    modalTitle: "Request Settlement",
-    modalBody: "Create a payout request for cleared transactions. Finance will reconcile and confirm your linked corporate account.",
-    stats: [
-      { label: "Today Revenue", value: "₦7.84M", delta: "+18.4%", tone: "green" },
-      { label: "Fuel Volume", value: "42,810L", delta: "+6.2%", tone: "blue" },
-      { label: "Pending Payout", value: "₦2.16M", delta: "Next batch", tone: "amber" },
-      { label: "Open Disputes", value: "4", delta: "-2 this week", tone: "green" }
-    ],
-    panels: [
-      { title: "Station Status", value: "Verified", body: "Mainland Energy Station is active with GPS confidence at 98%.", items: ["PMS pump online", "AGO pump online", "DPK inactive"] },
-      { title: "Settlement Readiness", value: "84%", body: "Most eligible transactions have cleared fraud and volume checks.", items: ["17 cleared batches", "3 pending review"] },
-      { title: "Compliance Snapshot", value: "Good", body: "No overdue documents. License renewal reminder is due in 23 days.", items: ["CAC verified", "Tax ID verified"] }
-    ],
-    tableTitle: "Recent Activity",
-    rows: commonRows,
-    filters: ["All", "Live", "Paid", "Flagged"]
+    title: "Enterprise Overview",
+    kicker: "SYSTEM OPERATIONAL",
+    description: "Real-time performance metrics for Nigerian logistics clusters.",
+    primaryAction: "Add Partner",
+    searchPlaceholder: "Search transactions, stations...",
+    userName: "AB",
+    userRole: "Admin"
   },
   settlements: {
     key: "settlements",
     title: "Settlements & Payouts",
-    kicker: "Finance Operations",
-    description: "Track cleared batches, payout windows, deductions, failed settlement attempts, and corporate account readiness.",
-    primaryAction: "Create Payout Request",
-    modalTitle: "Create Payout Request",
-    modalBody: "Select cleared transaction batches and submit them for the next settlement window.",
-    stats: [
-      { label: "Available Balance", value: "₦12.42M", delta: "Ready now", tone: "green" },
-      { label: "In Review", value: "₦1.88M", delta: "6 batches", tone: "amber" },
-      { label: "Paid This Month", value: "₦48.9M", delta: "+21%", tone: "blue" },
-      { label: "Failed Payouts", value: "1", delta: "Bank retry", tone: "red" }
-    ],
-    panels: [
-      { title: "Linked Account", value: "GTBank 0147", body: "Corporate account validated for direct Nigerian Naira disbursement." },
-      { title: "Next Payout Window", value: "4:00 PM", body: "Requests submitted before cut-off are included in today's processing queue." },
-      { title: "Settlement Policy", body: "Immediate settlement is available after automated fraud, KYC, and station-volume checks." }
-    ],
-    tableTitle: "Settlement Batches",
-    rows: [
-      { id: "PO-7812", primary: "Batch 17 - PMS/AGO", secondary: "36 transactions cleared", amount: "₦3,840,000", status: "Pending", meta: "Cut-off 4:00 PM" },
-      { id: "PO-7801", primary: "Batch 16 - PMS", secondary: "28 transactions", amount: "₦2,980,000", status: "Paid", meta: "Paid 12:07 PM" },
-      { id: "PO-7798", primary: "Batch 15 - AGO", secondary: "Bank retry queued", amount: "₦840,000", status: "Flagged", meta: "Action needed" }
-    ],
-    filters: ["All", "Pending", "Paid", "Flagged"]
+    description: "Manage your enterprise capital velocity. Track, request, and audit your payout history in real-time.",
+    primaryAction: "Request Payout",
+    searchPlaceholder: "Search payouts, invoices, or fleets...",
+    userName: "Olusola Adeyemi",
+    userRole: "FLEET DIRECTOR"
   },
   station: {
     key: "station",
     title: "Station Profile",
-    kicker: "Identity & Compliance",
-    description: "Manage station identity, operating hours, location verification, pump capacity, contacts, and compliance documents.",
-    primaryAction: "Edit Station Profile",
-    modalTitle: "Edit Station Profile",
-    modalBody: "Update public station details, operating capacity, document records, or business contacts for review.",
-    stats: [
-      { label: "Verification", value: "98%", delta: "GPS locked", tone: "green" },
-      { label: "Pump Capacity", value: "8 lanes", delta: "6 active", tone: "blue" },
-      { label: "Documents", value: "5/5", delta: "Complete", tone: "green" },
-      { label: "Service Rating", value: "4.7", delta: "+0.2", tone: "green" }
-    ],
-    panels: [
-      { title: "Business Identity", value: "Mainland Energy Station", body: "Registered petroleum retailer operating in Ikeja, Lagos." },
-      { title: "Primary Contact", value: "James Adenuga", body: "Operations manager with approval access for pricing and dispute workflows." },
-      { title: "Operating Hours", value: "24/7", body: "Customer-facing fuel fulfilment is currently marked as always open." }
-    ],
-    tableTitle: "Compliance Documents",
-    rows: [
-      { id: "DOC-001", primary: "CAC Certificate", secondary: "Uploaded by Admin", amount: "PDF", status: "Active", meta: "Expires 2028" },
-      { id: "DOC-002", primary: "DPR License", secondary: "Field verified", amount: "PDF", status: "Active", meta: "Renew in 23 days" },
-      { id: "DOC-003", primary: "Bank Mandate", secondary: "Finance approved", amount: "PDF", status: "Active", meta: "GTBank" }
-    ],
-    filters: ["All", "Active", "Pending"]
+    kicker: "SYNCING TERMINAL DATA...",
+    description: "Last updated: 2 mins ago",
+    primaryAction: "Save Changes",
+    tabs: ["Overview", "Fueling Logs", "Equipment"],
+    searchPlaceholder: "Search station records...",
+    userName: "Adewale Oke",
+    userRole: "OPERATIONS LEAD"
   },
   pricing: {
     key: "pricing",
-    title: "Fuel Pricing",
-    kicker: "Price Control",
-    description: "Update retail prices, request price approval, compare Obligon corridor guidance, and maintain station-level fuel availability.",
-    primaryAction: "Submit Price Update",
-    modalTitle: "Submit Price Update",
-    modalBody: "Proposed PMS, AGO, DPK, and LPG prices will be sent through partner pricing approval before publishing.",
-    stats: [
-      { label: "PMS", value: "₦680/L", delta: "Live", tone: "green" },
-      { label: "AGO", value: "₦1,180/L", delta: "Live", tone: "green" },
-      { label: "DPK", value: "₦970/L", delta: "Offline", tone: "amber" },
-      { label: "LPG", value: "₦1,050/kg", delta: "Draft", tone: "blue" }
-    ],
-    panels: [
-      { title: "Corridor Guidance", value: "Within band", body: "Current PMS and AGO pricing align with verified station corridor averages." },
-      { title: "Approval Rule", value: "Manager + Obligon", body: "Price changes require station manager approval before publishing to fleet customers." },
-      { title: "Availability", body: "Toggle fuel availability when tanks are offline, under maintenance, or temporarily sold out." }
-    ],
-    tableTitle: "Price Change Log",
-    rows: [
-      { id: "PR-092", primary: "PMS adjusted to ₦680/L", secondary: "Approved by James", amount: "+₦15", status: "Live", meta: "Today" },
-      { id: "PR-088", primary: "AGO adjusted to ₦1,180/L", secondary: "Approved by Obligon", amount: "+₦20", status: "Live", meta: "Yesterday" },
-      { id: "PR-081", primary: "LPG set to ₦1,050/kg", secondary: "Awaiting station approval", amount: "Draft", status: "Draft", meta: "2 days ago" }
-    ],
-    filters: ["All", "Live", "Draft", "Pending"]
+    title: "Fuel Market Pricing",
+    kicker: "PRICING OPERATIONS",
+    description: "Last update: Oct 24, 2023 · 09:12 AM",
+    primaryAction: "Update Prices",
+    tabs: ["Overview", "Inventory", "Invoices"],
+    searchPlaceholder: "Search fuel, depot, or audit logs...",
+    userName: "Pricing Desk",
+    userRole: "NETWORK SYNC"
   },
   transactions: {
     key: "transactions",
     title: "Transactions",
-    kicker: "Ledger Activity",
-    description: "Review card transactions, pump activity, approval status, station attendants, and fraud-control flags.",
-    primaryAction: "Export Transactions",
-    modalTitle: "Export Transactions",
-    modalBody: "Download filtered activity as a CSV for finance reconciliation and local operations reporting.",
-    stats: [
-      { label: "Today Count", value: "184", delta: "+12%", tone: "green" },
-      { label: "Gross Volume", value: "31,940L", delta: "+5.1%", tone: "blue" },
-      { label: "Approved", value: "97.8%", delta: "Auto-clear", tone: "green" },
-      { label: "Flagged", value: "4", delta: "Review", tone: "amber" }
-    ],
-    panels: [
-      { title: "Fraud Controls", value: "Active", body: "Location, volume, card status, and route checks are active on every transaction." },
-      { title: "Peak Window", value: "7-10 AM", body: "Morning logistics activity is the highest-volume operating window for this station." },
-      { title: "Top Customer", value: "Zenith Logistics", body: "18 transactions today with no active dispute signal." }
-    ],
-    tableTitle: "Transaction Ledger",
-    rows: commonRows,
-    filters: ["All", "Live", "Paid", "Flagged"]
+    primaryAction: "Add Partner",
+    tabs: ["Overview", "Inventory", "Fleet", "Invoices"],
+    searchPlaceholder: "SEARCH TRANSACTIONS...",
+    userName: "Chidi Okoro",
+    userRole: "OPERATIONS"
   },
   reports: {
     key: "reports",
-    title: "Reports & Analytics",
-    kicker: "Performance Intelligence",
-    description: "Analyze sales, customer segments, pump utilization, settlement trends, dispute patterns, and service reliability.",
-    primaryAction: "Generate Report",
-    modalTitle: "Generate Report",
-    modalBody: "Choose a period and export a station performance report for owners, finance teams, or Obligon account managers.",
-    stats: [
-      { label: "Monthly Revenue", value: "₦68.3M", delta: "+14%", tone: "green" },
-      { label: "Utilization", value: "76%", delta: "+8%", tone: "blue" },
-      { label: "Avg. Ticket", value: "₦88k", delta: "+3%", tone: "green" },
-      { label: "Dispute Rate", value: "0.6%", delta: "Low", tone: "green" }
-    ],
-    panels: [
-      { title: "Revenue Trend", value: "+14%", body: "Fleet customer volumes are increasing week-over-week across PMS and AGO." },
-      { title: "Pump Utilization", value: "76%", body: "Pump 03 and Pump 04 carry the highest activity and should remain priority lanes." },
-      { title: "Insights", body: "Offer partner incentives during afternoon low-volume windows to improve station throughput." }
-    ],
-    tableTitle: "Saved Reports",
-    rows: [
-      { id: "RP-051", primary: "Monthly settlement report", secondary: "Finance export", amount: "CSV", status: "Active", meta: "Aug 2026" },
-      { id: "RP-047", primary: "Pump utilization analysis", secondary: "Operations export", amount: "PDF", status: "Active", meta: "Last week" },
-      { id: "RP-040", primary: "Dispute performance review", secondary: "Support export", amount: "PDF", status: "Resolved", meta: "July 2026" }
-    ],
-    filters: ["All", "Active", "Resolved"]
+    title: "Analytics",
+    primaryAction: "EXPORT REPORT",
+    searchPlaceholder: "Search account...",
+    userName: "Reports",
+    userRole: "ANALYTICS"
   },
   staff: {
     key: "staff",
     title: "Staff Management",
-    kicker: "Access & Roles",
-    description: "Manage station attendants, supervisors, finance contacts, approval permissions, shifts, and POS access.",
-    primaryAction: "Invite Staff",
-    modalTitle: "Invite Staff",
-    modalBody: "Add a station operator and assign their role, shift, and approval permissions.",
-    stats: [
-      { label: "Active Staff", value: "18", delta: "3 admins", tone: "green" },
-      { label: "On Shift", value: "7", delta: "Now", tone: "blue" },
-      { label: "Pending Invites", value: "2", delta: "Awaiting", tone: "amber" },
-      { label: "Suspended", value: "1", delta: "Review", tone: "red" }
-    ],
-    panels: [
-      { title: "Role Policy", value: "Least privilege", body: "Attendants verify cards and transactions, while supervisors approve exceptions." },
-      { title: "Shift Coverage", value: "Healthy", body: "Morning, afternoon, and overnight coverage are active for today." },
-      { title: "Audit Trail", body: "Every staff change is captured for compliance and station owner review." }
-    ],
-    tableTitle: "Staff Directory",
-    rows: [
-      { id: "ST-014", primary: "Efe Okon", secondary: "Pump attendant / Morning shift", amount: "POS", status: "Active", meta: "Last login 9:42 AM" },
-      { id: "ST-008", primary: "Amina Yusuf", secondary: "Supervisor / Full access", amount: "Admin", status: "Active", meta: "Online" },
-      { id: "ST-021", primary: "Dayo Martins", secondary: "Invite sent", amount: "Attendant", status: "Pending", meta: "Yesterday" }
-    ],
-    filters: ["All", "Active", "Pending", "Flagged"]
+    description: "Manage your station attendants and digital payment permissions.",
+    primaryAction: "Add Staff Member",
+    tabs: ["Overview", "Inventory", "Fleet", "Invoices"],
+    searchPlaceholder: "Search staff...",
+    userName: "Partners",
+    userRole: "ADMIN"
   },
   verification: {
     key: "verification",
-    title: "Card Verification POS",
-    kicker: "Point of Sale Control",
-    description: "Verify fleet cards, approve pump-side requests, check spending limits, and catch invalid card activity before dispensing.",
-    primaryAction: "Start Verification",
-    modalTitle: "Start Card Verification",
-    modalBody: "Enter a card number or scan code to validate customer, vehicle, limit, route, and station eligibility.",
-    stats: [
-      { label: "Verified Today", value: "172", delta: "+16", tone: "green" },
-      { label: "Declined", value: "5", delta: "Limit/GPS", tone: "amber" },
-      { label: "Avg. Time", value: "8s", delta: "Fast", tone: "green" },
-      { label: "Offline Mode", value: "Ready", delta: "Synced", tone: "blue" }
-    ],
-    panels: [
-      { title: "Verification Checklist", value: "5/5", body: "Card status, customer wallet, station eligibility, pump limit, and location checks." },
-      { title: "POS Health", value: "Online", body: "Terminal sync and local fallback cache are ready for active pump operations." },
-      { title: "Manual Override", body: "Supervisor authorization is required for any transaction that fails automated checks." }
-    ],
-    tableTitle: "Verification Attempts",
-    rows: [
-      { id: "CV-3301", primary: "Card ending 4492", secondary: "Zenith Logistics / Truck LAG-832", amount: "₦180,000", status: "Active", meta: "Approved 8s" },
-      { id: "CV-3296", primary: "Card ending 1902", secondary: "Route mismatch", amount: "₦95,000", status: "Flagged", meta: "Supervisor needed" },
-      { id: "CV-3288", primary: "Card ending 7750", secondary: "Wallet and route approved", amount: "₦210,500", status: "Resolved", meta: "Completed" }
-    ],
-    filters: ["All", "Active", "Flagged", "Resolved"]
+    title: "Card Verification",
+    description: "Enter the 6-digit terminal authorization code or tap card to scan.",
+    primaryAction: "Verify Transaction",
+    searchPlaceholder: "Search fleet or driver...",
+    userName: "Terminal 082",
+    userRole: "LAGOS CENTRAL"
   },
   disputes: {
     key: "disputes",
     title: "Disputes & Support",
-    kicker: "Resolution Center",
-    description: "Resolve transaction disputes, submit evidence, track customer issues, and escalate support cases to Obligon operations.",
-    primaryAction: "Open Support Case",
-    modalTitle: "Open Support Case",
-    modalBody: "Create a dispute or station-support case. Attach transaction details, staff notes, and evidence for review.",
-    stats: [
-      { label: "Open Cases", value: "4", delta: "-2", tone: "green" },
-      { label: "Avg. Resolve", value: "3.1h", delta: "On target", tone: "green" },
-      { label: "Evidence Due", value: "2", delta: "Today", tone: "amber" },
-      { label: "Escalated", value: "1", delta: "Ops review", tone: "red" }
-    ],
-    panels: [
-      { title: "Support SLA", value: "4 hours", body: "Priority partner issues are triaged within the active operating window." },
-      { title: "Evidence Rules", value: "Receipt + POS log", body: "Disputed transactions need attendant notes and POS trace details." },
-      { title: "Escalation Path", body: "Fraud, payment, and account cases route to the correct Obligon operations team." }
-    ],
-    tableTitle: "Support Cases",
-    rows: [
-      { id: "DS-198", primary: "Customer claims duplicate charge", secondary: "TX-23811 / POS evidence pending", amount: "₦186,500", status: "Open", meta: "Due today" },
-      { id: "DS-187", primary: "Settlement amount mismatch", secondary: "Batch PO-7798", amount: "₦840,000", status: "Flagged", meta: "Escalated" },
-      { id: "DS-176", primary: "Receipt upload corrected", secondary: "Attendant note added", amount: "₦48,000", status: "Resolved", meta: "Closed" }
-    ],
-    filters: ["All", "Open", "Flagged", "Resolved"]
+    description: "Manage partner inquiries and resolve billing or operational discrepancies.",
+    primaryAction: "Raise a Dispute",
+    searchPlaceholder: "Search tickets...",
+    userName: "Adebayo Chen",
+    userRole: "FLEET PARTNER"
   },
   notifications: {
     key: "notifications",
-    title: "Notifications",
-    kicker: "Account Activity",
-    description: "See settlement alerts, price approvals, document reminders, POS warnings, staff events, and support updates.",
-    primaryAction: "Mark All Read",
-    modalTitle: "Mark Notifications Read",
-    modalBody: "All unread partner notifications will be marked as reviewed for this station profile.",
-    stats: [
-      { label: "Unread", value: "7", delta: "3 urgent", tone: "amber" },
-      { label: "Finance", value: "2", delta: "Payouts", tone: "green" },
-      { label: "Security", value: "1", delta: "POS alert", tone: "red" },
-      { label: "Operations", value: "4", delta: "Station", tone: "blue" }
-    ],
-    panels: [
-      { title: "Critical Alert", value: "POS mismatch", body: "One card verification attempt needs supervisor review before dispense approval." },
-      { title: "Settlement Update", value: "₦2.98M paid", body: "Batch PO-7801 was paid into the linked corporate account." },
-      { title: "Document Reminder", body: "DPR license renewal window opens soon. Prepare updated station documents." }
-    ],
-    tableTitle: "Notification Inbox",
-    rows: [
-      { id: "NT-910", primary: "Payout batch paid", secondary: "PO-7801 completed", amount: "Finance", status: "Paid", meta: "18 mins ago" },
-      { id: "NT-908", primary: "Card verification warning", secondary: "Route mismatch on Pump 02", amount: "Security", status: "Flagged", meta: "32 mins ago" },
-      { id: "NT-903", primary: "Price update approved", secondary: "PMS price published", amount: "Operations", status: "Resolved", meta: "Yesterday" }
-    ],
-    filters: ["All", "Paid", "Flagged", "Resolved"]
+    title: "System Notifications",
+    kicker: "ADMIN NOTIFICATIONS",
+    description: "Manage real-time alerts for finance, support, security, and platform updates.",
+    primaryAction: "Mark all as read",
+    searchPlaceholder: "Search operations...",
+    userName: "Adeola Johnson",
+    userRole: "FLEET MANAGER"
   },
   settings: {
     key: "settings",
-    title: "Settings",
-    kicker: "Station Preferences",
-    description: "Control account security, approval thresholds, notification preferences, billing details, and platform access rules.",
-    primaryAction: "Save Settings",
-    modalTitle: "Save Settings",
-    modalBody: "Your station preferences will be saved locally for this frontend preview and prepared for backend integration.",
-    stats: [
-      { label: "MFA", value: "On", delta: "Required", tone: "green" },
-      { label: "Approval Limit", value: "₦250k", delta: "Supervisor", tone: "blue" },
-      { label: "Alerts", value: "12 rules", delta: "Active", tone: "green" },
-      { label: "API Access", value: "Draft", delta: "Disabled", tone: "amber" }
-    ],
-    panels: [
-      { title: "Security", value: "Protected", body: "Multi-factor authentication and login alerts are enabled for managers." },
-      { title: "Notifications", value: "Custom", body: "Finance alerts, POS exceptions, and document reminders are enabled." },
-      { title: "Approval Routing", body: "Transactions above station thresholds require supervisor approval." }
-    ],
-    tableTitle: "Preference Log",
-    rows: [
-      { id: "SET-030", primary: "Enabled POS exception alerts", secondary: "Changed by Amina Yusuf", amount: "Security", status: "Active", meta: "Today" },
-      { id: "SET-021", primary: "Adjusted approval threshold", secondary: "₦200k to ₦250k", amount: "Finance", status: "Active", meta: "Last week" },
-      { id: "SET-017", primary: "Draft API credential", secondary: "Awaiting owner approval", amount: "API", status: "Draft", meta: "July 2026" }
-    ],
-    filters: ["All", "Active", "Draft"]
+    title: "System Configuration",
+    description: "Manage your station credentials, security protocols, and enterprise notification rules.",
+    primaryAction: "Save Changes",
+    tabs: ["Account Details", "Security", "Notification Preferences"],
+    searchPlaceholder: "Search settings...",
+    userName: "Chidi Okoro",
+    userRole: "ADMIN"
   }
 };
+
+export const overviewMetrics: Metric[] = [
+  { label: "TODAY'S TRANSACTIONS", value: "4,892", delta: "12.4%", tone: "success" },
+  { label: "TODAY'S REVENUE", value: "₦14,250,800.00", delta: "8.1%", helper: "ESTIMATED NET MARGIN: 12.5%", tone: "success" },
+  { label: "PENDING SETTLEMENTS", value: "₦3,120,440.00", helper: "Processing Cluster 04...", tone: "pending" }
+];
+
+export const quickStats = [
+  ["All-time Transactions", "1.2M+"],
+  ["Active Cards", "12,450"],
+  ["Partner Stations", "850"],
+  ["Verified Partners", "142"]
+];
+
+export const overviewTransactions: TableRow[] = [
+  { cells: ["TXN-902341", "Oando Ikorodu", "CLUSTER A4", "₦145,000.00", "14:22:01"], status: "SUCCESS", tone: "success" },
+  { cells: ["TXN-902342", "TotalEnergies Lekki", "CLUSTER L2", "₦82,400.00", "14:18:45"], status: "SUCCESS", tone: "success" },
+  { cells: ["TXN-902343", "Conoil Victoria Island", "CLUSTER L1", "₦320,000.00", "14:12:30"], status: "PENDING", tone: "pending" }
+];
+
+export const payoutRows: TableRow[] = [
+  { cells: ["#PY-99201-NX", "Oct 24, 2023 • 14:32", "₦4,500,000.00", "Direct Bank"], status: "SUCCESS", tone: "success" },
+  { cells: ["#PY-99205-NX", "Oct 25, 2023 • 09:15", "₦12,250,000.00", "Direct Bank"], status: "PENDING", tone: "pending" },
+  { cells: ["#PY-99188-NX", "Oct 23, 2023 • 11:45", "₦1,100,000.00", "Direct Bank"], status: "FAILED", tone: "failed", action: "RETRY" },
+  { cells: ["#PY-99172-NX", "Oct 21, 2023 • 16:20", "₦8,900,000.00", "Direct Bank"], status: "SUCCESS", tone: "success" }
+];
+
+export const priceRows: TableRow[] = [
+  { cells: ["Oct 24, 2023 · 09:12", "PMS", "₦615.00", "₦617.00", "+0.32"], status: "APPLIED", tone: "success" },
+  { cells: ["Oct 22, 2023 · 13:30", "AGO", "₦1065.00", "₦1050.00", "-1.41"], status: "APPLIED", tone: "success" },
+  { cells: ["Oct 20, 2023 · 16:05", "LPG", "₦1180.00", "₦1200.00", "+1.69"], status: "APPLIED", tone: "success" },
+  { cells: ["Oct 18, 2023 · 10:44", "DPK", "₦845.00", "₦850.00", "+0.59"], status: "APPLIED", tone: "success" }
+];
+
+export const transactionRows: TableRow[] = [
+  { cells: ["24 Oct, 2023 08:45 AM", "Swift Logistics Ltd\nFleet ID #SL-9902", "****8901", "154,200.00"], status: "SUCCESS", tone: "success" },
+  { cells: ["24 Oct, 2023 08:42 AM", "Dangote Cement\nFleet ID #DC-5412", "****4220", "1,240,500.00"], status: "SUCCESS", tone: "success" },
+  { cells: ["24 Oct, 2023 08:12 AM", "Redline Express\nFleet ID #RE-1102", "****3100", "45,000.00"], status: "FAILED", tone: "failed" },
+  { cells: ["24 Oct, 2023 07:58 AM", "Peace Mass Transit\nFleet ID #PM-8821", "****5521", "280,000.00"], status: "PENDING", tone: "pending" }
+];
+
+export const reportRows: TableRow[] = [
+  { cells: ["Dangote Logistics\n#LG-4402", "Lagos-Kano", "42102.50", "35450112"], status: "ACTIVE", tone: "success" },
+  { cells: ["Julius Berger\n#ABJ-9921", "Abuja Metropolitan", "38500", "32410200"], status: "ACTIVE", tone: "success" },
+  { cells: ["Maersk Nigeria\n#PH-1102", "Port Harcourt Port", "12400.12", "10442100"], status: "PENDING", tone: "pending" },
+  { cells: ["GIG Logistics\n#EDO-7733", "Benin-Onitsha", "9105.45", "7667500"], status: "ACTIVE", tone: "success" }
+];
+
+export const staffRows: TableRow[] = [
+  { cells: ["#ST-8821", "BO\nBabatunde Olumide\n+234 801 239 8812", "Senior Attendant", "Enabled"], status: "ACTIVE", tone: "success" },
+  { cells: ["#ST-8822", "CA\nChisom Adebayo\n+234 802 555 1400", "Pump Operator", "Enabled"], status: "ACTIVE", tone: "success" },
+  { cells: ["#ST-8845", "EN\nEmeka Nwosu\n+234 809 331 2921", "Shift Lead", "Disabled"], status: "INACTIVE", tone: "neutral" },
+  { cells: ["#ST-8901", "YI\nYusuf Ibrahim\n+234 803 654 0021", "Night Supervisor", "Enabled"], status: "ACTIVE", tone: "success" }
+];
+
+export const disputeRows: TableRow[] = [
+  { cells: ["#DS-90214", "Incorrect Fueling Charge\nLagos VI Station - Pump #4", "Billing"], status: "PENDING", tone: "pending", action: "View Details" },
+  { cells: ["#DS-89920", "Wallet Sync Delay", "Technical"], status: "UNDER REVIEW", tone: "info", action: "View Details" },
+  { cells: ["#DS-89844", "Fleet Card Activation", "Operations"], status: "RESOLVED", tone: "success", action: "View Details" },
+  { cells: ["#DS-89771", "Invoice Discrepancy", "Billing"], status: "PENDING", tone: "pending", action: "View Details" },
+  { cells: ["#DS-89602", "System Access Issue", "Technical"], status: "RESOLVED", tone: "success", action: "View Details" }
+];
+
+export const notificationGroups = [
+  {
+    label: "TODAY",
+    items: [
+      ["New Transaction Received", "09:42 AM", "A new fleet transaction was authorized at Oando Ikorodu for ₦145,000.00."],
+      ["Payout Successful", "08:15 AM", "Your settlement payout of ₦4,500,000.00 was deposited into Zenith Bank PLC."]
+    ]
+  },
+  {
+    label: "YESTERDAY",
+    items: [
+      ["Support Ticket Update", "OCT 24, 4:50 PM", "Dispute #DS-89844 was marked resolved by support operations."],
+      ["New Platform Announcement", "OCT 24, 11:30 AM", "Bulk fuel-card activation is now available for verified partners."]
+    ]
+  },
+  {
+    label: "EARLIER THIS WEEK",
+    items: [["Security Alert: Password Changed", "OCT 22, 09:12 AM", "Your account password was changed from a recognized admin device."]]
+  }
+];
 

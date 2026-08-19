@@ -1,33 +1,58 @@
+"use client";
+
 import Link from "next/link";
-import { Bell, ChevronDown, Search } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { Bell, Plus, Search } from "lucide-react";
+import { dashboardNav, pageCopy } from "./dashboard-data";
+
+function activePageForPath(pathname: string) {
+  return dashboardNav.find((item) => item.href === pathname)?.key ?? "overview";
+}
+
+function initials(name: string) {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
 
 export function DashboardHeader() {
-  return (
-    <header className="sticky top-0 z-30 border-b border-obligon-border bg-obligon-mist/95 backdrop-blur">
-      <div className="flex h-20 items-center justify-between gap-4 px-5 sm:px-8 lg:px-10">
-        <div className="hidden min-w-0 flex-1 items-center gap-3 rounded-xl border border-obligon-border bg-white px-4 py-3 md:flex">
-          <Search className="shrink-0 text-obligon-text" size={18} />
-          <input
-            className="w-full bg-transparent text-sm text-obligon-navy outline-none placeholder:text-obligon-text"
-            placeholder="Search transactions, payouts, staff, or cards"
-          />
-        </div>
+  const pathname = usePathname();
+  const page = pageCopy[activePageForPath(pathname)];
 
-        <div className="ml-auto flex items-center gap-3">
-          <Link
-            href="/dashboard/notifications"
-            className="relative inline-flex size-11 items-center justify-center rounded-xl border border-obligon-border bg-white text-obligon-navy"
-            aria-label="Notifications"
+  return (
+    <header className="sticky top-0 z-30 border-b border-[#e3e4ef] bg-[#f7f7fd]/95 backdrop-blur">
+      <div className="flex h-16 items-center justify-between gap-4 px-6 lg:px-12">
+        <label className="hidden h-[38px] w-[288px] items-center gap-3 rounded-lg border border-[#d7d8e4] bg-white px-3 md:flex">
+          <Search className="shrink-0 text-[#7a7c89]" size={15} />
+          <input
+            className="w-full min-w-0 bg-transparent text-[13px] font-medium text-obligon-navy outline-none placeholder:text-[#8c8d98]"
+            placeholder={page.searchPlaceholder}
+          />
+        </label>
+
+        <div className="ml-auto flex items-center gap-4">
+          <button
+            className="hidden h-8 items-center gap-1.5 rounded-lg bg-obligon-green px-4 text-xs font-bold text-white shadow-sm sm:inline-flex"
+            type="button"
           >
-            <Bell size={19} />
-            <span className="absolute right-2 top-2 size-2 rounded-full bg-obligon-green" />
-          </Link>
-          <button className="hidden h-11 items-center gap-3 rounded-xl border border-obligon-border bg-white px-4 text-sm font-bold text-obligon-navy sm:inline-flex" type="button">
-            Ikeja Main Station
-            <ChevronDown size={16} />
+            <Plus size={14} />
+            {page.primaryAction ?? "Add Partner"}
           </button>
-          <div className="grid size-11 place-items-center rounded-xl bg-obligon-green text-sm font-extrabold text-white">
-            JA
+          <div className="flex h-8 items-center gap-3 border-l border-[#d7d8e4] pl-4">
+            <Link
+              href="/dashboard/notifications"
+              className="relative inline-flex size-8 items-center justify-center text-obligon-navy"
+              aria-label="Notifications"
+            >
+              <Bell size={18} />
+              <span className="absolute right-1 top-1 size-2 rounded-full border border-[#f7f7fd] bg-obligon-green" />
+            </Link>
+            <div className="grid size-8 place-items-center rounded-full bg-[#cfd8f6] text-[11px] font-extrabold text-obligon-blue">
+              {initials(page.userName ?? "AB")}
+            </div>
           </div>
         </div>
       </div>

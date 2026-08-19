@@ -16,7 +16,6 @@ import {
   LogOut,
   ReceiptText,
   Settings,
-  ShieldCheck,
   Users
 } from "lucide-react";
 import { assets } from "@/components/landing/assets";
@@ -40,50 +39,43 @@ export function PartnershipSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r border-white/10 bg-obligon-navy text-white lg:flex">
-      <div className="flex h-20 items-center border-b border-white/10 px-7">
-        <Link href="/" className="relative block h-12 w-[74px]" aria-label="Obligon home">
-          <Image src={assets.obligonLogo} fill sizes="74px" alt="Obligon" className="object-contain" priority />
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col bg-[#071853] text-white lg:flex">
+      <div className="flex h-[181px] items-start px-6 pt-8">
+        <Link href="/" className="relative block h-[149px] w-[223px]" aria-label="Obligon home">
+          <Image src={assets.obligonLogo} fill sizes="223px" alt="Obligon" className="object-contain object-left-top" priority />
         </Link>
       </div>
 
-      <div className="border-b border-white/10 px-7 py-6">
-        <p className="text-[11px] uppercase tracking-[1.4px] text-obligon-lime">Partner Portal</p>
-        <h2 className="mt-2 font-display text-xl font-bold leading-7">Mainland Energy Station</h2>
-        <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-obligon-lime/20 bg-obligon-lime/10 px-3 py-1 text-xs font-bold text-obligon-lime">
-          <ShieldCheck size={14} />
-          Verified
-        </div>
-      </div>
-
-      <nav className="flex-1 overflow-y-auto px-4 py-5">
+      <nav className="flex-1 overflow-y-auto px-6 pb-5">
         <div className="space-y-1">
           {dashboardNav.map((item) => {
             const Icon = iconMap[item.icon];
-            const active = pathname === item.href;
+            const active = pathname === item.href || (item.key === "overview" && pathname === "/dashboard");
 
             return (
               <Link
                 key={item.key}
                 href={item.href}
-                className={`flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition ${
-                  active ? "bg-obligon-lime text-[#131f00]" : "text-white/65 hover:bg-white/5 hover:text-white"
+                className={`relative flex min-h-[42px] items-center gap-3 rounded-lg px-4 text-[13px] font-semibold transition ${
+                  active ? "bg-white/10 text-obligon-lime" : "text-white/68 hover:bg-white/6 hover:text-white"
                 }`}
               >
-                <Icon size={18} />
-                <span>{item.label}</span>
+                <Icon size={18} className="shrink-0" />
+                <span className="truncate">{item.label}</span>
+                {active ? <span className="absolute right-0 top-2 h-6 w-1 rounded-l-full bg-obligon-lime" /> : null}
               </Link>
             );
           })}
         </div>
       </nav>
 
-      <div className="border-t border-white/10 p-4">
-        <Link href="/login" className="flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold text-white/60 hover:bg-white/5 hover:text-white">
+      <div className="mx-6 border-t border-white/15 py-6">
+        <Link href="/login" className="flex h-[42px] items-center gap-3 rounded-lg px-4 text-[13px] font-semibold text-[#ff6b7b] hover:bg-white/5">
           <LogOut size={18} />
-          Sign out
+          Log Out
         </Link>
       </div>
     </aside>
   );
 }
+

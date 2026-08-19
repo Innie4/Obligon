@@ -7,7 +7,7 @@ type PartnershipShellProps = {
 
 export function PartnershipShell({ children }: PartnershipShellProps) {
   return (
-    <main className="min-h-screen bg-[#f4f6fb] text-obligon-navy">
+    <main className="min-h-screen bg-[#f7f7fd] text-obligon-navy">
       <PartnershipSidebar />
       <div className="lg:pl-[280px]">
         <DashboardHeader />
@@ -16,4 +16,3 @@ export function PartnershipShell({ children }: PartnershipShellProps) {
     </main>
   );
 }
-
