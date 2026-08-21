@@ -295,16 +295,47 @@ function ReportPage({ onModal }: { onModal: (modal: CustomerModalType) => void }
   );
 }
 
-function ProfilePage() {
+function ToggleSwitch({ checked, onChange, label }: { checked: boolean; onChange: (checked: boolean) => void; label: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onChange(!checked)}
+      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${checked ? "bg-obligon-green" : "bg-[#cfd8cc]"}`}
+    >
+      <span
+        className={`absolute top-1 size-5 rounded-full bg-white shadow transition-all ${checked ? "left-6" : "left-1"}`}
+      />
+    </button>
+  );
+}
+
+function ProfilePage({
+  onModal,
+  biometrics,
+  onBiometricsChange
+}: {
+  onModal: (modal: CustomerModalType) => void;
+  biometrics: boolean;
+  onBiometricsChange: (enabled: boolean) => void;
+}) {
   const personalFields = [
     ["Full Name", "Fleet Manager"],
     ["Job Title", "Logistics Director"],
     ["Email Address", "manager@obligon.enterprise.com"],
     ["Phone Number", "+1 (555) 019-8472"]
   ];
-  const securitySettings: Array<{ title: string; body: string; Icon: ComponentType<LucideProps> }> = [
-    { title: "Change PIN", body: "Update your 4-digit access code", Icon: LockKeyhole },
-    { title: "Enable Biometrics", body: "Use FaceID or Fingerprint to login", Icon: ShieldCheck }
+  const [notificationPrefs, setNotificationPrefs] = React.useState({
+    push: true,
+    transactions: true,
+    marketing: false
+  });
+  const notificationOptions: Array<{ key: keyof typeof notificationPrefs; label: string }> = [
+    { key: "push", label: "Push Notifications" },
+    { key: "transactions", label: "Transaction Alerts" },
+    { key: "marketing", label: "Marketing Updates" }
   ];
 
   return (
@@ -321,25 +352,53 @@ function ProfilePage() {
             ))}
           </div>
           <h2 className="mt-8 font-display text-2xl font-extrabold">Notification Preferences</h2>
-          {["Push Notifications", "Transaction Alerts", "Marketing Updates"].map((item) => (
-            <label key={item} className="mt-4 flex items-center justify-between rounded-lg bg-[#f7fbf8] p-4 font-bold">
-              <span>{item}</span>
-              <input type="checkbox" defaultChecked={item !== "Marketing Updates"} className="size-5 accent-obligon-green" />
-            </label>
+          {notificationOptions.map(({ key, label }) => (
+            <div key={key} className="mt-4 flex items-center justify-between rounded-lg bg-[#f7fbf8] p-4 font-bold">
+              <span>{label}</span>
+              <ToggleSwitch
+                label={label}
+                checked={notificationPrefs[key]}
+                onChange={(checked) => setNotificationPrefs((prefs) => ({ ...prefs, [key]: checked }))}
+              />
+            </div>
           ))}
           <button className="mt-8 h-12 rounded-lg bg-obligon-green px-6 font-extrabold text-white" type="button">Save Changes</button>
         </Card>
         <Card className="p-7">
           <h2 className="font-display text-2xl font-extrabold">Security Settings</h2>
-          {securitySettings.map(({ title, body, Icon }) => (
-            <div key={title} className="mt-5 flex gap-4">
-              <MiniIcon tone="green"><Icon size={18} /></MiniIcon>
-              <div>
-                <p className="font-extrabold">{title}</p>
-                <p className="text-sm text-obligon-text">{body}</p>
-              </div>
-            </div>
-          ))}
+
+          <button
+            type="button"
+            onClick={() => onModal("changePin")}
+            className="mt-5 flex w-full items-center gap-4 rounded-lg p-3 text-left transition hover:bg-[#f7fbf8]"
+          >
+            <MiniIcon tone="green"><LockKeyhole size={18} /></MiniIcon>
+            <span className="flex-1">
+              <span className="block font-extrabold">Change PIN</span>
+              <span className="block text-sm text-obligon-text">Update your 4-digit access code</span>
+            </span>
+            <ArrowRight size={18} className="text-obligon-text" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onModal("biometrics")}
+            className="mt-3 flex w-full items-center gap-4 rounded-lg p-3 text-left transition hover:bg-[#f7fbf8]"
+          >
+            <MiniIcon tone={biometrics ? "green" : "muted"}><ShieldCheck size={18} /></MiniIcon>
+            <span className="flex-1">
+              <span className="block font-extrabold">{biometrics ? "Biometrics Enabled" : "Enable Biometrics"}</span>
+              <span className="block text-sm text-obligon-text">Use FaceID or Fingerprint to login</span>
+            </span>
+            <span
+              className={`rounded-full px-3 py-1 text-[10px] font-extrabold uppercase ${
+                biometrics ? "bg-[#e8fbd7] text-obligon-green" : "bg-[#eef3ee] text-obligon-text"
+              }`}
+            >
+              {biometrics ? "On" : "Off"}
+            </span>
+          </button>
+
           <button className="mt-8 h-11 w-full rounded-lg border border-[#20251f] font-extrabold" type="button">Log Out</button>
         </Card>
       </div>
@@ -355,6 +414,7 @@ function NotificationsPage() {
 
 export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
   const [modal, setModal] = React.useState<CustomerModalType>(null);
+  const [biometrics, setBiometrics] = React.useState(false);
   const pages: Record<CustomerPageKey, React.ReactNode> = {
     overview: <OverviewPage />,
     transactions: <TransactionsPage />,
@@ -364,14 +424,21 @@ export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
     support: <SupportPage onModal={setModal} />,
     transactionDetail: <TransactionDetailPage onModal={setModal} />,
     reportProblem: <ReportPage onModal={setModal} />,
-    profile: <ProfilePage />,
+    profile: (
+      <ProfilePage onModal={setModal} biometrics={biometrics} onBiometricsChange={setBiometrics} />
+    ),
     notifications: <NotificationsPage />
   };
 
   return (
     <>
       {pages[pageKey]}
-      <CustomerModals modal={modal} onClose={() => setModal(null)} />
+      <CustomerModals
+        modal={modal}
+        onClose={() => setModal(null)}
+        biometrics={biometrics}
+        onBiometricsChange={setBiometrics}
+      />
     </>
   );
 }

@@ -2,13 +2,15 @@
 
 import * as React from "react";
 import type { ComponentType } from "react";
-import { Building2, CreditCard, Upload, X, type LucideProps } from "lucide-react";
+import { Building2, Check, CreditCard, Fingerprint, LockKeyhole, ShieldCheck, Upload, X, type LucideProps } from "lucide-react";
 
-export type CustomerModalType = "topup" | "report" | null;
+export type CustomerModalType = "topup" | "report" | "changePin" | "biometrics" | null;
 
 type CustomerModalsProps = {
   modal: CustomerModalType;
   onClose: () => void;
+  biometrics: boolean;
+  onBiometricsChange: (enabled: boolean) => void;
 };
 
 function ModalFrame({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
@@ -27,9 +29,235 @@ function ModalFrame({ children, onClose }: { children: React.ReactNode; onClose:
   );
 }
 
-export function CustomerModals({ modal, onClose }: CustomerModalsProps) {
+export function CustomerModals({ modal, onClose, biometrics, onBiometricsChange }: CustomerModalsProps) {
   if (!modal) return null;
-  return modal === "topup" ? <TopUpModal onClose={onClose} /> : <ReportProblemModal onClose={onClose} />;
+  if (modal === "topup") return <TopUpModal onClose={onClose} />;
+  if (modal === "report") return <ReportProblemModal onClose={onClose} />;
+  if (modal === "changePin") return <ChangePinModal onClose={onClose} />;
+  return <BiometricsModal onClose={onClose} enabled={biometrics} onChange={onBiometricsChange} />;
+}
+
+function PinInput({
+  label,
+  value,
+  onChange,
+  placeholder,
+  autoFocus = false
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  autoFocus?: boolean;
+}) {
+  return (
+    <label className="mt-5 block">
+      <span className="text-xs font-extrabold uppercase text-obligon-text">{label}</span>
+      <input
+        type="password"
+        inputMode="numeric"
+        autoComplete="off"
+        maxLength={4}
+        autoFocus={autoFocus}
+        value={value}
+        onChange={(event) => onChange(event.target.value.replace(/\D/g, "").slice(0, 4))}
+        placeholder={placeholder}
+        className="mt-2 h-14 w-full rounded-lg border border-[#cfd8cc] bg-[#f7fbf8] text-center font-mono text-2xl tracking-[10px] outline-none focus:border-obligon-green"
+      />
+    </label>
+  );
+}
+
+function ChangePinModal({ onClose }: { onClose: () => void }) {
+  const [step, setStep] = React.useState<"form" | "success">("form");
+  const [currentPin, setCurrentPin] = React.useState("");
+  const [newPin, setNewPin] = React.useState("");
+  const [confirmPin, setConfirmPin] = React.useState("");
+  const [error, setError] = React.useState("");
+
+  React.useEffect(() => {
+    if (step !== "success") return;
+    const timer = setTimeout(onClose, 2400);
+    return () => clearTimeout(timer);
+  }, [step, onClose]);
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!/^\d{4}$/.test(currentPin)) {
+      setError("Enter your current 4-digit PIN.");
+      return;
+    }
+    if (!/^\d{4}$/.test(newPin)) {
+      setError("Your new PIN must be exactly 4 digits.");
+      return;
+    }
+    if (newPin === currentPin) {
+      setError("Your new PIN must be different from your current PIN.");
+      return;
+    }
+    if (newPin !== confirmPin) {
+      setError("New PIN and confirmation do not match.");
+      return;
+    }
+
+    setError("");
+    setStep("success");
+  }
+
+  return (
+    <ModalFrame onClose={onClose}>
+      {step === "form" ? (
+        <form onSubmit={handleSubmit} className="p-6">
+          <span className="grid size-12 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
+            <LockKeyhole size={22} />
+          </span>
+          <h2 className="mt-4 font-display text-3xl font-extrabold">Change PIN</h2>
+          <p className="mt-2 text-sm text-obligon-text">
+            Update the 4-digit access code used to authorize fleet transactions.
+          </p>
+
+          <PinInput label="Current PIN" value={currentPin} onChange={setCurrentPin} placeholder="••••" autoFocus />
+          <PinInput label="New PIN" value={newPin} onChange={setNewPin} placeholder="••••" />
+          <PinInput label="Confirm New PIN" value={confirmPin} onChange={setConfirmPin} placeholder="••••" />
+
+          {error ? <p className="mt-4 rounded-lg bg-[#ffe8e8] p-3 text-sm font-bold text-[#c1121f]">{error}</p> : null}
+
+          <div className="mt-6 flex gap-3">
+            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">
+              Cancel
+            </button>
+            <button type="submit" className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white">
+              Update PIN
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="p-6 text-center">
+          <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
+            <Check size={30} />
+          </span>
+          <h2 className="mt-5 font-display text-2xl font-extrabold">PIN Updated</h2>
+          <p className="mt-2 text-sm text-obligon-text">
+            Your access code was changed successfully. Use your new PIN for future transactions.
+          </p>
+        </div>
+      )}
+    </ModalFrame>
+  );
+}
+
+function BiometricsModal({
+  onClose,
+  enabled,
+  onChange
+}: {
+  onClose: () => void;
+  enabled: boolean;
+  onChange: (enabled: boolean) => void;
+}) {
+  const [step, setStep] = React.useState<"intro" | "scanning" | "success" | "disable">(enabled ? "disable" : "intro");
+
+  React.useEffect(() => {
+    if (step !== "scanning") return;
+    const timer = setTimeout(() => {
+      onChange(true);
+      setStep("success");
+    }, 1800);
+    return () => clearTimeout(timer);
+  }, [step, onChange]);
+
+  return (
+    <ModalFrame onClose={onClose}>
+      {step === "intro" ? (
+        <div className="p-6 text-center">
+          <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#eef3ff] text-obligon-blue">
+            <Fingerprint size={30} />
+          </span>
+          <h2 className="mt-5 font-display text-2xl font-extrabold">Enable Biometrics</h2>
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-obligon-text">
+            Use FaceID or Fingerprint to unlock your fleet dashboard and approve transactions instantly — no PIN required.
+          </p>
+          <ul className="mx-auto mt-6 max-w-sm space-y-3 text-left">
+            {["Your biometric data never leaves this device", "Fallback to PIN is always available", "Can be disabled at any time"].map((item) => (
+              <li key={item} className="flex items-start gap-3 text-sm font-bold">
+                <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
+                  <Check size={12} />
+                </span>
+                {item}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-7 flex gap-3">
+            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">
+              Not Now
+            </button>
+            <button
+              type="button"
+              onClick={() => setStep("scanning")}
+              className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white"
+            >
+              Enable
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {step === "scanning" ? (
+        <div className="p-6 py-12 text-center">
+          <span className="mx-auto grid size-24 animate-pulse place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
+            <Fingerprint size={48} />
+          </span>
+          <h2 className="mt-6 font-display text-2xl font-extrabold">Scanning...</h2>
+          <p className="mt-2 text-sm text-obligon-text">Touch the sensor or look at the camera to register your biometrics.</p>
+        </div>
+      ) : null}
+
+      {step === "success" ? (
+        <div className="p-6 py-12 text-center">
+          <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
+            <ShieldCheck size={30} />
+          </span>
+          <h2 className="mt-5 font-display text-2xl font-extrabold">Biometrics Enabled</h2>
+          <p className="mt-2 text-sm text-obligon-text">FaceID and Fingerprint login are now active on this device.</p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="mt-7 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white"
+          >
+            Done
+          </button>
+        </div>
+      ) : null}
+
+      {step === "disable" ? (
+        <div className="p-6 text-center">
+          <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#fff3d8] text-[#9a6300]">
+            <Fingerprint size={30} />
+          </span>
+          <h2 className="mt-5 font-display text-2xl font-extrabold">Disable Biometrics?</h2>
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-obligon-text">
+            You will need your 4-digit PIN to sign in and approve transactions on this device.
+          </p>
+          <div className="mt-7 flex gap-3">
+            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">
+              Keep Enabled
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onChange(false);
+                onClose();
+              }}
+              className="h-12 flex-1 rounded-lg bg-[#c1121f] font-extrabold text-white"
+            >
+              Disable
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </ModalFrame>
+  );
 }
 
 function TopUpModal({ onClose }: { onClose: () => void }) {
