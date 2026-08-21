@@ -69,6 +69,11 @@ export function AuthForms() {
       return;
     }
 
+    if (role === "customer") {
+      router.push(`${routes.authSuccess}?redirect=${encodeURIComponent(routes.customerDashboard)}`);
+      return;
+    }
+
     router.push(routes.authSuccess);
   }
 
