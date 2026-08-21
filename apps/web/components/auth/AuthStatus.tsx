@@ -16,7 +16,7 @@ const content = {
     footer: "End-to-end encrypted verification"
   },
   success: {
-    eyebrow: "Identity Verified",
+    eyebrow: "",
     title: "Application Submitted Successfully",
     body: "Your enterprise profile is ready. Welcome to Nigeria's leading energy logistics infrastructure.",
     icon: CheckCircle2,
@@ -40,9 +40,11 @@ export function AuthStatus({ status }: AuthStatusProps) {
   return (
     <div className="grid w-full max-w-[960px] items-center gap-10 lg:grid-cols-[480px_1fr]">
       <section className="rounded-3xl border border-obligon-border bg-white p-8 text-center shadow-card">
-        <span className="inline-flex rounded-full bg-obligon-lime/20 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[1px] text-[#131f00]">
-          {item.eyebrow}
-        </span>
+        {item.eyebrow ? (
+          <span className="inline-flex rounded-full bg-obligon-lime/20 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[1px] text-[#131f00]">
+            {item.eyebrow}
+          </span>
+        ) : null}
         <div className={`mx-auto mt-8 grid size-20 place-items-center rounded-full bg-obligon-mist ${item.tone}`}>
           <Icon className={status === "progress" ? "animate-spin" : ""} size={42} strokeWidth={1.8} />
         </div>
