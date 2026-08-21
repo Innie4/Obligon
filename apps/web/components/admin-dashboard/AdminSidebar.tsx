@@ -33,8 +33,8 @@ export function AdminSidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col bg-[#061958] text-white lg:flex">
       <div className="px-8 pt-14">
-        <Link href="/" className="relative block h-[52px] w-[148px]" aria-label="Obligon home">
-          <Image src={assets.obligonLogo} fill sizes="148px" alt="Obligon" className="object-contain object-left" priority />
+        <Link href="/" className="relative block h-[72px] w-[204px]" aria-label="Obligon home">
+          <Image src={assets.obligonLogo} fill sizes="204px" alt="Obligon" className="object-contain object-left" priority />
         </Link>
       </div>
 

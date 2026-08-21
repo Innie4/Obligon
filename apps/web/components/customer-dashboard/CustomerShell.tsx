@@ -3,7 +3,18 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, CircleHelp, CreditCard, Grid2X2, History, MapPinned, Settings, WalletCards } from "lucide-react";
+import { useState } from "react";
+import {
+  Bell,
+  ChevronDown,
+  CircleHelp,
+  CreditCard,
+  Grid2X2,
+  History,
+  MapPinned,
+  Settings,
+  WalletCards
+} from "lucide-react";
 import { assets } from "@/components/landing/assets";
 import { customerNav, secondaryCustomerNav, pageTitles, type CustomerPageKey } from "./customer-data";
 
@@ -40,14 +51,29 @@ function pageForPath(pathname: string): CustomerPageKey {
 function Sidebar() {
   const pathname = usePathname();
   const active = pageForPath(pathname);
+  const accountKeys: CustomerPageKey[] = secondaryCustomerNav.map((item) => item.key);
+  const [accountOpen, setAccountOpen] = useState(accountKeys.includes(active));
+
+  const renderLink = (item: (typeof customerNav)[number]) => (
+    <Link
+      key={item.key}
+      href={item.href}
+      className={`flex h-12 items-center gap-3 rounded-lg px-4 text-base font-semibold ${
+        active === item.key ? "bg-[#63b800] text-[#1b3c00]" : "text-[#3f463d] hover:bg-white"
+      }`}
+    >
+      <span className={active === item.key ? "text-[#1b3c00]" : "text-[#3f463d]"}>{iconMap[item.key]}</span>
+      {item.label}
+    </Link>
+  );
 
   return (
     <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-[#dbe2d8] bg-[#f7fbf8] px-4 py-8 lg:flex">
-      <Link href="/customer" className="relative ml-8 block h-16 w-36" aria-label="Obligon customer dashboard">
-        <Image src={assets.obligonLogo} alt="Obligon" fill sizes="144px" className="object-contain object-left" priority />
+      <Link href="/customer" className="relative ml-8 block h-20 w-48" aria-label="Obligon customer dashboard">
+        <Image src={assets.obligonLogo} alt="Obligon" fill sizes="192px" className="object-contain object-left" priority />
       </Link>
 
-      <div className="mt-20 flex items-center gap-4 px-4">
+      <div className="mt-16 flex items-center gap-4 px-4">
         <span className="grid size-12 place-items-center rounded-full bg-[#dbe7ff] text-sm font-extrabold text-obligon-blue">FM</span>
         <div>
           <p className="font-extrabold text-obligon-green">Fleet Manager</p>
@@ -56,19 +82,28 @@ function Sidebar() {
         </div>
       </div>
 
-      <nav className="mt-12 space-y-3">
-        {[...customerNav, ...secondaryCustomerNav].map((item) => (
-          <Link
-            key={item.key}
-            href={item.href}
-            className={`flex h-12 items-center gap-3 rounded-lg px-4 text-base font-semibold ${
-              active === item.key ? "bg-[#63b800] text-[#1b3c00]" : "text-[#3f463d] hover:bg-white"
-            }`}
-          >
-            <span className={active === item.key ? "text-[#1b3c00]" : "text-[#3f463d]"}>{iconMap[item.key]}</span>
-            {item.label}
-          </Link>
-        ))}
+      <nav className="mt-10 space-y-3">
+        {customerNav.map(renderLink)}
+
+        <button
+          type="button"
+          onClick={() => setAccountOpen((open) => !open)}
+          aria-expanded={accountOpen}
+          className={`flex h-12 w-full items-center gap-3 rounded-lg px-4 text-base font-semibold ${
+            accountKeys.includes(active) ? "bg-[#63b800] text-[#1b3c00]" : "text-[#3f463d] hover:bg-white"
+          }`}
+        >
+          <span className={accountKeys.includes(active) ? "text-[#1b3c00]" : "text-[#3f463d]"}>
+            <Settings size={20} />
+          </span>
+          Account
+          <ChevronDown
+            size={18}
+            className={`ml-auto transition-transform ${accountOpen ? "rotate-180" : ""}`}
+          />
+        </button>
+
+        {accountOpen ? <div className="space-y-3 pl-6">{secondaryCustomerNav.map(renderLink)}</div> : null}
       </nav>
 
       <Link href="/customer/support" className="mt-auto flex items-center gap-3 px-4 text-base text-[#3f463d]">
@@ -82,8 +117,8 @@ function Sidebar() {
 function MobileHeader() {
   return (
     <header className="flex h-[84px] items-center justify-between border-b border-[#e0e7de] bg-[#f7fbf8] px-8 lg:hidden">
-      <Link href="/customer" className="relative h-11 w-28" aria-label="Obligon customer dashboard">
-        <Image src={assets.obligonLogo} alt="Obligon" fill sizes="112px" className="object-contain object-left" priority />
+      <Link href="/customer" className="relative h-14 w-36" aria-label="Obligon customer dashboard">
+        <Image src={assets.obligonLogo} alt="Obligon" fill sizes="144px" className="object-contain object-left" priority />
       </Link>
       <Link href="/customer/notifications" className="text-obligon-green" aria-label="Notifications">
         <Bell size={22} fill="currentColor" />
