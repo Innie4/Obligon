@@ -91,11 +91,12 @@ function TrendChart() {
 }
 
 function VehicleTable() {
+  const router = useRouter();
   return (
     <Card className="overflow-hidden">
       <div className="flex items-center justify-between px-6 py-6">
         <h2 className="font-display text-2xl font-extrabold">Vehicle Performance</h2>
-        <button className="text-sm font-extrabold text-obligon-green" type="button">View All</button>
+        <button onClick={() => router.push("/customer/transactions")} className="text-sm font-extrabold text-obligon-green" type="button">View All</button>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[520px] border-collapse text-left">
@@ -509,11 +510,12 @@ function CardPage({
 }
 
 function WalletPage({ onModal }: { onModal: (modal: CustomerModalType) => void }) {
+  const router = useRouter();
   return (
     <Canvas>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><h1 className="font-display text-3xl font-extrabold">Wallet Management</h1><p className="mt-2 text-obligon-text">Top up and manage your fleet balance.</p></div><button onClick={() => onModal("topup")} className="h-12 rounded-lg bg-obligon-green px-6 font-extrabold text-white" type="button">Add Funds</button></div>
       <Card className="mt-8 p-7"><p className="text-xs font-extrabold uppercase text-obligon-text">Available Balance</p><p className="mt-3 font-display text-5xl font-extrabold">₦24,500.00</p><p className="mt-3 text-sm font-bold text-obligon-green">+12% • Auto-recharge enabled at ₦5,000</p></Card>
-      <Card className="mt-8 overflow-hidden"><div className="flex items-center justify-between px-6 py-5"><h2 className="font-display text-2xl font-extrabold">Recent Transactions</h2><button className="text-sm font-bold text-obligon-green" type="button">View All</button></div><div className="hidden lg:block"><table className="w-full text-left"><thead className="bg-[#f0f4f0] text-xs uppercase"><tr>{["Date","Reference","Method","Amount"].map(h=><th className="px-6 py-4" key={h}>{h}</th>)}</tr></thead><tbody>{desktopTopUps.map(row=><tr className="border-t border-[#eef3ee]" key={row[1]}>{row.map(cell=><td className="px-6 py-4" key={cell}>{cell}</td>)}</tr>)}</tbody></table></div><div className="divide-y divide-[#eef3ee] lg:hidden">{topUpHistory.map(([method,date,amount])=><div key={date} className="flex justify-between p-5"><div><p className="font-extrabold">{method}</p><p className="text-sm text-obligon-text">{date}</p></div><p className="font-extrabold text-obligon-green">{amount}</p></div>)}</div></Card>
+      <Card className="mt-8 overflow-hidden"><div className="flex items-center justify-between px-6 py-5"><h2 className="font-display text-2xl font-extrabold">Recent Transactions</h2><button onClick={() => router.push("/customer/transactions")} className="text-sm font-bold text-obligon-green" type="button">View All</button></div><div className="hidden lg:block"><table className="w-full text-left"><thead className="bg-[#f0f4f0] text-xs uppercase"><tr>{["Date","Reference","Method","Amount"].map(h=><th className="px-6 py-4" key={h}>{h}</th>)}</tr></thead><tbody>{desktopTopUps.map(row=><tr className="border-t border-[#eef3ee]" key={row[1]}>{row.map(cell=><td className="px-6 py-4" key={cell}>{cell}</td>)}</tr>)}</tbody></table></div><div className="divide-y divide-[#eef3ee] lg:hidden">{topUpHistory.map(([method,date,amount])=><div key={date} className="flex justify-between p-5"><div><p className="font-extrabold">{method}</p><p className="text-sm text-obligon-text">{date}</p></div><p className="font-extrabold text-obligon-green">{amount}</p></div>)}</div></Card>
     </Canvas>
   );
 }
@@ -744,11 +746,12 @@ function StationsPage() {
 
 function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void }) {
   const [reportOpen, setReportOpen] = React.useState(false);
+  const [conversationStarted, setConversationStarted] = React.useState(false);
   return (
     <Canvas>
       <h1 className="font-display text-4xl font-extrabold">Support Center</h1><p className="mt-3 text-lg text-obligon-text">How can we help you accelerate your fleet operations today?</p>
       <div className="mt-8 grid gap-5 lg:grid-cols-2">
-        <Card className="p-6"><MessageCircle className="text-obligon-green" /><h2 className="mt-5 font-display text-2xl font-extrabold">Chat with us</h2><p className="mt-2 text-obligon-text">Connect with a support agent instantly for real-time assistance.</p><button className="mt-6 h-11 rounded-lg bg-obligon-green px-5 font-extrabold text-white" type="button">START CONVERSATION</button></Card>
+        <Card className="p-6"><MessageCircle className="text-obligon-green" /><h2 className="mt-5 font-display text-2xl font-extrabold">Chat with us</h2><p className="mt-2 text-obligon-text">Connect with a support agent instantly for real-time assistance.</p><button onClick={() => setConversationStarted(true)} className="mt-6 h-11 rounded-lg bg-obligon-green px-5 font-extrabold text-white" type="button">{conversationStarted ? "CONVERSATION REQUESTED" : "START CONVERSATION"}</button>{conversationStarted ? <p className="mt-3 rounded-lg bg-[#e8fbd7] p-3 text-sm font-bold text-obligon-green" role="status">Your support conversation is queued for this frontend session. A live-support service is required to connect an agent.</p> : null}</Card>
         <Card className="p-6"><AlertTriangle className="text-[#c1121f]" /><h2 className="mt-5 font-display text-2xl font-extrabold">Report a transaction issue</h2><p className="mt-2 text-obligon-text">Dispute a charge or report anomalies in your billing statement.</p><button onClick={() => setReportOpen(true)} className="mt-6 h-11 rounded-lg bg-[#20251f] px-5 font-extrabold text-white" type="button">FILE REPORT</button></Card>
       </div>
       <Card className="mt-8 p-6"><h2 className="font-display text-2xl font-extrabold">Frequently Asked Questions</h2>{["How to freeze my card", "Where can I use my card?", "Reporting a transaction issue"].map(q=><p key={q} className="border-b border-[#eef3ee] py-4 font-bold last:border-0">{q}</p>)}</Card>
@@ -768,9 +771,20 @@ function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void 
 
 function TransactionDetailPage({ onModal }: { onModal: (modal: CustomerModalType) => void }) {
   const [reportOpen, setReportOpen] = React.useState(false);
+  const [receiptPrepared, setReceiptPrepared] = React.useState(false);
+  function downloadReceipt() {
+    const content = "Obligon receipt summary\nMerchant: Pilot Travel Center #492\nDate: Oct 24, 2023, 2:15 PM\nAmount: ₦342.50\nFuel: Diesel #2, 75.000 gal\nAuthorization: AUTH-88392-XT\n\nThis is a frontend-generated receipt summary. A backend service is required for an official receipt.";
+    const url = URL.createObjectURL(new Blob([content], { type: "text/plain" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "obligon-receipt-summary.txt";
+    link.click();
+    URL.revokeObjectURL(url);
+    setReceiptPrepared(true);
+  }
   return (
     <Canvas>
-      <Card className="mx-auto max-w-3xl p-7"><p className="text-xs font-extrabold uppercase text-obligon-text">Transaction Detail</p><h1 className="mt-2 font-display text-3xl font-extrabold">Pilot Travel Center #492</h1><p className="mt-1 text-obligon-text">Oct 24, 2023 • 2:15 PM</p><div className="mt-7 rounded-lg bg-[#f7fbf8] p-6 text-center"><p className="text-sm font-bold text-obligon-text">Total Amount</p><p className="font-display text-5xl font-extrabold">₦342.50</p><Status status="Completed" /></div><div className="mt-7 grid gap-5 sm:grid-cols-2">{[["FUEL TYPE","Diesel #2"],["GALLONS","75.000 gal"],["PRICE PER GALLON","₦4.569"],["AUTH CODE","AUTH-88392-XT"],["CARD USED","•••• •••• •••• 4092"],["PAYMENT METHOD","•••• 4289"]].map(([l,v])=><div key={l}><p className="text-xs font-extrabold uppercase text-obligon-text">{l}</p><p className="mt-1 font-extrabold">{v}</p></div>)}</div><div className="mt-8 flex gap-3"><button className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold" type="button"><Download className="inline" size={17}/> Download Receipt</button><button onClick={()=>setReportOpen(true)} className="h-12 flex-1 rounded-lg bg-[#20251f] font-extrabold text-white" type="button">Report a Problem</button></div></Card>
+      <Card className="mx-auto max-w-3xl p-7"><p className="text-xs font-extrabold uppercase text-obligon-text">Transaction Detail</p><h1 className="mt-2 font-display text-3xl font-extrabold">Pilot Travel Center #492</h1><p className="mt-1 text-obligon-text">Oct 24, 2023 • 2:15 PM</p><div className="mt-7 rounded-lg bg-[#f7fbf8] p-6 text-center"><p className="text-sm font-bold text-obligon-text">Total Amount</p><p className="font-display text-5xl font-extrabold">₦342.50</p><Status status="Completed" /></div><div className="mt-7 grid gap-5 sm:grid-cols-2">{[["FUEL TYPE","Diesel #2"],["GALLONS","75.000 gal"],["PRICE PER GALLON","₦4.569"],["AUTH CODE","AUTH-88392-XT"],["CARD USED","•••• •••• •••• 4092"],["PAYMENT METHOD","•••• 4289"]].map(([l,v])=><div key={l}><p className="text-xs font-extrabold uppercase text-obligon-text">{l}</p><p className="mt-1 font-extrabold">{v}</p></div>)}</div><div className="mt-8 flex gap-3"><button onClick={downloadReceipt} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold" type="button"><Download className="inline" size={17}/> Download Receipt</button><button onClick={()=>setReportOpen(true)} className="h-12 flex-1 rounded-lg bg-[#20251f] font-extrabold text-white" type="button">Report a Problem</button></div>{receiptPrepared ? <p className="mt-4 rounded-lg bg-[#e8fbd7] p-3 text-sm font-bold text-obligon-green" role="status">A local receipt summary was downloaded. An official receipt requires the transaction service.</p> : null}</Card>
 
       <ConfirmModal
         open={reportOpen}
@@ -852,6 +866,7 @@ function ProfilePage({
   ];
   const router = useRouter();
   const [logoutOpen, setLogoutOpen] = React.useState(false);
+  const [saved, setSaved] = React.useState(false);
 
   return (
     <Canvas>
@@ -877,7 +892,7 @@ function ProfilePage({
               />
             </div>
           ))}
-          <button className="mt-8 h-12 rounded-lg bg-obligon-green px-6 font-extrabold text-white" type="button">Save Changes</button>
+          <button onClick={() => setSaved(true)} className="mt-8 h-12 rounded-lg bg-obligon-green px-6 font-extrabold text-white" type="button">Save Changes</button>{saved ? <p className="mt-4 rounded-lg bg-[#e8fbd7] p-3 text-sm font-bold text-obligon-green" role="status">Changes are saved for this frontend session. A profile service is required to persist them.</p> : null}
         </Card>
         <Card className="p-7">
           <h2 className="font-display text-2xl font-extrabold">Security Settings</h2>

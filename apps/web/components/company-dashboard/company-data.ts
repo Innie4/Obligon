@@ -24,6 +24,7 @@ export type CompanyModalKey =
   | "teamMember"
   | "supportTicket"
   | "export"
+  | "action"
   | null;
 
 export type CompanyTone = "green" | "red" | "amber" | "blue" | "dark" | "muted";

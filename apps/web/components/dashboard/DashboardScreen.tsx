@@ -38,6 +38,7 @@ import {
   type TableRow
 } from "./dashboard-data";
 import { MobileDashboardNav } from "./MobileDashboardNav";
+import { ActionFeedback, type ActionState } from "@/components/shared/Dialogs";
 
 const toneStyles: Record<StatusTone, string> = {
   success: "bg-[#eaf7db] text-[#315d00]",
@@ -58,6 +59,10 @@ const iconTile: Record<StatusTone, string> = {
 type ActionPayload = {
   title: string;
   body: string;
+  confirmLabel?: string;
+  details?: string[];
+  requiresNote?: boolean;
+  viewOnly?: boolean;
 };
 
 function DashboardCanvas({ children }: { children: React.ReactNode }) {
@@ -70,33 +75,76 @@ function DashboardCanvas({ children }: { children: React.ReactNode }) {
 }
 
 function ActionModal({ action, onClose }: { action: ActionPayload | null; onClose: () => void }) {
+  const [note, setNote] = React.useState("");
+  const [state, setState] = React.useState<ActionState>("idle");
+  const [error, setError] = React.useState("");
+
+  React.useEffect(() => {
+    if (action) {
+      setNote("");
+      setState("idle");
+      setError("");
+    }
+  }, [action]);
+
   if (!action) return null;
 
+  function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!action) return;
+    if (action.requiresNote && !note.trim()) {
+      setError("Add a short reference note before continuing.");
+      setState("error");
+      return;
+    }
+
+    setError("");
+    setState("loading");
+    window.setTimeout(() => setState("success"), 450);
+  }
+
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-[#071853]/65 px-5 backdrop-blur-sm">
-      <section className="w-full max-w-md rounded-lg border border-[#d7d8e4] bg-white p-6 shadow-card">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[#071853]/65 px-5 backdrop-blur-sm" onMouseDown={onClose}>
+      <section role="dialog" aria-modal="true" aria-label={action.title} className="w-full max-w-md rounded-lg border border-[#d7d8e4] bg-white p-6 shadow-card" onMouseDown={(event) => event.stopPropagation()}>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-extrabold uppercase tracking-[1.2px] text-obligon-green">Frontend Action</p>
+            <p className="text-xs font-extrabold uppercase tracking-[1.2px] text-obligon-green">Dashboard action</p>
             <h2 className="mt-2 font-display text-2xl font-extrabold text-obligon-navy">{action.title}</h2>
           </div>
-          <button className="grid size-9 place-items-center rounded-lg bg-[#f2f4fb] text-obligon-text" onClick={onClose} type="button" aria-label="Close modal">
+          <button className="grid size-9 place-items-center rounded-lg bg-[#f2f4fb] text-obligon-text focus:outline-none focus:ring-2 focus:ring-obligon-green focus:ring-offset-2" onClick={onClose} type="button" aria-label="Close modal">
             <X size={18} />
           </button>
         </div>
         <p className="mt-4 text-sm leading-6 text-obligon-text">{action.body}</p>
-        <label className="mt-6 block">
-          <span className="text-[11px] font-extrabold uppercase tracking-[1px] text-obligon-text">Reference note</span>
-          <textarea className="mt-2 min-h-28 w-full rounded-lg border border-[#d7d8e4] px-4 py-3 text-sm outline-none focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20" placeholder="Add optional context." />
-        </label>
-        <div className="mt-6 flex gap-3">
-          <button className="h-11 flex-1 rounded-lg bg-obligon-green text-sm font-bold text-white" onClick={onClose} type="button">
-            Submit
-          </button>
-          <button className="h-11 flex-1 rounded-lg border border-[#d7d8e4] text-sm font-bold text-obligon-navy" onClick={onClose} type="button">
-            Cancel
-          </button>
-        </div>
+        {action.details?.length ? (
+          <dl className="mt-5 divide-y divide-[#e3e4ef] rounded-lg border border-[#d7d8e4] bg-[#fbfbff] px-4">
+            {action.details.map((detail) => {
+              const [label, value] = detail.split(": ");
+              return <div key={detail} className="py-3 text-sm"><dt className="font-bold text-obligon-navy">{label}</dt><dd className="mt-1 text-obligon-text">{value ?? label}</dd></div>;
+            })}
+          </dl>
+        ) : null}
+        {action.viewOnly ? null : (
+          <form onSubmit={submit}>
+            <label className="mt-6 block">
+              <span className="text-[11px] font-extrabold uppercase tracking-[1px] text-obligon-text">Reference note{action.requiresNote ? " (required)" : " (optional)"}</span>
+              <textarea value={note} onChange={(event) => { setNote(event.target.value); setError(""); if (state === "error") setState("idle"); }} aria-invalid={Boolean(error)} aria-describedby={error ? "dashboard-action-error" : undefined} className="mt-2 min-h-28 w-full rounded-lg border border-[#d7d8e4] px-4 py-3 text-sm outline-none focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20" placeholder="Add context for this action." />
+            </label>
+            <ActionFeedback state={state} loadingMessage="Preparing this frontend-only update…" successMessage="Completed for this session. A backend service is still required for permanent processing." errorMessage={error} />
+            <p className="mt-3 text-xs leading-5 text-obligon-text">This action updates the current frontend session only. It does not claim that a server-side record, payment, message, or export has been completed.</p>
+            <div className="mt-6 flex gap-3">
+              {state === "success" ? (
+                <button className="h-11 flex-1 rounded-lg bg-obligon-green text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-obligon-green focus:ring-offset-2" onClick={onClose} type="button">Close</button>
+              ) : (
+                <>
+                  <button className="h-11 flex-1 rounded-lg bg-obligon-green text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-obligon-green focus:ring-offset-2" disabled={state === "loading"} type="submit">{state === "loading" ? "Working…" : action.confirmLabel ?? "Continue"}</button>
+                  <button className="h-11 flex-1 rounded-lg border border-[#d7d8e4] text-sm font-bold text-obligon-navy focus:outline-none focus:ring-2 focus:ring-obligon-green focus:ring-offset-2" onClick={onClose} type="button">Cancel</button>
+                </>
+              )}
+            </div>
+          </form>
+        )}
+        {action.viewOnly ? <button className="mt-6 h-11 w-full rounded-lg bg-obligon-green text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-obligon-green focus:ring-offset-2" onClick={onClose} type="button">Close</button> : null}
       </section>
     </div>
   );
@@ -134,7 +182,8 @@ function FigmaHeader({
             onClick={() =>
               onAction({
                 title: page.primaryAction ?? "Dashboard Action",
-                body: "This frontend-only modal is wired for the requested dashboard interaction and ready for backend integration later."
+                body: "Review the details below, then continue with this frontend-only workflow.",
+                confirmLabel: page.primaryAction ?? "Continue"
               })
             }
           >
@@ -198,14 +247,14 @@ function DataTable({
           {actionLabel ? (
             <button
               type="button"
-              onClick={() => onAction({ title: actionLabel, body: `Open the ${actionLabel.toLowerCase()} workflow.` })}
+              onClick={() => onAction({ title: actionLabel, body: `Review the ${actionLabel.toLowerCase()} workflow, then confirm the frontend-only action.`, confirmLabel: actionLabel })}
               className="inline-flex h-9 items-center gap-2 rounded-lg bg-[#f0f4e8] px-3 text-xs font-extrabold text-obligon-green"
             >
               {actionLabel}
               <ArrowRight size={14} />
             </button>
           ) : null}
-          <button type="button" className="grid size-9 place-items-center rounded-lg border border-[#d7d8e4] text-obligon-text" aria-label="More table actions">
+          <button type="button" onClick={() => onAction({ title: `${title} options`, body: "No additional bulk actions are available in this frontend-only view.", viewOnly: true })} className="grid size-9 place-items-center rounded-lg border border-[#d7d8e4] text-obligon-text focus:outline-none focus:ring-2 focus:ring-obligon-green focus:ring-offset-2" aria-label={`More ${title} actions`}>
             <MoreVertical size={16} />
           </button>
         </div>
@@ -242,7 +291,11 @@ function DataTable({
                 <td className="px-6 py-4 text-right">
                   <button
                     type="button"
-                    onClick={() => onAction({ title: row.action ?? "View Details", body: `Open details for ${row.cells[0]}.` })}
+                    onClick={() => {
+                      const label = row.action ?? "View";
+                      const isReadOnly = /view|details/i.test(label);
+                      onAction({ title: label, body: isReadOnly ? `Details for ${row.cells[0]}.` : `Review and confirm ${label.toLowerCase()} for ${row.cells[0]}.`, details: [`Record: ${row.cells[0]}`, `Status: ${row.status ?? "Available"}`], confirmLabel: label, requiresNote: /dispute|reject|resolve/i.test(label), viewOnly: isReadOnly });
+                    }}
                     className="text-xs font-extrabold text-obligon-green"
                   >
                     {row.action ?? "View"}
@@ -444,6 +497,8 @@ function SettlementsPage({ onAction }: { onAction: (action: ActionPayload) => vo
 }
 
 function StationPage({ onAction }: { onAction: (action: ActionPayload) => void }) {
+  const [selectedAsset, setSelectedAsset] = React.useState<string | null>(null);
+
   return (
     <DashboardCanvas>
       <FigmaHeader pageKey="station" controls={<Tabs items={pageCopy.station.tabs ?? []} />} onAction={onAction} />
@@ -476,11 +531,11 @@ function StationPage({ onAction }: { onAction: (action: ActionPayload) => void }
           <article className="rounded-lg border border-[#d7d8e4] bg-white p-6">
             <div className="flex items-center justify-between">
               <h2 className="font-display text-xl font-extrabold">Station Asset Gallery</h2>
-              <button type="button" onClick={() => onAction({ title: "Upload New Asset", body: "Open station photo upload." })} className="text-xs font-extrabold text-obligon-green">UPLOAD NEW</button>
+              <button type="button" onClick={() => onAction({ title: "Upload New Asset", body: "Select an asset slot, then add a note for the frontend-only upload request.", confirmLabel: "Prepare Upload", requiresNote: true })} className="text-xs font-extrabold text-obligon-green">UPLOAD NEW</button>
             </div>
             <div className="mt-5 grid gap-4 sm:grid-cols-3">
               {["Forecourt", "Pump Island", "+ ADD PHOTO"].map((item, index) => (
-                <button key={item} type="button" className={`h-32 rounded-lg border ${index === 2 ? "border-dashed border-obligon-green bg-[#f5ffe8] text-obligon-green" : "border-[#d7d8e4] bg-[#dfe6f3] text-obligon-navy"} text-xs font-extrabold`}>
+                <button key={item} type="button" onClick={() => { setSelectedAsset(item); onAction({ title: index === 2 ? "Add Station Photo" : `View ${item}`, body: index === 2 ? "Add a reference note before preparing a frontend-only photo request." : `${item} is selected for review in this frontend-only gallery.`, confirmLabel: index === 2 ? "Prepare Upload" : "Continue", requiresNote: index === 2, viewOnly: index !== 2, details: [`Selected asset: ${item}`] }); }} aria-pressed={selectedAsset === item} className={`h-32 rounded-lg border ${selectedAsset === item ? "ring-2 ring-obligon-green ring-offset-2" : ""} ${index === 2 ? "border-dashed border-obligon-green bg-[#f5ffe8] text-obligon-green" : "border-[#d7d8e4] bg-[#dfe6f3] text-obligon-navy"} text-xs font-extrabold`}>
                   {item}
                 </button>
               ))}
@@ -504,7 +559,7 @@ function StationPage({ onAction }: { onAction: (action: ActionPayload) => void }
               <div><p className="text-[10px] font-extrabold text-obligon-text">TRUCKS SERVICED</p><p className="font-extrabold">84/120</p></div>
               <div><p className="text-[10px] font-extrabold text-obligon-text">FUEL RESERVES</p><p className="font-extrabold text-[#9f1027]">12% LOW</p></div>
             </div>
-            <button type="button" className="mt-5 h-10 w-full rounded-lg bg-[#fff5d8] text-xs font-extrabold text-[#875b00]">ORDER RESUPPLY</button>
+            <button type="button" onClick={() => onAction({ title: "Order Resupply", body: "Confirm the fuel-resupply request for this station.", confirmLabel: "Submit Request", requiresNote: true })} className="mt-5 h-10 w-full rounded-lg bg-[#fff5d8] text-xs font-extrabold text-[#875b00]">ORDER RESUPPLY</button>
           </article>
         </aside>
       </section>
@@ -545,8 +600,8 @@ function PricingPage({ onAction }: { onAction: (action: ActionPayload) => void }
               ))}
             </div>
             <div className="mt-6 flex flex-wrap justify-end gap-3">
-              <button type="button" className="h-10 rounded-lg border border-[#d7d8e4] px-4 text-xs font-extrabold">CANCEL CHANGES</button>
-              <button type="button" onClick={() => onAction({ title: "Update Prices", body: "Submit the adjusted fuel prices for network sync." })} className="h-10 rounded-lg bg-obligon-green px-4 text-xs font-extrabold text-white">UPDATE PRICES</button>
+              <button type="button" onClick={() => onAction({ title: "Discard Price Changes", body: "Your current unsaved price adjustments will be discarded in this frontend-only session.", confirmLabel: "Discard Changes" })} className="h-10 rounded-lg border border-[#d7d8e4] px-4 text-xs font-extrabold">CANCEL CHANGES</button>
+              <button type="button" onClick={() => onAction({ title: "Update Prices", body: "Review the price changes before preparing the frontend-only network-sync request.", confirmLabel: "Prepare Update", requiresNote: true })} className="h-10 rounded-lg bg-obligon-green px-4 text-xs font-extrabold text-white">UPDATE PRICES</button>
             </div>
           </article>
           <DataTable title="Price Adjustment History" columns={["Date & Time", "Fuel Type", "Old Price", "New Price", "Change %", "Status"]} rows={priceRows} onAction={onAction} />
@@ -576,7 +631,7 @@ function TransactionsPage({ onAction }: { onAction: (action: ActionPayload) => v
       <FigmaHeader pageKey="transactions" controls={<Tabs items={pageCopy.transactions.tabs ?? []} />} onAction={onAction} />
       <div className="mt-8 flex flex-wrap gap-3 rounded-lg border border-[#d7d8e4] bg-white p-4">
         {["DATE Last 30 Days", "CARD All Cards", "More Filters", "Export CSV"].map((filter) => (
-          <button key={filter} type="button" className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#d7d8e4] px-4 text-xs font-extrabold text-obligon-text">
+          <button key={filter} type="button" onClick={() => onAction({ title: filter, body: `Choose criteria for ${filter.toLowerCase()} in this frontend-only view.`, confirmLabel: "Apply" })} className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#d7d8e4] px-4 text-xs font-extrabold text-obligon-text">
             {filter.includes("Filter") ? <SlidersHorizontal size={15} /> : <Filter size={15} />}
             {filter}
           </button>
@@ -605,8 +660,8 @@ function TransactionsPage({ onAction }: { onAction: (action: ActionPayload) => v
             ))}
           </div>
           <div className="mt-5 grid grid-cols-2 gap-3">
-            <button type="button" className="h-10 rounded-lg bg-obligon-green text-xs font-extrabold text-white">Send Receipt</button>
-            <button type="button" className="h-10 rounded-lg border border-[#d7d8e4] text-xs font-extrabold">Dispute</button>
+            <button type="button" onClick={() => onAction({ title: "Send Receipt", body: "Confirm the recipient note before preparing this receipt for the current frontend session.", confirmLabel: "Prepare Receipt" })} className="h-10 rounded-lg bg-obligon-green text-xs font-extrabold text-white">Send Receipt</button>
+            <button type="button" onClick={() => onAction({ title: "Raise Dispute", body: "Describe the transaction issue so it can be recorded for this frontend session.", confirmLabel: "Create Dispute", requiresNote: true })} className="h-10 rounded-lg border border-[#d7d8e4] text-xs font-extrabold">Dispute</button>
           </div>
         </aside>
       </section>
@@ -659,7 +714,7 @@ function ReportsPage({ onAction }: { onAction: (action: ActionPayload) => void }
               <p className="text-sm font-extrabold text-obligon-green">{value}</p>
             </div>
           ))}
-          <button type="button" className="mt-5 h-10 w-full rounded-lg bg-[#f0f4e8] text-xs font-extrabold text-obligon-green">VIEW ALL STATIONS</button>
+          <button type="button" onClick={() => onAction({ title: "Top Stations", body: "Station rankings are shown in the current report view.", viewOnly: true })} className="mt-5 h-10 w-full rounded-lg bg-[#f0f4e8] text-xs font-extrabold text-obligon-green">VIEW ALL STATIONS</button>
         </aside>
       </section>
       <div className="mt-8">
@@ -698,7 +753,17 @@ function StaffPage({ onAction }: { onAction: (action: ActionPayload) => void }) 
 
 function VerificationPage({ onAction }: { onAction: (action: ActionPayload) => void }) {
   const [code, setCode] = React.useState("821");
+  const [codeError, setCodeError] = React.useState("");
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"];
+
+  function verifyCode() {
+    if (code.length !== 6) {
+      setCodeError("Enter all six authorization digits before verifying the transaction.");
+      return;
+    }
+    setCodeError("");
+    onAction({ title: "Verify Transaction", body: `Review authorization code ${code.slice(0, 3)}-${code.slice(3)} before preparing the frontend-only verification.`, confirmLabel: "Verify", details: [`Authorization code: ${code.slice(0, 3)}-${code.slice(3)}`] });
+  }
 
   return (
     <DashboardCanvas>
@@ -715,14 +780,15 @@ function VerificationPage({ onAction }: { onAction: (action: ActionPayload) => v
           </div>
           <div className="mt-6 grid grid-cols-3 gap-3">
             {keys.map((key) => (
-              <button key={key} type="button" onClick={() => setCode((current) => (current + key).slice(0, 6))} className="h-14 rounded-lg bg-white/10 text-xl font-extrabold hover:bg-white/15">
+              <button key={key} type="button" onClick={() => { setCode((current) => (current + key).slice(0, 6)); setCodeError(""); }} className="h-14 rounded-lg bg-white/10 text-xl font-extrabold hover:bg-white/15">
                 {key}
               </button>
             ))}
-            <button type="button" onClick={() => setCode("")} className="h-14 rounded-lg bg-white/10 text-xs font-extrabold">CLEAR</button>
-            <button type="button" onClick={() => onAction({ title: "Verify Transaction", body: `Verify terminal authorization code ${code}.` })} className="col-span-2 h-14 rounded-lg bg-obligon-lime text-xs font-extrabold uppercase text-[#182900]">
+            <button type="button" onClick={() => { setCode(""); setCodeError(""); }} className="h-14 rounded-lg bg-white/10 text-xs font-extrabold">CLEAR</button>
+            <button type="button" onClick={verifyCode} className="col-span-2 h-14 rounded-lg bg-obligon-lime text-xs font-extrabold uppercase text-[#182900]">
               Verify Transaction
             </button>
+            {codeError ? <p className="col-span-3 text-center text-sm font-bold text-[#ffb4b4]" role="alert">{codeError}</p> : null}
           </div>
         </article>
         <div className="space-y-6">
@@ -818,7 +884,7 @@ function NotificationsPage({ onAction }: { onAction: (action: ActionPayload) => 
           </div>
         ))}
       </section>
-      <button type="button" className="mt-6 h-11 rounded-lg border border-[#d7d8e4] bg-white px-5 text-xs font-extrabold text-obligon-navy">Load older notifications</button>
+      <button type="button" onClick={() => onAction({ title: "Older Notifications", body: "There are no additional notifications available in this frontend-only view.", viewOnly: true })} className="mt-6 h-11 rounded-lg border border-[#d7d8e4] bg-white px-5 text-xs font-extrabold text-obligon-navy">Load older notifications</button>
     </DashboardCanvas>
   );
 }
@@ -843,8 +909,8 @@ function SettingsPage({ onAction }: { onAction: (action: ActionPayload) => void 
             ))}
           </div>
           <div className="mt-6 flex justify-end gap-3">
-            <button type="button" className="h-10 rounded-lg border border-[#d7d8e4] px-4 text-xs font-extrabold">Discard Changes</button>
-            <button type="button" onClick={() => onAction({ title: "Save Changes", body: "Save the station configuration changes." })} className="h-10 rounded-lg bg-obligon-green px-4 text-xs font-extrabold text-white">Save Changes</button>
+            <button type="button" onClick={() => onAction({ title: "Discard Changes", body: "Discard unsaved station configuration changes for this frontend session.", confirmLabel: "Discard Changes" })} className="h-10 rounded-lg border border-[#d7d8e4] px-4 text-xs font-extrabold">Discard Changes</button>
+            <button type="button" onClick={() => onAction({ title: "Save Changes", body: "Review the station configuration change before completing it for this frontend session.", confirmLabel: "Save Changes" })} className="h-10 rounded-lg bg-obligon-green px-4 text-xs font-extrabold text-white">Save Changes</button>
           </div>
         </article>
         <aside className="space-y-5">

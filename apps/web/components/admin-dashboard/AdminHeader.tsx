@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import * as React from "react";
 import { usePathname } from "next/navigation";
-import { Bell, CalendarDays, HelpCircle, Search } from "lucide-react";
+import { Bell, CalendarDays, HelpCircle, Menu, Search } from "lucide-react";
 import { adminNav, adminPageCopy } from "./admin-data";
 
 function currentPage(pathname: string) {
@@ -18,13 +19,15 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-export function AdminHeader() {
+export function AdminHeader({ onOpenMenu }: { onOpenMenu: () => void }) {
   const pathname = usePathname();
   const page = adminPageCopy[currentPage(pathname)];
+  const [range, setRange] = React.useState("Last 30 Days");
 
   return (
     <header className="sticky top-0 z-30 border-b border-[#cfd3e1] bg-[#f7f7fd]/95 backdrop-blur">
       <div className="flex h-[64px] items-center gap-5 px-6 lg:px-12">
+        <button type="button" onClick={onOpenMenu} className="grid size-9 place-items-center rounded-lg border border-[#c8ccdb] bg-white lg:hidden" aria-label="Open admin menu"><Menu size={18} /></button>
         <label className="hidden h-[38px] w-full max-w-[448px] items-center gap-3 rounded-lg border border-[#c8ccdb] bg-[#eef3ff] px-3 md:flex">
           <Search size={16} className="text-[#777c8f]" />
           <input className="w-full bg-transparent text-sm font-medium outline-none placeholder:text-[#7d8293]" placeholder={page.search} />
@@ -37,9 +40,9 @@ export function AdminHeader() {
         ) : null}
 
         {pathname === "/admin/reports" ? (
-          <button type="button" className="ml-auto hidden h-9 items-center gap-2 rounded-lg border border-[#c8ccdb] bg-[#eef3ff] px-4 text-xs font-extrabold text-obligon-navy md:inline-flex">
+          <button type="button" onClick={() => setRange((current) => current === "Last 30 Days" ? "Last 7 Days" : "Last 30 Days")} className="ml-auto hidden h-9 items-center gap-2 rounded-lg border border-[#c8ccdb] bg-[#eef3ff] px-4 text-xs font-extrabold text-obligon-navy md:inline-flex">
             <CalendarDays size={16} />
-            Last 30 Days
+            {range}
           </button>
         ) : (
           <div className="ml-auto" />

@@ -84,7 +84,7 @@ function PageHeading({
         {action ? (
           <button
             type="button"
-            onClick={() => onAction(action.modal ?? null)}
+            onClick={() => onAction(action.modal ?? "action")}
             className="inline-flex h-[50px] items-center justify-center gap-3 rounded-lg bg-obligon-lime px-6 text-sm font-extrabold text-[#061958]"
           >
             {action.icon}
@@ -146,9 +146,13 @@ function AdminTable({
   search?: string;
   footer?: string;
   actionLabel?: string;
-  onRowAction?: () => void;
+  onRowAction?: (row: AdminRow) => void;
   headerAction?: React.ReactNode;
 }) {
+  const [query, setQuery] = React.useState("");
+  const [page, setPage] = React.useState(1);
+  const visibleRows = rows.filter((row) => row.cells.join(" ").toLowerCase().includes(query.trim().toLowerCase()));
+
   return (
     <section className="overflow-hidden rounded-lg border border-[#c8ccdb] bg-white">
       <div className="flex flex-col gap-4 border-b border-[#c8ccdb] bg-white px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
@@ -160,7 +164,7 @@ function AdminTable({
           {search ? (
             <label className="flex h-10 w-full max-w-[320px] items-center gap-3 rounded-lg border border-[#c8ccdb] bg-[#f3f6ff] px-3">
               <SlidersHorizontal size={15} className="text-[#777c8f]" />
-              <input className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#7d8293]" placeholder={search} />
+              <input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#7d8293]" placeholder={search} aria-label={search} />
             </label>
           ) : null}
           {headerAction}
@@ -179,7 +183,7 @@ function AdminTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-[#eef1fb]">
-            {rows.map((row, index) => (
+            {visibleRows.map((row, index) => (
               <tr key={`${row.cells[0]}-${index}`} className={row.tone === "red" ? "bg-[#fff4f4]" : ""}>
                 {row.cells.map((cell, cellIndex) => (
                   <td key={`${cell}-${cellIndex}`} className="px-6 py-5 align-middle text-base">
@@ -196,7 +200,7 @@ function AdminTable({
                 </td>
                 <td className="relative px-6 py-5 text-right">
                   {row.flagged ? <span className="absolute right-0 top-0 bg-obligon-green px-3 py-1 text-[9px] font-extrabold uppercase text-white [clip-path:polygon(18%_0,100%_0,100%_100%,0_100%)]">URGENT</span> : null}
-                  <button type="button" onClick={onRowAction} className="inline-flex items-center gap-1 text-sm font-extrabold text-obligon-green">
+                  <button type="button" onClick={() => onRowAction?.(row)} className="inline-flex items-center gap-1 text-sm font-extrabold text-obligon-green">
                     {actionLabel}
                     {actionLabel === "Review Details" ? null : <ArrowRight size={14} />}
                   </button>
@@ -205,16 +209,13 @@ function AdminTable({
             ))}
           </tbody>
         </table>
+        {visibleRows.length === 0 ? <p className="px-6 py-10 text-center text-sm font-bold text-obligon-text" role="status">No records match your search. Clear or change the search terms and try again.</p> : null}
       </div>
       {footer ? (
         <div className="flex items-center justify-between border-t border-[#d7dbe8] bg-[#eef3ff] px-6 py-4 text-sm text-obligon-text">
           <span>{footer}</span>
           <div className="flex items-center gap-2">
-            <button className="grid size-8 place-items-center rounded-lg bg-[#050816] text-white" type="button">1</button>
-            <button className="grid size-8 place-items-center rounded-lg" type="button">2</button>
-            <button className="grid size-8 place-items-center rounded-lg" type="button">3</button>
-            <span className="px-1">...</span>
-            <button className="grid size-8 place-items-center rounded-lg" type="button">11</button>
+            {[1, 2, 3, 11].map((item, index) => <React.Fragment key={item}>{index === 3 ? <span className="px-1">...</span> : null}<button onClick={() => setPage(item)} aria-current={page === item ? "page" : undefined} className={`grid size-8 place-items-center rounded-lg ${page === item ? "bg-[#050816] text-white" : "focus:outline-none focus:ring-2 focus:ring-obligon-green"}`} type="button">{item}</button></React.Fragment>)}
           </div>
         </div>
       ) : null}
@@ -229,7 +230,7 @@ function ApplicationsPage({ onModal }: { onModal: (modal: AdminModalType) => voi
         pageKey="applications"
         onAction={onModal}
         secondaryAction={
-          <button className="inline-flex h-[62px] items-center gap-3 rounded-lg border border-[#050816] bg-white px-6 text-sm font-extrabold" type="button">
+          <button onClick={() => onModal("action")} className="inline-flex h-[62px] items-center gap-3 rounded-lg border border-[#050816] bg-white px-6 text-sm font-extrabold" type="button">
             <Download size={16} />
             Export<br />List
           </button>
@@ -260,10 +261,10 @@ function ApplicationsPage({ onModal }: { onModal: (modal: AdminModalType) => voi
   );
 }
 
-function ReportsPage() {
+function ReportsPage({ onModal }: { onModal: (modal: AdminModalType) => void }) {
   return (
     <AdminCanvas>
-      <PageHeading pageKey="reports" onAction={() => undefined} />
+      <PageHeading pageKey="reports" onAction={onModal} action={{ label: "Export Report", icon: <Download size={16} /> }} />
       <div className="mt-10 grid gap-6 lg:grid-cols-3">
         {reportMetrics.map((metric, index) => (
           <AdminMetricCard key={metric.label} metric={metric} icon={[<Truck key="truck" size={22} />, <WalletCards key="wallet" size={22} />, <Fuel key="fuel" size={22} />][index]} />
@@ -277,8 +278,8 @@ function ReportsPage() {
               <p className="mt-1 text-base text-obligon-text">Daily fueling volume across the Nigerian network</p>
             </div>
             <div className="flex rounded-full bg-[#e9efff] p-1">
-              <button className="rounded-full bg-obligon-green px-5 py-1.5 text-xs font-bold text-white" type="button">Volume</button>
-              <button className="rounded-full px-5 py-1.5 text-xs font-bold text-obligon-blue" type="button">Revenue</button>
+              <button onClick={() => onModal("action")} className="rounded-full bg-obligon-green px-5 py-1.5 text-xs font-bold text-white" type="button">Volume</button>
+              <button onClick={() => onModal("action")} className="rounded-full px-5 py-1.5 text-xs font-bold text-obligon-blue" type="button">Revenue</button>
             </div>
           </div>
           <div className="mt-10 h-[320px]">
@@ -313,7 +314,7 @@ function ReportsPage() {
         </article>
       </section>
       <div className="mt-9">
-        <AdminTable title="Station Performance" subtitle="Comparative analysis of top performing partner outlets" columns={["Station Name", "Location", "Volume (L)", "Transactions", "Growth (%)", "Status"]} rows={stationPerformanceRows} footer="Showing 4 of 850 Stations" actionLabel="Export CSV" />
+        <AdminTable title="Station Performance" subtitle="Comparative analysis of top performing partner outlets" columns={["Station Name", "Location", "Volume (L)", "Transactions", "Growth (%)", "Status"]} rows={stationPerformanceRows} footer="Showing 4 of 850 Stations" actionLabel="Export CSV" onRowAction={() => onModal("action")} />
       </div>
     </AdminCanvas>
   );
@@ -325,7 +326,7 @@ function DisputesPage({ onModal }: { onModal: (modal: AdminModalType) => void })
       <PageHeading
         pageKey="disputes"
         onAction={onModal}
-        secondaryAction={<button className="inline-flex h-[54px] items-center gap-3 rounded-lg border border-[#c8ccdb] bg-white px-6 text-xs font-extrabold" type="button"><Filter size={16} />FILTER<br />QUEUE</button>}
+        secondaryAction={<button onClick={() => onModal("action")} className="inline-flex h-[54px] items-center gap-3 rounded-lg border border-[#c8ccdb] bg-white px-6 text-xs font-extrabold" type="button"><Filter size={16} />FILTER<br />QUEUE</button>}
         action={{ label: "EXPORT REPORT (CSV)", icon: <Download size={16} /> }}
       />
       <div className="mt-9 grid gap-6 lg:grid-cols-3">
@@ -361,7 +362,7 @@ function CompaniesPage({ onModal }: { onModal: (modal: AdminModalType) => void }
       <PageHeading
         pageKey="companies"
         onAction={onModal}
-        secondaryAction={<button className="inline-flex h-[42px] items-center gap-2 rounded-lg border border-[#d7dbe8] bg-white px-5 text-sm font-extrabold" type="button"><Filter size={15} />Filters</button>}
+        secondaryAction={<button onClick={() => onModal("action")} className="inline-flex h-[42px] items-center gap-2 rounded-lg border border-[#d7dbe8] bg-white px-5 text-sm font-extrabold" type="button"><Filter size={15} />Filters</button>}
         action={{ label: "Provision New Fleet", modal: "fleet", icon: <UserPlus size={16} /> }}
       />
       <div className="mt-9 grid gap-6 lg:grid-cols-3">
@@ -374,7 +375,7 @@ function CompaniesPage({ onModal }: { onModal: (modal: AdminModalType) => void }
         <article className="rounded-lg bg-[#050816] p-8 text-white">
           <span className="rounded bg-obligon-lime px-3 py-1 text-[10px] font-extrabold text-[#061958]">SECURITY ALERT</span>
           <h2 className="mt-6 max-w-md font-display text-3xl font-extrabold leading-tight">3 Fleets flagged for high cross-border utilization.</h2>
-          <button className="mt-10 inline-flex items-center gap-2 text-sm font-extrabold text-obligon-lime" type="button">Review Security Logs <ArrowRight size={17} /></button>
+          <button onClick={() => onModal("action")} className="mt-10 inline-flex items-center gap-2 text-sm font-extrabold text-obligon-lime" type="button">Review Security Logs <ArrowRight size={17} /></button>
         </article>
         <article className="rounded-lg border border-[#d7dbe8] bg-white p-8">
           <p className="text-xs font-extrabold uppercase tracking-[1.5px] text-obligon-text">PLAN DISTRIBUTION</p>
@@ -403,7 +404,7 @@ function StaffPage({ onModal }: { onModal: (modal: AdminModalType) => void }) {
       <section className="mt-9 overflow-hidden rounded-lg border border-[#c8ccdb] bg-white">
         <div className="flex items-center justify-between border-b border-[#c8ccdb] px-6 py-5">
           <div className="flex flex-wrap gap-5 text-sm font-bold">
-            {["All Staff", "Compliance", "Operations", "Engineering"].map((tab, index) => <button key={tab} className={index === 0 ? "border-b-2 border-obligon-green text-[#050816]" : "text-obligon-text"} type="button">{tab}</button>)}
+            {["All Staff", "Compliance", "Operations", "Engineering"].map((tab, index) => <button key={tab} onClick={() => onModal("action")} className={index === 0 ? "border-b-2 border-obligon-green text-[#050816]" : "text-obligon-text"} type="button">{tab}</button>)}
           </div>
           <p className="text-xs font-bold text-obligon-text">Sort by: <span className="text-[#050816]">Recently Added</span></p>
         </div>
@@ -425,7 +426,7 @@ function StaffPage({ onModal }: { onModal: (modal: AdminModalType) => void }) {
           <div className="mt-3 h-1.5 rounded-full bg-white/15"><span className="block h-full w-full rounded-full bg-obligon-lime" /></div>
           <p className="mt-6 text-sm text-obligon-lime">Last Password Rotation <span className="float-right font-extrabold text-white">48h ago</span></p>
           <div className="mt-3 h-1.5 rounded-full bg-white/15"><span className="block h-full w-[80%] rounded-full bg-obligon-lime" /></div>
-          <button className="mt-8 h-11 w-full rounded-lg border border-white/20 text-sm font-extrabold" type="button">Run Access Audit</button>
+          <button onClick={() => onModal("action")} className="mt-8 h-11 w-full rounded-lg border border-white/20 text-sm font-extrabold" type="button">Run Access Audit</button>
         </article>
       </section>
     </AdminCanvas>
@@ -436,7 +437,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
   const [modal, setModal] = React.useState<AdminModalType>(null);
   const pages: Record<AdminPageKey, React.ReactNode> = {
     applications: <ApplicationsPage onModal={setModal} />,
-    reports: <ReportsPage />,
+    reports: <ReportsPage onModal={setModal} />,
     disputes: <DisputesPage onModal={setModal} />,
     companies: <CompaniesPage onModal={setModal} />,
     staff: <StaffPage onModal={setModal} />

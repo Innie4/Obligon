@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import {
   BarChart3,
   Bell,
@@ -18,7 +19,8 @@ import {
   Settings,
   ShieldAlert,
   Users,
-  Wrench
+  Wrench,
+  X
 } from "lucide-react";
 import { assets } from "@/components/landing/assets";
 import { companyNav, pageCopy, type CompanyPageKey } from "./company-data";
@@ -99,14 +101,14 @@ function CompanySidebar() {
   );
 }
 
-function CompanyTopbar() {
+function CompanyTopbar({ onOpenMenu }: { onOpenMenu: () => void }) {
   const pathname = usePathname();
   const page = pageCopy[activePage(pathname)];
 
   return (
     <header className="sticky top-0 z-30 border-b border-[#dfe5ec] bg-[#f8fafc]/95 backdrop-blur">
       <div className="flex h-16 items-center gap-4 px-5 lg:px-8">
-        <button type="button" className="grid size-10 place-items-center rounded-lg border border-[#dfe5ec] bg-white lg:hidden" aria-label="Open company menu">
+        <button type="button" onClick={onOpenMenu} className="grid size-10 place-items-center rounded-lg border border-[#dfe5ec] bg-white lg:hidden" aria-label="Open company menu">
           <Menu size={20} />
         </button>
         <label className="hidden h-10 w-full max-w-[360px] items-center gap-3 rounded-lg border border-[#dfe5ec] bg-white px-3 md:flex">
@@ -129,11 +131,14 @@ function CompanyTopbar() {
 }
 
 export function CompanyShell({ children }: CompanyShellProps) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
     <main className="min-h-screen bg-[#f8fafc] text-[#07162f]">
       <CompanySidebar />
+      {mobileMenuOpen ? <div className="fixed inset-0 z-50 bg-[#07162f]/55 lg:hidden" onMouseDown={() => setMobileMenuOpen(false)}><aside role="dialog" aria-modal="true" aria-label="Company navigation" onMouseDown={(event) => event.stopPropagation()} className="h-full w-[280px] overflow-y-auto bg-white p-5 shadow-hero"><div className="flex items-center justify-between"><p className="font-display text-xl font-extrabold">Menu</p><button type="button" onClick={() => setMobileMenuOpen(false)} className="grid size-10 place-items-center rounded-lg bg-[#f2f6fa]" aria-label="Close company menu"><X size={20} /></button></div><nav className="mt-7 space-y-1">{companyNav.map((item) => <Link key={item.key} href={item.href} onClick={() => setMobileMenuOpen(false)} className="flex h-11 items-center gap-3 rounded-lg px-4 text-sm font-bold text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green">{iconMap[item.key]}<span>{item.label}</span></Link>)}<Link href="/company/maintenance" onClick={() => setMobileMenuOpen(false)} className="flex h-11 items-center gap-3 rounded-lg px-4 text-sm font-bold text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green">{iconMap.maintenance}<span>Maintenance</span></Link></nav></aside></div> : null}
       <div className="lg:pl-[280px]">
-        <CompanyTopbar />
+        <CompanyTopbar onOpenMenu={() => setMobileMenuOpen(true)} />
         {children}
       </div>
     </main>
