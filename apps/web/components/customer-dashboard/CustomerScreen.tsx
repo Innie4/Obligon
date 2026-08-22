@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import type { ComponentType } from "react";
+import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   ArrowRight,
@@ -41,6 +42,7 @@ import {
   type CustomerTransaction
 } from "./customer-data";
 import { CustomerModals, ModalFrame, type CustomerModalType } from "./CustomerModals";
+import { ConfirmModal, PinModal } from "../shared/Dialogs";
 
 const toneClasses: Record<CustomerTone, string> = {
   green: "bg-[#e8fbd7] text-obligon-green",
@@ -444,6 +446,8 @@ function CardPage({
     { title: freezeLabel, body: freezeBody, Icon: Snowflake, tone: "green", modal: "freezeCard" }
   ];
 
+  const [pinAction, setPinAction] = React.useState<"lostCard" | "freezeCard" | null>(null);
+
   return (
     <Canvas>
       <div className="lg:hidden"><h1 className="font-display text-3xl font-extrabold">Card Management</h1><p className="mt-2 text-obligon-text">View and manage your active fleet subscription card.</p></div>
@@ -469,7 +473,7 @@ function CardPage({
                 key={title}
                 type="button"
                 disabled={disabled}
-                onClick={() => onModal(modal)}
+                onClick={() => (modal === "lostCard" || modal === "freezeCard" ? setPinAction(modal) : onModal(modal))}
                 className={`w-full rounded-lg border border-[#dbe2d8] bg-white p-5 text-left transition hover:border-obligon-green hover:bg-[#f3ffe8] ${
                   disabled ? "cursor-not-allowed opacity-60" : ""
                 }`}
@@ -486,6 +490,20 @@ function CardPage({
           })}
         </div>
       </div>
+      {pinAction ? (
+        <PinModal
+          open
+          onClose={() => setPinAction(null)}
+          onConfirm={() => onModal(pinAction)}
+          title={pinAction === "lostCard" ? "Confirm Card Block" : "Confirm Card Freeze"}
+          message={
+            pinAction === "lostCard"
+              ? "Enter your transaction PIN to permanently block this card. This action immediately stops all transactions."
+              : "Enter your transaction PIN to freeze this card. You can unfreeze it anytime from this screen."
+          }
+          confirmLabel={pinAction === "lostCard" ? "Block Card" : "Freeze Card"}
+        />
+      ) : null}
     </Canvas>
   );
 }
@@ -498,6 +516,19 @@ function WalletPage({ onModal }: { onModal: (modal: CustomerModalType) => void }
       <Card className="mt-8 overflow-hidden"><div className="flex items-center justify-between px-6 py-5"><h2 className="font-display text-2xl font-extrabold">Recent Transactions</h2><button className="text-sm font-bold text-obligon-green" type="button">View All</button></div><div className="hidden lg:block"><table className="w-full text-left"><thead className="bg-[#f0f4f0] text-xs uppercase"><tr>{["Date","Reference","Method","Amount"].map(h=><th className="px-6 py-4" key={h}>{h}</th>)}</tr></thead><tbody>{desktopTopUps.map(row=><tr className="border-t border-[#eef3ee]" key={row[1]}>{row.map(cell=><td className="px-6 py-4" key={cell}>{cell}</td>)}</tr>)}</tbody></table></div><div className="divide-y divide-[#eef3ee] lg:hidden">{topUpHistory.map(([method,date,amount])=><div key={date} className="flex justify-between p-5"><div><p className="font-extrabold">{method}</p><p className="text-sm text-obligon-text">{date}</p></div><p className="font-extrabold text-obligon-green">{amount}</p></div>)}</div></Card>
     </Canvas>
   );
+}
+
+function buildMapUrl(list: Array<{ lat: number; lng: number }>) {
+  if (list.length === 0) return "https://www.openstreetmap.org/export/embed.html?bbox=-74.05,40.69,-73.97,40.76&layer=mapnik";
+  const lats = list.map((item) => item.lat);
+  const lngs = list.map((item) => item.lng);
+  const pad = list.length === 1 ? 0.01 : 0.02;
+  const minLat = Math.min(...lats) - pad;
+  const maxLat = Math.max(...lats) + pad;
+  const minLng = Math.min(...lngs) - pad;
+  const maxLng = Math.max(...lngs) + pad;
+  const marker = list.length === 1 ? `&marker=${list[0].lat},${list[0].lng}` : "";
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${minLng},${minLat},${maxLng},${maxLat}&layer=mapnik${marker}`;
 }
 
 function StationsPage() {
@@ -562,10 +593,15 @@ function StationsPage() {
       ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[1fr_420px]">
-        <Card className="min-h-[520px] overflow-hidden bg-[#dfe8ed]">
-          <div className="h-full min-h-[520px] bg-[linear-gradient(30deg,rgba(6,25,88,.12)_12%,transparent_12.5%,transparent_87%,rgba(6,25,88,.12)_87.5%),linear-gradient(150deg,rgba(6,25,88,.12)_12%,transparent_12.5%,transparent_87%,rgba(6,25,88,.12)_87.5%)] bg-[length:52px_88px] p-6">
-            <span className="rounded-lg bg-white px-4 py-2 font-extrabold text-obligon-green">₦3.45</span>
-            <p className="mt-6 max-w-[220px] text-sm font-bold text-obligon-navy">Live station map — {visible.length} location{visible.length === 1 ? "" : "s"} shown</p>
+        <Card className="relative min-h-[520px] overflow-hidden bg-[#dfe8ed]">
+          <iframe
+            title="Obligon station map"
+            src={buildMapUrl(stations)}
+            className="h-full min-h-[520px] w-full border-0"
+            loading="lazy"
+          />
+          <div className="pointer-events-none absolute left-4 top-4 rounded-lg bg-white/90 px-4 py-2 text-sm font-extrabold text-obligon-green shadow-sm">
+            ₦3.45 avg • {visible.length} location{visible.length === 1 ? "" : "s"}
           </div>
         </Card>
         <div className="space-y-4">
@@ -658,6 +694,13 @@ function StationsPage() {
               ))}
             </div>
 
+            <iframe
+              title={`Map of ${detail.name}`}
+              src={buildMapUrl([detail])}
+              className="mt-5 h-48 w-full rounded-lg border-0"
+              loading="lazy"
+            />
+
             <div className="mt-7 flex gap-3">
               <button type="button" onClick={() => { setDetail(null); setDirectionTarget(detail); }} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">Get Directions</button>
               <button type="button" onClick={() => setDetail(null)} className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white">Close</button>
@@ -671,8 +714,13 @@ function StationsPage() {
           <div className="p-6">
             <h2 className="font-display text-2xl font-extrabold">Directions</h2>
             <p className="mt-2 text-sm text-obligon-text">Route to <span className="font-extrabold text-obligon-navy">{directionTarget.name}</span>.</p>
-            <div className="mt-5 rounded-lg bg-[#dfe8ed] p-6">
-              <div className="h-40 bg-[linear-gradient(30deg,rgba(6,25,88,.12)_12%,transparent_12.5%,transparent_87%,rgba(6,25,88,.12)_87.5%),linear-gradient(150deg,rgba(6,25,88,.12)_12%,transparent_12.5%,transparent_87%,rgba(6,25,88,.12)_87.5%)] bg-[length:52px_88px]" />
+            <div className="mt-5 overflow-hidden rounded-lg">
+              <iframe
+                title={`Route to ${directionTarget.name}`}
+                src={buildMapUrl([directionTarget])}
+                className="h-44 w-full border-0"
+                loading="lazy"
+              />
             </div>
             <div className="mt-5 space-y-3 text-sm font-bold">
               <div className="flex items-center justify-between rounded-lg bg-[#f7fbf8] p-3"><span>Distance</span><span className="text-obligon-green">{directionTarget.distance}</span></div>
@@ -695,22 +743,44 @@ function StationsPage() {
 }
 
 function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void }) {
+  const [reportOpen, setReportOpen] = React.useState(false);
   return (
     <Canvas>
       <h1 className="font-display text-4xl font-extrabold">Support Center</h1><p className="mt-3 text-lg text-obligon-text">How can we help you accelerate your fleet operations today?</p>
       <div className="mt-8 grid gap-5 lg:grid-cols-2">
         <Card className="p-6"><MessageCircle className="text-obligon-green" /><h2 className="mt-5 font-display text-2xl font-extrabold">Chat with us</h2><p className="mt-2 text-obligon-text">Connect with a support agent instantly for real-time assistance.</p><button className="mt-6 h-11 rounded-lg bg-obligon-green px-5 font-extrabold text-white" type="button">START CONVERSATION</button></Card>
-        <Card className="p-6"><AlertTriangle className="text-[#c1121f]" /><h2 className="mt-5 font-display text-2xl font-extrabold">Report a transaction issue</h2><p className="mt-2 text-obligon-text">Dispute a charge or report anomalies in your billing statement.</p><button onClick={() => onModal("report")} className="mt-6 h-11 rounded-lg bg-[#20251f] px-5 font-extrabold text-white" type="button">FILE REPORT</button></Card>
+        <Card className="p-6"><AlertTriangle className="text-[#c1121f]" /><h2 className="mt-5 font-display text-2xl font-extrabold">Report a transaction issue</h2><p className="mt-2 text-obligon-text">Dispute a charge or report anomalies in your billing statement.</p><button onClick={() => setReportOpen(true)} className="mt-6 h-11 rounded-lg bg-[#20251f] px-5 font-extrabold text-white" type="button">FILE REPORT</button></Card>
       </div>
       <Card className="mt-8 p-6"><h2 className="font-display text-2xl font-extrabold">Frequently Asked Questions</h2>{["How to freeze my card", "Where can I use my card?", "Reporting a transaction issue"].map(q=><p key={q} className="border-b border-[#eef3ee] py-4 font-bold last:border-0">{q}</p>)}</Card>
+
+      <ConfirmModal
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        onConfirm={() => onModal("report")}
+        title="Report a transaction issue?"
+        message="This will open a formal dispute for our support team to review. Continue?"
+        confirmLabel="Open Report"
+        tone="red"
+      />
     </Canvas>
   );
 }
 
 function TransactionDetailPage({ onModal }: { onModal: (modal: CustomerModalType) => void }) {
+  const [reportOpen, setReportOpen] = React.useState(false);
   return (
     <Canvas>
-      <Card className="mx-auto max-w-3xl p-7"><p className="text-xs font-extrabold uppercase text-obligon-text">Transaction Detail</p><h1 className="mt-2 font-display text-3xl font-extrabold">Pilot Travel Center #492</h1><p className="mt-1 text-obligon-text">Oct 24, 2023 • 2:15 PM</p><div className="mt-7 rounded-lg bg-[#f7fbf8] p-6 text-center"><p className="text-sm font-bold text-obligon-text">Total Amount</p><p className="font-display text-5xl font-extrabold">₦342.50</p><Status status="Completed" /></div><div className="mt-7 grid gap-5 sm:grid-cols-2">{[["FUEL TYPE","Diesel #2"],["GALLONS","75.000 gal"],["PRICE PER GALLON","₦4.569"],["AUTH CODE","AUTH-88392-XT"],["CARD USED","•••• •••• •••• 4092"],["PAYMENT METHOD","•••• 4289"]].map(([l,v])=><div key={l}><p className="text-xs font-extrabold uppercase text-obligon-text">{l}</p><p className="mt-1 font-extrabold">{v}</p></div>)}</div><div className="mt-8 flex gap-3"><button className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold" type="button"><Download className="inline" size={17}/> Download Receipt</button><button onClick={()=>onModal("report")} className="h-12 flex-1 rounded-lg bg-[#20251f] font-extrabold text-white" type="button">Report a Problem</button></div></Card>
+      <Card className="mx-auto max-w-3xl p-7"><p className="text-xs font-extrabold uppercase text-obligon-text">Transaction Detail</p><h1 className="mt-2 font-display text-3xl font-extrabold">Pilot Travel Center #492</h1><p className="mt-1 text-obligon-text">Oct 24, 2023 • 2:15 PM</p><div className="mt-7 rounded-lg bg-[#f7fbf8] p-6 text-center"><p className="text-sm font-bold text-obligon-text">Total Amount</p><p className="font-display text-5xl font-extrabold">₦342.50</p><Status status="Completed" /></div><div className="mt-7 grid gap-5 sm:grid-cols-2">{[["FUEL TYPE","Diesel #2"],["GALLONS","75.000 gal"],["PRICE PER GALLON","₦4.569"],["AUTH CODE","AUTH-88392-XT"],["CARD USED","•••• •••• •••• 4092"],["PAYMENT METHOD","•••• 4289"]].map(([l,v])=><div key={l}><p className="text-xs font-extrabold uppercase text-obligon-text">{l}</p><p className="mt-1 font-extrabold">{v}</p></div>)}</div><div className="mt-8 flex gap-3"><button className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold" type="button"><Download className="inline" size={17}/> Download Receipt</button><button onClick={()=>setReportOpen(true)} className="h-12 flex-1 rounded-lg bg-[#20251f] font-extrabold text-white" type="button">Report a Problem</button></div></Card>
+
+      <ConfirmModal
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        onConfirm={() => onModal("report")}
+        title="Report a problem with this transaction?"
+        message="Our team will investigate this charge. You can track the report from the Support Center."
+        confirmLabel="Report"
+        tone="red"
+      />
     </Canvas>
   );
 }
@@ -720,8 +790,21 @@ function Status({ status }: { status: string }) {
 }
 
 function ReportPage({ onModal }: { onModal: (modal: CustomerModalType) => void }) {
+  const [reportOpen, setReportOpen] = React.useState(false);
   return (
-    <Canvas><Card className="mx-auto max-w-2xl p-7"><h1 className="font-display text-3xl font-extrabold">Report a Problem</h1><p className="mt-2 text-obligon-text">Transaction at Station #4092</p><button onClick={()=>onModal("report")} className="mt-8 h-12 rounded-lg bg-obligon-green px-6 font-extrabold text-white" type="button">Open Report Form</button></Card></Canvas>
+    <Canvas>
+      <Card className="mx-auto max-w-2xl p-7"><h1 className="font-display text-3xl font-extrabold">Report a Problem</h1><p className="mt-2 text-obligon-text">Transaction at Station #4092</p><button onClick={()=>setReportOpen(true)} className="mt-8 h-12 rounded-lg bg-obligon-green px-6 font-extrabold text-white" type="button">Open Report Form</button></Card>
+
+      <ConfirmModal
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        onConfirm={() => onModal("report")}
+        title="Open a problem report?"
+        message="This starts a support ticket tied to this transaction. Continue?"
+        confirmLabel="Open Report"
+        tone="red"
+      />
+    </Canvas>
   );
 }
 
@@ -767,6 +850,8 @@ function ProfilePage({
     { key: "transactions", label: "Transaction Alerts" },
     { key: "marketing", label: "Marketing Updates" }
   ];
+  const router = useRouter();
+  const [logoutOpen, setLogoutOpen] = React.useState(false);
 
   return (
     <Canvas>
@@ -829,9 +914,19 @@ function ProfilePage({
             </span>
           </button>
 
-          <button className="mt-8 h-11 w-full rounded-lg border border-[#20251f] font-extrabold" type="button">Log Out</button>
+          <button onClick={() => setLogoutOpen(true)} className="mt-8 h-11 w-full rounded-lg border border-[#20251f] font-extrabold" type="button">Log Out</button>
         </Card>
       </div>
+
+      <ConfirmModal
+        open={logoutOpen}
+        onClose={() => setLogoutOpen(false)}
+        onConfirm={() => router.push("/login")}
+        title="Log Out?"
+        message="You will be signed out of your Obligon account on this device. Any unsaved changes will be lost."
+        confirmLabel="Log Out"
+        tone="red"
+      />
     </Canvas>
   );
 }

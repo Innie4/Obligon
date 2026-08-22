@@ -2,9 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import * as React from "react";
 import { useState } from "react";
 import type { ComponentType } from "react";
+import { ConfirmModal } from "@/components/shared/Dialogs";
 import {
   BarChart3,
   Bell,
@@ -83,6 +85,8 @@ function isActive(pathname: string, nav: NavItem) {
 
 export function PartnershipSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [logoutOpen, setLogoutOpen] = React.useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(
       navGroups.map((group) => [group.key, group.items.some((nav) => isActive(pathname, nav))])
@@ -158,11 +162,25 @@ export function PartnershipSidebar() {
       </nav>
 
       <div className="mx-6 border-t border-white/15 py-6">
-        <Link href="/login" className="flex h-[42px] items-center gap-3 rounded-lg px-4 text-[13px] font-semibold text-[#ff6b7b] hover:bg-white/5">
+        <button
+          type="button"
+          onClick={() => setLogoutOpen(true)}
+          className="flex h-[42px] w-full items-center gap-3 rounded-lg px-4 text-[13px] font-semibold text-[#ff6b7b] hover:bg-white/5"
+        >
           <LogOut size={18} />
           Log Out
-        </Link>
+        </button>
       </div>
+
+      <ConfirmModal
+        open={logoutOpen}
+        onClose={() => setLogoutOpen(false)}
+        onConfirm={() => router.push("/login")}
+        title="Log Out?"
+        message="You will be signed out of your partner dashboard. Any unsaved changes will be lost."
+        confirmLabel="Log Out"
+        tone="red"
+      />
     </aside>
   );
 }

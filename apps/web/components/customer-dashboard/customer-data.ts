@@ -123,7 +123,9 @@ export const stations = [
     diesel: "₦4.12",
     unleaded: "₦3.89",
     fuels: ["PMS Petrol", "AGO Diesel"],
-    hours: "Open 24/7"
+    hours: "Open 24/7",
+    lat: 40.7075,
+    lng: -74.0113
   },
   {
     name: "Metro Transit Station",
@@ -132,7 +134,9 @@ export const stations = [
     diesel: "₦4.15",
     unleaded: "₦3.95",
     fuels: ["PMS Petrol", "AGO Diesel", "LPG Gas"],
-    hours: "Open 24/7"
+    hours: "Open 24/7",
+    lat: 40.7128,
+    lng: -74.008
   },
   {
     name: "Express Fueling",
@@ -141,7 +145,9 @@ export const stations = [
     diesel: "₦4.09",
     unleaded: "₦3.85",
     fuels: ["PMS Petrol", "AGO Diesel"],
-    hours: "06:00 - 23:00"
+    hours: "06:00 - 23:00",
+    lat: 40.742,
+    lng: -73.99
   }
 ];
 

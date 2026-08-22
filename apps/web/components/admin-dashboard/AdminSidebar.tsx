@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import * as React from "react";
 import type { ComponentType } from "react";
 import {
   AlertTriangle,
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 import { assets } from "@/components/landing/assets";
 import { adminNav, type AdminIconKey } from "./admin-data";
+import { ConfirmModal } from "@/components/shared/Dialogs";
 
 const iconMap = {
   dashboard: Grid2X2,
@@ -29,6 +31,8 @@ const iconMap = {
 
 export function AdminSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [logoutOpen, setLogoutOpen] = React.useState(false);
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col bg-[#061958] text-white lg:flex">
@@ -67,11 +71,25 @@ export function AdminSidebar() {
             <p className="text-xs font-medium text-[#9aa8d0]">Level 4 Access</p>
           </div>
         </div>
-        <Link href="/login" className="mt-3 flex h-[42px] items-center gap-3 rounded-lg px-4 text-[13px] font-bold text-[#ff5454] hover:bg-white/5">
+        <button
+          type="button"
+          onClick={() => setLogoutOpen(true)}
+          className="mt-3 flex h-[42px] w-full items-center gap-3 rounded-lg px-4 text-[13px] font-bold text-[#ff5454] hover:bg-white/5"
+        >
           <LogOut size={18} />
           Log Out
-        </Link>
+        </button>
       </div>
+
+      <ConfirmModal
+        open={logoutOpen}
+        onClose={() => setLogoutOpen(false)}
+        onConfirm={() => router.push("/login")}
+        title="Log Out?"
+        message="You will be signed out of the Obligon admin console. Any unsaved changes will be lost."
+        confirmLabel="Log Out"
+        tone="red"
+      />
     </aside>
   );
 }
