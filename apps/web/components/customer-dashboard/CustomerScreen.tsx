@@ -19,6 +19,7 @@ import {
   LockKeyhole,
   MapPinned,
   MessageCircle,
+  Receipt,
   ShieldCheck,
   Snowflake,
   Upload,
@@ -200,6 +201,7 @@ function TransactionsPage() {
   const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [filters, setFilters] = React.useState({ dateRange: "All", station: "All Stations", vehicle: "All Vehicles", fuel: "All Fuels" });
   const [applied, setApplied] = React.useState(filters);
+  const [selectedTxn, setSelectedTxn] = React.useState<CustomerTransaction | null>(null);
 
   const stations = Array.from(new Set(transactionHistory.map((row) => row.station)));
   const vehicles = Array.from(new Set(transactionHistory.map((row) => row.vehicle ?? ""))).filter(Boolean);
@@ -243,7 +245,7 @@ function TransactionsPage() {
           ))}
         </div>
         <div className="mt-6 space-y-7">
-          {mobileHistory.map((group) => <section key={group.group}><p className="mb-3 text-sm font-extrabold text-obligon-green">{group.group}</p><div className="space-y-3">{group.items.map((item) => <a key={item.station + item.time} href="/customer/transaction-detail" className="flex rounded-lg bg-white p-4 shadow-sm"><div className="flex-1"><p className="font-extrabold">{item.station}</p><p className="text-sm text-obligon-text">{item.meta}</p></div><div className="text-right"><p className="font-extrabold">{item.amount}</p><p className="text-sm text-obligon-text">{item.time}</p></div></a>)}</div></section>)}
+          {mobileHistory.map((group) => <section key={group.group}><p className="mb-3 text-sm font-extrabold text-obligon-green">{group.group}</p><div className="space-y-3">{group.items.map((item) => <button key={item.station + item.time} type="button" onClick={() => setSelectedTxn({ station: item.station, meta: item.meta, amount: item.amount, time: item.time })} className="flex w-full rounded-lg bg-white p-4 text-left shadow-sm"><div className="flex-1"><p className="font-extrabold">{item.station}</p><p className="text-sm text-obligon-text">{item.meta}</p></div><div className="text-right"><p className="font-extrabold">{item.amount}</p><p className="text-sm text-obligon-text">{item.time}</p></div></button>)}</div></section>)}
         </div>
       </div>
 
@@ -284,7 +286,11 @@ function TransactionsPage() {
             <tbody className="divide-y divide-[#eef3ee]">
               {filtered.length > 0 ? (
                 filtered.map((row) => (
-                  <tr key={`${row.station}-${row.time}`}>
+                  <tr
+                    key={`${row.station}-${row.time}`}
+                    onClick={() => setSelectedTxn(row)}
+                    className="cursor-pointer transition hover:bg-[#f7fbf8]"
+                  >
                     <td className="px-6 py-5"><p className="font-extrabold">{row.station}</p><p className="text-sm text-obligon-text">{row.meta}</p></td>
                     <td>{row.vehicle}</td>
                     <td>{row.fuel}</td>
@@ -361,8 +367,57 @@ function TransactionsPage() {
           </div>
         </ModalFrame>
       ) : null}
+
+      {selectedTxn ? (
+        <ModalFrame onClose={() => setSelectedTxn(null)}>
+          <div className="p-6">
+            <span className="grid size-12 place-items-center rounded-full bg-[#eef3ff] text-obligon-blue"><Receipt size={22} /></span>
+            <h2 className="mt-4 font-display text-3xl font-extrabold">Transaction Detail</h2>
+            <p className="mt-1 text-sm text-obligon-text">Reference <span className="font-extrabold text-obligon-navy">TXN-{Math.abs(hashString(selectedTxn.station + (selectedTxn.time ?? ""))).toString().slice(0, 8)}</span></p>
+
+            <div className="mt-6 rounded-lg bg-[#f7fbf8] p-5">
+              <p className="text-xs font-bold uppercase text-obligon-text">Amount</p>
+              <p className="mt-1 font-display text-4xl font-extrabold text-obligon-green">{selectedTxn.amount}</p>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              <DetailRow label="Station" value={selectedTxn.station} />
+              <DetailRow label="Location" value={selectedTxn.meta ?? "—"} />
+              <DetailRow label="Vehicle" value={selectedTxn.vehicle ?? "—"} />
+              <DetailRow label="Fuel Type" value={selectedTxn.fuel ?? "—"} />
+              <DetailRow label="Timestamp" value={selectedTxn.time ?? "—"} />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSelectedTxn(null)}
+              className="mt-7 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white"
+            >
+              Close
+            </button>
+          </div>
+        </ModalFrame>
+      ) : null}
     </Canvas>
   );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-4 border-b border-[#eef3ee] pb-3 last:border-0">
+      <span className="text-sm font-bold text-obligon-text">{label}</span>
+      <span className="text-right text-sm font-extrabold text-obligon-navy">{value}</span>
+    </div>
+  );
+}
+
+function hashString(input: string) {
+  let hash = 0;
+  for (let index = 0; index < input.length; index += 1) {
+    hash = (hash << 5) - hash + input.charCodeAt(index);
+    hash |= 0;
+  }
+  return hash;
 }
 
 function CardPage({
@@ -393,13 +448,19 @@ function CardPage({
     <Canvas>
       <div className="lg:hidden"><h1 className="font-display text-3xl font-extrabold">Card Management</h1><p className="mt-2 text-obligon-text">View and manage your active fleet subscription card.</p></div>
       <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
-        <Card className="relative min-h-[280px] overflow-hidden bg-[#050816] p-8 text-white">
-          <div className={`absolute inset-0 bg-[radial-gradient(circle_at_80%_0%,rgba(170,248,87,.32),transparent_28%),linear-gradient(135deg,#061958,${blocked ? "#1a0808" : "#050816"})]`} />
+        <article
+          className={`relative min-h-[280px] overflow-hidden rounded-lg p-8 text-white ${
+            blocked
+              ? "bg-[linear-gradient(135deg,#2a0606,#1a0808)]"
+              : "bg-[linear-gradient(135deg,#061958,#050816)]"
+          }`}
+        >
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_0%,rgba(170,248,87,.32),transparent_28%)]" />
           <div className="relative flex h-full flex-col justify-between">
             <div className="flex justify-between"><p className="font-display text-3xl font-extrabold">Obligon</p><span className={`rounded-full ${status.className}`}>{status.label}</span></div>
             <div><p className="font-mono text-2xl tracking-[3px]">•••• •••• •••• 4092</p><div className="mt-8 grid gap-4 sm:grid-cols-2"><div><p className="text-xs text-white/60">CARDHOLDER NAME</p><p className="font-extrabold">Obligon Enterprise Fleet</p></div><div><p className="text-xs text-white/60">AVAILABLE BALANCE</p><p className="font-extrabold">₦12,450.00</p></div></div></div>
           </div>
-        </Card>
+        </article>
         <div className="space-y-4">
           {cardActions.map(({ title, body, Icon, tone, modal }) => {
             const disabled = modal === "lostCard" && blocked;
