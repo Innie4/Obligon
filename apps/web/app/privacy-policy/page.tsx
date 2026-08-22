@@ -5,7 +5,7 @@ const sections: LegalSection[] = [
     id: "introduction",
     title: "1. Introduction",
     paragraphs: [
-      "Obligon Energy is committed to protecting the personal and enterprise data entrusted to our platform. This policy explains how we collect, use, store, and protect information across FuelVista, EnergyVista, GenVista, and related services.",
+      "Obligon LTD Energy is committed to protecting the personal and enterprise data entrusted to our platform. This policy explains how we collect, use, store, and protect information across FuelVista, EnergyVista, GenVista, and related services.",
       "Our privacy practices are designed around Nigerian data protection requirements, enterprise security expectations, and the operational realities of fleet and energy logistics."
     ]
   },
@@ -56,7 +56,7 @@ const sections: LegalSection[] = [
     title: "4. User Rights",
     dark: true,
     paragraphs: [
-      "As an Obligon partner or enterprise customer, you maintain control over your enterprise data under the Nigeria Data Protection Regulation.",
+      "As an Obligon LTD partner or enterprise customer, you maintain control over your enterprise data under the Nigeria Data Protection Regulation.",
       "You may request access, correction, portability, restriction, or erasure where legally permissible. Some operational records may be retained where required for compliance, accounting, or fraud-prevention obligations."
     ],
     cards: [
@@ -69,7 +69,7 @@ const sections: LegalSection[] = [
     id: "security",
     title: "5. Security Protocol",
     paragraphs: [
-      "We use encryption, role-based access controls, audit trails, and session monitoring to protect information inside the Obligon platform.",
+      "We use encryption, role-based access controls, audit trails, and session monitoring to protect information inside the Obligon LTD platform.",
       "Access to sensitive data is limited to authorized personnel and partners who need it to provide support, verification, settlement, or logistics services."
     ]
   },
@@ -89,7 +89,7 @@ export default function PrivacyPolicyPage() {
       eyebrow="Compliance & Trust"
       title="Privacy Policy"
       updated="May 24, 2024"
-      intro="We protect partner, customer, station, and fleet data across Obligon's energy fintech infrastructure."
+      intro="We protect partner, customer, station, and fleet data across Obligon LTD's energy fintech infrastructure."
       sections={sections}
     />
   );

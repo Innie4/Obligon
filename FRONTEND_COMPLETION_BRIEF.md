@@ -1,8 +1,8 @@
-# Obligon Frontend Completion Brief
+# Obligon LTD Frontend Completion Brief
 
 ## Purpose
 
-This document governs the frontend completion pass for the existing Obligon application. The objective is to ensure that every intended interactive element leads to a real and understandable outcome, and that every supported user journey can be completed from entry to exit. The work covers the existing frontend only. It must preserve current backend routes, API contracts, database schema, server logic, page composition, established visual language, and application dependencies.
+This document governs the frontend completion pass for the existing Obligon LTD application. The objective is to ensure that every intended interactive element leads to a real and understandable outcome, and that every supported user journey can be completed from entry to exit. The work covers the existing frontend only. It must preserve current backend routes, API contracts, database schema, server logic, page composition, established visual language, and application dependencies.
 
 The pass is not a redesign. It is a controlled audit and completion effort that makes existing controls, forms, menus, tables, cards, tabs, dialogs, and navigation dependable, consistent, responsive, accessible, and clear.
 
@@ -106,7 +106,7 @@ For a completed primary or destructive flow, keep evidence in the form of route 
 
 ## Implementation constraints for this repository
 
-Obligon uses a Next.js frontend within `apps/web`. This pass must remain within the existing client-facing application code and must not introduce new dependencies. Existing shared dashboard shells and modal patterns should be strengthened before page-specific controls are completed.
+Obligon LTD uses a Next.js frontend within `apps/web`. This pass must remain within the existing client-facing application code and must not introduce new dependencies. Existing shared dashboard shells and modal patterns should be strengthened before page-specific controls are completed.
 
 ## Report template
 

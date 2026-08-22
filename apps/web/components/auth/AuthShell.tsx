@@ -13,8 +13,8 @@ export function AuthShell({ children, compact = false }: AuthShellProps) {
   return (
     <main className="min-h-screen bg-obligon-mist text-obligon-navy">
       <header className="flex h-16 items-center justify-between border-b border-obligon-border bg-white px-5 sm:px-8 lg:px-16">
-        <Link href={routes.home} className="relative block h-14 w-[90px]" aria-label="Obligon home">
-          <Image src={assets.obligonLogo} fill sizes="90px" alt="Obligon" className="object-contain" priority />
+        <Link href={routes.home} className="relative block h-14 w-[90px]" aria-label="Obligon LTD home">
+          <Image src={assets.obligonLogo} fill sizes="90px" alt="Obligon LTD" className="object-contain" priority />
         </Link>
         <div className="flex items-center gap-3 text-obligon-text">
           <Link href={routes.support} className="inline-flex size-9 items-center justify-center rounded-lg border border-obligon-border bg-white" aria-label="Help">

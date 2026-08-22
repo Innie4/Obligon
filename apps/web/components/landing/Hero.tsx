@@ -23,7 +23,7 @@ export function Hero() {
           </h1>
 
           <p className="mt-6 max-w-[536px] text-base leading-6 text-white/70 lg:mt-8">
-            The operating system for smarter fleets. Obligon provides enterprise-grade fuel management and logistics
+            The operating system for smarter fleets. Obligon LTD provides enterprise-grade fuel management and logistics
             solutions tailored for the Nigerian landscape.
           </p>
 

@@ -14,8 +14,8 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-30 h-20 border-b border-obligon-border bg-obligon-mist/95 backdrop-blur-md">
       <nav className="mx-auto flex h-full max-w-[1280px] items-center justify-between px-5 sm:px-8 lg:px-16">
-        <Link href={routes.home} className="relative block h-[72px] w-[112px]" aria-label="Obligon home">
-          <Image src={assets.obligonLogo} fill sizes="112px" alt="Obligon" className="object-contain" priority />
+        <Link href={routes.home} className="relative block h-[72px] w-[112px]" aria-label="Obligon LTD home">
+          <Image src={assets.obligonLogo} fill sizes="112px" alt="Obligon LTD" className="object-contain" priority />
         </Link>
 
         <div className="hidden items-center gap-8 md:flex">

@@ -37,8 +37,8 @@ export function AdminSidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col bg-[#061958] text-white lg:flex">
       <div className="px-8 pt-14">
-        <Link href="/" className="relative block h-[72px] w-[204px]" aria-label="Obligon home">
-          <Image src={assets.obligonLogo} fill sizes="204px" alt="Obligon" className="object-contain object-left" priority />
+        <Link href="/" className="relative block h-[72px] w-[204px]" aria-label="Obligon LTD home">
+          <Image src={assets.obligonLogo} fill sizes="204px" alt="Obligon LTD" className="object-contain object-left" priority />
         </Link>
       </div>
 
@@ -67,7 +67,7 @@ export function AdminSidebar() {
         <div className="flex items-center gap-3 rounded-lg px-2 py-3">
           <span className="grid size-10 place-items-center rounded-full bg-obligon-lime text-sm font-extrabold text-[#061958]">OA</span>
           <div>
-            <p className="text-sm font-extrabold">Obligon Admin</p>
+            <p className="text-sm font-extrabold">Obligon LTD Admin</p>
             <p className="text-xs font-medium text-[#9aa8d0]">Level 4 Access</p>
           </div>
         </div>
@@ -86,7 +86,7 @@ export function AdminSidebar() {
         onClose={() => setLogoutOpen(false)}
         onConfirm={() => router.push("/login")}
         title="Log Out?"
-        message="You will be signed out of the Obligon admin console. Any unsaved changes will be lost."
+        message="You will be signed out of the Obligon LTD admin console. Any unsaved changes will be lost."
         confirmLabel="Log Out"
         tone="red"
       />

@@ -463,8 +463,8 @@ function CardPage({
         >
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_0%,rgba(170,248,87,.32),transparent_28%)]" />
           <div className="relative flex h-full flex-col justify-between">
-            <div className="flex justify-between"><p className="font-display text-3xl font-extrabold">Obligon</p><span className={`rounded-full ${status.className}`}>{status.label}</span></div>
-            <div><p className="font-mono text-2xl tracking-[3px]">•••• •••• •••• 4092</p><div className="mt-8 grid gap-4 sm:grid-cols-2"><div><p className="text-xs text-white/60">CARDHOLDER NAME</p><p className="font-extrabold">Obligon Enterprise Fleet</p></div><div><p className="text-xs text-white/60">AVAILABLE BALANCE</p><p className="font-extrabold">₦12,450.00</p></div></div></div>
+            <div className="flex justify-between"><p className="font-display text-3xl font-extrabold">Obligon LTD</p><span className={`rounded-full ${status.className}`}>{status.label}</span></div>
+            <div><p className="font-mono text-2xl tracking-[3px]">•••• •••• •••• 4092</p><div className="mt-8 grid gap-4 sm:grid-cols-2"><div><p className="text-xs text-white/60">CARDHOLDER NAME</p><p className="font-extrabold">Obligon LTD Enterprise Fleet</p></div><div><p className="text-xs text-white/60">AVAILABLE BALANCE</p><p className="font-extrabold">₦12,450.00</p></div></div></div>
           </div>
         </article>
         <div className="space-y-4">
@@ -598,7 +598,7 @@ function StationsPage() {
       <div className="grid gap-5 lg:grid-cols-[1fr_420px]">
         <Card className="relative min-h-[520px] overflow-hidden bg-[#dfe8ed]">
           <iframe
-            title="Obligon station map"
+            title="Obligon LTD station map"
             src={buildMapUrl(stations)}
             className="h-full min-h-[520px] w-full border-0"
             loading="lazy"
@@ -751,7 +751,7 @@ function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void 
   const [openFaq, setOpenFaq] = React.useState<string | null>(null);
   const faqs = [
     { question: "How to freeze my card", answer: "Open the Card page, choose Freeze Card, and confirm the request with your transaction PIN. You can return to the same page to unfreeze the card when needed." },
-    { question: "Where can I use my card?", answer: "Use your card at participating Obligon network stations. Open Station Locator to search nearby locations, view fuel availability, and get directions." },
+    { question: "Where can I use my card?", answer: "Use your card at participating Obligon LTD network stations. Open Station Locator to search nearby locations, view fuel availability, and get directions." },
     { question: "Reporting a transaction issue", answer: "Select Report a transaction issue, choose the issue type, and provide the relevant details. You can attach a supporting document before submitting the report." }
   ];
   return (
@@ -780,7 +780,7 @@ function TransactionDetailPage({ onModal }: { onModal: (modal: CustomerModalType
   const [reportOpen, setReportOpen] = React.useState(false);
   const [receiptPrepared, setReceiptPrepared] = React.useState(false);
   function downloadReceipt() {
-    const content = "Obligon receipt summary\nMerchant: Pilot Travel Center #492\nDate: Oct 24, 2023, 2:15 PM\nAmount: ₦342.50\nFuel: Diesel #2, 75.000 gal\nAuthorization: AUTH-88392-XT\n\nThis is a frontend-generated receipt summary. A backend service is required for an official receipt.";
+    const content = "Obligon LTD receipt summary\nMerchant: Pilot Travel Center #492\nDate: Oct 24, 2023, 2:15 PM\nAmount: ₦342.50\nFuel: Diesel #2, 75.000 gal\nAuthorization: AUTH-88392-XT\n\nThis is a frontend-generated receipt summary. A backend service is required for an official receipt.";
     const url = URL.createObjectURL(new Blob([content], { type: "text/plain" }));
     const link = document.createElement("a");
     link.href = url;
@@ -945,7 +945,7 @@ function ProfilePage({
         onClose={() => setLogoutOpen(false)}
         onConfirm={() => router.push("/login")}
         title="Log Out?"
-        message="You will be signed out of your Obligon account on this device. Any unsaved changes will be lost."
+        message="You will be signed out of your Obligon LTD account on this device. Any unsaved changes will be lost."
         confirmLabel="Log Out"
         tone="red"
       />

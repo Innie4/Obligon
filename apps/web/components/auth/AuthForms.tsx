@@ -135,7 +135,7 @@ export function AuthForms() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[1.2px] text-obligon-green">Apply to Join</p>
-            <h2 className="mt-2 font-display text-2xl font-bold text-obligon-navy">Create an Obligon account</h2>
+            <h2 className="mt-2 font-display text-2xl font-bold text-obligon-navy">Create an Obligon LTD account</h2>
             <p className="mt-2 text-sm leading-5 text-obligon-text">Choose your account type and complete the matching verification details.</p>
           </div>
           <span className="rounded-full bg-obligon-lime px-3 py-1 text-[10px] font-extrabold uppercase tracking-[1px] text-[#131f00]">

@@ -20,8 +20,8 @@ export function Header() {
     >
       <nav className="mx-auto flex h-full max-w-[1280px] items-center justify-between px-5 sm:px-8 lg:px-16">
         <div className="flex h-[80px] items-center gap-12">
-          <Link className="relative block h-[80px] w-[128px]" href="/" aria-label="Obligon home">
-            <Image src={assets.obligonLogo} fill sizes="128px" alt="Obligon" className="object-contain" priority />
+          <Link className="relative block h-[80px] w-[128px]" href="/" aria-label="Obligon LTD home">
+            <Image src={assets.obligonLogo} fill sizes="128px" alt="Obligon LTD" className="object-contain" priority />
           </Link>
 
           <div className="hidden items-center gap-8 lg:flex">

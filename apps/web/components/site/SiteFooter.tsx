@@ -37,7 +37,7 @@ export function SiteFooter({ active }: SiteFooterProps) {
     <footer className="border-t border-obligon-border bg-white">
       <div className="mx-auto grid max-w-[1280px] gap-10 px-5 py-16 sm:px-8 md:grid-cols-4 lg:px-16 lg:py-20">
         <div>
-          <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Obligon</h2>
+          <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Obligon LTD</h2>
           <p className="mt-6 max-w-[220px] text-sm leading-5 text-obligon-text">
             Enterprise energy logistics and fintech solutions for Nigerian fleets.
           </p>
@@ -66,7 +66,7 @@ export function SiteFooter({ active }: SiteFooterProps) {
 
       <div className="border-t border-obligon-border">
         <div className="mx-auto flex max-w-[1280px] flex-col gap-4 px-5 py-8 text-sm text-obligon-text sm:px-8 md:flex-row md:items-center md:justify-between lg:px-16">
-          <p>&copy; 2024 Obligon Energy. All rights reserved.</p>
+          <p>&copy; 2024 Obligon LTD Energy. All rights reserved.</p>
           <div className="flex items-center gap-6">
             <span className="h-px w-16 bg-gradient-to-r from-transparent via-obligon-green to-transparent" />
             <span className="text-xs uppercase tracking-[1.6px] text-obligon-navy">Lagos, Nigeria</span>

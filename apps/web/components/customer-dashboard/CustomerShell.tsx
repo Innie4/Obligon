@@ -69,15 +69,15 @@ function Sidebar() {
 
   return (
     <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-[#dbe2d8] bg-[#f7fbf8] px-4 py-8 lg:flex">
-      <Link href="/customer" className="relative ml-8 block h-20 w-48" aria-label="Obligon customer dashboard">
-        <Image src={assets.obligonLogo} alt="Obligon" fill sizes="192px" className="object-contain object-left" priority />
+      <Link href="/customer" className="relative ml-8 block h-20 w-48" aria-label="Obligon LTD customer dashboard">
+        <Image src={assets.obligonLogo} alt="Obligon LTD" fill sizes="192px" className="object-contain object-left" priority />
       </Link>
 
       <div className="mt-16 flex items-center gap-4 px-4">
         <span className="grid size-12 place-items-center rounded-full bg-[#dbe7ff] text-sm font-extrabold text-obligon-blue">FM</span>
         <div>
           <p className="font-extrabold text-obligon-green">Fleet Manager</p>
-          <p className="text-sm text-obligon-text">Obligon Enterprise</p>
+          <p className="text-sm text-obligon-text">Obligon LTD Enterprise</p>
           <p className="text-xs font-medium text-[#3754a5]">Premium Account</p>
         </div>
       </div>
@@ -117,8 +117,8 @@ function Sidebar() {
 function MobileHeader() {
   return (
     <header className="flex h-[84px] items-center justify-between border-b border-[#e0e7de] bg-[#f7fbf8] px-8 lg:hidden">
-      <Link href="/customer" className="relative h-14 w-36" aria-label="Obligon customer dashboard">
-        <Image src={assets.obligonLogo} alt="Obligon" fill sizes="144px" className="object-contain object-left" priority />
+      <Link href="/customer" className="relative h-14 w-36" aria-label="Obligon LTD customer dashboard">
+        <Image src={assets.obligonLogo} alt="Obligon LTD" fill sizes="144px" className="object-contain object-left" priority />
       </Link>
       <Link href="/customer/notifications" className="text-obligon-green" aria-label="Notifications">
         <Bell size={22} fill="currentColor" />

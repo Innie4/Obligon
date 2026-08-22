@@ -58,14 +58,14 @@ export const companyNav: Array<{ key: CompanyPageKey; label: string; href: strin
 ];
 
 export const pageCopy: Record<CompanyPageKey, { title: string; description?: string; search?: string }> = {
-  overview: { title: "Obligon Dashboard", search: "Search..." },
+  overview: { title: "Obligon LTD Dashboard", search: "Search..." },
   vehicles: { title: "Fleet Overview", description: "Manage and track your active vehicles and assigned fuel cards.", search: "Search vehicles..." },
   cards: { title: "Fuelvista Cards", description: "Manage your fleet fuel cards, limits, and assignments.", search: "Search cards..." },
   transactions: { title: "Transactions", description: "View and manage fleet transaction history.", search: "Search transactions..." },
   reports: { title: "Reports & Analytics", search: "Search reports..." },
-  stations: { title: "Partner Stations", description: "Find high-speed diesel and verified Obligon network locations.", search: "Search locations, zip codes..." },
+  stations: { title: "Partner Stations", description: "Find high-speed diesel and verified Obligon LTD network locations.", search: "Search locations, zip codes..." },
   roadside: { title: "Roadside Assistance", description: "Manage and track active emergency requests.", search: "Search..." },
-  billing: { title: "Subscription & Billing", description: "Manage your fleet plan, monitor usage, and view past invoices.", search: "Search Obligon..." },
+  billing: { title: "Subscription & Billing", description: "Manage your fleet plan, monitor usage, and view past invoices.", search: "Search Obligon LTD..." },
   team: { title: "Team & Access Control", description: "Manage permissions and internal access for your organization.", search: "Search staff..." },
   notifications: { title: "Notifications", description: "Alerts & Updates" },
   support: { title: "Help & Support", description: "Manage your support tickets and find answers quickly." },
@@ -158,7 +158,7 @@ export const tickets: Row[] = [
 ];
 
 export const maintenanceRows: Row[] = [
-  { cells: ["Oct 18, 2023", "TRK-9011", "Transmission Fluid Flush", "Obligon Certified Hub A", "₦450.00"], status: "COMPLETED", tone: "green" },
+  { cells: ["Oct 18, 2023", "TRK-9011", "Transmission Fluid Flush", "Obligon LTD Certified Hub A", "₦450.00"], status: "COMPLETED", tone: "green" },
   { cells: ["Oct 15, 2023", "VAN-204", "Standard PM A Service", "Mobile Tech - Unit 4", "₦120.50"], status: "COMPLETED", tone: "green" },
   { cells: ["Oct 12, 2023", "TRK-8802", "Emergency Brake Repair", "HeavyDuty Pros Inc.", "₦1,245.00"], status: "INVOICED", tone: "blue" }
 ];

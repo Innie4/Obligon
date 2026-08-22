@@ -6,7 +6,7 @@ const sections: LegalSection[] = [
     title: "1. What are Cookies?",
     paragraphs: [
       "Cookies are small data files placed on your device to collect information about navigation and interaction with our platform. They allow us to recognize enterprise accounts and maintain secure sessions.",
-      "In Obligon's infrastructure, these files support real-time synchronization between fleet dashboards, station activity, and the secure ledger."
+      "In Obligon LTD's infrastructure, these files support real-time synchronization between fleet dashboards, station activity, and the secure ledger."
     ]
   },
   {
@@ -61,7 +61,7 @@ export default function CookiePolicyPage() {
       eyebrow="Legal Transparency"
       title="Cookie Policy & Digital Preferences"
       updated="Oct 2024"
-      intro="At Obligon, we use cookies to ensure our high-precision fintech platform operates securely and efficiently."
+      intro="At Obligon LTD, we use cookies to ensure our high-precision fintech platform operates securely and efficiently."
       sections={sections}
     />
   );

@@ -72,7 +72,7 @@ export function CareersPage() {
         <div className="relative">
           <div className="absolute -inset-5 -rotate-2 rounded-[32px] bg-obligon-lime/20" />
           <div className="relative overflow-hidden rounded-[32px] border border-obligon-border bg-white p-1 shadow-card">
-            <Image src={assets.stationPhoto} width={760} height={512} alt="Obligon operations team" className="h-[420px] w-full object-cover" priority />
+            <Image src={assets.stationPhoto} width={760} height={512} alt="Obligon LTD operations team" className="h-[420px] w-full object-cover" priority />
             <div className="absolute inset-x-1 bottom-1 h-28 bg-gradient-to-t from-obligon-navy/40 to-transparent" />
           </div>
         </div>
@@ -92,7 +92,7 @@ export function CareersPage() {
 
       <section id="culture" className="mx-auto max-w-[1280px] px-5 py-20 sm:px-8 lg:px-16 lg:py-32">
         <div>
-          <h2 className="font-display text-5xl font-extrabold leading-[56px]">Life at Obligon</h2>
+          <h2 className="font-display text-5xl font-extrabold leading-[56px]">Life at Obligon LTD</h2>
           <p className="mt-4 max-w-2xl text-lg leading-7 text-obligon-text">
             We value transparency, physical-world impact, and radical ownership. We don&apos;t just write code; we move
             energy.

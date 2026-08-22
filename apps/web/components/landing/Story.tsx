@@ -33,14 +33,14 @@ export function Story() {
     <section id="about-us" className="bg-white py-20 sm:py-24 lg:py-32" data-node-id="2:279">
       <div className="mx-auto grid w-full max-w-landing min-w-0 gap-16 px-5 sm:px-8 lg:grid-cols-[442.67px_1fr] lg:px-0">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[2.4px] text-obligon-green">The Obligon Story</p>
+          <p className="text-xs font-semibold uppercase tracking-[2.4px] text-obligon-green">The Obligon LTD Story</p>
           <h2 className="mt-4 font-display text-base leading-6 text-obligon-navy">
             Innovation-led Narrative of Commitment
           </h2>
 
           <div className="mt-4 space-y-6 text-base leading-[26px] text-obligon-text lg:mt-4">
             <p>
-              At Obligon Limited, we are driven by a commitment to bridge the gap between energy accessibility and
+              At Obligon LTD Limited, we are driven by a commitment to bridge the gap between energy accessibility and
               technological innovation. Our journey began with a vision to transform the Nigerian energy landscape
               through efficiency and transparency.
             </p>

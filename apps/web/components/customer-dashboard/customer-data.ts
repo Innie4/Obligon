@@ -117,7 +117,7 @@ export const desktopTopUps = [
 
 export const stations = [
   {
-    name: "Obligon Core Hub",
+    name: "Obligon LTD Core Hub",
     distance: "0.8 mi",
     address: "120 Financial District Blvd, NY",
     diesel: "₦4.12",
@@ -153,7 +153,7 @@ export const stations = [
 
 export const notifications = [
   { group: "TODAY", title: "Transaction Alert", time: "2h ago", body: "Success: $500.00 added to your wallet." },
-  { group: "TODAY", title: "Station Update", time: "4h ago", body: "New Obligon Core Hub opened 2 miles from your current route." },
+  { group: "TODAY", title: "Station Update", time: "4h ago", body: "New Obligon LTD Core Hub opened 2 miles from your current route." },
   { group: "YESTERDAY", title: "Security Alert", time: "10:15 AM", body: "New login detected from a Chrome browser in New York." },
   { group: "OLDER", title: "System Update", time: "Oct 12", body: "Platform maintenance scheduled for Sunday at 2:00 AM EST." }
 ];

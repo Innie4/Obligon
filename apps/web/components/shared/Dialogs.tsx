@@ -44,7 +44,7 @@ export function ActionFeedback({
   );
 }
 
-export function DialogFrame({ children, onClose, ariaLabel = "Obligon dialog" }: { children: React.ReactNode; onClose: () => void; ariaLabel?: string }) {
+export function DialogFrame({ children, onClose, ariaLabel = "Obligon LTD dialog" }: { children: React.ReactNode; onClose: () => void; ariaLabel?: string }) {
   const dialogRef = React.useRef<HTMLElement>(null);
 
   React.useEffect(() => {
@@ -72,7 +72,7 @@ export function DialogFrame({ children, onClose, ariaLabel = "Obligon dialog" }:
         className="max-h-[94vh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-hero outline-none sm:max-w-[560px] sm:rounded-lg"
       >
         <div className="flex items-center justify-between border-b border-[#e0e7de] px-6 py-5">
-          <p className="font-display text-xl font-extrabold">Obligon</p>
+          <p className="font-display text-xl font-extrabold">Obligon LTD</p>
           <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-lg bg-[#f1f5f0] focus:outline-none focus:ring-2 focus:ring-obligon-green focus:ring-offset-2" aria-label="Close modal">
             <X size={20} />
           </button>

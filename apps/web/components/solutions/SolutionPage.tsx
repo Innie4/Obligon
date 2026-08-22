@@ -128,7 +128,7 @@ export function SolutionPage({ eyebrow, name, title, body, stats, features, modu
             <p className="text-xs uppercase tracking-[1.6px] text-obligon-lime">Enterprise Ready</p>
             <h3 className="mt-4 font-display text-3xl font-extrabold leading-10">One connected control surface.</h3>
             <p className="mt-4 text-sm leading-6 text-[#b8c4ff]">
-              Combine {name} with Obligon onboarding, station verification, ledger controls, and support workflows.
+              Combine {name} with Obligon LTD onboarding, station verification, ledger controls, and support workflows.
             </p>
             <ul className="mt-8 space-y-4">
               {["Role-based approvals", "Secure settlement records", "Partner support workflows"].map((item) => (

@@ -67,8 +67,8 @@ function CompanySidebar() {
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r border-[#dfe5ec] bg-white px-5 py-8 lg:flex">
-      <Link href="/company" className="relative mx-auto block h-14 w-44" aria-label="Obligon company dashboard">
-        <Image src={assets.obligonLogo} alt="Obligon" fill sizes="176px" className="object-contain" priority />
+      <Link href="/company" className="relative mx-auto block h-14 w-44" aria-label="Obligon LTD company dashboard">
+        <Image src={assets.obligonLogo} alt="Obligon LTD" fill sizes="176px" className="object-contain" priority />
       </Link>
       <nav className="mt-10 flex-1 space-y-1 overflow-y-auto pr-1">
         {companyNav.map((item) => (
@@ -94,7 +94,7 @@ function CompanySidebar() {
         </Link>
       </nav>
       <div className="mt-6 rounded-lg bg-[#f2f6f2] p-4">
-        <p className="text-sm font-extrabold text-[#07162f]">Obligon Logistics Inc.</p>
+        <p className="text-sm font-extrabold text-[#07162f]">Obligon LTD Logistics Inc.</p>
         <p className="mt-1 text-xs text-obligon-text">Enterprise Fleet</p>
       </div>
     </aside>
@@ -113,7 +113,7 @@ function CompanyTopbar({ onOpenMenu }: { onOpenMenu: () => void }) {
         </button>
         <label className="hidden h-10 w-full max-w-[360px] items-center gap-3 rounded-lg border border-[#dfe5ec] bg-white px-3 md:flex">
           <Search size={16} className="text-[#808793]" />
-          <input className="w-full bg-transparent text-sm outline-none placeholder:text-[#808793]" placeholder={page.search ?? "Search Obligon..."} />
+          <input className="w-full bg-transparent text-sm outline-none placeholder:text-[#808793]" placeholder={page.search ?? "Search Obligon LTD..."} />
         </label>
         <div className="ml-auto flex items-center gap-4">
           <Link href="/company/notifications" aria-label="Notifications" className="relative grid size-10 place-items-center rounded-lg border border-[#dfe5ec] bg-white">
@@ -122,7 +122,7 @@ function CompanyTopbar({ onOpenMenu }: { onOpenMenu: () => void }) {
           </Link>
           <Link href="/company/settings" className="hidden text-right sm:block">
             <p className="text-sm font-extrabold text-[#07162f]">Fleet Admin</p>
-            <p className="text-xs text-obligon-text">Obligon Dashboard</p>
+            <p className="text-xs text-obligon-text">Obligon LTD Dashboard</p>
           </Link>
         </div>
       </div>

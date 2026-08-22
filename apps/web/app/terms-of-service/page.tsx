@@ -5,8 +5,8 @@ const sections: LegalSection[] = [
     id: "acceptance",
     title: "1. Acceptance of Terms",
     paragraphs: [
-      "By accessing or using Obligon services, you agree to these Terms of Service and all policies referenced in them.",
-      "These terms govern account access, partner onboarding, fleet card issuance, settlement support, and the use of Obligon's energy logistics products."
+      "By accessing or using Obligon LTD services, you agree to these Terms of Service and all policies referenced in them.",
+      "These terms govern account access, partner onboarding, fleet card issuance, settlement support, and the use of Obligon LTD's energy logistics products."
     ]
   },
   {
@@ -35,7 +35,7 @@ const sections: LegalSection[] = [
     title: "3. Liability Limits",
     dark: true,
     paragraphs: [
-      "Obligon provides fintech and operational infrastructure for business energy logistics. We are not liable for indirect losses, third-party network disruptions, station-side misconduct, force majeure, or losses caused by inaccurate account information.",
+      "Obligon LTD provides fintech and operational infrastructure for business energy logistics. We are not liable for indirect losses, third-party network disruptions, station-side misconduct, force majeure, or losses caused by inaccurate account information.",
       "Where liability cannot be excluded by law, our responsibility is limited to the fees paid for the affected service during the relevant service period."
     ]
   },
@@ -76,7 +76,7 @@ export default function TermsOfServicePage() {
       eyebrow="Legal Agreement"
       title="Terms of Service"
       updated="Oct 24, 2024"
-      intro="These terms define how enterprises, partners, and operators use Obligon products and services."
+      intro="These terms define how enterprises, partners, and operators use Obligon LTD products and services."
       sections={sections}
     />
   );

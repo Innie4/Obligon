@@ -508,7 +508,7 @@ function StationPage({ onAction }: { onAction: (action: ActionPayload) => void }
             <h2 className="font-display text-xl font-extrabold">General Information</h2>
             <div className="mt-6 grid gap-5 md:grid-cols-2">
               {[
-                ["Station Brand Name", "Obligon Lagos Central - Terminal 01"],
+                ["Station Brand Name", "Obligon LTD Lagos Central - Terminal 01"],
                 ["Physical Address", "1024 Herbert Macaulay Way, Yaba, Lagos"],
                 ["Operating Hours", "06 : 00 AM to 10 : 00 PM"],
                 ["Active Pump Count", "12"]
@@ -897,7 +897,7 @@ function SettingsPage({ onAction }: { onAction: (action: ActionPayload) => void 
         <article className="rounded-lg border border-[#d7d8e4] bg-white p-6">
           <div className="grid gap-5 md:grid-cols-2">
             {[
-              ["STATION NAME", "Obligon Lagos Central Hub"],
+              ["STATION NAME", "Obligon LTD Lagos Central Hub"],
               ["CONTACT EMAIL", "ops@obligon-lagos.com"],
               ["PHONE NUMBER", "+234 812 345 6789"],
               ["STATION ADDRESS", "15 Industrial Avenue, Ikeja, Lagos State, Nigeria."]

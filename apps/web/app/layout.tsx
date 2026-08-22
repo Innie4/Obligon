@@ -15,7 +15,7 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Obligon",
+  title: "Obligon LTD",
   description: "Enterprise-grade fuel management and logistics solutions for Nigerian fleets."
 };
 

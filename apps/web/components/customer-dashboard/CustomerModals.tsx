@@ -22,7 +22,7 @@ export function ModalFrame({ children, onClose }: { children: React.ReactNode; o
     <div className="fixed inset-0 z-50 grid place-items-end bg-[#20251f]/55 px-0 backdrop-blur-sm sm:place-items-center sm:px-5">
       <section className="max-h-[94vh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-hero sm:max-w-[560px] sm:rounded-lg">
         <div className="flex items-center justify-between border-b border-[#e0e7de] px-6 py-5">
-          <p className="font-display text-xl font-extrabold">Obligon</p>
+          <p className="font-display text-xl font-extrabold">Obligon LTD</p>
           <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-lg bg-[#f1f5f0]" aria-label="Close modal">
             <X size={20} />
           </button>
@@ -327,7 +327,7 @@ function ReportProblemModal({ onClose }: { onClose: () => void }) {
 function ReplaceCardModal({ onClose, blocked }: { onClose: () => void; blocked: boolean }) {
   const [step, setStep] = React.useState<"form" | "success">("form");
   const [reason, setReason] = React.useState("Damaged");
-  const [address, setAddress] = React.useState("Obligon Enterprise Fleet, 14 Marina Road, Lagos");
+  const [address, setAddress] = React.useState("Obligon LTD Enterprise Fleet, 14 Marina Road, Lagos");
   const [reference, setReference] = React.useState("");
 
   const reasons = ["Damaged", "Expired", "Stolen / Lost", "Chip Upgrade"];

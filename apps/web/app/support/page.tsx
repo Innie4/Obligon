@@ -14,7 +14,7 @@ export default function SupportPage() {
         <div>
           <PageIntro
             eyebrow="Support Desk"
-            title="Contact Obligon"
+            title="Contact Obligon LTD"
             body="Reach the team for onboarding, enterprise sales, partnership verification, legal requests, or support escalations."
           />
           <div className="mt-10 grid gap-4 sm:grid-cols-3">
