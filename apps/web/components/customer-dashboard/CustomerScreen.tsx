@@ -7,6 +7,7 @@ import {
   ArrowRight,
   Bell,
   Building2,
+  Check,
   CircleHelp,
   CreditCard,
   Download,
@@ -38,7 +39,7 @@ import {
   type CustomerTone,
   type CustomerTransaction
 } from "./customer-data";
-import { CustomerModals, type CustomerModalType } from "./CustomerModals";
+import { CustomerModals, ModalFrame, type CustomerModalType } from "./CustomerModals";
 
 const toneClasses: Record<CustomerTone, string> = {
   green: "bg-[#e8fbd7] text-obligon-green",
@@ -196,31 +197,196 @@ function OverviewPage() {
 }
 
 function TransactionsPage() {
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
+  const [filters, setFilters] = React.useState({ dateRange: "All", station: "All Stations", vehicle: "All Vehicles", fuel: "All Fuels" });
+  const [applied, setApplied] = React.useState(filters);
+
+  const stations = Array.from(new Set(transactionHistory.map((row) => row.station)));
+  const vehicles = Array.from(new Set(transactionHistory.map((row) => row.vehicle ?? ""))).filter(Boolean);
+  const fuels = Array.from(new Set(transactionHistory.map((row) => row.fuel ?? "").filter(Boolean)));
+
+  const filtered = transactionHistory.filter((row) => {
+    if (applied.dateRange !== "All" && !(row.time ?? "").startsWith(applied.dateRange)) return false;
+    if (applied.station !== "All Stations" && row.station !== applied.station) return false;
+    if (applied.vehicle !== "All Vehicles" && row.vehicle !== applied.vehicle) return false;
+    if (applied.fuel !== "All Fuels" && row.fuel !== applied.fuel) return false;
+    return true;
+  });
+
+  const hasActiveFilters =
+    applied.dateRange !== "All" || applied.station !== "All Stations" || applied.vehicle !== "All Vehicles" || applied.fuel !== "All Fuels";
+
+  function Select({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) {
+    return (
+      <label className="block">
+        <span className="text-xs font-extrabold uppercase text-obligon-text">{label}</span>
+        <select
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="mt-2 h-12 w-full rounded-lg border border-[#cfd8cc] bg-white px-3 text-sm font-bold outline-none"
+        >
+          {options.map((option) => (
+            <option key={option} value={option}>{option}</option>
+          ))}
+        </select>
+      </label>
+    );
+  }
+
   return (
     <Canvas compact>
       <div className="lg:hidden">
         <h1 className="font-display text-3xl font-extrabold">Transaction History</h1>
-        <div className="mt-5 grid grid-cols-3 gap-3">{["Date Range", "Station", "Vehicle"].map((item) => <button key={item} className="h-10 rounded-lg border border-[#dbe2d8] bg-white text-xs font-bold" type="button">{item}</button>)}</div>
+        <div className="mt-5 grid grid-cols-3 gap-3">
+          {["Date Range", "Station", "Vehicle"].map((item) => (
+            <button key={item} onClick={() => setFiltersOpen(true)} className="h-10 rounded-lg border border-[#dbe2d8] bg-white text-xs font-bold" type="button">{item}</button>
+          ))}
+        </div>
         <div className="mt-6 space-y-7">
           {mobileHistory.map((group) => <section key={group.group}><p className="mb-3 text-sm font-extrabold text-obligon-green">{group.group}</p><div className="space-y-3">{group.items.map((item) => <a key={item.station + item.time} href="/customer/transaction-detail" className="flex rounded-lg bg-white p-4 shadow-sm"><div className="flex-1"><p className="font-extrabold">{item.station}</p><p className="text-sm text-obligon-text">{item.meta}</p></div><div className="text-right"><p className="font-extrabold">{item.amount}</p><p className="text-sm text-obligon-text">{item.time}</p></div></a>)}</div></section>)}
         </div>
       </div>
+
       <div className="hidden lg:block">
-        <div className="mb-7 flex flex-wrap gap-4 rounded-lg border border-[#dbe2d8] bg-white p-5">
-          {["Date Range Oct 1 - Oct 31, 2023", "Station All Stations", "Vehicle All Vehicles"].map((item) => <button key={item} className="h-11 rounded-lg border border-[#dbe2d8] px-4 text-sm font-bold" type="button">{item}</button>)}
-          <button className="ml-auto h-11 rounded-lg bg-obligon-green px-5 text-sm font-extrabold text-white" type="button">Apply Filters</button>
+        <div className="mb-7 flex flex-wrap items-center gap-4 rounded-lg border border-[#dbe2d8] bg-white p-5">
+          <div className="flex flex-wrap gap-3 text-sm font-bold">
+            <span className="rounded-lg border border-[#dbe2d8] px-4 py-3">Date: {applied.dateRange}</span>
+            <span className="rounded-lg border border-[#dbe2d8] px-4 py-3">Station: {applied.station}</span>
+            <span className="rounded-lg border border-[#dbe2d8] px-4 py-3">Vehicle: {applied.vehicle}</span>
+          </div>
+          <button
+            onClick={() => setFiltersOpen(true)}
+            className="ml-auto h-11 rounded-lg bg-obligon-green px-5 text-sm font-extrabold text-white"
+            type="button"
+          >
+            Apply Filters
+          </button>
+          {hasActiveFilters ? (
+            <button
+              onClick={() => {
+                const cleared = { dateRange: "All", station: "All Stations", vehicle: "All Vehicles", fuel: "All Fuels" };
+                setFilters(cleared);
+                setApplied(cleared);
+              }}
+              className="h-11 rounded-lg border border-[#20251f] px-5 text-sm font-extrabold"
+              type="button"
+            >
+              Clear
+            </button>
+          ) : null}
         </div>
-        <Card className="overflow-hidden"><table className="w-full text-left"><thead className="bg-[#f0f4f0] text-xs uppercase text-[#3f463d]"><tr>{["Station Name", "Vehicle ID", "Fuel Type", "Amount", "Timestamp"].map((h) => <th key={h} className="px-6 py-4">{h}</th>)}</tr></thead><tbody className="divide-y divide-[#eef3ee]">{transactionHistory.map((row) => <tr key={`${row.station}-${row.time}`}><td className="px-6 py-5"><p className="font-extrabold">{row.station}</p><p className="text-sm text-obligon-text">{row.meta}</p></td><td>{row.vehicle}</td><td>{row.fuel}</td><td className="font-extrabold">{row.amount}</td><td>{row.time}</td></tr>)}</tbody></table><div className="flex justify-between border-t border-[#eef3ee] p-5 text-sm"><span>Showing 1-5 of 124 transactions</span><span className="space-x-3"><button>Previous</button><button>Next</button></span></div></Card>
+
+        <Card className="overflow-hidden">
+          <table className="w-full text-left">
+            <thead className="bg-[#f0f4f0] text-xs uppercase text-[#3f463d]">
+              <tr>{["Station Name", "Vehicle ID", "Fuel Type", "Amount", "Timestamp"].map((h) => <th key={h} className="px-6 py-4">{h}</th>)}</tr>
+            </thead>
+            <tbody className="divide-y divide-[#eef3ee]">
+              {filtered.length > 0 ? (
+                filtered.map((row) => (
+                  <tr key={`${row.station}-${row.time}`}>
+                    <td className="px-6 py-5"><p className="font-extrabold">{row.station}</p><p className="text-sm text-obligon-text">{row.meta}</p></td>
+                    <td>{row.vehicle}</td>
+                    <td>{row.fuel}</td>
+                    <td className="font-extrabold">{row.amount}</td>
+                    <td>{row.time}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr><td colSpan={5} className="px-6 py-10 text-center text-sm font-bold text-obligon-text">No transactions match your filters.</td></tr>
+              )}
+            </tbody>
+          </table>
+          <div className="flex justify-between border-t border-[#eef3ee] p-5 text-sm">
+            <span>Showing 1-{filtered.length} of {filtered.length} transaction{filtered.length === 1 ? "" : "s"}</span>
+            <span className="space-x-3"><button>Previous</button><button>Next</button></span>
+          </div>
+        </Card>
       </div>
+
+      {filtersOpen ? (
+        <ModalFrame onClose={() => setFiltersOpen(false)}>
+          <div className="p-6">
+            <h2 className="font-display text-2xl font-extrabold">Filter Transactions</h2>
+            <p className="mt-2 text-sm text-obligon-text">Narrow your transaction history by date, station, vehicle and fuel.</p>
+            <div className="mt-6 space-y-5">
+              <Select
+                label="Date Range"
+                value={filters.dateRange}
+                options={["All", "Oct 24", "Oct 23", "Oct 22"]}
+                onChange={(value) => setFilters((prev) => ({ ...prev, dateRange: value }))}
+              />
+              <Select
+                label="Station"
+                value={filters.station}
+                options={["All Stations", ...stations]}
+                onChange={(value) => setFilters((prev) => ({ ...prev, station: value }))}
+              />
+              <Select
+                label="Vehicle"
+                value={filters.vehicle}
+                options={["All Vehicles", ...vehicles]}
+                onChange={(value) => setFilters((prev) => ({ ...prev, vehicle: value }))}
+              />
+              <Select
+                label="Fuel Type"
+                value={filters.fuel}
+                options={["All Fuels", ...fuels]}
+                onChange={(value) => setFilters((prev) => ({ ...prev, fuel: value }))}
+              />
+            </div>
+            <div className="mt-7 flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const cleared = { dateRange: "All", station: "All Stations", vehicle: "All Vehicles", fuel: "All Fuels" };
+                  setFilters(cleared);
+                  setApplied(cleared);
+                }}
+                className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold"
+              >
+                Reset
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setApplied(filters);
+                  setFiltersOpen(false);
+                }}
+                className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white"
+              >
+                Apply Filters
+              </button>
+            </div>
+          </div>
+        </ModalFrame>
+      ) : null}
     </Canvas>
   );
 }
 
-function CardPage() {
-  const cardActions: Array<{ title: string; body: string; Icon: ComponentType<LucideProps>; tone: CustomerTone }> = [
-    { title: "Replace Card", body: "Request a new physical card", Icon: CreditCard, tone: "green" },
-    { title: "Report Lost", body: "Block and report stolen card", Icon: FileWarning, tone: "red" },
-    { title: "Freeze Card", body: "Temporarily lock transactions", Icon: Snowflake, tone: "green" }
+function CardPage({
+  onModal,
+  frozen,
+  blocked
+}: {
+  onModal: (modal: CustomerModalType) => void;
+  frozen: boolean;
+  blocked: boolean;
+}) {
+  const status = blocked
+    ? { label: "BLOCKED", className: "bg-[#ffe8e8] px-3 py-1 text-xs font-extrabold text-[#c1121f]", bg: "bg-[#1a0808]" }
+    : frozen
+      ? { label: "FROZEN", className: "bg-[#fff3d8] px-3 py-1 text-xs font-extrabold text-[#9a6300]" }
+      : { label: "ACTIVE STATUS", className: "bg-[#e8fbd7] px-3 py-1 text-xs font-extrabold text-obligon-green" };
+
+  const freezeLabel = frozen ? "Unfreeze Card" : "Freeze Card";
+  const freezeBody = frozen ? "Resume transactions on this card" : "Temporarily lock transactions";
+
+  const cardActions: Array<{ title: string; body: string; Icon: ComponentType<LucideProps>; tone: CustomerTone; modal: CustomerModalType }> = [
+    { title: "Replace Card", body: "Request a new physical card", Icon: CreditCard, tone: "green", modal: "replaceCard" },
+    { title: "Report Lost", body: blocked ? "Card already blocked" : "Block and report stolen card", Icon: FileWarning, tone: "red", modal: "lostCard" },
+    { title: freezeLabel, body: freezeBody, Icon: Snowflake, tone: "green", modal: "freezeCard" }
   ];
 
   return (
@@ -228,14 +394,35 @@ function CardPage() {
       <div className="lg:hidden"><h1 className="font-display text-3xl font-extrabold">Card Management</h1><p className="mt-2 text-obligon-text">View and manage your active fleet subscription card.</p></div>
       <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
         <Card className="relative min-h-[280px] overflow-hidden bg-[#050816] p-8 text-white">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_0%,rgba(170,248,87,.32),transparent_28%),linear-gradient(135deg,#061958,#050816)]" />
+          <div className={`absolute inset-0 bg-[radial-gradient(circle_at_80%_0%,rgba(170,248,87,.32),transparent_28%),linear-gradient(135deg,#061958,${blocked ? "#1a0808" : "#050816"})]`} />
           <div className="relative flex h-full flex-col justify-between">
-            <div className="flex justify-between"><p className="font-display text-3xl font-extrabold">Obligon</p><span className="rounded-full bg-[#e8fbd7] px-3 py-1 text-xs font-extrabold text-obligon-green">ACTIVE STATUS</span></div>
+            <div className="flex justify-between"><p className="font-display text-3xl font-extrabold">Obligon</p><span className={`rounded-full ${status.className}`}>{status.label}</span></div>
             <div><p className="font-mono text-2xl tracking-[3px]">•••• •••• •••• 4092</p><div className="mt-8 grid gap-4 sm:grid-cols-2"><div><p className="text-xs text-white/60">CARDHOLDER NAME</p><p className="font-extrabold">Obligon Enterprise Fleet</p></div><div><p className="text-xs text-white/60">AVAILABLE BALANCE</p><p className="font-extrabold">₦12,450.00</p></div></div></div>
           </div>
         </Card>
         <div className="space-y-4">
-          {cardActions.map(({ title, body, Icon, tone }) => <Card key={title} className="p-5"><div className="flex gap-4"><MiniIcon tone={tone}><Icon size={19} /></MiniIcon><div><h2 className="font-extrabold">{title}</h2><p className="text-sm text-obligon-text">{body}</p></div></div></Card>)}
+          {cardActions.map(({ title, body, Icon, tone, modal }) => {
+            const disabled = modal === "lostCard" && blocked;
+            return (
+              <button
+                key={title}
+                type="button"
+                disabled={disabled}
+                onClick={() => onModal(modal)}
+                className={`w-full rounded-lg border border-[#dbe2d8] bg-white p-5 text-left transition hover:border-obligon-green hover:bg-[#f3ffe8] ${
+                  disabled ? "cursor-not-allowed opacity-60" : ""
+                }`}
+              >
+                <div className="flex gap-4">
+                  <MiniIcon tone={tone}><Icon size={19} /></MiniIcon>
+                  <div>
+                    <h2 className="font-extrabold">{title}</h2>
+                    <p className="text-sm text-obligon-text">{body}</p>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
     </Canvas>
@@ -253,13 +440,195 @@ function WalletPage({ onModal }: { onModal: (modal: CustomerModalType) => void }
 }
 
 function StationsPage() {
+  const [query, setQuery] = React.useState("");
+  const [fuelsOpen, setFuelsOpen] = React.useState(false);
+  const [selectedFuels, setSelectedFuels] = React.useState<string[]>([]);
+  const [detail, setDetail] = React.useState<(typeof stations)[number] | null>(null);
+  const [directionTarget, setDirectionTarget] = React.useState<(typeof stations)[number] | null>(null);
+
+  const allFuels = Array.from(new Set(stations.flatMap((station) => station.fuels)));
+
+  const visible = stations.filter((station) => {
+    const matchesQuery =
+      query.trim() === "" ||
+      station.name.toLowerCase().includes(query.toLowerCase()) ||
+      station.address.toLowerCase().includes(query.toLowerCase());
+    const matchesFuel = selectedFuels.length === 0 || selectedFuels.some((fuel) => station.fuels.includes(fuel));
+    return matchesQuery && matchesFuel;
+  });
+
+  function toggleFuel(fuel: string) {
+    setSelectedFuels((current) => (current.includes(fuel) ? current.filter((item) => item !== fuel) : [...current, fuel]));
+  }
+
   return (
     <Canvas>
-      <div className="mb-6 flex gap-3 rounded-lg border border-[#dbe2d8] bg-white p-3"><input className="flex-1 bg-transparent px-3 outline-none" placeholder="Search locations or routes..." /><button className="rounded-lg bg-obligon-green px-4 font-extrabold text-white" type="button">All Fuels</button></div>
-      <div className="grid gap-5 lg:grid-cols-[1fr_420px]">
-        <Card className="min-h-[520px] overflow-hidden bg-[#dfe8ed]"><div className="h-full min-h-[520px] bg-[linear-gradient(30deg,rgba(6,25,88,.12)_12%,transparent_12.5%,transparent_87%,rgba(6,25,88,.12)_87.5%),linear-gradient(150deg,rgba(6,25,88,.12)_12%,transparent_12.5%,transparent_87%,rgba(6,25,88,.12)_87.5%)] bg-[length:52px_88px] p-6"><span className="rounded-lg bg-white px-4 py-2 font-extrabold text-obligon-green">₦3.45</span></div></Card>
-        <div className="space-y-4">{stations.map((station, index)=><Card key={station.name} className="p-5"><div className="flex justify-between"><div><h2 className="font-display text-xl font-extrabold">{station.name}</h2><p className="text-sm text-obligon-text">{station.distance}</p><p className="mt-1 text-sm text-obligon-text">{station.address}</p></div><MapPinned className="text-obligon-green" /></div><div className="mt-5 grid grid-cols-2 gap-3"><p className="rounded-lg bg-[#f7fbf8] p-3 text-sm"><span className="block text-xs font-bold">DIESEL</span><span className="font-extrabold">{station.diesel}</span> /gal</p><p className="rounded-lg bg-[#f7fbf8] p-3 text-sm"><span className="block text-xs font-bold">UNLEADED</span><span className="font-extrabold">{station.unleaded}</span> /gal</p></div><div className="mt-4 flex gap-3"><button className="h-10 flex-1 rounded-lg bg-obligon-green font-extrabold text-white" type="button">Directions</button><button className="h-10 flex-1 rounded-lg border border-[#dbe2d8] font-extrabold" type="button">Details</button></div>{index===0 ? <p className="mt-3 text-xs font-bold text-obligon-green">Open 24/7 • 1.2 mi away</p> : null}</Card>)}</div>
+      <div className="mb-6 flex gap-3 rounded-lg border border-[#dbe2d8] bg-white p-3">
+        <div className="flex flex-1 items-center gap-2">
+          <MapPinned size={18} className="text-obligon-green" />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            className="w-full bg-transparent px-2 outline-none"
+            placeholder="Search locations or routes..."
+          />
+        </div>
+        <button
+          onClick={() => setFuelsOpen(true)}
+          className={`rounded-lg px-4 font-extrabold text-white ${selectedFuels.length > 0 ? "bg-obligon-green" : "bg-obligon-green/80"}`}
+          type="button"
+        >
+          {selectedFuels.length > 0 ? `Fuels (${selectedFuels.length})` : "All Fuels"}
+        </button>
       </div>
+
+      {selectedFuels.length > 0 ? (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {selectedFuels.map((fuel) => (
+            <button
+              key={fuel}
+              type="button"
+              onClick={() => toggleFuel(fuel)}
+              className="rounded-full bg-[#e8fbd7] px-3 py-1 text-xs font-extrabold text-obligon-green"
+            >
+              {fuel} ✕
+            </button>
+          ))}
+          <button type="button" onClick={() => setSelectedFuels([])} className="rounded-full border border-[#dbe2d8] px-3 py-1 text-xs font-extrabold text-obligon-text">
+            Clear
+          </button>
+        </div>
+      ) : null}
+
+      <div className="grid gap-5 lg:grid-cols-[1fr_420px]">
+        <Card className="min-h-[520px] overflow-hidden bg-[#dfe8ed]">
+          <div className="h-full min-h-[520px] bg-[linear-gradient(30deg,rgba(6,25,88,.12)_12%,transparent_12.5%,transparent_87%,rgba(6,25,88,.12)_87.5%),linear-gradient(150deg,rgba(6,25,88,.12)_12%,transparent_12.5%,transparent_87%,rgba(6,25,88,.12)_87.5%)] bg-[length:52px_88px] p-6">
+            <span className="rounded-lg bg-white px-4 py-2 font-extrabold text-obligon-green">₦3.45</span>
+            <p className="mt-6 max-w-[220px] text-sm font-bold text-obligon-navy">Live station map — {visible.length} location{visible.length === 1 ? "" : "s"} shown</p>
+          </div>
+        </Card>
+        <div className="space-y-4">
+          {visible.length > 0 ? (
+            visible.map((station) => (
+              <Card key={station.name} className="p-5">
+                <div className="flex justify-between">
+                  <div>
+                    <h2 className="font-display text-xl font-extrabold">{station.name}</h2>
+                    <p className="text-sm text-obligon-text">{station.distance}</p>
+                    <p className="mt-1 text-sm text-obligon-text">{station.address}</p>
+                  </div>
+                  <MapPinned className="text-obligon-green" />
+                </div>
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <p className="rounded-lg bg-[#f7fbf8] p-3 text-sm"><span className="block text-xs font-bold">DIESEL</span><span className="font-extrabold">{station.diesel}</span> /gal</p>
+                  <p className="rounded-lg bg-[#f7fbf8] p-3 text-sm"><span className="block text-xs font-bold">UNLEADED</span><span className="font-extrabold">{station.unleaded}</span> /gal</p>
+                </div>
+                <div className="mt-4 flex gap-3">
+                  <button
+                    onClick={() => setDirectionTarget(station)}
+                    className="h-10 flex-1 rounded-lg bg-obligon-green font-extrabold text-white"
+                    type="button"
+                  >
+                    Directions
+                  </button>
+                  <button
+                    onClick={() => setDetail(station)}
+                    className="h-10 flex-1 rounded-lg border border-[#dbe2d8] font-extrabold"
+                    type="button"
+                  >
+                    Details
+                  </button>
+                </div>
+              </Card>
+            ))
+          ) : (
+            <Card className="p-8 text-center"><p className="font-extrabold text-obligon-text">No stations match your search.</p></Card>
+          )}
+        </div>
+      </div>
+
+      {fuelsOpen ? (
+        <ModalFrame onClose={() => setFuelsOpen(false)}>
+          <div className="p-6">
+            <h2 className="font-display text-2xl font-extrabold">Filter by Fuel</h2>
+            <p className="mt-2 text-sm text-obligon-text">Show only stations that offer the selected fuel types.</p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              {allFuels.map((fuel) => {
+                const selected = selectedFuels.includes(fuel);
+                return (
+                  <button
+                    key={fuel}
+                    type="button"
+                    onClick={() => toggleFuel(fuel)}
+                    className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-extrabold transition ${
+                      selected ? "border-obligon-green bg-obligon-green/10 text-obligon-green" : "border-[#dbe2d8] bg-white text-obligon-text"
+                    }`}
+                  >
+                    {selected ? <Check size={14} /> : null}{fuel}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-7 flex gap-3">
+              <button type="button" onClick={() => setSelectedFuels([])} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">Reset</button>
+              <button type="button" onClick={() => setFuelsOpen(false)} className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white">Show Results</button>
+            </div>
+          </div>
+        </ModalFrame>
+      ) : null}
+
+      {detail ? (
+        <ModalFrame onClose={() => setDetail(null)}>
+          <div className="p-6">
+            <span className="grid size-12 place-items-center rounded-full bg-[#eef3ff] text-obligon-blue"><MapPinned size={22} /></span>
+            <h2 className="mt-4 font-display text-3xl font-extrabold">{detail.name}</h2>
+            <p className="mt-1 text-sm text-obligon-text">{detail.address}</p>
+            <p className="mt-1 text-sm font-bold text-obligon-green">{detail.distance} away • {detail.hours}</p>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg bg-[#f7fbf8] p-4"><p className="text-xs font-bold uppercase">Diesel</p><p className="mt-1 font-extrabold text-xl">{detail.diesel}</p></div>
+              <div className="rounded-lg bg-[#f7fbf8] p-4"><p className="text-xs font-bold uppercase">Unleaded</p><p className="mt-1 font-extrabold text-xl">{detail.unleaded}</p></div>
+            </div>
+
+            <p className="mt-5 text-xs font-extrabold uppercase text-obligon-text">Available Fuels</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {detail.fuels.map((fuel) => (
+                <span key={fuel} className="rounded-full bg-[#e8fbd7] px-3 py-1 text-xs font-extrabold text-obligon-green">{fuel}</span>
+              ))}
+            </div>
+
+            <div className="mt-7 flex gap-3">
+              <button type="button" onClick={() => { setDetail(null); setDirectionTarget(detail); }} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">Get Directions</button>
+              <button type="button" onClick={() => setDetail(null)} className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white">Close</button>
+            </div>
+          </div>
+        </ModalFrame>
+      ) : null}
+
+      {directionTarget ? (
+        <ModalFrame onClose={() => setDirectionTarget(null)}>
+          <div className="p-6">
+            <h2 className="font-display text-2xl font-extrabold">Directions</h2>
+            <p className="mt-2 text-sm text-obligon-text">Route to <span className="font-extrabold text-obligon-navy">{directionTarget.name}</span>.</p>
+            <div className="mt-5 rounded-lg bg-[#dfe8ed] p-6">
+              <div className="h-40 bg-[linear-gradient(30deg,rgba(6,25,88,.12)_12%,transparent_12.5%,transparent_87%,rgba(6,25,88,.12)_87.5%),linear-gradient(150deg,rgba(6,25,88,.12)_12%,transparent_12.5%,transparent_87%,rgba(6,25,88,.12)_87.5%)] bg-[length:52px_88px]" />
+            </div>
+            <div className="mt-5 space-y-3 text-sm font-bold">
+              <div className="flex items-center justify-between rounded-lg bg-[#f7fbf8] p-3"><span>Distance</span><span className="text-obligon-green">{directionTarget.distance}</span></div>
+              <div className="flex items-center justify-between rounded-lg bg-[#f7fbf8] p-3"><span>Estimated arrival</span><span className="text-obligon-green">~6 min</span></div>
+              <div className="flex items-center justify-between rounded-lg bg-[#f7fbf8] p-3"><span>Address</span><span className="text-obligon-navy">{directionTarget.address}</span></div>
+            </div>
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(directionTarget.address)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-6 flex h-12 w-full items-center justify-center rounded-lg bg-obligon-green font-extrabold text-white"
+            >
+              Open in Maps
+            </a>
+          </div>
+        </ModalFrame>
+      ) : null}
     </Canvas>
   );
 }
@@ -415,10 +784,12 @@ function NotificationsPage() {
 export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
   const [modal, setModal] = React.useState<CustomerModalType>(null);
   const [biometrics, setBiometrics] = React.useState(false);
+  const [cardFrozen, setCardFrozen] = React.useState(false);
+  const [cardBlocked, setCardBlocked] = React.useState(false);
   const pages: Record<CustomerPageKey, React.ReactNode> = {
     overview: <OverviewPage />,
     transactions: <TransactionsPage />,
-    card: <CardPage />,
+    card: <CardPage onModal={setModal} frozen={cardFrozen} blocked={cardBlocked} />,
     wallet: <WalletPage onModal={setModal} />,
     stations: <StationsPage />,
     support: <SupportPage onModal={setModal} />,
@@ -438,6 +809,10 @@ export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
         onClose={() => setModal(null)}
         biometrics={biometrics}
         onBiometricsChange={setBiometrics}
+        cardFrozen={cardFrozen}
+        onCardFrozenChange={setCardFrozen}
+        cardBlocked={cardBlocked}
+        onCardBlockedChange={setCardBlocked}
       />
     </>
   );

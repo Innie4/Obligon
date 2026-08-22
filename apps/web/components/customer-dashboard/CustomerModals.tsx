@@ -2,18 +2,22 @@
 
 import * as React from "react";
 import type { ComponentType } from "react";
-import { Building2, Check, CreditCard, Fingerprint, LockKeyhole, ShieldCheck, Upload, X, type LucideProps } from "lucide-react";
+import { AlertTriangle, Building2, Check, CreditCard, FileWarning, Fingerprint, LockKeyhole, ShieldCheck, Snowflake, Upload, X, type LucideProps } from "lucide-react";
 
-export type CustomerModalType = "topup" | "report" | "changePin" | "biometrics" | null;
+export type CustomerModalType = "topup" | "report" | "changePin" | "biometrics" | "replaceCard" | "lostCard" | "freezeCard" | null;
 
 type CustomerModalsProps = {
   modal: CustomerModalType;
   onClose: () => void;
   biometrics: boolean;
   onBiometricsChange: (enabled: boolean) => void;
+  cardFrozen: boolean;
+  onCardFrozenChange: (frozen: boolean) => void;
+  cardBlocked: boolean;
+  onCardBlockedChange: (blocked: boolean) => void;
 };
 
-function ModalFrame({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+export function ModalFrame({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-end bg-[#20251f]/55 px-0 backdrop-blur-sm sm:place-items-center sm:px-5">
       <section className="max-h-[94vh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-hero sm:max-w-[560px] sm:rounded-lg">
@@ -29,12 +33,43 @@ function ModalFrame({ children, onClose }: { children: React.ReactNode; onClose:
   );
 }
 
-export function CustomerModals({ modal, onClose, biometrics, onBiometricsChange }: CustomerModalsProps) {
+export function CustomerModals({
+  modal,
+  onClose,
+  biometrics,
+  onBiometricsChange,
+  cardFrozen,
+  onCardFrozenChange,
+  cardBlocked,
+  onCardBlockedChange
+}: CustomerModalsProps) {
   if (!modal) return null;
   if (modal === "topup") return <TopUpModal onClose={onClose} />;
   if (modal === "report") return <ReportProblemModal onClose={onClose} />;
   if (modal === "changePin") return <ChangePinModal onClose={onClose} />;
-  return <BiometricsModal onClose={onClose} enabled={biometrics} onChange={onBiometricsChange} />;
+  if (modal === "biometrics") return <BiometricsModal onClose={onClose} enabled={biometrics} onChange={onBiometricsChange} />;
+  if (modal === "replaceCard") return <ReplaceCardModal onClose={onClose} blocked={cardBlocked} />;
+  if (modal === "lostCard")
+    return (
+      <LostCardModal
+        onClose={onClose}
+        blocked={cardBlocked}
+        onBlockedChange={(blocked) => {
+          onCardBlockedChange(blocked);
+          if (blocked) onCardFrozenChange(false);
+        }}
+      />
+    );
+  return (
+    <FreezeCardModal
+      onClose={onClose}
+      frozen={cardFrozen}
+      onChange={(frozen) => {
+        onCardFrozenChange(frozen);
+        if (frozen) onCardBlockedChange(false);
+      }}
+    />
+  );
 }
 
 function PinInput({
@@ -360,10 +395,231 @@ function ReportProblemModal({ onClose }: { onClose: () => void }) {
         </button>
         <p className="mt-2 text-xs text-obligon-text">PNG, JPG, PDF up to 5MB</p>
         <div className="mt-6 flex gap-3">
-          <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">Cancel</button>
-          <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white">Submit Report</button>
+        <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">Cancel</button>
+        <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white">Submit Report</button>
         </div>
       </div>
+    </ModalFrame>
+  );
+}
+
+function ReplaceCardModal({ onClose, blocked }: { onClose: () => void; blocked: boolean }) {
+  const [step, setStep] = React.useState<"form" | "success">("form");
+  const [reason, setReason] = React.useState("Damaged");
+  const [address, setAddress] = React.useState("Obligon Enterprise Fleet, 14 Marina Road, Lagos");
+  const [reference, setReference] = React.useState("");
+
+  const reasons = ["Damaged", "Expired", "Stolen / Lost", "Chip Upgrade"];
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!address.trim()) return;
+    setReference(`RC-${Math.floor(100000 + Math.random() * 899999)}`);
+    setStep("success");
+  }
+
+  return (
+    <ModalFrame onClose={onClose}>
+      {step === "form" ? (
+        <form onSubmit={handleSubmit} className="p-6">
+          <span className="grid size-12 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
+            <CreditCard size={22} />
+          </span>
+          <h2 className="mt-4 font-display text-3xl font-extrabold">Replace Card</h2>
+          <p className="mt-2 text-sm text-obligon-text">
+            {blocked ? "Your card is currently blocked. " : ""}Order a new physical card and we will ship it to your registered address.
+          </p>
+
+          <p className="mt-7 text-xs font-extrabold uppercase text-obligon-text">Reason for replacement</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {reasons.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setReason(item)}
+                className={`rounded-lg border px-4 py-3 text-left text-sm font-extrabold ${
+                  reason === item ? "border-obligon-green bg-[#f3ffe8] text-obligon-green" : "border-[#cfd8cc] bg-white"
+                }`}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+
+          <label className="mt-6 block">
+            <span className="text-xs font-extrabold uppercase text-obligon-text">Delivery Address</span>
+            <textarea
+              value={address}
+              onChange={(event) => setAddress(event.target.value)}
+              className="mt-2 min-h-24 w-full rounded-lg border border-[#cfd8cc] p-4 outline-none"
+            />
+          </label>
+
+          <div className="mt-6 flex gap-3">
+            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">
+              Cancel
+            </button>
+            <button type="submit" className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white">
+              Order Replacement
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="p-6 py-10 text-center">
+          <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
+            <Check size={30} />
+          </span>
+          <h2 className="mt-5 font-display text-2xl font-extrabold">Replacement Ordered</h2>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-obligon-text">
+            Your new card will arrive in 3-5 business days. Reference <span className="font-extrabold text-obligon-navy">{reference}</span>.
+          </p>
+          <div className="mx-auto mt-6 max-w-sm space-y-3 text-left">
+            <div className="flex items-center gap-3 rounded-lg bg-[#f7fbf8] p-3 text-sm font-bold">
+              <span className="text-obligon-green">●</span> Order received
+            </div>
+            <div className="flex items-center gap-3 rounded-lg bg-[#f7fbf8] p-3 text-sm font-bold">
+              <span className="text-obligon-text">●</span> Printing &amp; personalizing
+            </div>
+            <div className="flex items-center gap-3 rounded-lg bg-[#f7fbf8] p-3 text-sm font-bold">
+              <span className="text-obligon-text">○</span> Shipped to address
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="mt-7 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white">
+            Done
+          </button>
+        </div>
+      )}
+    </ModalFrame>
+  );
+}
+
+function LostCardModal({
+  onClose,
+  blocked,
+  onBlockedChange
+}: {
+  onClose: () => void;
+  blocked: boolean;
+  onBlockedChange: (blocked: boolean) => void;
+}) {
+  const [step, setStep] = React.useState<"confirm" | "success">("confirm");
+  const [reference, setReference] = React.useState("");
+
+  function handleBlock() {
+    setReference(`BL-${Math.floor(100000 + Math.random() * 899999)}`);
+    onBlockedChange(true);
+    setStep("success");
+  }
+
+  return (
+    <ModalFrame onClose={onClose}>
+      {step === "confirm" ? (
+        <div className="p-6">
+          <span className="grid size-12 place-items-center rounded-full bg-[#ffe8e8] text-[#c1121f]">
+            <FileWarning size={22} />
+          </span>
+          <h2 className="mt-4 font-display text-3xl font-extrabold">Report Lost Card</h2>
+          <p className="mt-2 text-sm text-obligon-text">
+            This will immediately block card •••• 4092. Pending and recurring transactions will be paused until a replacement is issued.
+          </p>
+          <div className="mt-6 space-y-3">
+            {["Card blocked instantly across all stations", "Recurring payments paused", "A replacement can be ordered immediately"].map((item) => (
+              <div key={item} className="flex items-center gap-3 rounded-lg bg-[#fff3d8] p-3 text-sm font-bold text-[#9a6300]">
+                <AlertTriangle size={16} /> {item}
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 flex gap-3">
+            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">
+              Cancel
+            </button>
+            <button type="button" onClick={handleBlock} className="h-12 flex-1 rounded-lg bg-[#c1121f] font-extrabold text-white">
+              Block Card Now
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="p-6 py-10 text-center">
+          <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#ffe8e8] text-[#c1121f]">
+            <FileWarning size={30} />
+          </span>
+          <h2 className="mt-5 font-display text-2xl font-extrabold">Card Blocked</h2>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-obligon-text">
+            Card •••• 4092 is now blocked. Reference <span className="font-extrabold text-obligon-navy">{reference}</span>. Order a replacement to resume spending.
+          </p>
+          <div className="mt-7 flex gap-3">
+            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">
+              Close
+            </button>
+            <button onClick={onClose} className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white">
+              Order Replacement
+            </button>
+          </div>
+        </div>
+      )}
+    </ModalFrame>
+  );
+}
+
+function FreezeCardModal({
+  onClose,
+  frozen,
+  onChange
+}: {
+  onClose: () => void;
+  frozen: boolean;
+  onChange: (frozen: boolean) => void;
+}) {
+  const [step, setStep] = React.useState<"confirm" | "success">("confirm");
+  const next = !frozen;
+
+  function handleConfirm() {
+    onChange(next);
+    setStep("success");
+  }
+
+  return (
+    <ModalFrame onClose={onClose}>
+      {step === "confirm" ? (
+        <div className="p-6 text-center">
+          <span className={`mx-auto grid size-16 place-items-center rounded-full ${next ? "bg-[#eef3ff] text-obligon-blue" : "bg-[#e8fbd7] text-obligon-green"}`}>
+            <Snowflake size={30} />
+          </span>
+          <h2 className="mt-5 font-display text-2xl font-extrabold">{next ? "Freeze Card" : "Unfreeze Card"}</h2>
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-obligon-text">
+            {next
+              ? "Temporarily lock transactions on card •••• 4092. Your balance and subscriptions stay safe, and you can unfreeze anytime."
+              : "Resume transactions on card •••• 4092. The card will be active immediately."}
+          </p>
+          <div className="mt-7 flex gap-3">
+            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              className={`h-12 flex-1 rounded-lg font-extrabold text-white ${next ? "bg-obligon-blue" : "bg-obligon-green"}`}
+            >
+              {next ? "Freeze Now" : "Unfreeze"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="p-6 py-10 text-center">
+          <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
+            <Check size={30} />
+          </span>
+          <h2 className="mt-5 font-display text-2xl font-extrabold">{next ? "Card Frozen" : "Card Unfrozen"}</h2>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-obligon-text">
+            {next
+              ? "Card •••• 4092 is temporarily locked. No transactions can be authorized until you unfreeze it."
+              : "Card •••• 4092 is active again and ready for transactions."}
+          </p>
+          <button type="button" onClick={onClose} className="mt-7 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white">
+            Done
+          </button>
+        </div>
+      )}
     </ModalFrame>
   );
 }

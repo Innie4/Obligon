@@ -121,21 +121,27 @@ export const stations = [
     distance: "0.8 mi",
     address: "120 Financial District Blvd, NY",
     diesel: "₦4.12",
-    unleaded: "₦3.89"
+    unleaded: "₦3.89",
+    fuels: ["PMS Petrol", "AGO Diesel"],
+    hours: "Open 24/7"
   },
   {
     name: "Metro Transit Station",
     distance: "1.2 mi",
     address: "45 Commerce Street, NY",
     diesel: "₦4.15",
-    unleaded: "₦3.95"
+    unleaded: "₦3.95",
+    fuels: ["PMS Petrol", "AGO Diesel", "LPG Gas"],
+    hours: "Open 24/7"
   },
   {
     name: "Express Fueling",
     distance: "2.4 mi",
     address: "88 Industrial Parkway, NY",
     diesel: "₦4.09",
-    unleaded: "₦3.85"
+    unleaded: "₦3.85",
+    fuels: ["PMS Petrol", "AGO Diesel"],
+    hours: "06:00 - 23:00"
   }
 ];
 
