@@ -9,6 +9,7 @@ import {
   Bell,
   Building2,
   Check,
+  ChevronDown,
   CircleHelp,
   CreditCard,
   Download,
@@ -747,6 +748,12 @@ function StationsPage() {
 function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void }) {
   const [reportOpen, setReportOpen] = React.useState(false);
   const [conversationStarted, setConversationStarted] = React.useState(false);
+  const [openFaq, setOpenFaq] = React.useState<string | null>(null);
+  const faqs = [
+    { question: "How to freeze my card", answer: "Open the Card page, choose Freeze Card, and confirm the request with your transaction PIN. You can return to the same page to unfreeze the card when needed." },
+    { question: "Where can I use my card?", answer: "Use your card at participating Obligon network stations. Open Station Locator to search nearby locations, view fuel availability, and get directions." },
+    { question: "Reporting a transaction issue", answer: "Select Report a transaction issue, choose the issue type, and provide the relevant details. You can attach a supporting document before submitting the report." }
+  ];
   return (
     <Canvas>
       <h1 className="font-display text-4xl font-extrabold">Support Center</h1><p className="mt-3 text-lg text-obligon-text">How can we help you accelerate your fleet operations today?</p>
@@ -754,7 +761,7 @@ function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void 
         <Card className="p-6"><MessageCircle className="text-obligon-green" /><h2 className="mt-5 font-display text-2xl font-extrabold">Chat with us</h2><p className="mt-2 text-obligon-text">Connect with a support agent instantly for real-time assistance.</p><button onClick={() => setConversationStarted(true)} className="mt-6 h-11 rounded-lg bg-obligon-green px-5 font-extrabold text-white" type="button">{conversationStarted ? "CONVERSATION REQUESTED" : "START CONVERSATION"}</button>{conversationStarted ? <p className="mt-3 rounded-lg bg-[#e8fbd7] p-3 text-sm font-bold text-obligon-green" role="status">Your support conversation is queued for this frontend session. A live-support service is required to connect an agent.</p> : null}</Card>
         <Card className="p-6"><AlertTriangle className="text-[#c1121f]" /><h2 className="mt-5 font-display text-2xl font-extrabold">Report a transaction issue</h2><p className="mt-2 text-obligon-text">Dispute a charge or report anomalies in your billing statement.</p><button onClick={() => setReportOpen(true)} className="mt-6 h-11 rounded-lg bg-[#20251f] px-5 font-extrabold text-white" type="button">FILE REPORT</button></Card>
       </div>
-      <Card className="mt-8 p-6"><h2 className="font-display text-2xl font-extrabold">Frequently Asked Questions</h2>{["How to freeze my card", "Where can I use my card?", "Reporting a transaction issue"].map(q=><p key={q} className="border-b border-[#eef3ee] py-4 font-bold last:border-0">{q}</p>)}</Card>
+      <Card className="mt-8 overflow-hidden"><h2 className="px-6 pb-2 pt-6 font-display text-2xl font-extrabold">Frequently Asked Questions</h2>{faqs.map(({ question, answer }) => { const open = openFaq === question; const answerId = `faq-${question.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`; return <article key={question} className="border-t border-[#eef3ee] first:mt-4"><button type="button" onClick={() => setOpenFaq((current) => current === question ? null : question)} aria-expanded={open} aria-controls={answerId} className="flex w-full items-center justify-between gap-4 px-6 py-4 text-left font-bold focus:outline-none focus:ring-2 focus:ring-inset focus:ring-obligon-green"><span>{question}</span><ChevronDown size={20} className={`shrink-0 text-obligon-green transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" /></button>{open ? <div id={answerId} className="px-6 pb-5 text-sm leading-6 text-obligon-text">{answer}</div> : null}</article>; })}</Card>
 
       <ConfirmModal
         open={reportOpen}
