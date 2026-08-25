@@ -12,7 +12,11 @@ import {
   transactionHistory,
   stations,
   notifications,
-  mobileHistory
+  mobileHistory,
+  recentActivity,
+  vehicles,
+  topUpHistory,
+  desktopTopUps
 } from "@/lib/mock/customer-data";
 import {
   vehicleRows,
@@ -63,6 +67,10 @@ export interface ApiClient {
   getCompanyOverviewMetrics(): Promise<Metric[]>;
   getCompanyCardMetrics(): Promise<Metric[]>;
   getCompanyRecentTransactions(): Promise<Row[]>;
+  getCustomerVehiclePerformance(): Promise<string[][]>;
+  getCustomerRecentActivity(): Promise<CustomerTransaction[]>;
+  getCustomerTopUpHistory(): Promise<string[][]>;
+  getCustomerDesktopTopUps(): Promise<string[][]>;
 
   /**
    * Generic transport used by the future live client. The mock client rejects
@@ -157,6 +165,22 @@ class MockApiClient implements ApiClient {
     return recentTransactions;
   }
 
+  async getCustomerVehiclePerformance(): Promise<string[][]> {
+    return vehicles;
+  }
+
+  async getCustomerRecentActivity(): Promise<CustomerTransaction[]> {
+    return recentActivity;
+  }
+
+  async getCustomerTopUpHistory(): Promise<string[][]> {
+    return topUpHistory;
+  }
+
+  async getCustomerDesktopTopUps(): Promise<string[][]> {
+    return desktopTopUps;
+  }
+
   async request<T>(_path: string, _init?: RequestInit): Promise<T> {
     throw new Error("Live backend is not wired yet. Resolve via MockApiClient.");
   }
@@ -223,6 +247,18 @@ function LiveApiClient(_baseUrl: string): ApiClient {
     },
     async getCompanyRecentTransactions() {
       throw new Error("LiveApiClient.getCompanyRecentTransactions not implemented");
+    },
+    async getCustomerVehiclePerformance() {
+      throw new Error("LiveApiClient.getCustomerVehiclePerformance not implemented");
+    },
+    async getCustomerRecentActivity() {
+      throw new Error("LiveApiClient.getCustomerRecentActivity not implemented");
+    },
+    async getCustomerTopUpHistory() {
+      throw new Error("LiveApiClient.getCustomerTopUpHistory not implemented");
+    },
+    async getCustomerDesktopTopUps() {
+      throw new Error("LiveApiClient.getCustomerDesktopTopUps not implemented");
     },
     async request<T>(path: string, init?: RequestInit): Promise<T> {
       const res = await fetch(path, init);

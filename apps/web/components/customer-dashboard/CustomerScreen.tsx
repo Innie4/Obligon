@@ -29,11 +29,6 @@ import {
   type LucideProps
 } from "lucide-react";
 import {
-  desktopTopUps,
-  overviewMetrics,
-  recentActivity,
-  topUpHistory,
-  vehicles,
   type CustomerPageKey,
   type CustomerTone
 } from "@/lib/mock/customer-data";
@@ -92,53 +87,73 @@ function TrendChart() {
 
 function VehicleTable() {
   const router = useRouter();
+  const { status, data: vehicles, error, reload } = useAsync(() => api.getCustomerVehiclePerformance());
   return (
-    <Card className="overflow-hidden">
-      <div className="flex items-center justify-between px-6 py-6">
-        <h2 className="font-display text-2xl font-extrabold">Vehicle Performance</h2>
-        <button onClick={() => router.push("/customer/transactions")} className="text-sm font-extrabold text-obligon-green" type="button">View All</button>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[520px] border-collapse text-left">
-          <thead className="bg-[#f0f4f0] text-xs uppercase tracking-[0.8px] text-[#3f463d]">
-            <tr><th className="px-6 py-4">Vehicle ID</th><th>Spend</th><th>Volume</th><th>Efficiency</th></tr>
-          </thead>
-          <tbody className="divide-y divide-[#eef3ee]">
-            {vehicles.map(([id, spend, volume, efficiency]) => (
-              <tr key={id}>
-                <td className="px-6 py-4 font-bold text-obligon-green">{id}</td>
-                <td>{spend}</td>
-                <td>{volume}</td>
-                <td className={efficiency === "76%" ? "text-[#d71920]" : "text-obligon-green"}>{efficiency}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </Card>
+    <AsyncBoundary
+      status={status}
+      error={error?.message ?? null}
+      isEmpty={!vehicles || vehicles.length === 0}
+      onRetry={reload}
+      loadingLabel="Loading vehicles…"
+      empty={{ title: "No vehicle data", message: "Vehicle performance metrics will appear here." }}
+    >
+      <Card className="overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-6">
+          <h2 className="font-display text-2xl font-extrabold">Vehicle Performance</h2>
+          <button onClick={() => router.push("/customer/transactions")} className="text-sm font-extrabold text-obligon-green" type="button">View All</button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[520px] border-collapse text-left">
+            <thead className="bg-[#f0f4f0] text-xs uppercase tracking-[0.8px] text-[#3f463d]">
+              <tr><th className="px-6 py-4">Vehicle ID</th><th>Spend</th><th>Volume</th><th>Efficiency</th></tr>
+            </thead>
+            <tbody className="divide-y divide-[#eef3ee]">
+              {(vehicles ?? []).map(([id, spend, volume, efficiency]) => (
+                <tr key={id}>
+                  <td className="px-6 py-4 font-bold text-obligon-green">{id}</td>
+                  <td>{spend}</td>
+                  <td>{volume}</td>
+                  <td className={efficiency === "76%" ? "text-[#d71920]" : "text-obligon-green"}>{efficiency}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </AsyncBoundary>
   );
 }
 
 function ActivityList({ desktop = false }: { desktop?: boolean }) {
+  const { status, data: recentActivity, error, reload } = useAsync(() => api.getCustomerRecentActivity());
   return (
-    <Card className="overflow-hidden">
-      <div className="flex items-center justify-between px-6 py-6">
-        <h2 className="font-display text-2xl font-extrabold">{desktop ? "Recent Activity" : "Recent Transactions"}</h2>
-        <a href="/customer/transactions" className="text-sm font-bold text-obligon-green">View All</a>
-      </div>
-      <div className="divide-y divide-[#eef3ee]">
-        {recentActivity.map((item) => (
-          <a key={`${item.station}-${item.amount}`} href="/customer/transaction-detail" className="flex items-center gap-4 px-6 py-4">
-            <MiniIcon tone="muted"><Fuel size={18} /></MiniIcon>
-            <div className="min-w-0 flex-1">
-              <p className="font-extrabold">{item.station}</p>
-              <p className="text-sm text-obligon-text">{desktop ? item.time : item.meta}</p>
-            </div>
-            <p className="font-extrabold">{item.amount}</p>
-          </a>
-        ))}
-      </div>
-    </Card>
+    <AsyncBoundary
+      status={status}
+      error={error?.message ?? null}
+      isEmpty={!recentActivity || recentActivity.length === 0}
+      onRetry={reload}
+      loadingLabel="Loading activity…"
+      empty={{ title: "No recent activity", message: "Your recent transactions will appear here." }}
+    >
+      <Card className="overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-6">
+          <h2 className="font-display text-2xl font-extrabold">{desktop ? "Recent Activity" : "Recent Transactions"}</h2>
+          <a href="/customer/transactions" className="text-sm font-bold text-obligon-green">View All</a>
+        </div>
+        <div className="divide-y divide-[#eef3ee]">
+          {(recentActivity ?? []).map((item) => (
+            <a key={`${item.station}-${item.amount}`} href="/customer/transaction-detail" className="flex items-center gap-4 px-6 py-4">
+              <MiniIcon tone="muted"><Fuel size={18} /></MiniIcon>
+              <div className="min-w-0 flex-1">
+                <p className="font-extrabold">{item.station}</p>
+                <p className="text-sm text-obligon-text">{desktop ? item.time : item.meta}</p>
+              </div>
+              <p className="font-extrabold">{item.amount}</p>
+            </a>
+          ))}
+        </div>
+      </Card>
+    </AsyncBoundary>
   );
 }
 
@@ -522,12 +537,23 @@ function CardPage({
 
 function WalletPage({ onModal }: { onModal: (modal: CustomerModalType) => void }) {
   const router = useRouter();
+  const { status: topUpsStatus, data: desktopTopUps, error: topUpsError, reload: reloadTopUps } = useAsync(() => api.getCustomerDesktopTopUps());
+  const { data: topUpHistory } = useAsync(() => api.getCustomerTopUpHistory());
   return (
-    <Canvas>
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><h1 className="font-display text-3xl font-extrabold">Wallet Management</h1><p className="mt-2 text-obligon-text">Top up and manage your fleet balance.</p></div><button onClick={() => onModal("topup")} className="h-12 rounded-lg bg-obligon-green px-6 font-extrabold text-white" type="button">Add Funds</button></div>
-      <Card className="mt-8 p-7"><p className="text-xs font-extrabold uppercase text-obligon-text">Available Balance</p><p className="mt-3 font-display text-5xl font-extrabold">₦24,500.00</p><p className="mt-3 text-sm font-bold text-obligon-green">+12% • Auto-recharge enabled at ₦5,000</p></Card>
-      <Card className="mt-8 overflow-hidden"><div className="flex items-center justify-between px-6 py-5"><h2 className="font-display text-2xl font-extrabold">Recent Transactions</h2><button onClick={() => router.push("/customer/transactions")} className="text-sm font-bold text-obligon-green" type="button">View All</button></div><div className="hidden lg:block"><table className="w-full text-left"><thead className="bg-[#f0f4f0] text-xs uppercase"><tr>{["Date","Reference","Method","Amount"].map(h=><th className="px-6 py-4" key={h}>{h}</th>)}</tr></thead><tbody>{desktopTopUps.map(row=><tr className="border-t border-[#eef3ee]" key={row[1]}>{row.map(cell=><td className="px-6 py-4" key={cell}>{cell}</td>)}</tr>)}</tbody></table></div><div className="divide-y divide-[#eef3ee] lg:hidden">{topUpHistory.map(([method,date,amount])=><div key={date} className="flex justify-between p-5"><div><p className="font-extrabold">{method}</p><p className="text-sm text-obligon-text">{date}</p></div><p className="font-extrabold text-obligon-green">{amount}</p></div>)}</div></Card>
-    </Canvas>
+    <AsyncBoundary
+      status={topUpsStatus}
+      error={topUpsError?.message ?? null}
+      isEmpty={!desktopTopUps || desktopTopUps.length === 0}
+      onRetry={reloadTopUps}
+      loadingLabel="Loading wallet…"
+      empty={{ title: "No top-up history", message: "Your wallet transactions will appear here." }}
+    >
+      <Canvas>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><h1 className="font-display text-3xl font-extrabold">Wallet Management</h1><p className="mt-2 text-obligon-text">Top up and manage your fleet balance.</p></div><button onClick={() => onModal("topup")} className="h-12 rounded-lg bg-obligon-green px-6 font-extrabold text-white" type="button">Add Funds</button></div>
+        <Card className="mt-8 p-7"><p className="text-xs font-extrabold uppercase text-obligon-text">Available Balance</p><p className="mt-3 font-display text-5xl font-extrabold">₦24,500.00</p><p className="mt-3 text-sm font-bold text-obligon-green">+12% • Auto-recharge enabled at ₦5,000</p></Card>
+        <Card className="mt-8 overflow-hidden"><div className="flex items-center justify-between px-6 py-5"><h2 className="font-display text-2xl font-extrabold">Recent Transactions</h2><button onClick={() => router.push("/customer/transactions")} className="text-sm font-bold text-obligon-green" type="button">View All</button></div><div className="hidden lg:block"><table className="w-full text-left"><thead className="bg-[#f0f4f0] text-xs uppercase"><tr>{["Date","Reference","Method","Amount"].map((h) => <th className="px-6 py-4" key={h}>{h}</th>)}</tr></thead><tbody>{(desktopTopUps ?? []).map((row) => <tr className="border-t border-[#eef3ee]" key={row[1]}>{row.map((cell) => <td className="px-6 py-4" key={cell}>{cell}</td>)}</tr>)}</tbody></table></div><div className="divide-y divide-[#eef3ee] lg:hidden">{(topUpHistory ?? []).map(([method, date, amount]) => <div key={date} className="flex justify-between p-5"><div><p className="font-extrabold">{method}</p><p className="text-sm text-obligon-text">{date}</p></div><p className="font-extrabold text-obligon-green">{amount}</p></div>)}</div></Card>
+      </Canvas>
+    </AsyncBoundary>
   );
 }
 
