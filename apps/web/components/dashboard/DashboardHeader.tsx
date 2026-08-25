@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, Plus, Search } from "lucide-react";
-import { dashboardNav, pageCopy } from "./dashboard-data";
+import { dashboardNav, pageCopy } from "@/lib/mock/dashboard-data";
+import { useSession } from "@/components/shared/AuthContext";
 
 function activePageForPath(pathname: string) {
   return dashboardNav.find((item) => item.href === pathname)?.key ?? "overview";
@@ -20,7 +21,9 @@ function initials(name: string) {
 
 export function DashboardHeader() {
   const pathname = usePathname();
+  const { user } = useSession();
   const page = pageCopy[activePageForPath(pathname)];
+  const displayName = user?.name ?? page.userName ?? "Partner";
 
   return (
     <header className="sticky top-0 z-30 border-b border-[#e3e4ef] bg-[#f7f7fd]/95 backdrop-blur">
@@ -51,7 +54,7 @@ export function DashboardHeader() {
               <span className="absolute right-1 top-1 size-2 rounded-full border border-[#f7f7fd] bg-obligon-green" />
             </Link>
             <div className="grid size-8 place-items-center rounded-full bg-[#cfd8f6] text-[11px] font-extrabold text-obligon-blue">
-              {initials(page.userName ?? "AB")}
+              {initials(displayName)}
             </div>
           </div>
         </div>

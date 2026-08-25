@@ -4,7 +4,7 @@ import Link from "next/link";
 import * as React from "react";
 import { usePathname } from "next/navigation";
 import { Bell, CalendarDays, HelpCircle, Menu, Search } from "lucide-react";
-import { adminNav, adminPageCopy } from "./admin-data";
+import { adminNav, adminPageCopy } from "@/lib/mock/admin-data";
 
 function currentPage(pathname: string) {
   return adminNav.find((item) => item.href === pathname)?.key ?? "companies";

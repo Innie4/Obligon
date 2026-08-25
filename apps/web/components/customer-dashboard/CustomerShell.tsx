@@ -16,7 +16,8 @@ import {
   WalletCards
 } from "lucide-react";
 import { assets } from "@/components/landing/assets";
-import { customerNav, secondaryCustomerNav, pageTitles, type CustomerPageKey } from "./customer-data";
+import { customerNav, secondaryCustomerNav, pageTitles, type CustomerPageKey } from "@/lib/mock/customer-data";
+import { useSession } from "@/components/shared/AuthContext";
 
 type CustomerShellProps = {
   children: React.ReactNode;
@@ -50,6 +51,7 @@ function pageForPath(pathname: string): CustomerPageKey {
 
 function Sidebar() {
   const pathname = usePathname();
+  const { user } = useSession();
   const active = pageForPath(pathname);
   const accountKeys: CustomerPageKey[] = secondaryCustomerNav.map((item) => item.key);
   const [accountOpen, setAccountOpen] = useState(accountKeys.includes(active));
@@ -74,11 +76,11 @@ function Sidebar() {
       </Link>
 
       <div className="mt-16 flex items-center gap-4 px-4">
-        <span className="grid size-12 place-items-center rounded-full bg-[#dbe7ff] text-sm font-extrabold text-obligon-blue">FM</span>
+        <span className="grid size-12 place-items-center rounded-full bg-[#dbe7ff] text-sm font-extrabold text-obligon-blue">{user?.initials ?? "FM"}</span>
         <div>
-          <p className="font-extrabold text-obligon-green">Fleet Manager</p>
-          <p className="text-sm text-obligon-text">Obligon LTD Enterprise</p>
-          <p className="text-xs font-medium text-[#3754a5]">Premium Account</p>
+          <p className="font-extrabold text-obligon-green">{user?.name ?? "Fleet Manager"}</p>
+          <p className="text-sm text-obligon-text">{user?.organization ?? "Obligon LTD Enterprise"}</p>
+          <p className="text-xs font-medium text-[#3754a5]">{user?.accountTier ?? "Premium Account"}</p>
         </div>
       </div>
 

@@ -16,8 +16,9 @@ import {
   WalletCards
 } from "lucide-react";
 import { assets } from "@/components/landing/assets";
-import { adminNav, type AdminIconKey } from "./admin-data";
+import { adminNav, type AdminIconKey } from "@/lib/mock/admin-data";
 import { ConfirmModal } from "@/components/shared/Dialogs";
+import { useSession } from "@/components/shared/AuthContext";
 
 const iconMap = {
   dashboard: Grid2X2,
@@ -32,6 +33,7 @@ const iconMap = {
 export function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { user } = useSession();
   const [logoutOpen, setLogoutOpen] = React.useState(false);
 
   return (
@@ -64,13 +66,13 @@ export function AdminSidebar() {
       </nav>
 
       <div className="border-t border-white/12 px-6 py-6">
-        <div className="flex items-center gap-3 rounded-lg px-2 py-3">
-          <span className="grid size-10 place-items-center rounded-full bg-obligon-lime text-sm font-extrabold text-[#061958]">OA</span>
-          <div>
-            <p className="text-sm font-extrabold">Obligon LTD Admin</p>
-            <p className="text-xs font-medium text-[#9aa8d0]">Level 4 Access</p>
+          <div className="flex items-center gap-3 rounded-lg px-2 py-3">
+            <span className="grid size-10 place-items-center rounded-full bg-obligon-lime text-sm font-extrabold text-[#061958]">{user?.initials ?? "OA"}</span>
+            <div>
+              <p className="text-sm font-extrabold">{user?.name ?? "Obligon LTD Admin"}</p>
+              <p className="text-xs font-medium text-[#9aa8d0]">{user?.accountTier ?? "Level 4 Access"}</p>
+            </div>
           </div>
-        </div>
         <button
           type="button"
           onClick={() => setLogoutOpen(true)}

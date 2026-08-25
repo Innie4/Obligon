@@ -41,7 +41,7 @@ import {
   type CustomerPageKey,
   type CustomerTone,
   type CustomerTransaction
-} from "./customer-data";
+} from "@/lib/mock/customer-data";
 import { CustomerModals, ModalFrame, type CustomerModalType } from "./CustomerModals";
 import { ConfirmModal, PinModal } from "../shared/Dialogs";
 

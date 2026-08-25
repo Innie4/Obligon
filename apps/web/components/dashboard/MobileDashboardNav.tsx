@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { dashboardNav } from "./dashboard-data";
+import { dashboardNav } from "@/lib/mock/dashboard-data";
 
 export function MobileDashboardNav() {
   const pathname = usePathname();

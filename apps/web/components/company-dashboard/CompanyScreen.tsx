@@ -41,7 +41,7 @@ import {
   type CompanyTone,
   type Metric,
   type Row
-} from "./company-data";
+} from "@/lib/mock/company-data";
 import { CompanyModals } from "./CompanyModals";
 
 const tone: Record<CompanyTone, string> = {

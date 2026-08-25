@@ -25,7 +25,7 @@ import {
   Users
 } from "lucide-react";
 import { assets } from "@/components/landing/assets";
-import { dashboardNav, type DashboardIcon, type DashboardPageKey } from "./dashboard-data";
+import { dashboardNav, type DashboardIcon, type DashboardPageKey } from "@/lib/mock/dashboard-data";
 
 const iconMap = {
   overview: LayoutDashboard,

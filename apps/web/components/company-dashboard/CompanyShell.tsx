@@ -23,7 +23,8 @@ import {
   X
 } from "lucide-react";
 import { assets } from "@/components/landing/assets";
-import { companyNav, pageCopy, type CompanyPageKey } from "./company-data";
+import { companyNav, pageCopy, type CompanyPageKey } from "@/lib/mock/company-data";
+import { useSession } from "@/components/shared/AuthContext";
 
 type CompanyShellProps = {
   children: React.ReactNode;
@@ -63,6 +64,7 @@ function activePage(pathname: string): CompanyPageKey {
 
 function CompanySidebar() {
   const pathname = usePathname();
+  const { user } = useSession();
   const active = activePage(pathname);
 
   return (
@@ -94,8 +96,8 @@ function CompanySidebar() {
         </Link>
       </nav>
       <div className="mt-6 rounded-lg bg-[#f2f6f2] p-4">
-        <p className="text-sm font-extrabold text-[#07162f]">Obligon LTD Logistics Inc.</p>
-        <p className="mt-1 text-xs text-obligon-text">Enterprise Fleet</p>
+        <p className="text-sm font-extrabold text-[#07162f]">{user?.organization ?? "Obligon LTD Logistics Inc."}</p>
+        <p className="mt-1 text-xs text-obligon-text">{user?.accountTier ?? "Enterprise Fleet"}</p>
       </div>
     </aside>
   );

@@ -1,3 +1,15 @@
+import type { SessionUser } from "@/lib/services/types";
+
+export const sessionUser: SessionUser = {
+  id: "usr_demo_001",
+  name: "Fleet Manager",
+  email: "manager@obligon.enterprise.com",
+  role: "customer",
+  organization: "Obligon LTD Enterprise",
+  initials: "FM",
+  accountTier: "Premium Account"
+};
+
 export type CustomerPageKey =
   | "overview"
   | "transactions"

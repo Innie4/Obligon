@@ -35,7 +35,7 @@ import {
   type AdminPageKey,
   type AdminRow,
   type AdminTone
-} from "./admin-data";
+} from "@/lib/mock/admin-data";
 import { AdminModals, type AdminModalType } from "./AdminModals";
 
 const tonePills: Record<AdminTone, string> = {

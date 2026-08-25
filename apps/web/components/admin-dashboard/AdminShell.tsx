@@ -5,7 +5,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { AdminHeader } from "./AdminHeader";
 import { AdminSidebar } from "./AdminSidebar";
-import { adminNav } from "./admin-data";
+import { adminNav } from "@/lib/mock/admin-data";
 
 type AdminShellProps = {
   children: React.ReactNode;

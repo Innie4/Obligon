@@ -1,0 +1,108 @@
+// Service-client layer (integration seam).
+//
+// The UI should depend ONLY on the `ApiClient` interface below, never on a
+// concrete transport. Today a `MockApiClient` returns the isolated datasets in
+// `@/lib/mock`. When a real backend exists, implement `ApiClient` with `fetch`
+// (see `LiveApiClient` stub) and call `createApiClient("live")`.
+//
+// No real endpoints are wired yet — this is the boundary for future backend work.
+
+import {
+  sessionUser,
+  transactionHistory,
+  stations,
+  notifications
+} from "@/lib/mock/customer-data";
+import { vehicleRows } from "@/lib/mock/company-data";
+
+import type {
+  ApiResult,
+  AppNotification,
+  CustomerTransaction,
+  SessionUser,
+  Station,
+  Vehicle
+} from "./types";
+
+export interface ApiClient {
+  getSession(): Promise<SessionUser | null>;
+  getCustomerTransactions(): Promise<CustomerTransaction[]>;
+  getStations(): Promise<Station[]>;
+  getVehicles(): Promise<Vehicle[]>;
+  getNotifications(): Promise<AppNotification[]>;
+
+  /**
+   * Generic transport used by the future live client. The mock client rejects
+   * it so accidental "live" calls fail loudly instead of silently returning mock data.
+   */
+  request<T>(path: string, init?: RequestInit): Promise<T>;
+}
+
+class MockApiClient implements ApiClient {
+  async getSession(): Promise<SessionUser | null> {
+    return sessionUser;
+  }
+
+  async getCustomerTransactions(): Promise<CustomerTransaction[]> {
+    return transactionHistory;
+  }
+
+  async getStations(): Promise<Station[]> {
+    return stations;
+  }
+
+  async getVehicles(): Promise<Vehicle[]> {
+    return vehicleRows.map((row) => ({
+      plate: row.cells[1],
+      model: row.cells[0],
+      assignedCard: row.cells[2],
+      status: row.status ?? row.cells[3]
+    }));
+  }
+
+  async getNotifications(): Promise<AppNotification[]> {
+    return notifications;
+  }
+
+  async request<T>(_path: string, _init?: RequestInit): Promise<T> {
+    throw new Error("Live backend is not wired yet. Resolve via MockApiClient.");
+  }
+}
+
+function LiveApiClient(_baseUrl: string): ApiClient {
+  return {
+    async getSession() {
+      throw new Error("LiveApiClient.getSession not implemented");
+    },
+    async getCustomerTransactions() {
+      throw new Error("LiveApiClient.getCustomerTransactions not implemented");
+    },
+    async getStations() {
+      throw new Error("LiveApiClient.getStations not implemented");
+    },
+    async getVehicles() {
+      throw new Error("LiveApiClient.getVehicles not implemented");
+    },
+    async getNotifications() {
+      throw new Error("LiveApiClient.getNotifications not implemented");
+    },
+    async request<T>(path: string, init?: RequestInit): Promise<T> {
+      const res = await fetch(path, init);
+      if (!res.ok) {
+        throw new Error(`Request failed: ${res.status} ${res.statusText}`);
+      }
+      return (await res.json()) as T;
+    }
+  };
+}
+
+export type ApiMode = "mock" | "live";
+
+export function createApiClient(mode: ApiMode = "mock", baseUrl = ""): ApiClient {
+  return mode === "live" ? LiveApiClient(baseUrl) : new MockApiClient();
+}
+
+// Single app-wide client instance. Swap the mode when the backend is ready.
+export const api: ApiClient = createApiClient("mock");
+
+export type { ApiResult };

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { AlertTriangle, Car, CheckCircle2, CreditCard, Download, Loader2, UserPlus, Wrench, X } from "lucide-react";
-import type { CompanyModalKey } from "./company-data";
+import type { CompanyModalKey } from "@/lib/mock/company-data";
 
 type CompanyModalsProps = {
   modal: CompanyModalKey;

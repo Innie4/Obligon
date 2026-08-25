@@ -36,7 +36,7 @@ import {
   type Metric,
   type StatusTone,
   type TableRow
-} from "./dashboard-data";
+} from "@/lib/mock/dashboard-data";
 import { MobileDashboardNav } from "./MobileDashboardNav";
 import { ActionFeedback, type ActionState } from "@/components/shared/Dialogs";
 
