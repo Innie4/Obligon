@@ -20,11 +20,8 @@ import {
   Wrench
 } from "lucide-react";
 import {
-  cardMetrics,
   companyNav,
-  overviewMetrics,
   pageCopy,
-  recentTransactions,
   type CompanyModalKey,
   type CompanyPageKey,
   type CompanyTone,
@@ -122,7 +119,31 @@ function SpendChart() {
 }
 
 function Overview({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
-  return <Canvas><Header pageKey="overview" onModal={onModal} /><div className="mt-7 grid gap-5 md:grid-cols-3">{overviewMetrics.map((m, i) => <MetricCard key={m.label} metric={m} icon={[<Car key="car" size={20} />, <Fuel key="fuel" size={20} />, <CreditCard key="card" size={20} />][i]} />)}</div><section className="mt-7 grid gap-6 xl:grid-cols-[1fr_320px]"><article className="rounded-lg border border-[#dfe5ec] bg-white p-6"><div className="flex justify-between"><h2 className="font-display text-2xl font-extrabold">Monthly Spend</h2><span className="text-sm font-bold text-obligon-text">Last 6 Months</span></div><SpendChart /></article><article className="rounded-lg border border-[#dfe5ec] bg-white p-6"><h2 className="font-display text-2xl font-extrabold">Spend by Category</h2><div className="mx-auto mt-7 grid size-40 place-items-center rounded-full bg-[conic-gradient(#63b800_0_45%,#07162f_45%_80%,#aaf857_80%_100%)]"><div className="grid size-24 place-items-center rounded-full bg-white text-center"><p className="font-display text-2xl font-extrabold">₦4.2M</p></div></div>{["Fuel 45%","Maintenance 35%","Tolls/Fees 20%"].map((x)=><p key={x} className="mt-3 text-sm font-bold">{x}</p>)}</article></section><div className="mt-7"><Table title="Recent Transactions" columns={["Date","Vehicle","Driver","Amount","Status"]} rows={recentTransactions} actionLabel="View All" onAction={() => onModal("export")} /></div></Canvas>;
+  const { status: metricsStatus, data: overviewMetrics, error: metricsError, reload: reloadMetrics } = useAsync(() => api.getCompanyOverviewMetrics());
+  const { status: recentStatus, data: recentTransactions, error: recentError, reload: reloadRecent } = useAsync(() => api.getCompanyRecentTransactions());
+  const status = metricsStatus === "error" || recentStatus === "error" ? "error" : metricsStatus === "loading" || recentStatus === "loading" ? "loading" : "success";
+  const error = metricsError?.message ?? recentError?.message ?? null;
+  const reload = () => { reloadMetrics(); reloadRecent(); };
+  return (
+    <AsyncBoundary
+      status={status}
+      error={error}
+      isEmpty={(overviewMetrics?.length ?? 0) === 0 && (recentTransactions?.length ?? 0) === 0}
+      onRetry={reload}
+      loadingLabel="Loading dashboard…"
+      empty={{ title: "No data yet", message: "Your fleet overview will appear here once activity is recorded." }}
+    >
+      <Canvas>
+        <Header pageKey="overview" onModal={onModal} />
+        <div className="mt-7 grid gap-5 md:grid-cols-3">{(overviewMetrics ?? []).map((m, i) => <MetricCard key={m.label} metric={m} icon={[<Car key="car" size={20} />, <Fuel key="fuel" size={20} />, <CreditCard key="card" size={20} />][i]} />)}</div>
+        <section className="mt-7 grid gap-6 xl:grid-cols-[1fr_320px]">
+          <article className="rounded-lg border border-[#dfe5ec] bg-white p-6"><div className="flex justify-between"><h2 className="font-display text-2xl font-extrabold">Monthly Spend</h2><span className="text-sm font-bold text-obligon-text">Last 6 Months</span></div><SpendChart /></article>
+          <article className="rounded-lg border border-[#dfe5ec] bg-white p-6"><h2 className="font-display text-2xl font-extrabold">Spend by Category</h2><div className="mx-auto mt-7 grid size-40 place-items-center rounded-full bg-[conic-gradient(#63b800_0_45%,#07162f_45%_80%,#aaf857_80%_100%)]"><div className="grid size-24 place-items-center rounded-full bg-white text-center"><p className="font-display text-2xl font-extrabold">₦4.2M</p></div></div>{["Fuel 45%", "Maintenance 35%", "Tolls/Fees 20%"].map((x) => <p key={x} className="mt-3 text-sm font-bold">{x}</p>)}</article>
+        </section>
+        <div className="mt-7"><Table title="Recent Transactions" columns={["Date", "Vehicle", "Driver", "Amount", "Status"]} rows={recentTransactions ?? []} actionLabel="View All" onAction={() => onModal("export")} /></div>
+      </Canvas>
+    </AsyncBoundary>
+  );
 }
 
 function Vehicles({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
@@ -157,6 +178,7 @@ function Vehicles({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
 
 function Cards({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
   const { status, data: cardRows, error, reload } = useAsync(() => api.getCompanyCards());
+  const { data: cardMetrics } = useAsync(() => api.getCompanyCardMetrics());
   return (
     <AsyncBoundary
       status={status}
@@ -168,7 +190,7 @@ function Cards({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
     >
       <Canvas>
         <Header pageKey="cards" action={{ label: "Issue New Card", modal: "newCard" }} onModal={onModal} />
-        <div className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-4">{cardMetrics.map((m) => <MetricCard key={m.label} metric={m} icon={<CreditCard size={20} />} />)}</div>
+        <div className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-4">{(cardMetrics ?? []).map((m) => <MetricCard key={m.label} metric={m} icon={<CreditCard size={20} />} />)}</div>
         <div className="mt-7"><Table title="All Cards" columns={["Card Details", "Card Number", "Assignment", "Spend Limit", "Status"]} rows={cardRows ?? []} actionLabel="Freeze" onAction={() => onModal("cardConfirm")} /></div>
       </Canvas>
     </AsyncBoundary>

@@ -25,9 +25,12 @@ import {
   invoices,
   teamRows,
   tickets,
-  maintenanceRows
+  maintenanceRows,
+  overviewMetrics,
+  cardMetrics,
+  recentTransactions
 } from "@/lib/mock/company-data";
-import type { Row } from "@/lib/mock/company-data";
+import type { Metric, Row } from "@/lib/mock/company-data";
 
 import type {
   ApiResult,
@@ -57,6 +60,9 @@ export interface ApiClient {
   getCompanyTeam(): Promise<Row[]>;
   getCompanyTickets(): Promise<Row[]>;
   getCompanyMaintenance(): Promise<Row[]>;
+  getCompanyOverviewMetrics(): Promise<Metric[]>;
+  getCompanyCardMetrics(): Promise<Metric[]>;
+  getCompanyRecentTransactions(): Promise<Row[]>;
 
   /**
    * Generic transport used by the future live client. The mock client rejects
@@ -139,6 +145,18 @@ class MockApiClient implements ApiClient {
     return maintenanceRows;
   }
 
+  async getCompanyOverviewMetrics(): Promise<Metric[]> {
+    return overviewMetrics;
+  }
+
+  async getCompanyCardMetrics(): Promise<Metric[]> {
+    return cardMetrics;
+  }
+
+  async getCompanyRecentTransactions(): Promise<Row[]> {
+    return recentTransactions;
+  }
+
   async request<T>(_path: string, _init?: RequestInit): Promise<T> {
     throw new Error("Live backend is not wired yet. Resolve via MockApiClient.");
   }
@@ -196,6 +214,15 @@ function LiveApiClient(_baseUrl: string): ApiClient {
     },
     async getCompanyMaintenance() {
       throw new Error("LiveApiClient.getCompanyMaintenance not implemented");
+    },
+    async getCompanyOverviewMetrics() {
+      throw new Error("LiveApiClient.getCompanyOverviewMetrics not implemented");
+    },
+    async getCompanyCardMetrics() {
+      throw new Error("LiveApiClient.getCompanyCardMetrics not implemented");
+    },
+    async getCompanyRecentTransactions() {
+      throw new Error("LiveApiClient.getCompanyRecentTransactions not implemented");
     },
     async request<T>(path: string, init?: RequestInit): Promise<T> {
       const res = await fetch(path, init);
