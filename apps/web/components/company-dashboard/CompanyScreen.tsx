@@ -26,16 +26,12 @@ import {
   companyNav,
   invoices,
   maintenanceRows,
-  notifications,
   overviewMetrics,
   pageCopy,
   recentTransactions,
   spendRows,
-  stations,
   teamRows,
   tickets,
-  transactionRows,
-  vehicleRows,
   type CompanyModalKey,
   type CompanyPageKey,
   type CompanyTone,
@@ -43,6 +39,9 @@ import {
   type Row
 } from "@/lib/mock/company-data";
 import { CompanyModals } from "./CompanyModals";
+import { api } from "@/lib/services";
+import { useAsync } from "@/components/shared/useAsync";
+import { AsyncBoundary } from "@/components/shared/States";
 
 const tone: Record<CompanyTone, string> = {
   green: "bg-[#e8fbd7] text-obligon-green",
@@ -134,7 +133,33 @@ function Overview({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
 }
 
 function Vehicles({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
-  return <Canvas><Header pageKey="vehicles" action={{ label: "Add Vehicle", modal: "vehicle" }} onModal={onModal} /><div className="mt-6 flex gap-3"><button type="button" onClick={() => onModal("action")} className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#dfe5ec] bg-white px-4 text-sm font-bold"><Filter size={15}/>Filter</button><button onClick={()=>onModal("driver")} className="h-10 rounded-lg border border-[#dfe5ec] bg-white px-4 text-sm font-bold">Add Driver</button></div><div className="mt-6"><Table title="Vehicles" columns={["Vehicle","Plate Number","Assigned Card","Status"]} rows={vehicleRows} actionLabel="Assign Card" onAction={() => onModal("assign")} /></div><article className="mt-7 rounded-lg bg-[#07162f] p-7 text-white"><h2 className="font-display text-2xl font-extrabold">Optimize Your Fleet</h2><p className="mt-2 max-w-xl text-white/75">Assign Fuelvista cards to all your active vehicles to track real-time fuel spending and gain actionable insights.</p><button onClick={()=>onModal("assign")} className="mt-6 rounded-lg bg-obligon-lime px-5 py-3 font-extrabold text-[#07162f]">Bulk Assign Cards</button></article></Canvas>;
+  const { status, data: vehicleRows, error, reload } = useAsync(() => api.getCompanyVehicles());
+  return (
+    <AsyncBoundary
+      status={status}
+      error={error?.message ?? null}
+      isEmpty={!vehicleRows || vehicleRows.length === 0}
+      onRetry={reload}
+      loadingLabel="Loading vehicles…"
+      empty={{ title: "No vehicles", message: "Add vehicles to your fleet to start tracking fuel spend." }}
+    >
+      <Canvas>
+        <Header pageKey="vehicles" action={{ label: "Add Vehicle", modal: "vehicle" }} onModal={onModal} />
+        <div className="mt-6 flex gap-3">
+          <button type="button" onClick={() => onModal("action")} className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#dfe5ec] bg-white px-4 text-sm font-bold"><Filter size={15} />Filter</button>
+          <button onClick={() => onModal("driver")} className="h-10 rounded-lg border border-[#dfe5ec] bg-white px-4 text-sm font-bold">Add Driver</button>
+        </div>
+        <div className="mt-6">
+          <Table title="Vehicles" columns={["Vehicle", "Plate Number", "Assigned Card", "Status"]} rows={vehicleRows ?? []} actionLabel="Assign Card" onAction={() => onModal("assign")} />
+        </div>
+        <article className="mt-7 rounded-lg bg-[#07162f] p-7 text-white">
+          <h2 className="font-display text-2xl font-extrabold">Optimize Your Fleet</h2>
+          <p className="mt-2 max-w-xl text-white/75">Assign Fuelvista cards to all your active vehicles to track real-time fuel spending and gain actionable insights.</p>
+          <button onClick={() => onModal("assign")} className="mt-6 rounded-lg bg-obligon-lime px-5 py-3 font-extrabold text-[#07162f]">Bulk Assign Cards</button>
+        </article>
+      </Canvas>
+    </AsyncBoundary>
+  );
 }
 
 function Cards({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
@@ -142,7 +167,29 @@ function Cards({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
 }
 
 function Transactions({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
-  return <Canvas><Header pageKey="transactions" action={{ label: "Export", modal: "export", icon: <Download size={16}/> }} onModal={onModal} /><div className="mt-6 flex flex-wrap gap-3">{["Filter","Last 30 Days","All Vehicles","All Drivers"].map((x)=><button type="button" onClick={() => onModal("action")} key={x} className="h-10 rounded-lg border border-[#dfe5ec] bg-white px-4 text-sm font-bold">{x}</button>)}</div><div className="mt-6"><Table title="Transactions" columns={["Date & Time","Vehicle / Driver","Merchant","Card","Amount","Status"]} rows={transactionRows} actionLabel="Export" onAction={() => onModal("export")} /></div></Canvas>;
+  const { status, data: transactionRows, error, reload } = useAsync(() => api.getCompanyTransactions());
+  return (
+    <AsyncBoundary
+      status={status}
+      error={error?.message ?? null}
+      isEmpty={!transactionRows || transactionRows.length === 0}
+      onRetry={reload}
+      loadingLabel="Loading transactions…"
+      empty={{ title: "No transactions", message: "Company transaction activity will appear here once recorded." }}
+    >
+      <Canvas>
+        <Header pageKey="transactions" action={{ label: "Export", modal: "export", icon: <Download size={16} /> }} onModal={onModal} />
+        <div className="mt-6 flex flex-wrap gap-3">
+          {["Filter", "Last 30 Days", "All Vehicles", "All Drivers"].map((x) => (
+            <button type="button" onClick={() => onModal("action")} key={x} className="h-10 rounded-lg border border-[#dfe5ec] bg-white px-4 text-sm font-bold">{x}</button>
+          ))}
+        </div>
+        <div className="mt-6">
+          <Table title="Transactions" columns={["Date & Time", "Vehicle / Driver", "Merchant", "Card", "Amount", "Status"]} rows={transactionRows ?? []} actionLabel="Export" onAction={() => onModal("export")} />
+        </div>
+      </Canvas>
+    </AsyncBoundary>
+  );
 }
 
 function Reports({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
@@ -150,7 +197,40 @@ function Reports({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
 }
 
 function Stations({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
-  return <Canvas><Header pageKey="stations" onModal={onModal} /><div className="mt-6 grid gap-6 xl:grid-cols-[1fr_390px]"><div className="min-h-[580px] rounded-lg border border-[#dfe5ec] bg-[#dfe8ed] p-6 [background-image:linear-gradient(30deg,rgba(7,22,47,.12)_12%,transparent_12.5%,transparent_87%,rgba(7,22,47,.12)_87.5%)] [background-size:54px_90px]"><span className="rounded-lg bg-white px-4 py-2 font-extrabold">₦3.95</span></div><div className="space-y-4">{stations.map(([name,dist,address,price,badge])=><article key={name} className="rounded-lg border border-[#dfe5ec] bg-white p-5"><div className="flex justify-between"><div><h2 className="font-display text-xl font-extrabold">{name}</h2><p className="text-sm text-obligon-text">{dist}</p><p className="mt-1 text-sm text-obligon-text">{address}</p></div><Status status={badge} statusTone="green"/></div><p className="mt-5 text-xs font-extrabold uppercase text-obligon-text">Diesel Price</p><p className="text-3xl font-extrabold">{price}<span className="text-sm font-normal"> /gal</span></p></article>)}</div></div></Canvas>;
+  const { status, data: stations, error, reload } = useAsync(() => api.getCompanyStations());
+  return (
+    <AsyncBoundary
+      status={status}
+      error={error?.message ?? null}
+      isEmpty={!stations || stations.length === 0}
+      onRetry={reload}
+      loadingLabel="Loading stations…"
+      empty={{ title: "No stations", message: "Partner station listings will appear here." }}
+    >
+      <Canvas>
+        <Header pageKey="stations" onModal={onModal} />
+        <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_390px]">
+          <div className="min-h-[580px] rounded-lg border border-[#dfe5ec] bg-[#dfe8ed] p-6 [background-image:linear-gradient(30deg,rgba(7,22,47,.12)_12%,transparent_12.5%,transparent_87%,rgba(7,22,47,.12)_87.5%)] [background-size:54px_90px]"><span className="rounded-lg bg-white px-4 py-2 font-extrabold">₦3.95</span></div>
+          <div className="space-y-4">
+            {(stations ?? []).map(([name, dist, address, price, badge]) => (
+              <article key={name} className="rounded-lg border border-[#dfe5ec] bg-white p-5">
+                <div className="flex justify-between">
+                  <div>
+                    <h2 className="font-display text-xl font-extrabold">{name}</h2>
+                    <p className="text-sm text-obligon-text">{dist}</p>
+                    <p className="mt-1 text-sm text-obligon-text">{address}</p>
+                  </div>
+                  <Status status={badge} statusTone="green" />
+                </div>
+                <p className="mt-5 text-xs font-extrabold uppercase text-obligon-text">Diesel Price</p>
+                <p className="text-3xl font-extrabold">{price}<span className="text-sm font-normal"> /gal</span></p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </Canvas>
+    </AsyncBoundary>
+  );
 }
 
 function Roadside({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
@@ -169,7 +249,38 @@ function Team({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
 
 function Notifications({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
   const [allRead, setAllRead] = React.useState(false);
-  return <Canvas><Header pageKey="notifications" onModal={onModal} /><p className="mt-2 text-obligon-text">{allRead ? "All notifications are marked as read for this session." : "You have 3 unread notifications."}</p><button type="button" disabled={allRead} onClick={() => setAllRead(true)} className="mt-5 h-10 rounded-lg bg-obligon-green px-4 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-60">{allRead ? "ALL CAUGHT UP" : "MARK ALL AS READ"}</button><section className="mt-7 space-y-4">{notifications.map(([title,time,body,badge,action])=><article key={title} className={`rounded-lg border border-[#dfe5ec] bg-white p-5 ${allRead ? "opacity-70" : ""}`}><div className="flex justify-between"><h2 className="font-display text-xl font-extrabold">{title}</h2><span className="text-sm text-obligon-text">{time}</span></div><p className="mt-2 text-obligon-text">{body}</p><div className="mt-4 flex gap-2">{badge ? <Status status={badge} statusTone="blue"/> : null}{action ? <button type="button" onClick={() => onModal("action")} className="rounded-full bg-[#ffe8e8] px-3 py-1 text-[10px] font-extrabold uppercase text-[#c1121f]">{action}</button> : null}</div></article>)}</section></Canvas>;
+  const { status, data: notifications, error, reload } = useAsync(() => api.getCompanyNotifications());
+  return (
+    <AsyncBoundary
+      status={status}
+      error={error?.message ?? null}
+      isEmpty={!notifications || notifications.length === 0}
+      onRetry={reload}
+      loadingLabel="Loading notifications…"
+      empty={{ title: "No notifications", message: "You're all caught up." }}
+    >
+      <Canvas>
+        <Header pageKey="notifications" onModal={onModal} />
+        <p className="mt-2 text-obligon-text">{allRead ? "All notifications are marked as read for this session." : "You have 3 unread notifications."}</p>
+        <button type="button" disabled={allRead} onClick={() => setAllRead(true)} className="mt-5 h-10 rounded-lg bg-obligon-green px-4 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-60">{allRead ? "ALL CAUGHT UP" : "MARK ALL AS READ"}</button>
+        <section className="mt-7 space-y-4">
+          {(notifications ?? []).map(([title, time, body, badge, action]) => (
+            <article key={title} className={`rounded-lg border border-[#dfe5ec] bg-white p-5 ${allRead ? "opacity-70" : ""}`}>
+              <div className="flex justify-between">
+                <h2 className="font-display text-xl font-extrabold">{title}</h2>
+                <span className="text-sm text-obligon-text">{time}</span>
+              </div>
+              <p className="mt-2 text-obligon-text">{body}</p>
+              <div className="mt-4 flex gap-2">
+                {badge ? <Status status={badge} statusTone="blue" /> : null}
+                {action ? <button type="button" onClick={() => onModal("action")} className="rounded-full bg-[#ffe8e8] px-3 py-1 text-[10px] font-extrabold uppercase text-[#c1121f]">{action}</button> : null}
+              </div>
+            </article>
+          ))}
+        </section>
+      </Canvas>
+    </AsyncBoundary>
+  );
 }
 
 function Support({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {

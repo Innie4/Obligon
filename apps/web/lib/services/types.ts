@@ -62,6 +62,9 @@ export interface MobileTransactionGroup {
   items: MobileTransactionItem[];
 }
 
+export type CompanyStationRow = [string, string, string, string, string];
+export type CompanyNotificationRow = [string, string, string, string, string?];
+
 export type AsyncStatus = "idle" | "loading" | "success" | "error";
 
 export interface ApiResult<T> {

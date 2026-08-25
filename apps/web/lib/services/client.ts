@@ -14,7 +14,13 @@ import {
   notifications,
   mobileHistory
 } from "@/lib/mock/customer-data";
-import { vehicleRows } from "@/lib/mock/company-data";
+import {
+  vehicleRows,
+  transactionRows,
+  stations as companyStations,
+  notifications as companyNotifications
+} from "@/lib/mock/company-data";
+import type { Row } from "@/lib/mock/company-data";
 
 import type {
   ApiResult,
@@ -33,6 +39,10 @@ export interface ApiClient {
   getStations(): Promise<Station[]>;
   getVehicles(): Promise<Vehicle[]>;
   getNotifications(): Promise<AppNotification[]>;
+  getCompanyVehicles(): Promise<Row[]>;
+  getCompanyTransactions(): Promise<Row[]>;
+  getCompanyStations(): Promise<string[][]>;
+  getCompanyNotifications(): Promise<string[][]>;
 
   /**
    * Generic transport used by the future live client. The mock client rejects
@@ -71,6 +81,22 @@ class MockApiClient implements ApiClient {
     return notifications;
   }
 
+  async getCompanyVehicles(): Promise<Row[]> {
+    return vehicleRows;
+  }
+
+  async getCompanyTransactions(): Promise<Row[]> {
+    return transactionRows;
+  }
+
+  async getCompanyStations(): Promise<string[][]> {
+    return companyStations;
+  }
+
+  async getCompanyNotifications(): Promise<string[][]> {
+    return companyNotifications;
+  }
+
   async request<T>(_path: string, _init?: RequestInit): Promise<T> {
     throw new Error("Live backend is not wired yet. Resolve via MockApiClient.");
   }
@@ -95,6 +121,18 @@ function LiveApiClient(_baseUrl: string): ApiClient {
     },
     async getNotifications() {
       throw new Error("LiveApiClient.getNotifications not implemented");
+    },
+    async getCompanyVehicles() {
+      throw new Error("LiveApiClient.getCompanyVehicles not implemented");
+    },
+    async getCompanyTransactions() {
+      throw new Error("LiveApiClient.getCompanyTransactions not implemented");
+    },
+    async getCompanyStations() {
+      throw new Error("LiveApiClient.getCompanyStations not implemented");
+    },
+    async getCompanyNotifications() {
+      throw new Error("LiveApiClient.getCompanyNotifications not implemented");
     },
     async request<T>(path: string, init?: RequestInit): Promise<T> {
       const res = await fetch(path, init);
