@@ -20,18 +20,11 @@ import {
   Wrench
 } from "lucide-react";
 import {
-  assistanceHistory,
   cardMetrics,
-  cardRows,
   companyNav,
-  invoices,
-  maintenanceRows,
   overviewMetrics,
   pageCopy,
   recentTransactions,
-  spendRows,
-  teamRows,
-  tickets,
   type CompanyModalKey,
   type CompanyPageKey,
   type CompanyTone,
@@ -163,7 +156,23 @@ function Vehicles({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
 }
 
 function Cards({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
-  return <Canvas><Header pageKey="cards" action={{ label: "Issue New Card", modal: "newCard" }} onModal={onModal} /><div className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-4">{cardMetrics.map((m)=><MetricCard key={m.label} metric={m} icon={<CreditCard size={20}/>} />)}</div><div className="mt-7"><Table title="All Cards" columns={["Card Details","Card Number","Assignment","Spend Limit","Status"]} rows={cardRows} actionLabel="Freeze" onAction={() => onModal("cardConfirm")} /></div></Canvas>;
+  const { status, data: cardRows, error, reload } = useAsync(() => api.getCompanyCards());
+  return (
+    <AsyncBoundary
+      status={status}
+      error={error?.message ?? null}
+      isEmpty={!cardRows || cardRows.length === 0}
+      onRetry={reload}
+      loadingLabel="Loading cards…"
+      empty={{ title: "No cards", message: "Issue fuel cards to start managing fleet spend." }}
+    >
+      <Canvas>
+        <Header pageKey="cards" action={{ label: "Issue New Card", modal: "newCard" }} onModal={onModal} />
+        <div className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-4">{cardMetrics.map((m) => <MetricCard key={m.label} metric={m} icon={<CreditCard size={20} />} />)}</div>
+        <div className="mt-7"><Table title="All Cards" columns={["Card Details", "Card Number", "Assignment", "Spend Limit", "Status"]} rows={cardRows ?? []} actionLabel="Freeze" onAction={() => onModal("cardConfirm")} /></div>
+      </Canvas>
+    </AsyncBoundary>
+  );
 }
 
 function Transactions({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
@@ -193,7 +202,26 @@ function Transactions({ onModal }: { onModal: (modal: CompanyModalKey) => void }
 }
 
 function Reports({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
-  return <Canvas><Header pageKey="reports" action={{ label: "Export PDF", modal: "export", icon: <Download size={16}/> }} onModal={onModal} /><section className="mt-7 grid gap-6 xl:grid-cols-[1fr_320px]"><article className="rounded-lg border border-[#dfe5ec] bg-white p-6"><h2 className="font-display text-2xl font-extrabold">Efficiency Savings</h2><p className="mt-2 text-obligon-text">Estimated fuel and route optimizations vs previous period.</p><p className="mt-6 font-display text-5xl font-extrabold text-obligon-green">₦24,850</p><p className="mt-2 font-bold text-obligon-green">+12.4% • 78% to quarterly goal</p></article><article className="rounded-lg border border-[#dfe5ec] bg-white p-6"><h2 className="font-display text-2xl font-extrabold">Station Usage Breakdown</h2>{["National Network 50%","Regional Partners 30%","Independent 20%"].map(x=><p key={x} className="mt-4 font-bold">{x}</p>)}<p className="mt-8 font-display text-4xl font-extrabold">14.2k</p><p className="text-xs font-extrabold uppercase text-obligon-text">Gallons</p></article></section><div className="mt-7"><Table title="Significant Expenditures" columns={["Date","Vehicle ID","Category","Amount"]} rows={spendRows} actionLabel="View Details" onAction={() => onModal("action")} /></div></Canvas>;
+  const { status, data: spendRows, error, reload } = useAsync(() => api.getCompanyReportSpend());
+  return (
+    <AsyncBoundary
+      status={status}
+      error={error?.message ?? null}
+      isEmpty={!spendRows || spendRows.length === 0}
+      onRetry={reload}
+      loadingLabel="Loading reports…"
+      empty={{ title: "No expenditure data", message: "Significant expenditures will appear here once available." }}
+    >
+      <Canvas>
+        <Header pageKey="reports" action={{ label: "Export PDF", modal: "export", icon: <Download size={16} /> }} onModal={onModal} />
+        <section className="mt-7 grid gap-6 xl:grid-cols-[1fr_320px]">
+          <article className="rounded-lg border border-[#dfe5ec] bg-white p-6"><h2 className="font-display text-2xl font-extrabold">Efficiency Savings</h2><p className="mt-2 text-obligon-text">Estimated fuel and route optimizations vs previous period.</p><p className="mt-6 font-display text-5xl font-extrabold text-obligon-green">₦24,850</p><p className="mt-2 font-bold text-obligon-green">+12.4% • 78% to quarterly goal</p></article>
+          <article className="rounded-lg border border-[#dfe5ec] bg-white p-6"><h2 className="font-display text-2xl font-extrabold">Station Usage Breakdown</h2>{["National Network 50%", "Regional Partners 30%", "Independent 20%"].map((x) => <p key={x} className="mt-4 font-bold">{x}</p>)}<p className="mt-8 font-display text-4xl font-extrabold">14.2k</p><p className="text-xs font-extrabold uppercase text-obligon-text">Gallons</p></article>
+        </section>
+        <div className="mt-7"><Table title="Significant Expenditures" columns={["Date", "Vehicle ID", "Category", "Amount"]} rows={spendRows ?? []} actionLabel="View Details" onAction={() => onModal("action")} /></div>
+      </Canvas>
+    </AsyncBoundary>
+  );
 }
 
 function Stations({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
@@ -234,17 +262,78 @@ function Stations({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
 }
 
 function Roadside({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
-  return <Canvas><Header pageKey="roadside" action={{ label: "Request Help", modal: "roadside" }} onModal={onModal} /><article className="mt-7 rounded-lg border-l-4 border-l-obligon-green bg-white p-6 shadow-sm"><Status status="ACTIVE" statusTone="green"/><h2 className="mt-4 font-display text-2xl font-extrabold">Unit #4092 - Breakdown</h2><p className="mt-1 text-obligon-text">Driver: Marcus Johnson • Location: I-95 North, Mile 142</p><div className="mt-6 grid gap-4 md:grid-cols-3"><p><b>RECEIVED</b><br/>10:42 AM</p><p><b>DISPATCHING</b><br/>Est. 15m</p><p><b>IN PROGRESS</b><br/>QuickTow Inc. accepted dispatch.</p></div></article><div className="mt-7"><Table title="Assistance History" columns={["Date","Unit","Issue","Status"]} rows={assistanceHistory} actionLabel="View All" onAction={() => onModal("action")} /></div></Canvas>;
+  const { status, data: assistanceHistory, error, reload } = useAsync(() => api.getCompanyAssistance());
+  return (
+    <AsyncBoundary
+      status={status}
+      error={error?.message ?? null}
+      isEmpty={!assistanceHistory || assistanceHistory.length === 0}
+      onRetry={reload}
+      loadingLabel="Loading roadside assistance…"
+      empty={{ title: "No assistance requests", message: "Roadside assistance history will appear here." }}
+    >
+      <Canvas>
+        <Header pageKey="roadside" action={{ label: "Request Help", modal: "roadside" }} onModal={onModal} />
+        <article className="mt-7 rounded-lg border-l-4 border-l-obligon-green bg-white p-6 shadow-sm"><Status status="ACTIVE" statusTone="green" /><h2 className="mt-4 font-display text-2xl font-extrabold">Unit #4092 - Breakdown</h2><p className="mt-1 text-obligon-text">Driver: Marcus Johnson • Location: I-95 North, Mile 142</p><div className="mt-6 grid gap-4 md:grid-cols-3"><p><b>RECEIVED</b><br />10:42 AM</p><p><b>DISPATCHING</b><br />Est. 15m</p><p><b>IN PROGRESS</b><br />QuickTow Inc. accepted dispatch.</p></div></article>
+        <div className="mt-7"><Table title="Assistance History" columns={["Date", "Unit", "Issue", "Status"]} rows={assistanceHistory ?? []} actionLabel="View All" onAction={() => onModal("action")} /></div>
+      </Canvas>
+    </AsyncBoundary>
+  );
 }
 
 function Billing({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
-  return <Canvas><Header pageKey="billing" onModal={onModal} /><section className="mt-7 grid gap-6 xl:grid-cols-[1fr_360px]"><article className="rounded-lg border border-[#dfe5ec] bg-white p-7"><p className="text-xs font-extrabold uppercase text-obligon-text">Current Plan</p><h2 className="mt-2 font-display text-3xl font-extrabold">Enterprise Fleet</h2><p className="mt-2 text-obligon-text">Billed annually. Next billing date: Nov 12, 2024</p><p className="mt-6 font-display text-5xl font-extrabold">₦499<span className="text-base font-normal"> /mo</span></p><div className="mt-6 flex gap-3"><button type="button" onClick={() => onModal("action")} className="rounded-lg bg-obligon-green px-5 py-3 font-extrabold text-white">Upgrade Plan</button><button type="button" onClick={() => onModal("action")} className="rounded-lg border border-[#dfe5ec] px-5 py-3 font-extrabold">Cancel Subscription</button></div></article><article className="rounded-lg border border-[#dfe5ec] bg-white p-7"><h2 className="font-display text-xl font-extrabold">Payment Method</h2><p className="mt-5 font-extrabold">VISA •••• •••• •••• 4242</p><p className="text-sm text-obligon-text">Expires 12/25 • Securely saved via Stripe</p><h3 className="mt-7 font-extrabold">Billing Contacts</h3><p className="mt-2">Sarah Connor <Status status="Primary" statusTone="green"/></p><p className="mt-2">finance@obligon.com</p></article></section><div className="mt-7"><Table title="Invoice History" columns={["Date","Invoice ID","Amount","Status"]} rows={invoices} actionLabel="Download All" onAction={() => onModal("export")} /></div></Canvas>;
+  const { status, data: invoices, error, reload } = useAsync(() => api.getCompanyInvoices());
+  return (
+    <AsyncBoundary
+      status={status}
+      error={error?.message ?? null}
+      isEmpty={!invoices || invoices.length === 0}
+      onRetry={reload}
+      loadingLabel="Loading invoices…"
+      empty={{ title: "No invoices", message: "Your billing invoices will appear here." }}
+    >
+      <Canvas>
+        <Header pageKey="billing" onModal={onModal} />
+        <section className="mt-7 grid gap-6 xl:grid-cols-[1fr_360px]">
+          <article className="rounded-lg border border-[#dfe5ec] bg-white p-7"><p className="text-xs font-extrabold uppercase text-obligon-text">Current Plan</p><h2 className="mt-2 font-display text-3xl font-extrabold">Enterprise Fleet</h2><p className="mt-2 text-obligon-text">Billed annually. Next billing date: Nov 12, 2024</p><p className="mt-6 font-display text-5xl font-extrabold">₦499<span className="text-base font-normal"> /mo</span></p><div className="mt-6 flex gap-3"><button type="button" onClick={() => onModal("action")} className="rounded-lg bg-obligon-green px-5 py-3 font-extrabold text-white">Upgrade Plan</button><button type="button" onClick={() => onModal("action")} className="rounded-lg border border-[#dfe5ec] px-5 py-3 font-extrabold">Cancel Subscription</button></div></article>
+          <article className="rounded-lg border border-[#dfe5ec] bg-white p-7"><h2 className="font-display text-xl font-extrabold">Payment Method</h2><p className="mt-5 font-extrabold">VISA •••• •••• •••• 4242</p><p className="text-sm text-obligon-text">Expires 12/25 • Securely saved via Stripe</p><h3 className="mt-7 font-extrabold">Billing Contacts</h3><p className="mt-2">Sarah Connor <Status status="Primary" statusTone="green" /></p><p className="mt-2">finance@obligon.com</p></article>
+        </section>
+        <div className="mt-7"><Table title="Invoice History" columns={["Date", "Invoice ID", "Amount", "Status"]} rows={invoices ?? []} actionLabel="Download All" onAction={() => onModal("export")} /></div>
+      </Canvas>
+    </AsyncBoundary>
+  );
 }
 
 function Team({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
   const [query, setQuery] = React.useState("");
-  const filteredRows = teamRows.filter((row) => row.cells.join(" ").toLowerCase().includes(query.toLowerCase()));
-  return <Canvas><Header pageKey="team" action={{ label: "Add team member", modal: "teamMember" }} onModal={onModal} /><div className="mt-6 flex gap-3"><label className="flex h-10 items-center gap-2 rounded-lg border border-[#dfe5ec] bg-white px-3"><Search size={15}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search staff..." aria-label="Search team members" className="bg-transparent outline-none"/></label><button type="button" onClick={() => onModal("action")} className="rounded-lg border border-[#dfe5ec] bg-white px-4 font-bold" aria-label="Filter team members"><Filter size={15}/></button></div><div className="mt-6">{filteredRows.length ? <Table title="Team Members" columns={["Name","Email","Role","Last Active"]} rows={filteredRows} actionLabel="Edit" onAction={() => onModal("teamMember")} /> : <p className="rounded-lg border border-dashed border-[#dfe5ec] bg-white p-8 text-center font-bold text-obligon-text">No team members match that search. Clear the search or add a team member.</p>}</div></Canvas>;
+  const { status, data: teamRows, error, reload } = useAsync(() => api.getCompanyTeam());
+  const rows = teamRows ?? [];
+  const filteredRows = rows.filter((row) => row.cells.join(" ").toLowerCase().includes(query.toLowerCase()));
+  return (
+    <AsyncBoundary
+      status={status}
+      error={error?.message ?? null}
+      isEmpty={rows.length === 0}
+      onRetry={reload}
+      loadingLabel="Loading team…"
+      empty={{ title: "No team members", message: "Add team members to collaborate on your fleet." }}
+    >
+      <Canvas>
+        <Header pageKey="team" action={{ label: "Add team member", modal: "teamMember" }} onModal={onModal} />
+        <div className="mt-6 flex gap-3">
+          <label className="flex h-10 items-center gap-2 rounded-lg border border-[#dfe5ec] bg-white px-3"><Search size={15} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search staff..." aria-label="Search team members" className="bg-transparent outline-none" /></label>
+          <button type="button" onClick={() => onModal("action")} className="rounded-lg border border-[#dfe5ec] bg-white px-4 font-bold" aria-label="Filter team members"><Filter size={15} /></button>
+        </div>
+        <div className="mt-6">
+          {filteredRows.length ? (
+            <Table title="Team Members" columns={["Name", "Email", "Role", "Last Active"]} rows={filteredRows} actionLabel="Edit" onAction={() => onModal("teamMember")} />
+          ) : (
+            <p className="rounded-lg border border-dashed border-[#dfe5ec] bg-white p-8 text-center font-bold text-obligon-text">No team members match that search. Clear the search or add a team member.</p>
+          )}
+        </div>
+      </Canvas>
+    </AsyncBoundary>
+  );
 }
 
 function Notifications({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
@@ -284,7 +373,26 @@ function Notifications({ onModal }: { onModal: (modal: CompanyModalKey) => void 
 }
 
 function Support({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
-  return <Canvas><Header pageKey="support" action={{ label: "Contact Support", modal: "supportTicket" }} onModal={onModal} /><section className="mt-7 grid gap-6 xl:grid-cols-[1fr_340px]"><article className="rounded-lg border border-[#dfe5ec] bg-white p-6"><h2 className="font-display text-2xl font-extrabold">Frequently Asked Questions</h2>{["How do I add a new vehicle to my fleet?","How is billing calculated for fuel cards?"].map(q=><p key={q} className="border-b border-[#eef2f6] py-4 font-bold">{q}</p>)}</article><article className="rounded-lg bg-[#07162f] p-6 text-white"><Status status="PRO" statusTone="green"/><h2 className="mt-5 font-display text-2xl font-extrabold">Need Immediate Assistance?</h2><p className="mt-2 text-white/70">Our enterprise support team is available 24/7 for critical fleet operational issues.</p><p className="mt-6 font-display text-2xl font-extrabold">1-800-OBLIGON</p></article></section><div className="mt-7"><Table title="Past Tickets" columns={["ID","Date","Subject","Status"]} rows={tickets} actionLabel="View All Tickets" onAction={() => onModal("supportTicket")} /></div></Canvas>;
+  const { status, data: tickets, error, reload } = useAsync(() => api.getCompanyTickets());
+  return (
+    <AsyncBoundary
+      status={status}
+      error={error?.message ?? null}
+      isEmpty={!tickets || tickets.length === 0}
+      onRetry={reload}
+      loadingLabel="Loading tickets…"
+      empty={{ title: "No tickets", message: "Your support tickets will appear here." }}
+    >
+      <Canvas>
+        <Header pageKey="support" action={{ label: "Contact Support", modal: "supportTicket" }} onModal={onModal} />
+        <section className="mt-7 grid gap-6 xl:grid-cols-[1fr_340px]">
+          <article className="rounded-lg border border-[#dfe5ec] bg-white p-6"><h2 className="font-display text-2xl font-extrabold">Frequently Asked Questions</h2>{["How do I add a new vehicle to my fleet?", "How is billing calculated for fuel cards?"].map((q) => <p key={q} className="border-b border-[#eef2f6] py-4 font-bold">{q}</p>)}</article>
+          <article className="rounded-lg bg-[#07162f] p-6 text-white"><Status status="PRO" statusTone="green" /><h2 className="mt-5 font-display text-2xl font-extrabold">Need Immediate Assistance?</h2><p className="mt-2 text-white/70">Our enterprise support team is available 24/7 for critical fleet operational issues.</p><p className="mt-6 font-display text-2xl font-extrabold">1-800-OBLIGON</p></article>
+        </section>
+        <div className="mt-7"><Table title="Past Tickets" columns={["ID", "Date", "Subject", "Status"]} rows={tickets ?? []} actionLabel="View All Tickets" onAction={() => onModal("supportTicket")} /></div>
+      </Canvas>
+    </AsyncBoundary>
+  );
 }
 
 function SettingsPage({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
@@ -292,7 +400,26 @@ function SettingsPage({ onModal }: { onModal: (modal: CompanyModalKey) => void }
 }
 
 function Maintenance({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
-  return <Canvas><Header pageKey="maintenance" action={{ label: "Schedule Service", modal: "service" }} onModal={onModal} /><section className="mt-7 grid gap-6 xl:grid-cols-[1fr_320px]"><article className="rounded-lg border border-[#dfe5ec] bg-white p-6"><h2 className="font-display text-2xl font-extrabold">Upcoming Service Schedule</h2>{["OVERDUE|TRK-9042 • Volvo VNL|Full Synthetic Oil Change & Brake Inspection|2 Days Ago", "SCHEDULED|VAN-402 • Ford Transit|Tire Rotation & Alignment|Oct 24, 2023"].map(x=>{const [s,v,d,t]=x.split('|');return <div key={v} className="mt-5 rounded-lg bg-[#f8fafc] p-4"><Status status={s} statusTone={s==="OVERDUE"?"red":"blue"}/><p className="mt-3 font-extrabold">{v}</p><p className="text-sm text-obligon-text">{d}</p><p className="mt-2 text-sm font-bold">{t}</p></div>})}</article><article className="rounded-lg border border-[#dfe5ec] bg-white p-6"><h2 className="font-display text-2xl font-extrabold">Fleet Health</h2><p className="mt-5 text-sm font-extrabold uppercase text-obligon-text">Preventative Maintenance</p><p className="font-display text-5xl font-extrabold text-obligon-green">85%</p><p className="mt-4">Active Critical Alerts <b>3</b></p><p className="mt-2">Healthy <b>142</b></p><p className="mt-2">Needs Service <b>12</b></p></article></section><div className="mt-7"><Table title="Recent Service History" columns={["Date","Vehicle ID","Service Type","Provider","Cost","Status"]} rows={maintenanceRows} actionLabel="Export" onAction={() => onModal("export")} /></div></Canvas>;
+  const { status, data: maintenanceRows, error, reload } = useAsync(() => api.getCompanyMaintenance());
+  return (
+    <AsyncBoundary
+      status={status}
+      error={error?.message ?? null}
+      isEmpty={!maintenanceRows || maintenanceRows.length === 0}
+      onRetry={reload}
+      loadingLabel="Loading maintenance…"
+      empty={{ title: "No maintenance records", message: "Service history will appear here." }}
+    >
+      <Canvas>
+        <Header pageKey="maintenance" action={{ label: "Schedule Service", modal: "service" }} onModal={onModal} />
+        <section className="mt-7 grid gap-6 xl:grid-cols-[1fr_320px]">
+          <article className="rounded-lg border border-[#dfe5ec] bg-white p-6"><h2 className="font-display text-2xl font-extrabold">Upcoming Service Schedule</h2>{["OVERDUE|TRK-9042 • Volvo VNL|Full Synthetic Oil Change & Brake Inspection|2 Days Ago", "SCHEDULED|VAN-402 • Ford Transit|Tire Rotation & Alignment|Oct 24, 2023"].map((x) => { const [s, v, d, t] = x.split("|"); return <div key={v} className="mt-5 rounded-lg bg-[#f8fafc] p-4"><Status status={s} statusTone={s === "OVERDUE" ? "red" : "blue"} /><p className="mt-3 font-extrabold">{v}</p><p className="text-sm text-obligon-text">{d}</p><p className="mt-2 text-sm font-bold">{t}</p></div>; })}</article>
+          <article className="rounded-lg border border-[#dfe5ec] bg-white p-6"><h2 className="font-display text-2xl font-extrabold">Fleet Health</h2><p className="mt-5 text-sm font-extrabold uppercase text-obligon-text">Preventative Maintenance</p><p className="font-display text-5xl font-extrabold text-obligon-green">85%</p><p className="mt-4">Active Critical Alerts <b>3</b></p><p className="mt-2">Healthy <b>142</b></p><p className="mt-2">Needs Service <b>12</b></p></article>
+        </section>
+        <div className="mt-7"><Table title="Recent Service History" columns={["Date", "Vehicle ID", "Service Type", "Provider", "Cost", "Status"]} rows={maintenanceRows ?? []} actionLabel="Export" onAction={() => onModal("export")} /></div>
+      </Canvas>
+    </AsyncBoundary>
+  );
 }
 
 export function CompanyScreen({ pageKey }: { pageKey: CompanyPageKey }) {

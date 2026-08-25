@@ -18,7 +18,14 @@ import {
   vehicleRows,
   transactionRows,
   stations as companyStations,
-  notifications as companyNotifications
+  notifications as companyNotifications,
+  cardRows,
+  spendRows,
+  assistanceHistory,
+  invoices,
+  teamRows,
+  tickets,
+  maintenanceRows
 } from "@/lib/mock/company-data";
 import type { Row } from "@/lib/mock/company-data";
 
@@ -43,6 +50,13 @@ export interface ApiClient {
   getCompanyTransactions(): Promise<Row[]>;
   getCompanyStations(): Promise<string[][]>;
   getCompanyNotifications(): Promise<string[][]>;
+  getCompanyCards(): Promise<Row[]>;
+  getCompanyReportSpend(): Promise<Row[]>;
+  getCompanyAssistance(): Promise<Row[]>;
+  getCompanyInvoices(): Promise<Row[]>;
+  getCompanyTeam(): Promise<Row[]>;
+  getCompanyTickets(): Promise<Row[]>;
+  getCompanyMaintenance(): Promise<Row[]>;
 
   /**
    * Generic transport used by the future live client. The mock client rejects
@@ -97,6 +111,34 @@ class MockApiClient implements ApiClient {
     return companyNotifications;
   }
 
+  async getCompanyCards(): Promise<Row[]> {
+    return cardRows;
+  }
+
+  async getCompanyReportSpend(): Promise<Row[]> {
+    return spendRows;
+  }
+
+  async getCompanyAssistance(): Promise<Row[]> {
+    return assistanceHistory;
+  }
+
+  async getCompanyInvoices(): Promise<Row[]> {
+    return invoices;
+  }
+
+  async getCompanyTeam(): Promise<Row[]> {
+    return teamRows;
+  }
+
+  async getCompanyTickets(): Promise<Row[]> {
+    return tickets;
+  }
+
+  async getCompanyMaintenance(): Promise<Row[]> {
+    return maintenanceRows;
+  }
+
   async request<T>(_path: string, _init?: RequestInit): Promise<T> {
     throw new Error("Live backend is not wired yet. Resolve via MockApiClient.");
   }
@@ -133,6 +175,27 @@ function LiveApiClient(_baseUrl: string): ApiClient {
     },
     async getCompanyNotifications() {
       throw new Error("LiveApiClient.getCompanyNotifications not implemented");
+    },
+    async getCompanyCards() {
+      throw new Error("LiveApiClient.getCompanyCards not implemented");
+    },
+    async getCompanyReportSpend() {
+      throw new Error("LiveApiClient.getCompanyReportSpend not implemented");
+    },
+    async getCompanyAssistance() {
+      throw new Error("LiveApiClient.getCompanyAssistance not implemented");
+    },
+    async getCompanyInvoices() {
+      throw new Error("LiveApiClient.getCompanyInvoices not implemented");
+    },
+    async getCompanyTeam() {
+      throw new Error("LiveApiClient.getCompanyTeam not implemented");
+    },
+    async getCompanyTickets() {
+      throw new Error("LiveApiClient.getCompanyTickets not implemented");
+    },
+    async getCompanyMaintenance() {
+      throw new Error("LiveApiClient.getCompanyMaintenance not implemented");
     },
     async request<T>(path: string, init?: RequestInit): Promise<T> {
       const res = await fetch(path, init);
