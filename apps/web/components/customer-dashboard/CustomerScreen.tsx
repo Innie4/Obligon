@@ -30,19 +30,15 @@ import {
 } from "lucide-react";
 import {
   desktopTopUps,
-  mobileHistory,
-  notifications,
   overviewMetrics,
   recentActivity,
   topUpHistory,
-  transactionHistory,
   vehicles,
   type CustomerPageKey,
-  type CustomerTone,
-  type CustomerTransaction
+  type CustomerTone
 } from "@/lib/mock/customer-data";
 import { api } from "@/lib/services";
-import type { Station } from "@/lib/services/types";
+import type { CustomerTransaction, Station } from "@/lib/services/types";
 import { AsyncBoundary } from "@/components/shared/States";
 import { useAsync } from "@/components/shared/useAsync";
 import { CustomerModals, ModalFrame, type CustomerModalType } from "./CustomerModals";
@@ -205,16 +201,18 @@ function OverviewPage() {
 }
 
 function TransactionsPage() {
+  const { status: txnStatus, data: transactionHistory, error: txnError, reload } = useAsync(() => api.getCustomerTransactions());
+  const { data: mobileHistory } = useAsync(() => api.getMobileHistory());
   const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [filters, setFilters] = React.useState({ dateRange: "All", station: "All Stations", vehicle: "All Vehicles", fuel: "All Fuels" });
   const [applied, setApplied] = React.useState(filters);
   const [selectedTxn, setSelectedTxn] = React.useState<CustomerTransaction | null>(null);
 
-  const stations = Array.from(new Set(transactionHistory.map((row) => row.station)));
-  const vehicles = Array.from(new Set(transactionHistory.map((row) => row.vehicle ?? ""))).filter(Boolean);
-  const fuels = Array.from(new Set(transactionHistory.map((row) => row.fuel ?? "").filter(Boolean)));
+  const stations = Array.from(new Set((transactionHistory ?? []).map((row) => row.station)));
+  const vehicles = Array.from(new Set((transactionHistory ?? []).map((row) => row.vehicle ?? ""))).filter(Boolean);
+  const fuels = Array.from(new Set((transactionHistory ?? []).map((row) => row.fuel ?? "").filter(Boolean)));
 
-  const filtered = transactionHistory.filter((row) => {
+  const filtered = (transactionHistory ?? []).filter((row) => {
     if (applied.dateRange !== "All" && !(row.time ?? "").startsWith(applied.dateRange)) return false;
     if (applied.station !== "All Stations" && row.station !== applied.station) return false;
     if (applied.vehicle !== "All Vehicles" && row.vehicle !== applied.vehicle) return false;
@@ -243,16 +241,24 @@ function TransactionsPage() {
   }
 
   return (
-    <Canvas compact>
-      <div className="lg:hidden">
-        <h1 className="font-display text-3xl font-extrabold">Transaction History</h1>
+    <AsyncBoundary
+      status={txnStatus}
+      error={txnError?.message ?? null}
+      isEmpty={(transactionHistory?.length ?? 0) === 0 && (mobileHistory?.length ?? 0) === 0}
+      onRetry={reload}
+      loadingLabel="Loading transactions…"
+      empty={{ title: "No transactions found", message: "Your transaction history will appear here once activity is recorded." }}
+    >
+      <Canvas compact>
+        <div className="lg:hidden">
+          <h1 className="font-display text-3xl font-extrabold">Transaction History</h1>
         <div className="mt-5 grid grid-cols-3 gap-3">
           {["Date Range", "Station", "Vehicle"].map((item) => (
             <button key={item} onClick={() => setFiltersOpen(true)} className="h-10 rounded-lg border border-[#dbe2d8] bg-white text-xs font-bold" type="button">{item}</button>
           ))}
         </div>
         <div className="mt-6 space-y-7">
-          {mobileHistory.map((group) => <section key={group.group}><p className="mb-3 text-sm font-extrabold text-obligon-green">{group.group}</p><div className="space-y-3">{group.items.map((item) => <button key={item.station + item.time} type="button" onClick={() => setSelectedTxn({ station: item.station, meta: item.meta, amount: item.amount, time: item.time })} className="flex w-full rounded-lg bg-white p-4 text-left shadow-sm"><div className="flex-1"><p className="font-extrabold">{item.station}</p><p className="text-sm text-obligon-text">{item.meta}</p></div><div className="text-right"><p className="font-extrabold">{item.amount}</p><p className="text-sm text-obligon-text">{item.time}</p></div></button>)}</div></section>)}
+          {(mobileHistory ?? []).map((group) => <section key={group.group}><p className="mb-3 text-sm font-extrabold text-obligon-green">{group.group}</p><div className="space-y-3">{group.items.map((item) => <button key={item.station + item.time} type="button" onClick={() => setSelectedTxn({ station: item.station, meta: item.meta, amount: item.amount, time: item.time })} className="flex w-full rounded-lg bg-white p-4 text-left shadow-sm"><div className="flex-1"><p className="font-extrabold">{item.station}</p><p className="text-sm text-obligon-text">{item.meta}</p></div><div className="text-right"><p className="font-extrabold">{item.amount}</p><p className="text-sm text-obligon-text">{item.time}</p></div></button>)}</div></section>)}
         </div>
       </div>
 
@@ -405,7 +411,8 @@ function TransactionsPage() {
           </div>
         </ModalFrame>
       ) : null}
-    </Canvas>
+      </Canvas>
+    </AsyncBoundary>
   );
 }
 
@@ -967,8 +974,38 @@ function ProfilePage({
 }
 
 function NotificationsPage() {
+  const { status, data: notifications, error, reload } = useAsync(() => api.getNotifications());
   return (
-    <Canvas><h1 className="font-display text-3xl font-extrabold">Notifications</h1><p className="mt-2 text-obligon-text">Stay updated with your latest alerts and system messages.</p><Card className="mt-8 overflow-hidden">{["TODAY","YESTERDAY","OLDER"].map(group=><section key={group} className="border-b border-[#eef3ee] p-5 last:border-0"><p className="mb-3 text-xs font-extrabold uppercase text-obligon-green">{group}</p>{notifications.filter(n=>n.group===group).map(n=><article key={n.title} className="flex gap-4 py-3"><MiniIcon tone={n.title.includes("Security")?"red":"green"}><Bell size={17}/></MiniIcon><div className="flex-1"><h2 className="font-extrabold">{n.title}</h2><p className="text-sm text-obligon-text">{n.body}</p></div><p className="text-xs text-obligon-text">{n.time}</p></article>)}</section>)}</Card></Canvas>
+    <AsyncBoundary
+      status={status}
+      error={error?.message ?? null}
+      isEmpty={!notifications || notifications.length === 0}
+      onRetry={reload}
+      loadingLabel="Loading notifications…"
+      empty={{ title: "No notifications", message: "You're all caught up. New alerts will appear here." }}
+    >
+      <Canvas>
+        <h1 className="font-display text-3xl font-extrabold">Notifications</h1>
+        <p className="mt-2 text-obligon-text">Stay updated with your latest alerts and system messages.</p>
+        <Card className="mt-8 overflow-hidden">
+          {["TODAY", "YESTERDAY", "OLDER"].map((group) => (
+            <section key={group} className="border-b border-[#eef3ee] p-5 last:border-0">
+              <p className="mb-3 text-xs font-extrabold uppercase text-obligon-green">{group}</p>
+              {(notifications ?? []).filter((n) => n.group === group).map((n) => (
+                <article key={n.title} className="flex gap-4 py-3">
+                  <MiniIcon tone={n.title.includes("Security") ? "red" : "green"}><Bell size={17} /></MiniIcon>
+                  <div className="flex-1">
+                    <h2 className="font-extrabold">{n.title}</h2>
+                    <p className="text-sm text-obligon-text">{n.body}</p>
+                  </div>
+                  <p className="text-xs text-obligon-text">{n.time}</p>
+                </article>
+              ))}
+            </section>
+          ))}
+        </Card>
+      </Canvas>
+    </AsyncBoundary>
   );
 }
 

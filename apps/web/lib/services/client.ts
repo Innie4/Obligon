@@ -11,7 +11,8 @@ import {
   sessionUser,
   transactionHistory,
   stations,
-  notifications
+  notifications,
+  mobileHistory
 } from "@/lib/mock/customer-data";
 import { vehicleRows } from "@/lib/mock/company-data";
 
@@ -19,6 +20,7 @@ import type {
   ApiResult,
   AppNotification,
   CustomerTransaction,
+  MobileTransactionGroup,
   SessionUser,
   Station,
   Vehicle
@@ -27,6 +29,7 @@ import type {
 export interface ApiClient {
   getSession(): Promise<SessionUser | null>;
   getCustomerTransactions(): Promise<CustomerTransaction[]>;
+  getMobileHistory(): Promise<MobileTransactionGroup[]>;
   getStations(): Promise<Station[]>;
   getVehicles(): Promise<Vehicle[]>;
   getNotifications(): Promise<AppNotification[]>;
@@ -45,6 +48,10 @@ class MockApiClient implements ApiClient {
 
   async getCustomerTransactions(): Promise<CustomerTransaction[]> {
     return transactionHistory;
+  }
+
+  async getMobileHistory(): Promise<MobileTransactionGroup[]> {
+    return mobileHistory;
   }
 
   async getStations(): Promise<Station[]> {
@@ -76,6 +83,9 @@ function LiveApiClient(_baseUrl: string): ApiClient {
     },
     async getCustomerTransactions() {
       throw new Error("LiveApiClient.getCustomerTransactions not implemented");
+    },
+    async getMobileHistory() {
+      throw new Error("LiveApiClient.getMobileHistory not implemented");
     },
     async getStations() {
       throw new Error("LiveApiClient.getStations not implemented");

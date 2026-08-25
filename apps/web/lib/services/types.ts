@@ -50,6 +50,18 @@ export interface AppNotification {
   body: string;
 }
 
+export interface MobileTransactionItem {
+  station: string;
+  meta: string;
+  amount: string;
+  time: string;
+}
+
+export interface MobileTransactionGroup {
+  group: string;
+  items: MobileTransactionItem[];
+}
+
 export type AsyncStatus = "idle" | "loading" | "success" | "error";
 
 export interface ApiResult<T> {
