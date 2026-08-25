@@ -81,6 +81,7 @@ export function AsyncBoundary({
   isEmpty = false,
   empty,
   loadingLabel,
+  onRetry,
   children
 }: {
   status: AsyncStatus;
@@ -88,11 +89,12 @@ export function AsyncBoundary({
   isEmpty?: boolean;
   empty?: { title?: string; message?: string; icon?: React.ComponentType<LucideProps> };
   loadingLabel?: string;
+  onRetry?: () => void;
   children: React.ReactNode;
 }) {
   if (status === "loading" || status === "idle") return <LoadingState label={loadingLabel} />;
   if (status === "error" || error) {
-    return <ErrorState message={error ?? undefined} onRetry={undefined} />;
+    return <ErrorState message={error ?? undefined} onRetry={onRetry} />;
   }
   if (isEmpty) {
     return <EmptyState title={empty?.title} message={empty?.message} icon={empty?.icon} />;

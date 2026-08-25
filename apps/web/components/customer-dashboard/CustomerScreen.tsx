@@ -34,7 +34,6 @@ import {
   notifications,
   overviewMetrics,
   recentActivity,
-  stations,
   topUpHistory,
   transactionHistory,
   vehicles,
@@ -42,6 +41,10 @@ import {
   type CustomerTone,
   type CustomerTransaction
 } from "@/lib/mock/customer-data";
+import { api } from "@/lib/services";
+import type { Station } from "@/lib/services/types";
+import { AsyncBoundary } from "@/components/shared/States";
+import { useAsync } from "@/components/shared/useAsync";
 import { CustomerModals, ModalFrame, type CustomerModalType } from "./CustomerModals";
 import { ConfirmModal, PinModal } from "../shared/Dialogs";
 
@@ -535,29 +538,38 @@ function buildMapUrl(list: Array<{ lat: number; lng: number }>) {
 }
 
 function StationsPage() {
+  const { status, data: stations, error, reload } = useAsync(() => api.getStations());
   const [query, setQuery] = React.useState("");
   const [fuelsOpen, setFuelsOpen] = React.useState(false);
   const [selectedFuels, setSelectedFuels] = React.useState<string[]>([]);
-  const [detail, setDetail] = React.useState<(typeof stations)[number] | null>(null);
-  const [directionTarget, setDirectionTarget] = React.useState<(typeof stations)[number] | null>(null);
+  const [detail, setDetail] = React.useState<Station | null>(null);
+  const [directionTarget, setDirectionTarget] = React.useState<Station | null>(null);
 
-  const allFuels = Array.from(new Set(stations.flatMap((station) => station.fuels)));
+  const allFuels = Array.from(new Set(stations?.flatMap((station) => station.fuels) ?? []));
 
-  const visible = stations.filter((station) => {
+  const visible = stations?.filter((station) => {
     const matchesQuery =
       query.trim() === "" ||
       station.name.toLowerCase().includes(query.toLowerCase()) ||
       station.address.toLowerCase().includes(query.toLowerCase());
     const matchesFuel = selectedFuels.length === 0 || selectedFuels.some((fuel) => station.fuels.includes(fuel));
     return matchesQuery && matchesFuel;
-  });
+  }) ?? [];
 
   function toggleFuel(fuel: string) {
     setSelectedFuels((current) => (current.includes(fuel) ? current.filter((item) => item !== fuel) : [...current, fuel]));
   }
 
   return (
-    <Canvas>
+    <AsyncBoundary
+      status={status}
+      error={error?.message ?? null}
+      isEmpty={!stations || stations.length === 0}
+      onRetry={reload}
+      loadingLabel="Loading stations…"
+      empty={{ title: "No stations available", message: "We couldn't load station locations for your network right now." }}
+    >
+      <Canvas>
       <div className="mb-6 flex gap-3 rounded-lg border border-[#dbe2d8] bg-white p-3">
         <div className="flex flex-1 items-center gap-2">
           <MapPinned size={18} className="text-obligon-green" />
@@ -599,7 +611,7 @@ function StationsPage() {
         <Card className="relative min-h-[520px] overflow-hidden bg-[#dfe8ed]">
           <iframe
             title="Obligon LTD station map"
-            src={buildMapUrl(stations)}
+            src={buildMapUrl(stations ?? [])}
             className="h-full min-h-[520px] w-full border-0"
             loading="lazy"
           />
@@ -736,12 +748,13 @@ function StationsPage() {
               rel="noreferrer"
               className="mt-6 flex h-12 w-full items-center justify-center rounded-lg bg-obligon-green font-extrabold text-white"
             >
-              Open in Maps
-            </a>
-          </div>
-        </ModalFrame>
-      ) : null}
-    </Canvas>
+                Open in Maps
+              </a>
+            </div>
+          </ModalFrame>
+        ) : null}
+      </Canvas>
+    </AsyncBoundary>
   );
 }
 
