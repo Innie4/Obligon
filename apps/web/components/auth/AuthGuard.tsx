@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useSession } from "@/components/shared/AuthContext";
 import { routes } from "@/components/site/routes";
 
-type Role = "customer" | "partner" | "company" | "admin";
+type Role = "customer" | "partner" | "company" | "mechanic" | "admin";
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -17,6 +17,7 @@ const rolePaths: Record<Role, string> = {
   customer: "/customer",
   partner: "/dashboard",
   company: "/company",
+  mechanic: "/company/roadside",
   admin: "/admin",
 };
 

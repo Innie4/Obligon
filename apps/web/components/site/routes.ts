@@ -1,6 +1,7 @@
 export const routes = {
   home: "/",
-  login: "/login",
+  login: "/auth/login",
+  signup: "/auth/signup",
   forgotPassword: "/forgot-password",
   authInProgress: "/auth/in-progress",
   authSuccess: "/auth/success",
@@ -21,5 +22,7 @@ export const routes = {
   notifications: "/dashboard/notifications",
   fuelvista: "/solutions/fuelvista",
   energyvista: "/solutions/energyvista",
-  genvista: "/solutions/genvista"
+  genvista: "/solutions/genvista",
+  adminLogin: "/admin/login",
+  adminDashboard: "/admin/dashboard"
 } as const;

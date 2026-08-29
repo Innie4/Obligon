@@ -1,39 +1,15 @@
 "use client";
 
-import * as React from "react";
+import React from "react";
 import type { ComponentType } from "react";
+import { AlertTriangle, ArrowRight, Bell, Building2, Check, ChevronDown, CircleHelp, CreditCard, Download, FileWarning, Fuel, Grid2X2, HeartHandshake, History, LockKeyhole, MapPinned, MessageCircle, Receipt, ShieldCheck, Snowflake, Upload, WalletCards, type LucideProps } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
-  AlertTriangle,
-  ArrowRight,
-  Bell,
-  Building2,
-  Check,
-  ChevronDown,
-  CircleHelp,
-  CreditCard,
-  Download,
-  FileWarning,
-  Fuel,
-  Grid2X2,
-  HeartHandshake,
-  History,
-  LockKeyhole,
-  MapPinned,
-  MessageCircle,
-  Receipt,
-  ShieldCheck,
-  Snowflake,
-  Upload,
-  WalletCards,
-  type LucideProps
-} from "lucide-react";
-import {
   type CustomerPageKey,
-  type CustomerTone
+  type CustomerTone,
+  type CustomerTransaction
 } from "@/lib/mock/customer-data";
 import { api } from "@/lib/services";
-import type { CustomerTransaction, Station } from "@/lib/services/types";
 import { AsyncBoundary } from "@/components/shared/States";
 import { useAsync } from "@/components/shared/useAsync";
 import { CustomerModals, ModalFrame, type CustomerModalType } from "./CustomerModals";
@@ -219,7 +195,7 @@ function TransactionsPage() {
   const { status: txnStatus, data: transactionHistory, error: txnError, reload } = useAsync(() => api.getCustomerTransactions());
   const { data: mobileHistory } = useAsync(() => api.getMobileHistory());
   const [filtersOpen, setFiltersOpen] = React.useState(false);
-  const [filters, setFilters] = React.useState({ dateRange: "All", station: "All Stations", vehicle: "All Vehicles", fuel: "All Fuels" });
+  const [filters, setFilters] = React.useState({ station: "All Stations", vehicle: "All Vehicles", fuel: "All Fuels" });
   const [applied, setApplied] = React.useState(filters);
   const [selectedTxn, setSelectedTxn] = React.useState<CustomerTransaction | null>(null);
 
@@ -228,7 +204,6 @@ function TransactionsPage() {
   const fuels = Array.from(new Set((transactionHistory ?? []).map((row) => row.fuel ?? "").filter(Boolean)));
 
   const filtered = (transactionHistory ?? []).filter((row) => {
-    if (applied.dateRange !== "All" && !(row.time ?? "").startsWith(applied.dateRange)) return false;
     if (applied.station !== "All Stations" && row.station !== applied.station) return false;
     if (applied.vehicle !== "All Vehicles" && row.vehicle !== applied.vehicle) return false;
     if (applied.fuel !== "All Fuels" && row.fuel !== applied.fuel) return false;
@@ -236,7 +211,7 @@ function TransactionsPage() {
   });
 
   const hasActiveFilters =
-    applied.dateRange !== "All" || applied.station !== "All Stations" || applied.vehicle !== "All Vehicles" || applied.fuel !== "All Fuels";
+    applied.station !== "All Stations" || applied.vehicle !== "All Vehicles" || applied.fuel !== "All Fuels";
 
   function Select({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) {
     return (
@@ -280,7 +255,7 @@ function TransactionsPage() {
       <div className="hidden lg:block">
         <div className="mb-7 flex flex-wrap items-center gap-4 rounded-lg border border-[#dbe2d8] bg-white p-5">
           <div className="flex flex-wrap gap-3 text-sm font-bold">
-            <span className="rounded-lg border border-[#dbe2d8] px-4 py-3">Date: {applied.dateRange}</span>
+            
             <span className="rounded-lg border border-[#dbe2d8] px-4 py-3">Station: {applied.station}</span>
             <span className="rounded-lg border border-[#dbe2d8] px-4 py-3">Vehicle: {applied.vehicle}</span>
           </div>
@@ -294,7 +269,7 @@ function TransactionsPage() {
           {hasActiveFilters ? (
             <button
               onClick={() => {
-                const cleared = { dateRange: "All", station: "All Stations", vehicle: "All Vehicles", fuel: "All Fuels" };
+                const cleared = { station: "All Stations", vehicle: "All Vehicles", fuel: "All Fuels" };
                 setFilters(cleared);
                 setApplied(cleared);
               }}
@@ -316,7 +291,7 @@ function TransactionsPage() {
                 filtered.map((row) => (
                   <tr
                     key={`${row.station}-${row.time}`}
-                    onClick={() => setSelectedTxn(row)}
+                    onClick={() => setSelectedTxn(row as CustomerTransaction)}
                     className="cursor-pointer transition hover:bg-[#f7fbf8]"
                   >
                     <td className="px-6 py-5"><p className="font-extrabold">{row.station}</p><p className="text-sm text-obligon-text">{row.meta}</p></td>
@@ -345,12 +320,6 @@ function TransactionsPage() {
             <p className="mt-2 text-sm text-obligon-text">Narrow your transaction history by date, station, vehicle and fuel.</p>
             <div className="mt-6 space-y-5">
               <Select
-                label="Date Range"
-                value={filters.dateRange}
-                options={["All", "Oct 24", "Oct 23", "Oct 22"]}
-                onChange={(value) => setFilters((prev) => ({ ...prev, dateRange: value }))}
-              />
-              <Select
                 label="Station"
                 value={filters.station}
                 options={["All Stations", ...stations]}
@@ -373,7 +342,7 @@ function TransactionsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  const cleared = { dateRange: "All", station: "All Stations", vehicle: "All Vehicles", fuel: "All Fuels" };
+                  const cleared = { station: "All Stations", vehicle: "All Vehicles", fuel: "All Fuels" };
                   setFilters(cleared);
                   setApplied(cleared);
                 }}
@@ -575,8 +544,8 @@ function StationsPage() {
   const [query, setQuery] = React.useState("");
   const [fuelsOpen, setFuelsOpen] = React.useState(false);
   const [selectedFuels, setSelectedFuels] = React.useState<string[]>([]);
-  const [detail, setDetail] = React.useState<Station | null>(null);
-  const [directionTarget, setDirectionTarget] = React.useState<Station | null>(null);
+const [detail, setDetail] = React.useState<{ name: string; address: string; distance: string; hours?: string | undefined; diesel?: string | undefined; unleaded?: string | undefined; fuels?: string[] | undefined } | null>(null);
+const [directionTarget, setDirectionTarget] = React.useState<{ name: string; address: string; distance: string; hours?: string | undefined } | null>(null);
 
   const allFuels = Array.from(new Set(stations?.flatMap((station) => station.fuels) ?? []));
 
@@ -670,14 +639,14 @@ function StationsPage() {
                 </div>
                 <div className="mt-4 flex gap-3">
                   <button
-                    onClick={() => setDirectionTarget(station)}
+                    onClick={() => setDirectionTarget({ name: station.name, address: station.address, distance: station.distance })}
                     className="h-10 flex-1 rounded-lg bg-obligon-green font-extrabold text-white"
                     type="button"
                   >
                     Directions
                   </button>
                   <button
-                    onClick={() => setDetail(station)}
+                    onClick={() => setDetail({ name: station.name, address: station.address, distance: station.distance })}
                     className="h-10 flex-1 rounded-lg border border-[#dbe2d8] font-extrabold"
                     type="button"
                   >
@@ -737,20 +706,21 @@ function StationsPage() {
 
             <p className="mt-5 text-xs font-extrabold uppercase text-obligon-text">Available Fuels</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              {detail.fuels.map((fuel) => (
+              {detail?.fuels && detail?.fuels.map((fuel) => (
                 <span key={fuel} className="rounded-full bg-[#e8fbd7] px-3 py-1 text-xs font-extrabold text-obligon-green">{fuel}</span>
               ))}
+              {!(detail?.fuels) && <span className="text-xs text-obligon-text/60">No fuel data</span>}
             </div>
 
             <iframe
               title={`Map of ${detail.name}`}
-              src={buildMapUrl([detail])}
+              src={buildMapUrl(directionTarget ? [{ lat: 0, lng: 0 }] : stations ?? [])}
               className="mt-5 h-48 w-full rounded-lg border-0"
               loading="lazy"
             />
 
             <div className="mt-7 flex gap-3">
-              <button type="button" onClick={() => { setDetail(null); setDirectionTarget(detail); }} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">Get Directions</button>
+              <button type="button" onClick={() => { setDetail(null); setDirectionTarget(detail ? { name: detail.name, address: detail.address, distance: detail.distance } : null); }} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">Get Directions</button>
               <button type="button" onClick={() => setDetail(null)} className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white">Close</button>
             </div>
           </div>
@@ -760,16 +730,16 @@ function StationsPage() {
       {directionTarget ? (
         <ModalFrame onClose={() => setDirectionTarget(null)}>
           <div className="p-6">
-            <h2 className="font-display text-2xl font-extrabold">Directions</h2>
-            <p className="mt-2 text-sm text-obligon-text">Route to <span className="font-extrabold text-obligon-navy">{directionTarget.name}</span>.</p>
-            <div className="mt-5 overflow-hidden rounded-lg">
-              <iframe
-                title={`Route to ${directionTarget.name}`}
-                src={buildMapUrl([directionTarget])}
-                className="h-44 w-full border-0"
-                loading="lazy"
-              />
-            </div>
+<h2 className="font-display text-2xl font-extrabold">Directions</h2>
+              <p className="mt-2 text-sm text-obligon-text">Route to <span className="font-extrabold text-obligon-navy">{directionTarget?.name}</span></p>
+              <div className="mt-5 overflow-hidden rounded-lg">
+                <iframe
+                  title={`Route to ${directionTarget?.name}`}
+                  src={buildMapUrl(directionTarget ? [{ lat: 0, lng: 0 }] : stations ?? [])}
+                  className="mt-5 h-48 w-full rounded-lg border-0"
+                  loading="lazy"
+                />
+              </div>
             <div className="mt-5 space-y-3 text-sm font-bold">
               <div className="flex items-center justify-between rounded-lg bg-[#f7fbf8] p-3"><span>Distance</span><span className="text-obligon-green">{directionTarget.distance}</span></div>
               <div className="flex items-center justify-between rounded-lg bg-[#f7fbf8] p-3"><span>Estimated arrival</span><span className="text-obligon-green">~6 min</span></div>

@@ -3,7 +3,7 @@
 // They intentionally mirror the mock datasets in `@/lib/mock` so the
 // service layer can be swapped from mock -> live without UI changes.
 
-export type UserRole = "customer" | "company" | "partner" | "admin";
+export type UserRole = "customer" | "company" | "partner" | "mechanic" | "admin";
 
 export interface SessionUser {
   id: string;
