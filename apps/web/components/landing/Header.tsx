@@ -40,11 +40,11 @@ export function Header() {
         <div className="hidden items-center gap-4 md:flex">
           <Link
             className="inline-flex h-8 items-center justify-center px-4 text-xs font-semibold tracking-[0.6px] text-obligon-text"
-            href="/login"
+            href="/auth/login"
           >
             Login
           </Link>
-          <LandingButton className="h-9 px-6" href="/login#signup">
+          <LandingButton className="h-9 px-6" href="/auth/signup">
             Get Started
           </LandingButton>
         </div>

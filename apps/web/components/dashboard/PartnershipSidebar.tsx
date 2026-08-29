@@ -118,7 +118,7 @@ export function PartnershipSidebar() {
   };
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col bg-[#071853] text-white lg:flex">
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col bg-white text-white lg:flex">
       <div className="flex h-[181px] items-start px-6 pt-8">
         <Link href="/" className="relative block h-[149px] w-[223px]" aria-label="Obligon LTD home">
           <Image src={assets.obligonLogo} fill sizes="223px" alt="Obligon LTD" className="object-contain object-left-top" priority />
