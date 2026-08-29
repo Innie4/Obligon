@@ -9,7 +9,7 @@ import { Input } from "@/components/site/Input";
 import { routes } from "@/components/site/routes";
 import { AuthShell } from "@/components/auth/AuthShell";
 
-type SignupRole = "customer" | "partner" | "company" | "mechanic";
+type SignupRole = "customer" | "partner" | "company";
 
 const signupFields: Record<SignupRole, Array<{ label: string; name: string; placeholder: string; type?: string; required?: boolean }>> = {
   customer: [
@@ -34,23 +34,12 @@ const signupFields: Record<SignupRole, Array<{ label: string; name: string; plac
     { label: "Operating States", name: "states", placeholder: "Lagos, Ogun, Abuja", required: true },
     { label: "Procurement Lead", name: "lead", placeholder: "Mariam Bello", required: true },
   ],
-  mechanic: [
-    { label: "Business Name", name: "businessName", placeholder: "QuickFix Auto Repair", required: true },
-    { label: "Owner Name", name: "ownerName", placeholder: "Adeola Adeyemi", required: true },
-    { label: "Email Address", name: "email", placeholder: "contact@quickfix.ng", type: "email", required: true },
-    { label: "Phone Number", name: "phone", placeholder: "+234 801 000 0000", required: true },
-    { label: "Shop Location", name: "shopLocation", placeholder: "Surulere, Lagos", required: true },
-    { label: "Primary Service", name: "primaryService", placeholder: "Engine Repair & Maintenance", required: true },
-    { label: "Secondary Service", name: "secondaryService", placeholder: "Electrical & Diagnostics", required: false },
-    { label: "Tax ID / RC Number", name: "taxId", placeholder: "RC 1234567", required: true },
-  ],
 };
 
 const roleLabels: Record<SignupRole, string> = {
   customer: "Customer",
   partner: "Partner",
   company: "Company",
-  mechanic: "Mechanic",
 };
 
 const fuelTypes = ["PMS Petrol", "AGO Diesel", "DPK Kerosene", "LPG Gas"];
@@ -138,14 +127,6 @@ export default function SignupPage() {
       }
     }
 
-    // Mechanic service validation
-    if (role === "mechanic") {
-      if (selectedServices.length === 0) {
-        errors.services = "Select at least one service";
-        setMechanicError(true);
-      }
-    }
-
     setSignupErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -165,14 +146,6 @@ export default function SignupPage() {
     setFuelError(false);
   };
 
-  // Toggle service for mechanic
-  const toggleService = (service: string) => {
-    setSelectedServices((current) =>
-      current.includes(service) ? current.filter((item) => item !== service) : [...current, service]
-    );
-    setMechanicError(false);
-  };
-
   // Handle signup submission
   const handleSignupSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -189,8 +162,6 @@ export default function SignupPage() {
 
       if (role === "partner") {
         router.push(routes.authInProgress);
-      } else if (role === "mechanic") {
-        router.push(routes.authSuccess);
       } else if (role === "customer") {
         router.push(`${routes.authSuccess}?redirect=${encodeURIComponent(routes.customerDashboard)}`);
       } else {
@@ -209,12 +180,10 @@ export default function SignupPage() {
   const handleRoleChange = (newRole: SignupRole) => {
     setRole(newRole);
     setFuelError(false);
-    setMechanicError(false);
     setSignupForm({});
     setSignupErrors({});
     setSignupServerError(null);
     setSelectedFuelTypes(["PMS Petrol", "AGO Diesel"]);
-    setSelectedServices([]);
   };
 
   const isSignupDisabled = signupSubmitting || Object.keys(signupForm).length === 0;
@@ -293,48 +262,43 @@ export default function SignupPage() {
               </div>
             ) : null}
 
-            {role === "mechanic" ? (
+            {role === "partner" ? (
               <div className="mt-5">
-                <p className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Primary Services</p>
-                <p className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text mt-2">Secondary Services</p>
-                <div className="mt-3 flex flex-wrap gap-3">
-                  {["Engine Repair & Maintenance", "Electrical & Diagnostics", "Brake Service", "Tire Service"].map((service) => (
-                    <div
-                      key={service}
-                      onClick={() => toggleService(service)}
-                      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition ${
-                        selectedServices.includes(service)
-                          ? "border-obligon-green bg-obligon-green/10 text-obligon-green"
-                          : "border-obligon-border bg-white text-obligon-text hover:border-obligon-green hover:text-obligon-green"
+                <p className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Available Fuel Type</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {fuelTypes.map((item) => {
+                    const selected = selectedFuelTypes.includes(item);
+                    return (
+                      <button
+                        key={item}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => toggleFuelType(item)}
+                        className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold transition ${
+                          selected
+                            ? "border-obligon-green bg-obligon-green/10 text-obligon-green"
+                            : "border-obligon-border bg-white text-obligon-text hover:border-obligon-green hover:text-obligon-green"
                         }`}
-                    >
-                      {selectedServices.includes(service) ? <span className="size-4" /> : null}
-                      {service}
-                    </div>
-                  ))}
-                  {["AC Repair", "Transmission Service", "Electrical Wiring", "Painting"].map((service) => (
-                    <div
-                      key={service}
-                      style={{ opacity: 0.5, cursor: "not-allowed" }}
-                      className="mt-2 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition disabled:bg-white disabled:text-obligon-text"
-                    >
-                      {selectedServices.includes(service) ? <span className="size-4" /> : null}
-                      {service}
-                    </div>
-                  ))}
+                        disabled={signupSubmitting}
+                      >
+                        {selected ? <span className="size-4" /> : null}
+                        {item}
+                      </button>
+                    );
+                  })}
                 </div>
-                {selectedServices.map((service) => (
-                  <input key={service} type="hidden" name="services" value={service} />
+                {selectedFuelTypes.map((fuelType) => (
+                  <input key={fuelType} type="hidden" name="fuelTypes" value={fuelType} />
                 ))}
-                {mechanicError ? (
+                {fuelError ? (
                   <p className="mt-2 text-xs font-semibold text-[#93000a]" role="alert">
-                    Select at least one service before submitting a mechanic application.
+                    Select at least one available fuel type before submitting a partner application.
                   </p>
                 ) : null}
               </div>
             ) : null}
 
-            {role !== "mechanic" ? (
+            {role !== "customer" ? (
               <div className="mt-5" role="group">
                 {signupFields[role].map((field) => (
                   <div key={field.name} className="relative">
