@@ -11,6 +11,8 @@ import { AuthShell } from "@/components/auth/AuthShell";
 
 type SignupRole = "customer" | "partner" | "company";
 
+type PartnerType = "mechanic" | "fuel-station" | "other";
+
 const signupFields: Record<SignupRole, Array<{ label: string; name: string; placeholder: string; type?: string; required?: boolean }>> = {
   customer: [
     { label: "Full Name", name: "fullName", placeholder: "Ada Okafor", required: true },
@@ -40,6 +42,12 @@ const roleLabels: Record<SignupRole, string> = {
   customer: "Customer",
   partner: "Partner",
   company: "Company",
+};
+
+const partnerTypeLabels: Record<PartnerType, string> = {
+  mechanic: "Mechanic",
+  "fuel-station": "Fuel Station",
+  other: "Other",
 };
 
 const fuelTypes = ["PMS Petrol", "AGO Diesel", "DPK Kerosene", "LPG Gas"];
@@ -77,6 +85,7 @@ export default function SignupPage() {
   }, [user, router]);
 
   const [role, setRole] = useState<SignupRole>("customer");
+  const [partnerType, setPartnerType] = useState<PartnerType | null>(null);
   const [signupForm, setSignupForm] = useState<Record<string, string>>({});
   const [signupErrors, setSignupErrors] = useState<Record<string, string>>({});
   const [signupSubmitting, setSignupSubmitting] = useState(false);
@@ -146,6 +155,14 @@ export default function SignupPage() {
     setFuelError(false);
   };
 
+  // Toggle service for mechanic partner
+  const toggleService = (service: string) => {
+    setSelectedServices((current) =>
+      current.includes(service) ? current.filter((item) => item !== service) : [...current, service]
+    );
+    setMechanicError(false);
+  };
+
   // Handle signup submission
   const handleSignupSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -184,6 +201,16 @@ export default function SignupPage() {
     setSignupErrors({});
     setSignupServerError(null);
     setSelectedFuelTypes(["PMS Petrol", "AGO Diesel"]);
+  };
+
+  // Handle partner type change
+  const handlePartnerTypeChange = (newPartnerType: PartnerType) => {
+    setPartnerType(newPartnerType);
+    setSignupForm({});
+    setSignupErrors({});
+    setSignupServerError(null);
+    setSelectedFuelTypes(["PMS Petrol", "AGO Diesel"]);
+    setSelectedServices([]);
   };
 
   const isSignupDisabled = signupSubmitting || Object.keys(signupForm).length === 0;
@@ -226,82 +253,118 @@ export default function SignupPage() {
               ))}
             </div>
 
-            {role === "partner" ? (
+            {role === "partner" && partnerType === null ? (
               <div className="mt-5">
-                <p className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Available Fuel Type</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {fuelTypes.map((item) => {
-                    const selected = selectedFuelTypes.includes(item);
-                    return (
-                      <button
-                        key={item}
-                        type="button"
-                        aria-pressed={selected}
-                        onClick={() => toggleFuelType(item)}
-                        className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold transition ${
-                          selected
-                            ? "border-obligon-green bg-obligon-green/10 text-obligon-green"
-                            : "border-obligon-border bg-white text-obligon-text hover:border-obligon-green hover:text-obligon-green"
-                        }`}
-                        disabled={signupSubmitting}
-                      >
-                        {selected ? <span className="size-4" /> : null}
-                        {item}
-                      </button>
-                    );
-                  })}
+                <p className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Partner Type</p>
+                <div className="mt-3 grid gap-2">
+                  {["mechanic", "fuel-station", "other"].map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => handlePartnerTypeChange(type as PartnerType)}
+                      className={`h-10 rounded-full text-xs font-bold transition sm:text-sm ${partnerType === type ? "bg-white text-obligon-green shadow-sm" : "text-obligon-text hover:text-obligon-navy"}`}
+                      disabled={signupSubmitting}
+                    >
+                      {partnerTypeLabels[type as PartnerType]}
+                    </button>
+                  ))}
                 </div>
-                {selectedFuelTypes.map((fuelType) => (
-                  <input key={fuelType} type="hidden" name="fuelTypes" value={fuelType} />
-                ))}
-                {fuelError ? (
-                  <p className="mt-2 text-xs font-semibold text-[#93000a]" role="alert">
-                    Select at least one available fuel type before submitting a partner application.
-                  </p>
-                ) : null}
               </div>
             ) : null}
 
             {role === "partner" ? (
               <div className="mt-5">
-                <p className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Available Fuel Type</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {fuelTypes.map((item) => {
-                    const selected = selectedFuelTypes.includes(item);
-                    return (
-                      <button
-                        key={item}
-                        type="button"
-                        aria-pressed={selected}
-                        onClick={() => toggleFuelType(item)}
-                        className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold transition ${
-                          selected
-                            ? "border-obligon-green bg-obligon-green/10 text-obligon-green"
-                            : "border-obligon-border bg-white text-obligon-text hover:border-obligon-green hover:text-obligon-green"
-                        }`}
-                        disabled={signupSubmitting}
-                      >
-                        {selected ? <span className="size-4" /> : null}
-                        {item}
-                      </button>
-                    );
-                  })}
-                </div>
-                {selectedFuelTypes.map((fuelType) => (
-                  <input key={fuelType} type="hidden" name="fuelTypes" value={fuelType} />
-                ))}
-                {fuelError ? (
-                  <p className="mt-2 text-xs font-semibold text-[#93000a]" role="alert">
-                    Select at least one available fuel type before submitting a partner application.
-                  </p>
+                {partnerType === "mechanic" ? (
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Primary Services</p>
+                    <p className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text mt-2">Secondary Services</p>
+                    <div className="mt-3 flex flex-wrap gap-3">
+                      {["Engine Repair & Maintenance", "Electrical & Diagnostics", "Brake Service", "Tire Service"].map((service) => (
+                        <div
+                          key={service}
+                          onClick={() => toggleService(service)}
+                          className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition ${selectedServices.includes(service) ? "border-obligon-green bg-obligon-green/10 text-obligon-green" : "border-obligon-border bg-white text-obligon-text hover:border-obligon-green hover:text-obligon-green"}`}
+                        >
+                          {selectedServices.includes(service) && <span className="size-4" />}
+                          {service}
+                        </div>
+                      ))}
+                      {["AC Repair", "Transmission Service", "Electrical Wiring", "Painting"].map((service) => (
+                        <div
+                          key={service}
+                          style={{ opacity: 0.5, cursor: "not-allowed" }}
+                          className="mt-2 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition disabled:bg-white disabled:text-obligon-text"
+                        >
+                          {selectedServices.includes(service) && <span className="size-4" />}
+                          {service}
+                        </div>
+                      ))}
+                    </div>
+                    {selectedServices.map((service) => (
+                      <input key={service} type="hidden" name="services" value={service} />
+                    ))}
+                    {mechanicError && (
+                      <p className="mt-2 text-xs font-semibold text-[#93000a]" role="alert">
+                        Select at least one service before submitting a mechanic application.
+                      </p>
+                    )}
+                  </div>
                 ) : null}
-              </div>
-            ) : null}
 
-            {role !== "customer" ? (
-              <div className="mt-5" role="group">
-                {signupFields[role].map((field) => (
-                  <div key={field.name} className="relative">
+                {partnerType === "fuel-station" ? (
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Available Fuel Type</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {fuelTypes.map((item) => {
+                        const selected = selectedFuelTypes.includes(item);
+                        return (
+                          <button
+                            key={item}
+                            type="button"
+                            aria-pressed={selected}
+                            onClick={() => toggleFuelType(item)}
+                            className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold transition ${selected ? "border-obligon-green bg-obligon-green/10 text-obligon-green" : "border-obligon-border bg-white text-obligon-text hover:border-obligon-green hover:text-obligon-green"}`}
+                            disabled={signupSubmitting}
+                          >
+                            {selected && <span className="size-4" />}
+                            {item}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {selectedFuelTypes.map((fuelType) => (
+                      <input key={fuelType} type="hidden" name="fuelTypes" value={fuelType} />
+                    ))}
+                    {fuelError && (
+                      <p className="mt-2 text-xs font-semibold text-[#93000a]" role="alert">
+                        Select at least one available fuel type before submitting a fuel station application.
+                      </p>
+                    )}
+                  </div>
+                ) : null}
+
+                {partnerType === "other" ? (
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Organization Description</p>
+                    <div className="mt-3">
+                      <input
+                        type="text"
+                        name="description"
+                        placeholder="Describe your organization..."
+                        value={signupForm.description ?? ""}
+                        onChange={(e) => handleSignupChange("description", e.target.value)}
+                        className="h-12 w-full rounded-lg border px-4 text-sm text-obligon-navy outline-none transition placeholder:text-[#92929c] focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20"
+                        required={true}
+                      />
+                      {signupErrors.description && (
+                        <p className="mt-1 text-xs font-medium text-[#93000a]" role="alert">{signupErrors.description}</p>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+
+                {signupFields.partner.map((field) => (
+                  <div key={field.name} className="mt-5 relative">
                     <label htmlFor={`signup-${field.name}`} className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-1">
                       {field.label}
                     </label>
@@ -312,9 +375,7 @@ export default function SignupPage() {
                       placeholder={field.placeholder}
                       value={signupForm[field.name] ?? ""}
                       onChange={(e) => handleSignupChange(field.name, e.target.value)}
-                      className={`h-12 w-full rounded-lg border px-4 text-sm text-obligon-navy outline-none transition placeholder:text-[#92929c] focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20 ${
-                        signupErrors[field.name] ? "border-[#fecaca] bg-[#fff0f0]" : "border-obligon-border bg-white"
-                      }`}
+                      className="h-12 w-full rounded-lg border px-4 text-sm text-obligon-navy outline-none transition placeholder:text-[#92929c] focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20"
                       required={field.required ?? true}
                       disabled={signupSubmitting}
                       aria-invalid={!!signupErrors[field.name]}
