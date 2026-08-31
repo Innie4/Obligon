@@ -211,7 +211,7 @@ export function VerificationUI({ type, redirect = "/" }: VerificationUIProps) {
         {stage !== "success" && stage !== "verifying" && current.showResend && renderResendButton()}
 
         <Link
-          href="/login"
+          href={routes.login}
           className="mt-8 inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[1.2px] text-obligon-green"
         >
           <ArrowLeft size={16} />

@@ -44,6 +44,7 @@ export type CustomerTransaction = {
   time?: string;
   fuel?: string;
   vehicle?: string;
+  reference?: string;
 };
 
 export const customerNav: CustomerNavItem[] = [

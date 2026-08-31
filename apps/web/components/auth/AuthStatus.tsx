@@ -87,8 +87,8 @@ export function AuthStatus({ status, message, serverError, redirect, onRetry }: 
                 Continue to Dashboard
               </Link>
             ) : status === "success" ? (
-              <Link href={routes.dashboard} className="inline-flex h-12 items-center justify-center rounded-lg bg-obligon-green px-6 text-base font-bold text-white shadow-green">
-                Go to Dashboard
+              <Link href={routes.login} className="inline-flex h-12 items-center justify-center rounded-lg bg-obligon-green px-6 text-base font-bold text-white shadow-green">
+                Return to Login
               </Link>
             ) : (
               <button

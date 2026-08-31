@@ -28,7 +28,7 @@ export function Hero() {
           </p>
 
           <div className="mt-6 flex flex-col items-start gap-4 sm:flex-row lg:mt-10">
-            <LandingButton href="/login#signup" icon="arrow">
+            <LandingButton href="/auth/signup" icon="arrow">
               Join the Future
             </LandingButton>
             <LandingButton href="/solutions/fuelvista" variant="secondary" icon="chevron">

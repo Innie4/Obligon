@@ -1,11 +1,6 @@
-import { AuthForms } from "@/components/auth/AuthForms";
-import { AuthShell } from "@/components/auth/AuthShell";
+import { redirect } from "next/navigation";
+import { routes } from "@/components/site/routes";
 
-export default function LoginPage() {
-  return (
-    <AuthShell>
-      <AuthForms />
-    </AuthShell>
-  );
+export default function LoginRedirectPage() {
+  redirect(routes.login);
 }
-

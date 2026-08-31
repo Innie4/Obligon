@@ -78,9 +78,9 @@ function Sidebar() {
       <div className="mt-16 flex items-center gap-4 px-4">
         <span className="grid size-12 place-items-center rounded-full bg-[#dbe7ff] text-sm font-extrabold text-obligon-blue">{user?.initials ?? "FM"}</span>
         <div>
-          <p className="font-extrabold text-obligon-green">{user?.name ?? "Fleet Manager"}</p>
-          <p className="text-sm text-obligon-text">{user?.organization ?? "Obligon LTD Enterprise"}</p>
-          <p className="text-xs font-medium text-[#3754a5]">{user?.accountTier ?? "Premium Account"}</p>
+          <p className="font-extrabold text-obligon-green">{user?.name ?? "Guest"}</p>
+          <p className="text-sm text-obligon-text">{user?.organization ?? "Sign in to manage your fleet"}</p>
+          <p className="text-xs font-medium text-[#3754a5]">{user?.accountTier ?? "No active session"}</p>
         </div>
       </div>
 
@@ -132,6 +132,7 @@ function MobileHeader() {
 function DesktopHeader() {
   const pathname = usePathname();
   const page = pageForPath(pathname);
+  const { user } = useSession();
 
   return (
     <header className="sticky top-0 z-30 hidden h-[74px] items-center justify-between border-b border-[#cfd8cc] bg-[#f7fbf8] px-16 lg:flex">
@@ -141,7 +142,7 @@ function DesktopHeader() {
           <Bell size={21} />
         </Link>
         <Link href="/customer/profile" className="hidden rounded-full border border-[#dbe2d8] bg-white px-4 py-2 text-sm font-bold text-obligon-green xl:block">
-          Fleet Manager
+          {user?.name ?? "Guest"}
         </Link>
       </div>
     </header>

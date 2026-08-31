@@ -19,10 +19,11 @@ export const routes = {
   support: "/support",
   dashboard: "/dashboard",
   customerDashboard: "/customer",
+  companyDashboard: "/company",
   notifications: "/dashboard/notifications",
   fuelvista: "/solutions/fuelvista",
   energyvista: "/solutions/energyvista",
   genvista: "/solutions/genvista",
   adminLogin: "/admin/login",
-  adminDashboard: "/admin/dashboard"
+  adminDashboard: "/admin"
 } as const;

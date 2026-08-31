@@ -9,16 +9,12 @@ import { useSession } from "@/components/shared/AuthContext";
 
 export default function LogoutPage() {
   const router = useRouter();
-  const { logout, status } = useSession();
+  const { logout } = useSession();
 
   useEffect(() => {
-    if (status === "authenticated") {
-      // In a real app, this would call an API logout endpoint
-      // await api.logout();
-      // For now, just clear local session
-    }
-    router.push("/login");
-  }, []);
+    logout();
+    router.replace(routes.login);
+  }, [logout, router]);
 
   return (
     <AuthShell compact>

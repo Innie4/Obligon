@@ -9,7 +9,9 @@ export type DashboardPageKey =
   | "verification"
   | "disputes"
   | "notifications"
-  | "settings";
+  | "settings"
+  | "pos"
+  | "profile";
 
 export type DashboardIcon =
   | "overview"
@@ -173,6 +175,24 @@ export const pageCopy: Record<DashboardPageKey, DashboardPageCopy> = {
     searchPlaceholder: "Search settings...",
     userName: "Chidi Okoro",
     userRole: "ADMIN"
+  },
+  pos: {
+    key: "pos",
+    title: "POS Authorization Terminal",
+    description: "Authorize driver transactions using one-time verification codes or NFC tap.",
+    primaryAction: "Authorize Code",
+    searchPlaceholder: "Enter 6-digit OTC code...",
+    userName: "POS Operator",
+    userRole: "TERMINAL"
+  },
+  profile: {
+    key: "profile",
+    title: "Station Profile & Amenities",
+    description: "Configure station locator listing, amenities, and manager contacts.",
+    primaryAction: "Save Profile",
+    searchPlaceholder: "Search station attributes...",
+    userName: "Station Manager",
+    userRole: "PARTNER"
   }
 };
 

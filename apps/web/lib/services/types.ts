@@ -13,6 +13,10 @@ export interface SessionUser {
   organization: string;
   initials: string;
   accountTier: string;
+  phone?: string;
+  address?: string;
+  twoFactorEnabled?: boolean;
+  biometricsEnabled?: boolean;
 }
 
 export interface CustomerTransaction {
@@ -22,6 +26,8 @@ export interface CustomerTransaction {
   fuel?: string;
   amount: string;
   time?: string;
+  reference?: string;
+  status?: string;
 }
 
 export interface Station {
@@ -44,10 +50,14 @@ export interface Vehicle {
 }
 
 export interface AppNotification {
+  id?: string;
   group: string;
   title: string;
   time: string;
   body: string;
+  read?: boolean;
+  actionRequired?: boolean;
+  link?: string;
 }
 
 export interface MobileTransactionItem {

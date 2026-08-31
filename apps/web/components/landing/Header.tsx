@@ -1,6 +1,9 @@
-import { Menu } from "lucide-react";
+"use client";
+
+import { Menu, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 import { LandingButton } from "./Button";
 import { assets } from "./assets";
 
@@ -13,6 +16,8 @@ const navItems = [
 ];
 
 export function Header() {
+  const [open, setOpen] = useState(false);
+
   return (
     <header
       className="absolute left-0 top-0 z-20 h-[95px] w-full border-b border-obligon-border bg-white/90 backdrop-blur-md"
@@ -52,11 +57,36 @@ export function Header() {
         <button
           className="inline-flex size-10 items-center justify-center rounded-lg border border-obligon-border bg-white text-obligon-navy md:hidden"
           type="button"
-          aria-label="Open navigation menu"
+          aria-expanded={open}
+          aria-label={open ? "Close navigation menu" : "Open navigation menu"}
+          onClick={() => setOpen((value) => !value)}
         >
-          <Menu size={18} strokeWidth={2} />
+          {open ? <X size={18} strokeWidth={2} /> : <Menu size={18} strokeWidth={2} />}
         </button>
       </nav>
+
+      {open ? (
+        <div className="absolute inset-x-0 top-[95px] border-b border-obligon-border bg-white px-5 py-6 shadow-card md:hidden">
+          <div className="flex flex-col gap-4">
+            {navItems.map((item) => (
+              <Link
+                key={item.label}
+                className="text-sm font-semibold text-obligon-navy"
+                href={item.href}
+                onClick={() => setOpen(false)}
+              >
+                {item.label}
+              </Link>
+            ))}
+            <Link className="text-sm font-semibold text-obligon-navy" href="/auth/login" onClick={() => setOpen(false)}>
+              Login
+            </Link>
+            <Link className="text-sm font-bold text-obligon-green" href="/auth/signup" onClick={() => setOpen(false)}>
+              Get Started
+            </Link>
+          </div>
+        </div>
+      ) : null}
     </header>
   );
 }

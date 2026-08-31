@@ -167,7 +167,7 @@ export function Pricing() {
               </ul>
 
               <Link
-                href="/login#signup"
+                href="/auth/signup"
                 className={`mt-auto inline-flex h-14 items-center justify-center rounded-lg px-6 text-base font-bold ${
                   plan.dark
                     ? "bg-white text-obligon-navy"

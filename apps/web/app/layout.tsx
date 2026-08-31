@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/shared/Providers";
+import { CookieConsentBanner } from "@/components/site/CookieConsentBanner";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -16,8 +17,8 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Obligon LTD",
-  description: "Enterprise-grade fuel management and logistics solutions for Nigerian fleets."
+  title: "Obligon LTD | Powering Nigeria's Energy Infrastructure",
+  description: "Enterprise-grade fuel card management, POS authorizations, generator IoT telemetry, and logistics solutions for Nigerian fleets."
 };
 
 export default function RootLayout({
@@ -28,7 +29,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} ${plusJakarta.variable} font-sans antialiased`}>
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <CookieConsentBanner />
+        </Providers>
       </body>
     </html>
   );

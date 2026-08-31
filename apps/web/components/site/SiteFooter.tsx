@@ -2,7 +2,7 @@ import Link from "next/link";
 import { routes } from "./routes";
 
 type SiteFooterProps = {
-  active?: "privacy" | "terms" | "cookies" | "careers" | "solutions";
+  active?: "privacy" | "terms" | "cookies" | "careers" | "solutions" | "support";
 };
 
 const columns = [
@@ -11,7 +11,7 @@ const columns = [
     links: [
       { label: "About", href: "/#get-started" },
       { label: "Careers", href: routes.careers, key: "careers" },
-      { label: "Contact", href: routes.support }
+      { label: "Contact", href: routes.support, key: "support" }
     ]
   },
   {
@@ -76,4 +76,3 @@ export function SiteFooter({ active }: SiteFooterProps) {
     </footer>
   );
 }
-

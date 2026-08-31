@@ -33,7 +33,7 @@ export function ProductShowcase() {
                 </p>
               </div>
               <Link
-                href="/login#signup"
+                href="/auth/signup"
                 className="inline-flex h-12 items-center justify-center rounded-lg bg-white px-6 text-base font-bold text-obligon-navy"
               >
                 Order Cards

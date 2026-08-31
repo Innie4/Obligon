@@ -21,7 +21,7 @@ export function LogoutButton({ variant = "button", className = "" }: { variant?:
     try {
       logout();
       toastSuccess("You have been logged out");
-      router.push("/login");
+      router.push(routes.login);
     } catch {
       // Handle error if needed
     } finally {

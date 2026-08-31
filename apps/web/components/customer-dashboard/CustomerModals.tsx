@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { ComponentType } from "react";
-import { AlertTriangle, Building2, Check, CreditCard, FileWarning, Fingerprint, LockKeyhole, ShieldCheck, Snowflake, Upload, X, type LucideProps } from "lucide-react";
+import { AlertTriangle, Building2, Check, CreditCard, FileWarning, Fingerprint, LockKeyhole, ShieldCheck, Snowflake, Upload, X, Loader2, ArrowRight, type LucideProps } from "lucide-react";
 import { useToast } from "@/components/shared/Toast";
 
 export type CustomerModalType = "topup" | "report" | "changePin" | "biometrics" | "replaceCard" | "lostCard" | "freezeCard" | null;
@@ -16,15 +16,16 @@ type CustomerModalsProps = {
   onCardFrozenChange: (frozen: boolean) => void;
   cardBlocked: boolean;
   onCardBlockedChange: (blocked: boolean) => void;
+  onTopUpSuccess?: (amount: number) => void;
 };
 
 export function ModalFrame({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-end bg-[#20251f]/55 px-0 backdrop-blur-sm sm:place-items-center sm:px-5">
-      <section className="max-h-[94vh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-hero sm:max-w-[560px] sm:rounded-lg">
+      <section className="max-h-[94vh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-hero sm:max-w-[560px] sm:rounded-2xl">
         <div className="flex items-center justify-between border-b border-[#e0e7de] px-6 py-5">
-          <p className="font-display text-xl font-extrabold">Obligon LTD</p>
-          <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-lg bg-[#f1f5f0]" aria-label="Close modal">
+          <p className="font-display text-xl font-extrabold text-obligon-navy">Obligon LTD</p>
+          <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-lg bg-[#f1f5f0] text-obligon-navy hover:bg-[#e2eae0] transition" aria-label="Close modal">
             <X size={20} />
           </button>
         </div>
@@ -42,10 +43,11 @@ export function CustomerModals({
   cardFrozen,
   onCardFrozenChange,
   cardBlocked,
-  onCardBlockedChange
+  onCardBlockedChange,
+  onTopUpSuccess
 }: CustomerModalsProps) {
   if (!modal) return null;
-  if (modal === "topup") return <TopUpModal onClose={onClose} />;
+  if (modal === "topup") return <TopUpModal onClose={onClose} onSuccess={onTopUpSuccess} />;
   if (modal === "report") return <ReportProblemModal onClose={onClose} />;
   if (modal === "changePin") return <ChangePinModal onClose={onClose} />;
   if (modal === "biometrics") return <BiometricsModal onClose={onClose} enabled={biometrics} onChange={onBiometricsChange} />;
@@ -110,14 +112,10 @@ function ChangePinModal({ onClose }: { onClose: () => void }) {
   const [newPin, setNewPin] = React.useState("");
   const [confirmPin, setConfirmPin] = React.useState("");
   const [error, setError] = React.useState("");
+  const [submitting, setSubmitting] = React.useState(false);
+  const { success: toastSuccess } = useToast();
 
-  React.useEffect(() => {
-    if (step !== "success") return;
-    const timer = setTimeout(onClose, 2400);
-    return () => clearTimeout(timer);
-  }, [step, onClose]);
-
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!/^\d{4}$/.test(currentPin)) {
@@ -138,7 +136,11 @@ function ChangePinModal({ onClose }: { onClose: () => void }) {
     }
 
     setError("");
+    setSubmitting(true);
+    await new Promise((r) => setTimeout(r, 600));
+    setSubmitting(false);
     setStep("success");
+    toastSuccess("Transaction PIN changed successfully.");
   }
 
   return (
@@ -148,35 +150,38 @@ function ChangePinModal({ onClose }: { onClose: () => void }) {
           <span className="grid size-12 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
             <LockKeyhole size={22} />
           </span>
-          <h2 className="mt-4 font-display text-3xl font-extrabold">Change PIN</h2>
+          <h2 className="mt-4 font-display text-3xl font-extrabold text-obligon-navy">Change Transaction PIN</h2>
           <p className="mt-2 text-sm text-obligon-text">
-            Update the 4-digit access code used to authorize fleet transactions.
+            Update the 4-digit authorization PIN used to approve POS station payments.
           </p>
 
           <PinInput label="Current PIN" value={currentPin} onChange={setCurrentPin} placeholder="••••" autoFocus />
-          <PinInput label="New PIN" value={newPin} onChange={setNewPin} placeholder="••••" />
+          <PinInput label="New 4-Digit PIN" value={newPin} onChange={setNewPin} placeholder="••••" />
           <PinInput label="Confirm New PIN" value={confirmPin} onChange={setConfirmPin} placeholder="••••" />
 
           {error ? <p className="mt-4 rounded-lg bg-[#ffe8e8] p-3 text-sm font-bold text-[#c1121f]">{error}</p> : null}
 
           <div className="mt-6 flex gap-3">
-            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">
+            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold text-obligon-navy">
               Cancel
             </button>
-            <button type="submit" className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white">
-              Update PIN
+            <button disabled={submitting} type="submit" className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white flex items-center justify-center gap-2">
+              {submitting ? <Loader2 size={18} className="animate-spin" /> : "Update PIN"}
             </button>
           </div>
         </form>
       ) : (
-        <div className="p-6 text-center">
+        <div className="p-8 text-center">
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
             <Check size={30} />
           </span>
-          <h2 className="mt-5 font-display text-2xl font-extrabold">PIN Updated</h2>
+          <h2 className="mt-5 font-display text-2xl font-extrabold text-obligon-navy">PIN Updated Successfully</h2>
           <p className="mt-2 text-sm text-obligon-text">
-            Your access code was changed successfully. Use your new PIN for future transactions.
+            Your transaction access code has been securely updated. Use your new PIN for future station payments.
           </p>
+          <button type="button" onClick={onClose} className="mt-6 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white">
+            Done
+          </button>
         </div>
       )}
     </ModalFrame>
@@ -193,15 +198,17 @@ function BiometricsModal({
   onChange: (enabled: boolean) => void;
 }) {
   const [step, setStep] = React.useState<"intro" | "scanning" | "success" | "disable">(enabled ? "disable" : "intro");
+  const { success: toastSuccess } = useToast();
 
   React.useEffect(() => {
     if (step !== "scanning") return;
     const timer = setTimeout(() => {
       onChange(true);
       setStep("success");
-    }, 1800);
+      toastSuccess("Biometric authentication enabled.");
+    }, 1200);
     return () => clearTimeout(timer);
-  }, [step, onChange]);
+  }, [step, onChange, toastSuccess]);
 
   return (
     <ModalFrame onClose={onClose}>
@@ -210,13 +217,13 @@ function BiometricsModal({
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#eef3ff] text-obligon-blue">
             <Fingerprint size={30} />
           </span>
-          <h2 className="mt-5 font-display text-2xl font-extrabold">Enable Biometrics</h2>
+          <h2 className="mt-5 font-display text-2xl font-extrabold text-obligon-navy">Enable Biometrics</h2>
           <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-obligon-text">
-            Use FaceID or Fingerprint to unlock your fleet dashboard and approve transactions instantly — no PIN required.
+            Use FaceID or Fingerprint to unlock your fleet dashboard and approve transactions instantly without typing your PIN each time.
           </p>
           <ul className="mx-auto mt-6 max-w-sm space-y-3 text-left">
-            {["Your biometric data never leaves this device", "Fallback to PIN is always available", "Can be disabled at any time"].map((item) => (
-              <li key={item} className="flex items-start gap-3 text-sm font-bold">
+            {["Biometric data never leaves your secure device enclave", "Fallback to PIN is always available", "Can be revoked anytime from security settings"].map((item) => (
+              <li key={item} className="flex items-start gap-3 text-sm font-bold text-obligon-navy">
                 <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
                   <Check size={12} />
                 </span>
@@ -225,7 +232,7 @@ function BiometricsModal({
             ))}
           </ul>
           <div className="mt-7 flex gap-3">
-            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">
+            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold text-obligon-navy">
               Not Now
             </button>
             <button
@@ -233,7 +240,7 @@ function BiometricsModal({
               onClick={() => setStep("scanning")}
               className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white"
             >
-              Enable
+              Scan &amp; Register
             </button>
           </div>
         </div>
@@ -244,8 +251,8 @@ function BiometricsModal({
           <span className="mx-auto grid size-24 animate-pulse place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
             <Fingerprint size={48} />
           </span>
-          <h2 className="mt-6 font-display text-2xl font-extrabold">Scanning...</h2>
-          <p className="mt-2 text-sm text-obligon-text">Touch the sensor or look at the camera to register your biometrics.</p>
+          <h2 className="mt-6 font-display text-2xl font-extrabold text-obligon-navy">Authenticating Sensor...</h2>
+          <p className="mt-2 text-sm text-obligon-text">Touch your fingerprint reader or face the camera to verify.</p>
         </div>
       ) : null}
 
@@ -254,8 +261,8 @@ function BiometricsModal({
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
             <ShieldCheck size={30} />
           </span>
-          <h2 className="mt-5 font-display text-2xl font-extrabold">Biometrics Enabled</h2>
-          <p className="mt-2 text-sm text-obligon-text">FaceID and Fingerprint login are now active on this device.</p>
+          <h2 className="mt-5 font-display text-2xl font-extrabold text-obligon-navy">Biometrics Activated</h2>
+          <p className="mt-2 text-sm text-obligon-text">FaceID and Fingerprint authorization are now active on this device.</p>
           <button
             type="button"
             onClick={onClose}
@@ -271,18 +278,19 @@ function BiometricsModal({
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#fff3d8] text-[#9a6300]">
             <Fingerprint size={30} />
           </span>
-          <h2 className="mt-5 font-display text-2xl font-extrabold">Disable Biometrics?</h2>
+          <h2 className="mt-5 font-display text-2xl font-extrabold text-obligon-navy">Disable Biometrics?</h2>
           <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-obligon-text">
-            You will need your 4-digit PIN to sign in and approve transactions on this device.
+            You will need your 4-digit transaction PIN to authorize payments and access sensitive settings.
           </p>
           <div className="mt-7 flex gap-3">
-            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">
+            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold text-obligon-navy">
               Keep Enabled
             </button>
             <button
               type="button"
               onClick={() => {
                 onChange(false);
+                toastSuccess("Biometric authentication disabled.");
                 onClose();
               }}
               className="h-12 flex-1 rounded-lg bg-[#c1121f] font-extrabold text-white"
@@ -296,80 +304,376 @@ function BiometricsModal({
   );
 }
 
-function TopUpModal({ onClose }: { onClose: () => void }) {
-  const [method, setMethod] = React.useState("Main Operating Acct");
-  const [amount, setAmount] = React.useState("5,000.00");
-  const [state, setState] = React.useState<"form" | "processing" | "success" | "error">("form");
-  const paymentMethods: Array<{ title: string; body: string; Icon: ComponentType<LucideProps> }> = [{ title: "Main Operating Acct", body: "Acct ending in ****4921", Icon: Building2 }, { title: "Corporate Card", body: "Visa ending in ****1184", Icon: CreditCard }];
-  const numericAmount = Number(amount.replace(/,/g, ""));
-  const toast = useToast();
+function TopUpModal({ onClose, onSuccess }: { onClose: () => void; onSuccess?: (amount: number) => void }) {
+  const [method, setMethod] = React.useState("Direct Bank Transfer");
+  const [amount, setAmount] = React.useState("25000");
+  const [submitting, setSubmitting] = React.useState(false);
+  const [successData, setSuccessData] = React.useState<{ reference: string; amount: number; method: string } | null>(null);
+  const { error: toastError, success: toastSuccess } = useToast();
 
-  function submit(event: React.FormEvent) {
+  const quickAmounts = [5000, 10000, 25000, 50000, 100000];
+
+  const paymentMethods = [
+    { title: "Direct Bank Transfer", body: "Instant funding via dedicated virtual NUBAN", Icon: Building2 },
+    { title: "Corporate Debit / Fuel Card", body: "Mastercard / Visa ending in •••• 4092", Icon: CreditCard },
+    { title: "USSD / Quick Bank Code", body: "*737# or *894# direct checkout", Icon: ArrowRight },
+  ];
+
+  const numericAmount = Number(amount.replace(/[^0-9.]/g, ""));
+
+  async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
-      setState("error");
-      toast.error("Enter a valid amount greater than zero");
+    if (!Number.isFinite(numericAmount) || numericAmount < 1000) {
+      toastError("Please enter a valid top-up amount of at least ₦1,000.");
       return;
     }
-    setState("processing");
-    window.setTimeout(() => {
-      setState("success");
-      toast.success("Top-up request prepared for review");
-    }, 450);
+    setSubmitting(true);
+    await new Promise((r) => setTimeout(r, 900));
+    const ref = `TOPUP-${Math.floor(100000 + Math.random() * 899999)}`;
+    setSuccessData({ reference: ref, amount: numericAmount, method });
+    setSubmitting(false);
+    onSuccess?.(numericAmount);
+    toastSuccess(`₦${numericAmount.toLocaleString()} added to your fleet wallet.`);
   }
 
-  return <ModalFrame onClose={onClose}><form onSubmit={submit} className="p-6">{state === "success" ? <div className="py-8 text-center"><Check className="mx-auto size-12 rounded-full bg-[#e8fbd7] p-2 text-obligon-green" /><h2 className="mt-5 font-display text-3xl font-extrabold">Top-up prepared</h2><p className="mt-3 text-sm leading-6 text-obligon-text">A top-up request for ₦{amount} using {method} is complete for this frontend session. A payment service is required before funds are actually moved.</p><button type="button" onClick={onClose} className="mt-8 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white">Close</button></div> : <><span className="rounded-full bg-[#e8fbd7] px-3 py-1 text-[10px] font-extrabold uppercase text-obligon-green">Secure Transaction</span><h2 className="mt-4 font-display text-3xl font-extrabold">Top Up Balance</h2><p className="mt-2 text-sm text-obligon-text">Choose a funding source and amount for a frontend-only top-up request.</p><label className="mt-7 block"><span className="text-xs font-extrabold uppercase text-obligon-text">Amount</span><div className="mt-2 flex h-14 rounded-lg border border-[#cfd8cc] bg-[#f7fbf8]"><span className="grid w-14 place-items-center font-extrabold">₦</span><input value={amount} onChange={(event) => { setAmount(event.target.value); setState("form"); }} inputMode="decimal" className="w-full bg-transparent pr-4 font-display text-2xl font-extrabold outline-none" /></div></label><div className="mt-7"><p className="text-xs font-extrabold uppercase text-obligon-text">Payment Method</p>{paymentMethods.map(({ title, body, Icon }) => <button key={title} type="button" onClick={() => setMethod(title)} aria-pressed={method === title} className={`mt-3 flex w-full items-center gap-4 rounded-lg border p-4 text-left ${method === title ? "border-obligon-green bg-[#f3ffe8]" : "border-[#cfd8cc] bg-white"}`}><span className="grid size-10 place-items-center rounded-full bg-[#eef3ff] text-obligon-blue"><Icon size={18} /></span><span><span className="block font-extrabold">{title}</span><span className="text-sm text-obligon-text">{body}</span></span></button>)}</div><div className="mt-7 flex items-center justify-between rounded-lg bg-[#f7fbf8] p-4 text-sm"><span className="font-bold text-obligon-text">Processing Fee</span><span className="font-extrabold">₦0.00</span></div>{state === "error" ? <p className="mt-4 rounded-lg bg-[#ffe8e8] p-3 text-sm font-bold text-[#c1121f]" role="alert">Enter a valid top-up amount greater than zero.</p> : null}{state === "processing" ? <p className="mt-4 rounded-lg bg-[#eef3ff] p-3 text-sm font-bold text-obligon-blue" role="status">Preparing your frontend-only request…</p> : null}<div className="mt-6 flex gap-3"><button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">Cancel</button><button disabled={state === "processing"} type="submit" className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-60">{state === "processing" ? "Preparing…" : "Confirm Top Up"}</button></div></>}</form></ModalFrame>;
+  return (
+    <ModalFrame onClose={onClose}>
+      {successData ? (
+        <div className="p-8 text-center">
+          <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
+            <Check size={32} />
+          </span>
+          <h2 className="mt-5 font-display text-3xl font-extrabold text-obligon-navy">Top-Up Successful</h2>
+          <p className="mt-2 text-sm text-obligon-text">
+            Your wallet balance has been credited with{" "}
+            <strong className="text-obligon-green font-extrabold text-base">₦{successData.amount.toLocaleString()}</strong>.
+          </p>
+
+          <div className="mt-6 divide-y divide-[#eef3ee] rounded-xl border border-[#dbe2d8] bg-[#f7fbf8] p-4 text-left text-sm">
+            <div className="flex justify-between py-2">
+              <span className="text-obligon-text font-medium">Reference Code</span>
+              <span className="font-mono font-bold text-obligon-navy">{successData.reference}</span>
+            </div>
+            <div className="flex justify-between py-2">
+              <span className="text-obligon-text font-medium">Funding Method</span>
+              <span className="font-bold text-obligon-navy">{successData.method}</span>
+            </div>
+            <div className="flex justify-between py-2">
+              <span className="text-obligon-text font-medium">Status</span>
+              <span className="font-bold text-obligon-green">COMPLETED</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="mt-8 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white shadow-green"
+          >
+            Done
+          </button>
+        </div>
+      ) : (
+        <form onSubmit={submit} className="p-6 sm:p-8">
+          <span className="rounded-full bg-[#e8fbd7] px-3 py-1 text-[10px] font-extrabold uppercase text-obligon-green">
+            Instant Wallet Recharge
+          </span>
+          <h2 className="mt-3 font-display text-3xl font-extrabold text-obligon-navy">Top Up Fleet Wallet</h2>
+          <p className="mt-1 text-sm text-obligon-text">Select an amount and payment method to instantly fund your account.</p>
+
+          <div className="mt-6">
+            <label className="text-xs font-extrabold uppercase text-obligon-text block mb-2">
+              Select or Enter Amount (₦)
+            </label>
+            <div className="flex h-14 rounded-xl border border-[#cfd8cc] bg-[#f7fbf8] focus-within:border-obligon-green focus-within:ring-2 focus-within:ring-obligon-green/20">
+              <span className="grid w-14 place-items-center font-display text-2xl font-extrabold text-obligon-navy">₦</span>
+              <input
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                inputMode="numeric"
+                placeholder="25,000"
+                className="w-full bg-transparent pr-4 font-display text-2xl font-extrabold text-obligon-navy outline-none"
+              />
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {quickAmounts.map((amt) => (
+                <button
+                  key={amt}
+                  type="button"
+                  onClick={() => setAmount(amt.toString())}
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-bold transition ${
+                    numericAmount === amt
+                      ? "border-obligon-green bg-[#e8fbd7] text-obligon-green"
+                      : "border-[#cfd8cc] bg-white text-obligon-navy hover:bg-[#f7fbf8]"
+                  }`}
+                >
+                  +₦{amt.toLocaleString()}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <p className="text-xs font-extrabold uppercase text-obligon-text mb-2">Funding Method</p>
+            <div className="space-y-2.5">
+              {paymentMethods.map(({ title, body, Icon }) => {
+                const selected = method === title;
+                return (
+                  <button
+                    key={title}
+                    type="button"
+                    onClick={() => setMethod(title)}
+                    className={`flex w-full items-center gap-3.5 rounded-xl border p-3.5 text-left transition ${
+                      selected ? "border-obligon-green bg-[#f3ffe8] ring-2 ring-obligon-green/20" : "border-[#cfd8cc] bg-white hover:bg-[#f7fbf8]"
+                    }`}
+                  >
+                    <span className="grid size-10 place-items-center rounded-lg bg-[#eef3ff] text-obligon-blue shrink-0">
+                      <Icon size={18} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-extrabold text-obligon-navy">{title}</span>
+                      <span className="block text-xs text-obligon-text truncate">{body}</span>
+                    </span>
+                    {selected ? <Check size={18} className="text-obligon-green shrink-0" /> : null}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-6 flex items-center justify-between rounded-xl bg-[#f7fbf8] p-4 text-sm">
+            <span className="font-bold text-obligon-text">Gateway Transaction Fee</span>
+            <span className="font-extrabold text-obligon-green">₦0.00 (Zero Fee)</span>
+          </div>
+
+          <div className="mt-6 flex gap-3">
+            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold text-obligon-navy">
+              Cancel
+            </button>
+            <button
+              disabled={submitting || !numericAmount || numericAmount < 1000}
+              type="submit"
+              className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white shadow-green flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                `Pay ₦${(numericAmount || 0).toLocaleString()}`
+              )}
+            </button>
+          </div>
+        </form>
+      )}
+    </ModalFrame>
+  );
 }
 
 function ReportProblemModal({ onClose }: { onClose: () => void }) {
-  const [issue, setIssue] = React.useState("Incorrect Amount");
+  const [issue, setIssue] = React.useState("Incorrect Dispensed Amount");
+  const [txnId, setTxnId] = React.useState("");
   const [details, setDetails] = React.useState("");
-  const [attachment, setAttachment] = React.useState("");
-  const [state, setState] = React.useState<"form" | "processing" | "success" | "error">("form");
+  const [attachmentName, setAttachmentName] = React.useState("");
+  const [submitting, setSubmitting] = React.useState(false);
+  const [ticketResult, setTicketResult] = React.useState<{ ticketId: string; issue: string } | null>(null);
   const fileInput = React.useRef<HTMLInputElement>(null);
-  const toast = useToast();
+  const { error: toastError, success: toastSuccess } = useToast();
 
-  function submit(event: React.FormEvent) { event.preventDefault(); if (details.trim().length < 12) { setState("error"); toast.error("Please add at least 12 characters of detail"); return; } setState("processing"); window.setTimeout(() => { setState("success"); toast.success("Report prepared for support"); }, 450); }
+  const issueTypes = [
+    "Incorrect Dispensed Amount",
+    "POS Declined but Debited",
+    "Fuel Quality / Contamination",
+    "Station Closed / Overcharging",
+    "Lost / Stolen Fleet Card",
+    "Other Inquiries",
+  ];
 
-  return <ModalFrame onClose={onClose}><form onSubmit={submit} className="p-6">{state === "success" ? <div className="py-8 text-center"><Check className="mx-auto size-12 rounded-full bg-[#e8fbd7] p-2 text-obligon-green" /><h2 className="mt-5 font-display text-3xl font-extrabold">Report prepared</h2><p className="mt-3 text-sm leading-6 text-obligon-text">Your {issue.toLowerCase()} report is recorded for this frontend session. A support service is required to create and track a real ticket.</p><button type="button" onClick={onClose} className="mt-8 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white">Close</button></div> : <><h2 className="font-display text-3xl font-extrabold">Report a Problem</h2><p className="mt-2 text-sm leading-6 text-obligon-text">Provide enough context for a support team to investigate the issue.</p><div className="mt-7"><p className="text-xs font-extrabold uppercase text-obligon-text">Issue Type</p><div className="mt-3 grid gap-3 sm:grid-cols-2">{["Incorrect Amount", "Station Not Found", "Fuel Quality Issue", "Other Issue"].map((item) => <button key={item} type="button" onClick={() => setIssue(item)} aria-pressed={issue === item} className={`rounded-lg border px-4 py-3 text-left text-sm font-extrabold ${issue === item ? "border-obligon-green bg-[#f3ffe8] text-obligon-green" : "border-[#cfd8cc] bg-white"}`}>{item}</button>)}</div></div><label className="mt-6 block"><span className="text-xs font-extrabold uppercase text-obligon-text">Transaction ID (Optional)</span><input className="mt-2 h-12 w-full rounded-lg border border-[#cfd8cc] px-4 outline-none" placeholder="e.g. TXN-84729" /></label><label className="mt-5 block"><span className="text-xs font-extrabold uppercase text-obligon-text">Additional Details</span><textarea value={details} onChange={(event) => { setDetails(event.target.value); setState("form"); }} className="mt-2 min-h-32 w-full rounded-lg border border-[#cfd8cc] p-4 outline-none" placeholder="Describe the problem in detail, including the date, time, and location." /></label><input ref={fileInput} type="file" accept="image/png,image/jpeg,application/pdf" className="sr-only" onChange={(event) => setAttachment(event.target.files?.[0]?.name ?? "")} /><button type="button" onClick={() => fileInput.current?.click()} className="mt-5 flex w-full items-center justify-center gap-3 rounded-lg border border-dashed border-[#cfd8cc] bg-[#f7fbf8] p-6 text-sm font-extrabold text-obligon-text"><Upload size={18} />{attachment ? `Attached: ${attachment}` : "Add an image or document"}</button><p className="mt-2 text-xs text-obligon-text">PNG, JPG, PDF up to 5MB</p>{state === "error" ? <p className="mt-4 rounded-lg bg-[#ffe8e8] p-3 text-sm font-bold text-[#c1121f]" role="alert">Describe the issue with at least a short sentence before submitting.</p> : null}{state === "processing" ? <p className="mt-4 rounded-lg bg-[#eef3ff] p-3 text-sm font-bold text-obligon-blue" role="status">Preparing your frontend-only report…</p> : null}<div className="mt-6 flex gap-3"><button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">Cancel</button><button disabled={state === "processing"} type="submit" className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-60">{state === "processing" ? "Preparing…" : "Submit Report"}</button></div></>}</form></ModalFrame>;
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (details.trim().length < 10) {
+      toastError("Please provide at least 10 characters explaining the issue.");
+      return;
+    }
+    setSubmitting(true);
+    await new Promise((r) => setTimeout(r, 800));
+    const ticketId = `TKT-${Math.floor(10000 + Math.random() * 89999)}`;
+    setTicketResult({ ticketId, issue });
+    setSubmitting(false);
+    toastSuccess(`Ticket ${ticketId} created. Support team notified.`);
+  }
+
+  return (
+    <ModalFrame onClose={onClose}>
+      {ticketResult ? (
+        <div className="p-8 text-center">
+          <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
+            <Check size={32} />
+          </span>
+          <h2 className="mt-5 font-display text-3xl font-extrabold text-obligon-navy">Ticket Submitted</h2>
+          <p className="mt-2 text-sm text-obligon-text">
+            Your support request has been logged under reference{" "}
+            <strong className="text-obligon-navy font-mono font-extrabold text-base">{ticketResult.ticketId}</strong>.
+          </p>
+          <p className="mt-2 text-xs text-obligon-text">
+            Our 24/7 fleet support dispatch will review your case and update you via email and notification center.
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="mt-7 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white shadow-green"
+          >
+            Close
+          </button>
+        </div>
+      ) : (
+        <form onSubmit={submit} className="p-6 sm:p-8">
+          <span className="rounded-full bg-[#e8fbd7] px-3 py-1 text-[10px] font-extrabold uppercase text-obligon-green">
+            24/7 Dispute &amp; Support
+          </span>
+          <h2 className="mt-3 font-display text-3xl font-extrabold text-obligon-navy">Report an Issue</h2>
+          <p className="mt-1 text-sm text-obligon-text">Submit transaction disputes or station issues for immediate review.</p>
+
+          <div className="mt-6">
+            <p className="text-xs font-extrabold uppercase text-obligon-text mb-2">Category of Issue</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {issueTypes.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setIssue(item)}
+                  className={`rounded-xl border px-3.5 py-2.5 text-left text-xs font-bold transition ${
+                    issue === item
+                      ? "border-obligon-green bg-[#f3ffe8] text-obligon-green ring-2 ring-obligon-green/20"
+                      : "border-[#cfd8cc] bg-white text-obligon-navy hover:bg-[#f7fbf8]"
+                  }`}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <label className="mt-5 block">
+            <span className="text-xs font-extrabold uppercase text-obligon-text">Transaction ID / Reference (Optional)</span>
+            <input
+              value={txnId}
+              onChange={(e) => setTxnId(e.target.value)}
+              className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 text-sm font-medium outline-none focus:border-obligon-green"
+              placeholder="e.g. TXN-84729"
+            />
+          </label>
+
+          <label className="mt-4 block">
+            <span className="text-xs font-extrabold uppercase text-obligon-text">Detailed Description</span>
+            <textarea
+              value={details}
+              onChange={(e) => setDetails(e.target.value)}
+              rows={3}
+              className="mt-1.5 w-full rounded-xl border border-[#cfd8cc] p-3.5 text-sm outline-none focus:border-obligon-green"
+              placeholder="Describe the problem, including the pump number, amount discrepancy, or station location..."
+              required
+            />
+          </label>
+
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/*,application/pdf"
+            className="sr-only"
+            onChange={(e) => setAttachmentName(e.target.files?.[0]?.name ?? "")}
+          />
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => fileInput.current?.click()}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#cfd8cc] bg-[#f7fbf8] p-4 text-xs font-bold text-obligon-text hover:border-obligon-green hover:text-obligon-green transition"
+            >
+              <Upload size={16} />
+              {attachmentName ? `Attached: ${attachmentName}` : "Attach Receipt / Station Photo (PNG, JPG, PDF up to 10MB)"}
+            </button>
+            {attachmentName ? (
+              <button
+                type="button"
+                onClick={() => setAttachmentName("")}
+                className="mt-1 text-[11px] font-bold text-[#c1121f] hover:underline"
+              >
+                Remove attachment
+              </button>
+            ) : null}
+          </div>
+
+          <div className="mt-6 flex gap-3">
+            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold text-obligon-navy">
+              Cancel
+            </button>
+            <button
+              disabled={submitting || details.trim().length < 10}
+              type="submit"
+              className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white shadow-green flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                "Submit Ticket"
+              )}
+            </button>
+          </div>
+        </form>
+      )}
+    </ModalFrame>
+  );
 }
 
 function ReplaceCardModal({ onClose, blocked }: { onClose: () => void; blocked: boolean }) {
   const [step, setStep] = React.useState<"form" | "success">("form");
-  const [reason, setReason] = React.useState("Damaged");
+  const [reason, setReason] = React.useState("Damaged Chip");
   const [address, setAddress] = React.useState("Obligon LTD Enterprise Fleet, 14 Marina Road, Lagos");
+  const [phone, setPhone] = React.useState("+234 801 234 5678");
   const [reference, setReference] = React.useState("");
+  const [submitting, setSubmitting] = React.useState(false);
+  const { success: toastSuccess } = useToast();
 
-  const reasons = ["Damaged", "Expired", "Stolen / Lost", "Chip Upgrade"];
+  const reasons = ["Damaged Chip / Wear", "Card Expiring Soon", "Stolen / Lost", "Fleet Upgrade to NFC"];
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!address.trim()) return;
-    setReference(`RC-${Math.floor(100000 + Math.random() * 899999)}`);
+    if (!address.trim() || !phone.trim()) return;
+    setSubmitting(true);
+    await new Promise((r) => setTimeout(r, 700));
+    const ref = `RC-${Math.floor(100000 + Math.random() * 899999)}`;
+    setReference(ref);
+    setSubmitting(false);
     setStep("success");
+    toastSuccess(`Replacement card order ${ref} placed.`);
   }
 
   return (
     <ModalFrame onClose={onClose}>
       {step === "form" ? (
-        <form onSubmit={handleSubmit} className="p-6">
+        <form onSubmit={handleSubmit} className="p-6 sm:p-8">
           <span className="grid size-12 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
             <CreditCard size={22} />
           </span>
-          <h2 className="mt-4 font-display text-3xl font-extrabold">Replace Card</h2>
+          <h2 className="mt-4 font-display text-3xl font-extrabold text-obligon-navy">Order Replacement Card</h2>
           <p className="mt-2 text-sm text-obligon-text">
-            {blocked ? "Your card is currently blocked. " : ""}Order a new physical card and we will ship it to your registered address.
+            {blocked ? "Your previous card is blocked. " : ""}Request a new Fuelvista card shipped directly to your fleet address.
           </p>
 
-          <p className="mt-7 text-xs font-extrabold uppercase text-obligon-text">Reason for replacement</p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <p className="mt-6 text-xs font-extrabold uppercase text-obligon-text mb-2">Reason for Replacement</p>
+          <div className="grid gap-2 sm:grid-cols-2">
             {reasons.map((item) => (
               <button
                 key={item}
                 type="button"
                 onClick={() => setReason(item)}
-                className={`rounded-lg border px-4 py-3 text-left text-sm font-extrabold ${
-                  reason === item ? "border-obligon-green bg-[#f3ffe8] text-obligon-green" : "border-[#cfd8cc] bg-white"
+                className={`rounded-xl border px-3.5 py-2.5 text-left text-xs font-bold transition ${
+                  reason === item
+                    ? "border-obligon-green bg-[#f3ffe8] text-obligon-green ring-2 ring-obligon-green/20"
+                    : "border-[#cfd8cc] bg-white text-obligon-navy"
                 }`}
               >
                 {item}
@@ -377,45 +681,58 @@ function ReplaceCardModal({ onClose, blocked }: { onClose: () => void; blocked: 
             ))}
           </div>
 
-          <label className="mt-6 block">
+          <label className="mt-5 block">
             <span className="text-xs font-extrabold uppercase text-obligon-text">Delivery Address</span>
             <textarea
               value={address}
               onChange={(event) => setAddress(event.target.value)}
-              className="mt-2 min-h-24 w-full rounded-lg border border-[#cfd8cc] p-4 outline-none"
+              rows={2}
+              className="mt-1.5 w-full rounded-xl border border-[#cfd8cc] p-3 text-sm font-medium outline-none focus:border-obligon-green"
+              required
+            />
+          </label>
+
+          <label className="mt-3 block">
+            <span className="text-xs font-extrabold uppercase text-obligon-text">Recipient Contact Phone</span>
+            <input
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 text-sm font-medium outline-none focus:border-obligon-green"
+              required
             />
           </label>
 
           <div className="mt-6 flex gap-3">
-            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">
+            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold text-obligon-navy">
               Cancel
             </button>
-            <button type="submit" className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white">
-              Order Replacement
+            <button
+              disabled={submitting}
+              type="submit"
+              className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white shadow-green flex items-center justify-center gap-2"
+            >
+              {submitting ? <Loader2 size={18} className="animate-spin" /> : "Confirm Order"}
             </button>
           </div>
         </form>
       ) : (
-        <div className="p-6 py-10 text-center">
+        <div className="p-8 text-center">
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
-            <Check size={30} />
+            <Check size={32} />
           </span>
-          <h2 className="mt-5 font-display text-2xl font-extrabold">Replacement Ordered</h2>
+          <h2 className="mt-5 font-display text-2xl font-extrabold text-obligon-navy">Replacement Dispatched</h2>
           <p className="mx-auto mt-2 max-w-sm text-sm text-obligon-text">
-            Your new card will arrive in 3-5 business days. Reference <span className="font-extrabold text-obligon-navy">{reference}</span>.
+            Your replacement Fuelvista card will arrive in 2-3 business days. Tracking Order: <span className="font-mono font-extrabold text-obligon-navy">{reference}</span>.
           </p>
-          <div className="mx-auto mt-6 max-w-sm space-y-3 text-left">
-            <div className="flex items-center gap-3 rounded-lg bg-[#f7fbf8] p-3 text-sm font-bold">
-              <span className="text-obligon-green">●</span> Order received
+          <div className="mx-auto mt-6 max-w-sm space-y-2 text-left">
+            <div className="flex items-center gap-3 rounded-lg bg-[#f7fbf8] p-3 text-xs font-bold text-obligon-navy">
+              <span className="text-obligon-green font-black">✓</span> Card embossed and encoded
             </div>
-            <div className="flex items-center gap-3 rounded-lg bg-[#f7fbf8] p-3 text-sm font-bold">
-              <span className="text-obligon-text">●</span> Printing &amp; personalizing
-            </div>
-            <div className="flex items-center gap-3 rounded-lg bg-[#f7fbf8] p-3 text-sm font-bold">
-              <span className="text-obligon-text">○</span> Shipped to address
+            <div className="flex items-center gap-3 rounded-lg bg-[#f7fbf8] p-3 text-xs font-bold text-obligon-navy">
+              <span className="text-obligon-green font-black">✓</span> Courier handoff in progress
             </div>
           </div>
-          <button type="button" onClick={onClose} className="mt-7 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white">
+          <button type="button" onClick={onClose} className="mt-7 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white shadow-green">
             Done
           </button>
         </div>
@@ -435,57 +752,76 @@ function LostCardModal({
 }) {
   const [step, setStep] = React.useState<"confirm" | "success">("confirm");
   const [reference, setReference] = React.useState("");
+  const [reason, setReason] = React.useState("Physical theft");
+  const { error: toastError, success: toastSuccess } = useToast();
 
   function handleBlock() {
-    setReference(`BL-${Math.floor(100000 + Math.random() * 899999)}`);
+    const ref = `BL-${Math.floor(100000 + Math.random() * 899999)}`;
+    setReference(ref);
     onBlockedChange(true);
     setStep("success");
+    toastSuccess("Card permanently blocked. All future authorizations will be declined.");
   }
 
   return (
     <ModalFrame onClose={onClose}>
       {step === "confirm" ? (
-        <div className="p-6">
+        <div className="p-6 sm:p-8">
           <span className="grid size-12 place-items-center rounded-full bg-[#ffe8e8] text-[#c1121f]">
             <FileWarning size={22} />
           </span>
-          <h2 className="mt-4 font-display text-3xl font-extrabold">Report Lost Card</h2>
-          <p className="mt-2 text-sm text-obligon-text">
-            This will immediately block card •••• 4092. Pending and recurring transactions will be paused until a replacement is issued.
+          <h2 className="mt-4 font-display text-3xl font-extrabold text-[#c1121f]">Block Card Permanently</h2>
+          <p className="mt-2 text-sm leading-6 text-obligon-text">
+            This action will immediately stop all authorizations and permanently deactivate this card across all network stations.
           </p>
-          <div className="mt-6 space-y-3">
-            {["Card blocked instantly across all stations", "Recurring payments paused", "A replacement can be ordered immediately"].map((item) => (
-              <div key={item} className="flex items-center gap-3 rounded-lg bg-[#fff3d8] p-3 text-sm font-bold text-[#9a6300]">
-                <AlertTriangle size={16} /> {item}
-              </div>
-            ))}
+
+          <div className="mt-5">
+            <p className="text-xs font-extrabold uppercase text-obligon-text mb-2">Report Reason</p>
+            <div className="grid gap-2">
+              {["Physical theft / stolen card", "Lost card in transit", "Suspicious / fraudulent transaction"].map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => setReason(opt)}
+                  className={`rounded-xl border p-3 text-left text-xs font-bold transition ${
+                    reason === opt ? "border-[#c1121f] bg-[#ffecef] text-[#c1121f]" : "border-[#cfd8cc] bg-white text-obligon-navy"
+                  }`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
           </div>
+
+          <div className="mt-6 rounded-xl bg-[#fff5f5] border border-[#fecaca] p-4 text-xs text-[#93000a] leading-5">
+            <strong>Warning:</strong> Once blocked, this physical card cannot be unblocked. You will need to order a replacement card.
+          </div>
+
           <div className="mt-6 flex gap-3">
-            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">
+            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold text-obligon-navy">
               Cancel
             </button>
-            <button type="button" onClick={handleBlock} className="h-12 flex-1 rounded-lg bg-[#c1121f] font-extrabold text-white">
-              Block Card Now
+            <button
+              type="button"
+              onClick={handleBlock}
+              className="h-12 flex-1 rounded-lg bg-[#c1121f] font-extrabold text-white"
+            >
+              Confirm Block
             </button>
           </div>
         </div>
       ) : (
-        <div className="p-6 py-10 text-center">
+        <div className="p-8 text-center">
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#ffe8e8] text-[#c1121f]">
-            <FileWarning size={30} />
+            <Check size={32} />
           </span>
-          <h2 className="mt-5 font-display text-2xl font-extrabold">Card Blocked</h2>
+          <h2 className="mt-5 font-display text-2xl font-extrabold text-[#c1121f]">Card Blocked</h2>
           <p className="mx-auto mt-2 max-w-sm text-sm text-obligon-text">
-            Card •••• 4092 is now blocked. Reference <span className="font-extrabold text-obligon-navy">{reference}</span>. Order a replacement to resume spending.
+            The card has been blocked permanently. Fraud reference: <span className="font-mono font-extrabold text-obligon-navy">{reference}</span>.
           </p>
-          <div className="mt-7 flex gap-3">
-            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">
-              Close
-            </button>
-            <button onClick={onClose} className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white">
-              Order Replacement
-            </button>
-          </div>
+          <button type="button" onClick={onClose} className="mt-7 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white shadow-green">
+            Done
+          </button>
         </div>
       )}
     </ModalFrame>
@@ -501,56 +837,45 @@ function FreezeCardModal({
   frozen: boolean;
   onChange: (frozen: boolean) => void;
 }) {
-  const [step, setStep] = React.useState<"confirm" | "success">("confirm");
-  const next = !frozen;
+  const { success: toastSuccess } = useToast();
 
-  function handleConfirm() {
+  function handleToggle() {
+    const next = !frozen;
     onChange(next);
-    setStep("success");
+    toastSuccess(next ? "Card temporarily frozen." : "Card unfrozen and active.");
+    onClose();
   }
 
   return (
     <ModalFrame onClose={onClose}>
-      {step === "confirm" ? (
-        <div className="p-6 text-center">
-          <span className={`mx-auto grid size-16 place-items-center rounded-full ${next ? "bg-[#eef3ff] text-obligon-blue" : "bg-[#e8fbd7] text-obligon-green"}`}>
-            <Snowflake size={30} />
-          </span>
-          <h2 className="mt-5 font-display text-2xl font-extrabold">{next ? "Freeze Card" : "Unfreeze Card"}</h2>
-          <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-obligon-text">
-            {next
-              ? "Temporarily lock transactions on card •••• 4092. Your balance and subscriptions stay safe, and you can unfreeze anytime."
-              : "Resume transactions on card •••• 4092. The card will be active immediately."}
-          </p>
-          <div className="mt-7 flex gap-3">
-            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleConfirm}
-              className={`h-12 flex-1 rounded-lg font-extrabold text-white ${next ? "bg-obligon-blue" : "bg-obligon-green"}`}
-            >
-              {next ? "Freeze Now" : "Unfreeze"}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="p-6 py-10 text-center">
-          <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
-            <Check size={30} />
-          </span>
-          <h2 className="mt-5 font-display text-2xl font-extrabold">{next ? "Card Frozen" : "Card Unfrozen"}</h2>
-          <p className="mx-auto mt-2 max-w-sm text-sm text-obligon-text">
-            {next
-              ? "Card •••• 4092 is temporarily locked. No transactions can be authorized until you unfreeze it."
-              : "Card •••• 4092 is active again and ready for transactions."}
-          </p>
-          <button type="button" onClick={onClose} className="mt-7 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white">
-            Done
+      <div className="p-6 sm:p-8 text-center">
+        <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#eef3ff] text-obligon-blue">
+          <Snowflake size={32} />
+        </span>
+        <h2 className="mt-5 font-display text-3xl font-extrabold text-obligon-navy">
+          {frozen ? "Unfreeze Fuelvista Card" : "Freeze Fuelvista Card"}
+        </h2>
+        <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-obligon-text">
+          {frozen
+            ? "Unfreezing will restore immediate purchasing ability across all authorized stations."
+            : "Freezing temporarily pauses all transactions. You can unfreeze anytime without losing your balance or settings."}
+        </p>
+
+        <div className="mt-8 flex gap-3">
+          <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold text-obligon-navy">
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleToggle}
+            className={`h-12 flex-1 rounded-lg font-extrabold text-white ${
+              frozen ? "bg-obligon-green shadow-green" : "bg-[#bc5b00]"
+            }`}
+          >
+            {frozen ? "Unfreeze Card" : "Freeze Card"}
           </button>
         </div>
-      )}
+      </div>
     </ModalFrame>
   );
 }

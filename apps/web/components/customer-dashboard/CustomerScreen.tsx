@@ -1,8 +1,36 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import type { ComponentType } from "react";
-import { AlertTriangle, ArrowRight, Bell, Building2, Check, ChevronDown, CircleHelp, CreditCard, Download, FileWarning, Fuel, Grid2X2, HeartHandshake, History, LockKeyhole, MapPinned, MessageCircle, Receipt, ShieldCheck, Snowflake, Upload, WalletCards, type LucideProps } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Bell,
+  Building2,
+  Check,
+  ChevronDown,
+  CircleHelp,
+  CreditCard,
+  Download,
+  FileWarning,
+  Fuel,
+  Grid2X2,
+  HeartHandshake,
+  History,
+  LockKeyhole,
+  MapPinned,
+  MessageCircle,
+  Receipt,
+  ShieldCheck,
+  Snowflake,
+  Upload,
+  WalletCards,
+  Send,
+  Loader2,
+  CheckCircle2,
+  SlidersHorizontal,
+  type LucideProps
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   type CustomerPageKey,
@@ -12,8 +40,11 @@ import {
 import { api } from "@/lib/services";
 import { AsyncBoundary } from "@/components/shared/States";
 import { useAsync } from "@/components/shared/useAsync";
+import { useSession } from "@/components/shared/AuthContext";
+import { useToast } from "@/components/shared/Toast";
 import { CustomerModals, ModalFrame, type CustomerModalType } from "./CustomerModals";
 import { ConfirmModal, PinModal } from "../shared/Dialogs";
+import { routes } from "../site/routes";
 
 const toneClasses: Record<CustomerTone, string> = {
   green: "bg-[#e8fbd7] text-obligon-green",
@@ -29,7 +60,7 @@ function Canvas({ children, compact = false }: { children: React.ReactNode; comp
 }
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <article className={`rounded-lg border border-[#dbe2d8] bg-white ${className}`}>{children}</article>;
+  return <article className={`rounded-2xl border border-[#dbe2d8] bg-white ${className}`}>{children}</article>;
 }
 
 function MiniIcon({ tone = "green", children }: { tone?: CustomerTone; children: React.ReactNode }) {
@@ -39,7 +70,7 @@ function MiniIcon({ tone = "green", children }: { tone?: CustomerTone; children:
 function SectionTitle({ title, action }: { title: string; action?: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-4">
-      <h2 className="font-display text-2xl font-extrabold tracking-normal">{title}</h2>
+      <h2 className="font-display text-2xl font-extrabold tracking-normal text-obligon-navy">{title}</h2>
       {action}
     </div>
   );
@@ -74,22 +105,29 @@ function VehicleTable() {
       empty={{ title: "No vehicle data", message: "Vehicle performance metrics will appear here." }}
     >
       <Card className="overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-6">
-          <h2 className="font-display text-2xl font-extrabold">Vehicle Performance</h2>
-          <button onClick={() => router.push("/customer/transactions")} className="text-sm font-extrabold text-obligon-green" type="button">View All</button>
+        <div className="flex items-center justify-between px-6 py-6 border-b border-[#eef3ee]">
+          <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Vehicle Performance</h2>
+          <button onClick={() => router.push("/customer/transactions")} className="text-sm font-extrabold text-obligon-green hover:underline" type="button">
+            View All
+          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[520px] border-collapse text-left">
             <thead className="bg-[#f0f4f0] text-xs uppercase tracking-[0.8px] text-[#3f463d]">
-              <tr><th className="px-6 py-4">Vehicle ID</th><th>Spend</th><th>Volume</th><th>Efficiency</th></tr>
+              <tr>
+                <th className="px-6 py-4">Vehicle ID</th>
+                <th>Spend</th>
+                <th>Volume</th>
+                <th>Efficiency</th>
+              </tr>
             </thead>
             <tbody className="divide-y divide-[#eef3ee]">
               {(vehicles ?? []).map(([id, spend, volume, efficiency]) => (
-                <tr key={id}>
+                <tr key={id} className="hover:bg-[#f7fbf8] transition">
                   <td className="px-6 py-4 font-bold text-obligon-green">{id}</td>
-                  <td>{spend}</td>
-                  <td>{volume}</td>
-                  <td className={efficiency === "76%" ? "text-[#d71920]" : "text-obligon-green"}>{efficiency}</td>
+                  <td className="font-semibold text-obligon-navy">{spend}</td>
+                  <td className="text-obligon-text">{volume}</td>
+                  <td className={efficiency === "76%" ? "text-[#d71920] font-bold" : "text-obligon-green font-bold"}>{efficiency}</td>
                 </tr>
               ))}
             </tbody>
@@ -101,6 +139,7 @@ function VehicleTable() {
 }
 
 function ActivityList({ desktop = false }: { desktop?: boolean }) {
+  const router = useRouter();
   const { status, data: recentActivity, error, reload } = useAsync(() => api.getCustomerRecentActivity());
   return (
     <AsyncBoundary
@@ -112,20 +151,22 @@ function ActivityList({ desktop = false }: { desktop?: boolean }) {
       empty={{ title: "No recent activity", message: "Your recent transactions will appear here." }}
     >
       <Card className="overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-6">
-          <h2 className="font-display text-2xl font-extrabold">{desktop ? "Recent Activity" : "Recent Transactions"}</h2>
-          <a href="/customer/transactions" className="text-sm font-bold text-obligon-green">View All</a>
+        <div className="flex items-center justify-between px-6 py-6 border-b border-[#eef3ee]">
+          <h2 className="font-display text-2xl font-extrabold text-obligon-navy">{desktop ? "Recent Activity" : "Recent Transactions"}</h2>
+          <button onClick={() => router.push("/customer/transactions")} className="text-sm font-bold text-obligon-green hover:underline" type="button">
+            View All
+          </button>
         </div>
         <div className="divide-y divide-[#eef3ee]">
           {(recentActivity ?? []).map((item) => (
-            <a key={`${item.station}-${item.amount}`} href="/customer/transaction-detail" className="flex items-center gap-4 px-6 py-4">
+            <div key={`${item.station}-${item.amount}`} onClick={() => router.push("/customer/transactions")} className="flex items-center gap-4 px-6 py-4 hover:bg-[#f7fbf8] transition cursor-pointer">
               <MiniIcon tone="muted"><Fuel size={18} /></MiniIcon>
               <div className="min-w-0 flex-1">
-                <p className="font-extrabold">{item.station}</p>
+                <p className="font-extrabold text-obligon-navy">{item.station}</p>
                 <p className="text-sm text-obligon-text">{desktop ? item.time : item.meta}</p>
               </div>
-              <p className="font-extrabold">{item.amount}</p>
-            </a>
+              <p className="font-extrabold text-obligon-green">{item.amount}</p>
+            </div>
           ))}
         </div>
       </Card>
@@ -133,60 +174,111 @@ function ActivityList({ desktop = false }: { desktop?: boolean }) {
   );
 }
 
-function OverviewPage() {
+function metricValue(metrics: { label: string; value: string; helper?: string }[] | null, label: string, fallback = "—") {
+  return metrics?.find((item) => item.label === label)?.value ?? fallback;
+}
+
+function metricHelper(metrics: { label: string; value: string; helper?: string }[] | null, label: string) {
+  return metrics?.find((item) => item.label === label)?.helper;
+}
+
+function greetingHour() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function OverviewPage({ walletBalance }: { walletBalance: number }) {
+  const { user } = useSession();
+  const router = useRouter();
+  const { status, data: metrics, error, reload } = useAsync(() => api.getCustomerOverviewMetrics());
+  const firstName = user?.name?.split(" ")[0] ?? "Driver";
+  const mtdSpend = metricValue(metrics, "MTD Spend", "₦215,600");
+  const budgetUsage = metricValue(metrics, "Budget Usage", "43%");
+  const budgetLimit = metricHelper(metrics, "Budget Usage") ?? "₦500,000 Limit";
+  const litres = metricValue(metrics, "Litres Consumed", "1,245 L");
+  const txnCount = metricValue(metrics, "Transactions", "87");
+  const security = metricValue(metrics, "Security Status", "2 Alerts");
+  const securityHelper = metricHelper(metrics, "Security Status") ?? "1 Blocked | 0 Suspicious";
+  const lifetime = metricValue(metrics, "Lifetime Savings", "₦245,780");
+  const mtdSavings = metricHelper(metrics, "MTD Spend")?.replace("MTD Savings: ", "") ?? "₦18,450";
+  const usagePercent = Number.parseInt(budgetUsage, 10) || 43;
+
   return (
     <Canvas>
       <div className="lg:hidden">
-        <h1 className="font-display text-[34px] font-extrabold leading-tight text-obligon-green">Good afternoon, Matt</h1>
-        <p className="mt-3 text-base text-[#3f463d]">Here is your fleet overview for today.</p>
+        <h1 className="font-display text-[34px] font-extrabold leading-tight text-obligon-green">{greetingHour()}, {firstName}</h1>
+        <p className="mt-2 text-base text-[#3f463d]">Here is your live fleet overview for today.</p>
       </div>
 
-      <div className="mt-8 grid gap-6 lg:mt-0 lg:grid-cols-[1fr_282px]">
-        <Card className="p-6 lg:p-8">
-          <div className="flex justify-between">
-            <p className="text-xs font-extrabold uppercase tracking-[0.8px] text-[#3f463d]">Total Account Balance</p>
-            <WalletCards size={20} className="text-obligon-green" />
-          </div>
-          <p className="mt-5 font-display text-[40px] font-extrabold leading-none lg:text-[64px]">₦485,000</p>
-          <div className="mt-8 flex flex-wrap gap-4">
-            <span className="rounded-lg border border-[#b6d894] bg-[#e8fbd7] px-4 py-3">
-              <span className="block text-xs font-extrabold uppercase text-obligon-green">MTD Savings</span>
-              <span className="mt-1 block text-2xl font-extrabold text-obligon-lime">₦18,450</span>
-            </span>
-            <span className="hidden rounded-lg bg-[#e1e5e1] px-4 py-3 lg:block">
-              <span className="block text-xs font-extrabold uppercase text-[#3f463d]">Lifetime Savings</span>
-              <span className="mt-1 block text-2xl font-extrabold">₦245,780</span>
-            </span>
-          </div>
-        </Card>
-        <Card className="p-6">
-          <p className="text-xs font-extrabold uppercase tracking-[0.8px] text-[#3f463d]">MTD Spend</p>
-          <p className="mt-4 font-display text-[32px] font-extrabold text-[#b51f24]">₦215,600</p>
-          <div className="mt-7 flex justify-between text-sm"><span className="font-bold text-[#3f463d]">Budget Usage</span><span>43%</span></div>
-          <div className="mt-2 h-2 rounded-full bg-[#dce5da]"><span className="block h-full w-[43%] rounded-full bg-obligon-green" /></div>
-          <p className="mt-3 text-right text-xs font-extrabold text-[#3f463d]">₦500,000 Limit</p>
-        </Card>
-      </div>
+      <AsyncBoundary
+        status={status}
+        error={error?.message ?? null}
+        isEmpty={!metrics || metrics.length === 0}
+        onRetry={reload}
+        loadingLabel="Loading overview…"
+        empty={{ title: "No overview data", message: "Account metrics will appear here once available." }}
+      >
+        <div className="mt-8 grid gap-6 lg:mt-0 lg:grid-cols-[1fr_282px]">
+          <Card className="p-6 lg:p-8">
+            <div className="flex justify-between items-center">
+              <p className="text-xs font-extrabold uppercase tracking-[0.8px] text-[#3f463d]">Total Account Balance</p>
+              <WalletCards size={22} className="text-obligon-green" />
+            </div>
+            <p className="mt-4 font-display text-[40px] font-extrabold leading-none text-obligon-navy lg:text-[56px]">
+              ₦{walletBalance.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+            </p>
+            <div className="mt-8 flex flex-wrap gap-4">
+              <span className="rounded-xl border border-[#b6d894] bg-[#e8fbd7] px-4 py-3">
+                <span className="block text-xs font-extrabold uppercase text-obligon-green">MTD Savings</span>
+                <span className="mt-1 block text-2xl font-extrabold text-obligon-green">{mtdSavings}</span>
+              </span>
+              <span className="rounded-xl bg-[#eef3ee] px-4 py-3">
+                <span className="block text-xs font-extrabold uppercase text-[#3f463d]">Lifetime Savings</span>
+                <span className="mt-1 block text-2xl font-extrabold text-obligon-navy">{lifetime}</span>
+              </span>
+            </div>
+          </Card>
+          <Card className="p-6">
+            <p className="text-xs font-extrabold uppercase tracking-[0.8px] text-[#3f463d]">MTD Spend</p>
+            <p className="mt-4 font-display text-[32px] font-extrabold text-[#b51f24]">{mtdSpend}</p>
+            <div className="mt-6 flex justify-between text-sm">
+              <span className="font-bold text-[#3f463d]">Budget Usage</span>
+              <span className="font-extrabold text-obligon-navy">{budgetUsage}</span>
+            </div>
+            <div className="mt-2 h-2.5 rounded-full bg-[#dce5da] overflow-hidden">
+              <span className="block h-full rounded-full bg-obligon-green transition-all" style={{ width: `${Math.min(usagePercent, 100)}%` }} />
+            </div>
+            <p className="mt-3 text-right text-xs font-extrabold text-[#3f463d]">{budgetLimit}</p>
+          </Card>
+        </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[206px_206px_1fr]">
-        <Card className="p-5"><Fuel className="text-obligon-green" size={20} /><p className="mt-2 text-sm font-bold text-[#3f463d]">Litres Consumed</p><p className="text-2xl font-extrabold">1,245 L</p></Card>
-        <Card className="p-5"><History className="text-[#3754a5]" size={20} /><p className="mt-2 text-sm font-bold text-[#3f463d]">Transactions</p><p className="text-2xl font-extrabold">87</p></Card>
-        <Card className="p-5"><p className="text-sm font-bold text-[#3f463d]">Security Status</p><p className="mt-4 text-sm"><span className="text-[#c1121f]">●</span> 2 Alerts <span className="ml-3 text-[#3754a5]">●</span> 1 Blocked <span className="ml-3 text-[#7a816f]">●</span> 0 Suspicious</p></Card>
-      </div>
+        <div className="mt-6 grid gap-6 sm:grid-cols-3">
+          <Card className="p-5">
+            <Fuel className="text-obligon-green" size={22} />
+            <p className="mt-2 text-xs font-bold uppercase text-[#3f463d]">Litres Consumed</p>
+            <p className="mt-1 text-2xl font-extrabold text-obligon-navy">{litres}</p>
+          </Card>
+          <Card className="p-5">
+            <History className="text-obligon-blue" size={22} />
+            <p className="mt-2 text-xs font-bold uppercase text-[#3f463d]">Transactions</p>
+            <p className="mt-1 text-2xl font-extrabold text-obligon-navy">{txnCount}</p>
+          </Card>
+          <Card className="p-5">
+            <ShieldCheck className="text-obligon-green" size={22} />
+            <p className="mt-2 text-xs font-bold uppercase text-[#3f463d]">Security Status</p>
+            <p className="mt-1 text-sm font-bold text-obligon-navy flex items-center gap-2">
+              <span className="size-2 rounded-full bg-obligon-green" /> All Cards Active
+            </p>
+          </Card>
+        </div>
 
-      <div className="mt-6 grid gap-6 lg:hidden">
-        <Card className="p-6"><SectionTitle title="Fuel Spend Trend" action={<span className="rounded-full bg-[#eef3ee] px-4 py-2 text-sm">Jan - Jun</span>} /><TrendChart /></Card>
-        <Card className="p-6 text-center"><h2 className="text-left font-display text-2xl font-extrabold">Fuel Efficiency</h2><div className="mx-auto mt-8 grid size-32 place-items-center rounded-full border-[12px] border-[#63b800]"><p className="text-3xl font-extrabold">87<br /><span className="text-xs font-normal">/100</span></p></div><div className="mt-8 space-y-4 text-left"><p>Average Consumption <span className="float-right font-extrabold">7.8 km/L</span></p><p>Average Cost/Litre <span className="float-right font-extrabold">₦1,025</span></p></div></Card>
-      </div>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_282px]">
-        <VehicleTable />
-        <ActivityList desktop />
-      </div>
-      <div className="mt-6 grid gap-4 lg:hidden">
-        <Card className="border-l-4 border-l-[#c1121f] p-6"><div className="flex items-center gap-4"><MiniIcon tone="red"><ShieldCheck size={20} /></MiniIcon><div><p className="text-xs font-extrabold uppercase text-[#3f463d]">Security Status</p><p>2 Alerts | 1 Blocked | 0 Suspicious</p></div></div></Card>
-        <Card className="border-l-4 border-l-obligon-green p-6"><div className="flex items-center gap-4"><MiniIcon tone="green"><HeartHandshake size={20} /></MiniIcon><div><p className="text-xs font-extrabold uppercase text-[#3f463d]">Lifetime Savings</p><p className="font-extrabold">₦245,780</p></div></div></Card>
-      </div>
+        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_282px]">
+          <VehicleTable />
+          <ActivityList desktop />
+        </div>
+      </AsyncBoundary>
     </Canvas>
   );
 }
@@ -198,6 +290,10 @@ function TransactionsPage() {
   const [filters, setFilters] = React.useState({ station: "All Stations", vehicle: "All Vehicles", fuel: "All Fuels" });
   const [applied, setApplied] = React.useState(filters);
   const [selectedTxn, setSelectedTxn] = React.useState<CustomerTransaction | null>(null);
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const pageSize = 5;
+  const { success: toastSuccess } = useToast();
+  const [downloadingReceipt, setDownloadingReceipt] = React.useState(false);
 
   const stations = Array.from(new Set((transactionHistory ?? []).map((row) => row.station)));
   const vehicles = Array.from(new Set((transactionHistory ?? []).map((row) => row.vehicle ?? ""))).filter(Boolean);
@@ -210,8 +306,47 @@ function TransactionsPage() {
     return true;
   });
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   const hasActiveFilters =
     applied.station !== "All Stations" || applied.vehicle !== "All Vehicles" || applied.fuel !== "All Fuels";
+
+  function handleDownloadReceipt(txn: CustomerTransaction) {
+    setDownloadingReceipt(true);
+    setTimeout(() => {
+      const ref = txn.reference ?? `TXN-${Math.abs(hashString(txn.station + (txn.time ?? ""))).toString().slice(0, 8)}`;
+      const receiptContent = `====================================================
+               OBLIGON LTD OFFICIAL RECEIPT
+====================================================
+Reference:     ${ref}
+Station:       ${txn.station}
+Location:      ${txn.meta ?? "Main Station Hub"}
+Vehicle ID:    ${txn.vehicle ?? "FLT-8492"}
+Fuel Type:     ${txn.fuel ?? "Premium Diesel"}
+Amount Paid:   ${txn.amount}
+Timestamp:     ${txn.time ?? new Date().toLocaleString()}
+Status:        APPROVED / SETTLED
+Payment Card:  •••• •••• •••• 4092
+Terminal ID:   POS-OBL-0842
+====================================================
+Thank you for powering with Obligon LTD Network.
+Support: support@obligon.energy | +234 800 OBLIGON
+====================================================`;
+
+      const blob = new Blob([receiptContent], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Obligon_Receipt_${ref}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setDownloadingReceipt(false);
+      toastSuccess(`Receipt downloaded for ${ref}`);
+    }, 600);
+  }
 
   function Select({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) {
     return (
@@ -220,7 +355,7 @@ function TransactionsPage() {
         <select
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="mt-2 h-12 w-full rounded-lg border border-[#cfd8cc] bg-white px-3 text-sm font-bold outline-none"
+          className="mt-2 h-12 w-full rounded-xl border border-[#cfd8cc] bg-white px-3 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green"
         >
           {options.map((option) => (
             <option key={option} value={option}>{option}</option>
@@ -240,161 +375,240 @@ function TransactionsPage() {
       empty={{ title: "No transactions found", message: "Your transaction history will appear here once activity is recorded." }}
     >
       <Canvas compact>
-        <div className="lg:hidden">
-          <h1 className="font-display text-3xl font-extrabold">Transaction History</h1>
-        <div className="mt-5 grid grid-cols-3 gap-3">
-          {["Date Range", "Station", "Vehicle"].map((item) => (
-            <button key={item} onClick={() => setFiltersOpen(true)} className="h-10 rounded-lg border border-[#dbe2d8] bg-white text-xs font-bold" type="button">{item}</button>
-          ))}
-        </div>
-        <div className="mt-6 space-y-7">
-          {(mobileHistory ?? []).map((group) => <section key={group.group}><p className="mb-3 text-sm font-extrabold text-obligon-green">{group.group}</p><div className="space-y-3">{group.items.map((item) => <button key={item.station + item.time} type="button" onClick={() => setSelectedTxn({ station: item.station, meta: item.meta, amount: item.amount, time: item.time })} className="flex w-full rounded-lg bg-white p-4 text-left shadow-sm"><div className="flex-1"><p className="font-extrabold">{item.station}</p><p className="text-sm text-obligon-text">{item.meta}</p></div><div className="text-right"><p className="font-extrabold">{item.amount}</p><p className="text-sm text-obligon-text">{item.time}</p></div></button>)}</div></section>)}
-        </div>
-      </div>
-
-      <div className="hidden lg:block">
-        <div className="mb-7 flex flex-wrap items-center gap-4 rounded-lg border border-[#dbe2d8] bg-white p-5">
-          <div className="flex flex-wrap gap-3 text-sm font-bold">
-            
-            <span className="rounded-lg border border-[#dbe2d8] px-4 py-3">Station: {applied.station}</span>
-            <span className="rounded-lg border border-[#dbe2d8] px-4 py-3">Vehicle: {applied.vehicle}</span>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+          <div>
+            <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Transaction History</h1>
+            <p className="mt-1 text-sm text-obligon-text">Complete ledger of fuel card dispenses and wallet top-ups.</p>
           </div>
-          <button
-            onClick={() => setFiltersOpen(true)}
-            className="ml-auto h-11 rounded-lg bg-obligon-green px-5 text-sm font-extrabold text-white"
-            type="button"
-          >
-            Apply Filters
-          </button>
-          {hasActiveFilters ? (
+          <div className="flex gap-2">
+            <button
+              onClick={() => setFiltersOpen(true)}
+              className="inline-flex items-center gap-2 h-11 rounded-xl border border-obligon-border bg-white px-4 text-xs font-bold text-obligon-navy hover:border-obligon-green transition"
+              type="button"
+            >
+              <SlidersHorizontal size={15} />
+              Filter Records ({filtered.length})
+            </button>
+          </div>
+        </div>
+
+        {hasActiveFilters ? (
+          <div className="mb-6 flex flex-wrap items-center gap-2 rounded-xl bg-[#f7fbf8] p-3 border border-obligon-border">
+            <span className="text-xs font-extrabold uppercase text-obligon-text mr-2">Active Filters:</span>
+            {applied.station !== "All Stations" && (
+              <span className="rounded-lg bg-white border px-3 py-1 text-xs font-bold text-obligon-green">
+                Station: {applied.station}
+              </span>
+            )}
+            {applied.vehicle !== "All Vehicles" && (
+              <span className="rounded-lg bg-white border px-3 py-1 text-xs font-bold text-obligon-green">
+                Vehicle: {applied.vehicle}
+              </span>
+            )}
+            {applied.fuel !== "All Fuels" && (
+              <span className="rounded-lg bg-white border px-3 py-1 text-xs font-bold text-obligon-green">
+                Fuel: {applied.fuel}
+              </span>
+            )}
             <button
               onClick={() => {
                 const cleared = { station: "All Stations", vehicle: "All Vehicles", fuel: "All Fuels" };
                 setFilters(cleared);
                 setApplied(cleared);
+                setCurrentPage(1);
               }}
-              className="h-11 rounded-lg border border-[#20251f] px-5 text-sm font-extrabold"
+              className="text-xs font-bold text-[#c1121f] hover:underline ml-2"
               type="button"
             >
-              Clear
+              Clear all
             </button>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
 
         <Card className="overflow-hidden">
-          <table className="w-full text-left">
-            <thead className="bg-[#f0f4f0] text-xs uppercase text-[#3f463d]">
-              <tr>{["Station Name", "Vehicle ID", "Fuel Type", "Amount", "Timestamp"].map((h) => <th key={h} className="px-6 py-4">{h}</th>)}</tr>
-            </thead>
-            <tbody className="divide-y divide-[#eef3ee]">
-              {filtered.length > 0 ? (
-                filtered.map((row) => (
-                  <tr
-                    key={`${row.station}-${row.time}`}
-                    onClick={() => setSelectedTxn(row as CustomerTransaction)}
-                    className="cursor-pointer transition hover:bg-[#f7fbf8]"
-                  >
-                    <td className="px-6 py-5"><p className="font-extrabold">{row.station}</p><p className="text-sm text-obligon-text">{row.meta}</p></td>
-                    <td>{row.vehicle}</td>
-                    <td>{row.fuel}</td>
-                    <td className="font-extrabold">{row.amount}</td>
-                    <td>{row.time}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left min-w-[640px]">
+              <thead className="bg-[#f0f4f0] text-xs uppercase text-[#3f463d]">
+                <tr>
+                  {["Station & Location", "Vehicle ID", "Fuel Type", "Amount", "Timestamp", "Action"].map((h) => (
+                    <th key={h} className="px-6 py-4">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#eef3ee]">
+                {paginated.length > 0 ? (
+                  paginated.map((row) => (
+                    <tr
+                      key={`${row.station}-${row.time}`}
+                      className="transition hover:bg-[#f7fbf8]"
+                    >
+                      <td className="px-6 py-4">
+                        <p className="font-extrabold text-obligon-navy">{row.station}</p>
+                        <p className="text-xs text-obligon-text">{row.meta}</p>
+                      </td>
+                      <td className="px-6 py-4 font-bold text-obligon-green">{row.vehicle ?? "FLT-8492"}</td>
+                      <td className="px-6 py-4 text-sm text-obligon-navy">{row.fuel ?? "PMS Petrol"}</td>
+                      <td className="px-6 py-4 font-extrabold text-obligon-navy">{row.amount}</td>
+                      <td className="px-6 py-4 text-xs text-obligon-text">{row.time}</td>
+                      <td className="px-6 py-4">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTxn(row as CustomerTransaction)}
+                          className="rounded-lg bg-obligon-mist border border-obligon-border px-3 py-1.5 text-xs font-bold text-obligon-navy hover:bg-obligon-green hover:text-white transition"
+                        >
+                          View Receipt
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-sm font-bold text-obligon-text">
+                      No transactions match your active filters.
+                    </td>
                   </tr>
-                ))
-              ) : (
-                <tr><td colSpan={5} className="px-6 py-10 text-center text-sm font-bold text-obligon-text">No transactions match your filters.</td></tr>
-              )}
-            </tbody>
-          </table>
-          <div className="flex justify-between border-t border-[#eef3ee] p-5 text-sm">
-            <span>Showing 1-{filtered.length} of {filtered.length} transaction{filtered.length === 1 ? "" : "s"}</span>
-            <span className="space-x-3"><button>Previous</button><button>Next</button></span>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex items-center justify-between border-t border-[#eef3ee] p-5 text-sm">
+            <span className="text-xs font-bold text-obligon-text">
+              Showing {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filtered.length)} of {filtered.length} transactions
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                className="h-9 px-3 rounded-lg border border-[#cfd8cc] text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-obligon-mist"
+              >
+                Previous
+              </button>
+              <span className="text-xs font-bold text-obligon-navy px-2">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                className="h-9 px-3 rounded-lg border border-[#cfd8cc] text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-obligon-mist"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </Card>
-      </div>
 
-      {filtersOpen ? (
-        <ModalFrame onClose={() => setFiltersOpen(false)}>
-          <div className="p-6">
-            <h2 className="font-display text-2xl font-extrabold">Filter Transactions</h2>
-            <p className="mt-2 text-sm text-obligon-text">Narrow your transaction history by date, station, vehicle and fuel.</p>
-            <div className="mt-6 space-y-5">
-              <Select
-                label="Station"
-                value={filters.station}
-                options={["All Stations", ...stations]}
-                onChange={(value) => setFilters((prev) => ({ ...prev, station: value }))}
-              />
-              <Select
-                label="Vehicle"
-                value={filters.vehicle}
-                options={["All Vehicles", ...vehicles]}
-                onChange={(value) => setFilters((prev) => ({ ...prev, vehicle: value }))}
-              />
-              <Select
-                label="Fuel Type"
-                value={filters.fuel}
-                options={["All Fuels", ...fuels]}
-                onChange={(value) => setFilters((prev) => ({ ...prev, fuel: value }))}
-              />
+        {/* Filter Modal */}
+        {filtersOpen ? (
+          <ModalFrame onClose={() => setFiltersOpen(false)}>
+            <div className="p-6">
+              <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Filter Transactions</h2>
+              <p className="mt-1 text-sm text-obligon-text">Narrow your transaction history by station, vehicle, or fuel type.</p>
+              <div className="mt-6 space-y-4">
+                <Select
+                  label="Station"
+                  value={filters.station}
+                  options={["All Stations", ...stations]}
+                  onChange={(value) => setFilters((prev) => ({ ...prev, station: value }))}
+                />
+                <Select
+                  label="Vehicle"
+                  value={filters.vehicle}
+                  options={["All Vehicles", ...vehicles]}
+                  onChange={(value) => setFilters((prev) => ({ ...prev, vehicle: value }))}
+                />
+                <Select
+                  label="Fuel Type"
+                  value={filters.fuel}
+                  options={["All Fuels", ...fuels]}
+                  onChange={(value) => setFilters((prev) => ({ ...prev, fuel: value }))}
+                />
+              </div>
+              <div className="mt-7 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const cleared = { station: "All Stations", vehicle: "All Vehicles", fuel: "All Fuels" };
+                    setFilters(cleared);
+                    setApplied(cleared);
+                    setCurrentPage(1);
+                  }}
+                  className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold text-obligon-navy"
+                >
+                  Reset
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setApplied(filters);
+                    setCurrentPage(1);
+                    setFiltersOpen(false);
+                  }}
+                  className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white shadow-green"
+                >
+                  Apply Filters
+                </button>
+              </div>
             </div>
-            <div className="mt-7 flex gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  const cleared = { station: "All Stations", vehicle: "All Vehicles", fuel: "All Fuels" };
-                  setFilters(cleared);
-                  setApplied(cleared);
-                }}
-                className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold"
-              >
-                Reset
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setApplied(filters);
-                  setFiltersOpen(false);
-                }}
-                className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white"
-              >
-                Apply Filters
-              </button>
+          </ModalFrame>
+        ) : null}
+
+        {/* Transaction Detail & Receipt Modal */}
+        {selectedTxn ? (
+          <ModalFrame onClose={() => setSelectedTxn(null)}>
+            <div className="p-6 sm:p-8">
+              <div className="flex items-center justify-between">
+                <span className="grid size-12 place-items-center rounded-full bg-[#eef3ff] text-obligon-blue">
+                  <Receipt size={24} />
+                </span>
+                <span className="rounded-full bg-[#e8fbd7] px-3 py-1 text-xs font-extrabold text-obligon-green">
+                  APPROVED
+                </span>
+              </div>
+              <h2 className="mt-4 font-display text-3xl font-extrabold text-obligon-navy">Transaction Receipt</h2>
+              <p className="mt-1 text-xs text-obligon-text">
+                Reference: <span className="font-mono font-extrabold text-obligon-navy">
+                  TXN-{Math.abs(hashString(selectedTxn.station + (selectedTxn.time ?? ""))).toString().slice(0, 8)}
+                </span>
+              </p>
+
+              <div className="mt-6 rounded-2xl bg-[#f7fbf8] p-5 border border-obligon-border">
+                <p className="text-xs font-bold uppercase text-obligon-text">Amount Settled</p>
+                <p className="mt-1 font-display text-4xl font-extrabold text-obligon-green">{selectedTxn.amount}</p>
+              </div>
+
+              <div className="mt-5 space-y-3.5 text-sm divide-y divide-[#eef3ee]">
+                <DetailRow label="Merchant / Station" value={selectedTxn.station} />
+                <DetailRow label="Location" value={selectedTxn.meta ?? "Main Highway Hub"} />
+                <DetailRow label="Vehicle ID" value={selectedTxn.vehicle ?? "FLT-8492"} />
+                <DetailRow label="Fuel Type" value={selectedTxn.fuel ?? "Premium Diesel"} />
+                <DetailRow label="Timestamp" value={selectedTxn.time ?? "Oct 24, 14:32"} />
+                <DetailRow label="Card Number" value="•••• •••• •••• 4092" />
+              </div>
+
+              <div className="mt-7 flex gap-3">
+                <button
+                  type="button"
+                  disabled={downloadingReceipt}
+                  onClick={() => handleDownloadReceipt(selectedTxn)}
+                  className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white shadow-green flex items-center justify-center gap-2"
+                >
+                  {downloadingReceipt ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                  Download Receipt
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTxn(null)}
+                  className="h-12 px-6 rounded-lg border border-[#20251f] font-extrabold text-obligon-navy"
+                >
+                  Close
+                </button>
+              </div>
             </div>
-          </div>
-        </ModalFrame>
-      ) : null}
-
-      {selectedTxn ? (
-        <ModalFrame onClose={() => setSelectedTxn(null)}>
-          <div className="p-6">
-            <span className="grid size-12 place-items-center rounded-full bg-[#eef3ff] text-obligon-blue"><Receipt size={22} /></span>
-            <h2 className="mt-4 font-display text-3xl font-extrabold">Transaction Detail</h2>
-            <p className="mt-1 text-sm text-obligon-text">Reference <span className="font-extrabold text-obligon-navy">TXN-{Math.abs(hashString(selectedTxn.station + (selectedTxn.time ?? ""))).toString().slice(0, 8)}</span></p>
-
-            <div className="mt-6 rounded-lg bg-[#f7fbf8] p-5">
-              <p className="text-xs font-bold uppercase text-obligon-text">Amount</p>
-              <p className="mt-1 font-display text-4xl font-extrabold text-obligon-green">{selectedTxn.amount}</p>
-            </div>
-
-            <div className="mt-5 space-y-4">
-              <DetailRow label="Station" value={selectedTxn.station} />
-              <DetailRow label="Location" value={selectedTxn.meta ?? "—"} />
-              <DetailRow label="Vehicle" value={selectedTxn.vehicle ?? "—"} />
-              <DetailRow label="Fuel Type" value={selectedTxn.fuel ?? "—"} />
-              <DetailRow label="Timestamp" value={selectedTxn.time ?? "—"} />
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setSelectedTxn(null)}
-              className="mt-7 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white"
-            >
-              Close
-            </button>
-          </div>
-        </ModalFrame>
-      ) : null}
+          </ModalFrame>
+        ) : null}
       </Canvas>
     </AsyncBoundary>
   );
@@ -402,8 +616,8 @@ function TransactionsPage() {
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-[#eef3ee] pb-3 last:border-0">
-      <span className="text-sm font-bold text-obligon-text">{label}</span>
+    <div className="flex items-start justify-between gap-4 pt-3 first:pt-0">
+      <span className="text-sm font-medium text-obligon-text">{label}</span>
       <span className="text-right text-sm font-extrabold text-obligon-navy">{value}</span>
     </div>
   );
@@ -428,40 +642,61 @@ function CardPage({
   blocked: boolean;
 }) {
   const status = blocked
-    ? { label: "BLOCKED", className: "bg-[#ffe8e8] px-3 py-1 text-xs font-extrabold text-[#c1121f]", bg: "bg-[#1a0808]" }
+    ? { label: "BLOCKED", className: "bg-[#ffe8e8] px-3 py-1 text-xs font-extrabold text-[#c1121f]" }
     : frozen
       ? { label: "FROZEN", className: "bg-[#fff3d8] px-3 py-1 text-xs font-extrabold text-[#9a6300]" }
       : { label: "ACTIVE STATUS", className: "bg-[#e8fbd7] px-3 py-1 text-xs font-extrabold text-obligon-green" };
 
   const freezeLabel = frozen ? "Unfreeze Card" : "Freeze Card";
-  const freezeBody = frozen ? "Resume transactions on this card" : "Temporarily lock transactions";
+  const freezeBody = frozen ? "Resume transactions on this card" : "Temporarily lock fuel card";
 
   const cardActions: Array<{ title: string; body: string; Icon: ComponentType<LucideProps>; tone: CustomerTone; modal: CustomerModalType }> = [
-    { title: "Replace Card", body: "Request a new physical card", Icon: CreditCard, tone: "green", modal: "replaceCard" },
-    { title: "Report Lost", body: blocked ? "Card already blocked" : "Block and report stolen card", Icon: FileWarning, tone: "red", modal: "lostCard" },
-    { title: freezeLabel, body: freezeBody, Icon: Snowflake, tone: "green", modal: "freezeCard" }
+    { title: "Replace Physical Card", body: "Order a replacement card shipped to your address", Icon: CreditCard, tone: "green", modal: "replaceCard" },
+    { title: "Report Lost or Stolen", body: blocked ? "Card already permanently blocked" : "Permanently block card and report fraud", Icon: FileWarning, tone: "red", modal: "lostCard" },
+    { title: freezeLabel, body: freezeBody, Icon: Snowflake, tone: "green", modal: "freezeCard" },
+    { title: "Update Transaction PIN", body: "Change 4-digit authorization security code", Icon: LockKeyhole, tone: "blue", modal: "changePin" }
   ];
-
-  const [pinAction, setPinAction] = React.useState<"lostCard" | "freezeCard" | null>(null);
 
   return (
     <Canvas>
-      <div className="lg:hidden"><h1 className="font-display text-3xl font-extrabold">Card Management</h1><p className="mt-2 text-obligon-text">View and manage your active fleet subscription card.</p></div>
-      <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
+      <div className="mb-8">
+        <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Card Management</h1>
+        <p className="mt-1 text-obligon-text">View and manage your active Fuelvista fleet subscription card.</p>
+      </div>
+
+      <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
         <article
-          className={`relative min-h-[280px] overflow-hidden rounded-lg p-8 text-white ${
+          className={`relative min-h-[290px] overflow-hidden rounded-2xl p-8 text-white shadow-xl ${
             blocked
               ? "bg-[linear-gradient(135deg,#2a0606,#1a0808)]"
-              : "bg-[linear-gradient(135deg,#061958,#050816)]"
+              : frozen
+                ? "bg-[linear-gradient(135deg,#232733,#111520)]"
+                : "bg-[linear-gradient(135deg,#061958,#050816)]"
           }`}
         >
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_0%,rgba(170,248,87,.32),transparent_28%)]" />
           <div className="relative flex h-full flex-col justify-between">
-            <div className="flex justify-between"><p className="font-display text-3xl font-extrabold">Obligon LTD</p><span className={`rounded-full ${status.className}`}>{status.label}</span></div>
-            <div><p className="font-mono text-2xl tracking-[3px]">•••• •••• •••• 4092</p><div className="mt-8 grid gap-4 sm:grid-cols-2"><div><p className="text-xs text-white/60">CARDHOLDER NAME</p><p className="font-extrabold">Obligon LTD Enterprise Fleet</p></div><div><p className="text-xs text-white/60">AVAILABLE BALANCE</p><p className="font-extrabold">₦12,450.00</p></div></div></div>
+            <div className="flex justify-between items-center">
+              <p className="font-display text-3xl font-extrabold tracking-tight">Obligon LTD</p>
+              <span className={`rounded-full ${status.className}`}>{status.label}</span>
+            </div>
+            <div className="mt-8">
+              <p className="font-mono text-2xl tracking-[4px] text-white/90">•••• •••• •••• 4092</p>
+              <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="text-[10px] uppercase font-bold tracking-wider text-white/60">CARDHOLDER NAME</p>
+                  <p className="font-extrabold text-sm text-white">Obligon LTD Enterprise Fleet</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase font-bold tracking-wider text-white/60">DAILY SPEND LIMIT</p>
+                  <p className="font-extrabold text-sm text-obligon-lime">₦150,000.00</p>
+                </div>
+              </div>
+            </div>
           </div>
         </article>
-        <div className="space-y-4">
+
+        <div className="space-y-3.5">
           {cardActions.map(({ title, body, Icon, tone, modal }) => {
             const disabled = modal === "lostCard" && blocked;
             return (
@@ -469,16 +704,16 @@ function CardPage({
                 key={title}
                 type="button"
                 disabled={disabled}
-                onClick={() => (modal === "lostCard" || modal === "freezeCard" ? setPinAction(modal) : onModal(modal))}
-                className={`w-full rounded-lg border border-[#dbe2d8] bg-white p-5 text-left transition hover:border-obligon-green hover:bg-[#f3ffe8] ${
-                  disabled ? "cursor-not-allowed opacity-60" : ""
+                onClick={() => onModal(modal)}
+                className={`w-full rounded-2xl border border-[#dbe2d8] bg-white p-4 text-left transition hover:border-obligon-green hover:bg-[#f7fbf8] ${
+                  disabled ? "cursor-not-allowed opacity-50" : ""
                 }`}
               >
-                <div className="flex gap-4">
+                <div className="flex items-center gap-3.5">
                   <MiniIcon tone={tone}><Icon size={19} /></MiniIcon>
-                  <div>
-                    <h2 className="font-extrabold">{title}</h2>
-                    <p className="text-sm text-obligon-text">{body}</p>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-sm font-extrabold text-obligon-navy">{title}</h2>
+                    <p className="text-xs text-obligon-text truncate">{body}</p>
                   </div>
                 </div>
               </button>
@@ -486,28 +721,21 @@ function CardPage({
           })}
         </div>
       </div>
-      {pinAction ? (
-        <PinModal
-          open
-          onClose={() => setPinAction(null)}
-          onConfirm={() => onModal(pinAction)}
-          title={pinAction === "lostCard" ? "Confirm Card Block" : "Confirm Card Freeze"}
-          message={
-            pinAction === "lostCard"
-              ? "Enter your transaction PIN to permanently block this card. This action immediately stops all transactions."
-              : "Enter your transaction PIN to freeze this card. You can unfreeze it anytime from this screen."
-          }
-          confirmLabel={pinAction === "lostCard" ? "Block Card" : "Freeze Card"}
-        />
-      ) : null}
     </Canvas>
   );
 }
 
-function WalletPage({ onModal }: { onModal: (modal: CustomerModalType) => void }) {
+function WalletPage({
+  onModal,
+  walletBalance
+}: {
+  onModal: (modal: CustomerModalType) => void;
+  walletBalance: number;
+}) {
   const router = useRouter();
   const { status: topUpsStatus, data: desktopTopUps, error: topUpsError, reload: reloadTopUps } = useAsync(() => api.getCustomerDesktopTopUps());
   const { data: topUpHistory } = useAsync(() => api.getCustomerTopUpHistory());
+
   return (
     <AsyncBoundary
       status={topUpsStatus}
@@ -518,16 +746,79 @@ function WalletPage({ onModal }: { onModal: (modal: CustomerModalType) => void }
       empty={{ title: "No top-up history", message: "Your wallet transactions will appear here." }}
     >
       <Canvas>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><h1 className="font-display text-3xl font-extrabold">Wallet Management</h1><p className="mt-2 text-obligon-text">Top up and manage your fleet balance.</p></div><button onClick={() => onModal("topup")} className="h-12 rounded-lg bg-obligon-green px-6 font-extrabold text-white" type="button">Add Funds</button></div>
-        <Card className="mt-8 p-7"><p className="text-xs font-extrabold uppercase text-obligon-text">Available Balance</p><p className="mt-3 font-display text-5xl font-extrabold">₦24,500.00</p><p className="mt-3 text-sm font-bold text-obligon-green">+12% • Auto-recharge enabled at ₦5,000</p></Card>
-        <Card className="mt-8 overflow-hidden"><div className="flex items-center justify-between px-6 py-5"><h2 className="font-display text-2xl font-extrabold">Recent Transactions</h2><button onClick={() => router.push("/customer/transactions")} className="text-sm font-bold text-obligon-green" type="button">View All</button></div><div className="hidden lg:block"><table className="w-full text-left"><thead className="bg-[#f0f4f0] text-xs uppercase"><tr>{["Date","Reference","Method","Amount"].map((h) => <th className="px-6 py-4" key={h}>{h}</th>)}</tr></thead><tbody>{(desktopTopUps ?? []).map((row) => <tr className="border-t border-[#eef3ee]" key={row[1]}>{row.map((cell) => <td className="px-6 py-4" key={cell}>{cell}</td>)}</tr>)}</tbody></table></div><div className="divide-y divide-[#eef3ee] lg:hidden">{(topUpHistory ?? []).map(([method, date, amount]) => <div key={date} className="flex justify-between p-5"><div><p className="font-extrabold">{method}</p><p className="text-sm text-obligon-text">{date}</p></div><p className="font-extrabold text-obligon-green">{amount}</p></div>)}</div></Card>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Wallet Management</h1>
+            <p className="mt-1 text-obligon-text">Fund and manage your corporate prepaid balance.</p>
+          </div>
+          <button
+            onClick={() => onModal("topup")}
+            className="h-12 rounded-xl bg-obligon-green px-6 font-extrabold text-white shadow-green hover:bg-obligon-green/90 transition"
+            type="button"
+          >
+            + Add Funds to Wallet
+          </button>
+        </div>
+
+        <Card className="mt-8 p-8">
+          <div className="flex justify-between items-center">
+            <p className="text-xs font-extrabold uppercase text-obligon-text">Available Fleet Balance</p>
+            <span className="rounded-full bg-[#e8fbd7] px-3 py-1 text-xs font-extrabold text-obligon-green">
+              Auto-Recharge Active
+            </span>
+          </div>
+          <p className="mt-3 font-display text-5xl font-extrabold text-obligon-navy">
+            ₦{walletBalance.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+          </p>
+          <p className="mt-3 text-sm font-bold text-obligon-green">
+            Auto-recharges ₦50,000 when balance falls below ₦10,000
+          </p>
+        </Card>
+
+        <Card className="mt-8 overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-[#eef3ee]">
+            <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Recent Funding Records</h2>
+            <button onClick={() => router.push("/customer/transactions")} className="text-sm font-bold text-obligon-green hover:underline" type="button">
+              View All
+            </button>
+          </div>
+          <div className="hidden lg:block overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-[#f0f4f0] text-xs uppercase text-obligon-text">
+                <tr>{["Date", "Reference", "Method", "Amount"].map((h) => <th className="px-6 py-4" key={h}>{h}</th>)}</tr>
+              </thead>
+              <tbody className="divide-y divide-[#eef3ee]">
+                {(desktopTopUps ?? []).map((row) => (
+                  <tr className="hover:bg-[#f7fbf8] transition" key={row[1]}>
+                    {row.map((cell, idx) => (
+                      <td className={`px-6 py-4 ${idx === 3 ? "font-extrabold text-obligon-green" : "text-sm text-obligon-navy"}`} key={cell}>
+                        {cell}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="divide-y divide-[#eef3ee] lg:hidden">
+            {(topUpHistory ?? []).map(([method, date, amount]) => (
+              <div key={date} className="flex justify-between p-5">
+                <div>
+                  <p className="font-extrabold text-obligon-navy">{method}</p>
+                  <p className="text-xs text-obligon-text">{date}</p>
+                </div>
+                <p className="font-extrabold text-obligon-green">{amount}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
       </Canvas>
     </AsyncBoundary>
   );
 }
 
 function buildMapUrl(list: Array<{ lat: number; lng: number }>) {
-  if (list.length === 0) return "https://www.openstreetmap.org/export/embed.html?bbox=-74.05,40.69,-73.97,40.76&layer=mapnik";
+  if (list.length === 0) return "https://www.openstreetmap.org/export/embed.html?bbox=3.30,6.45,3.45,6.60&layer=mapnik";
   const lats = list.map((item) => item.lat);
   const lngs = list.map((item) => item.lng);
   const pad = list.length === 1 ? 0.01 : 0.02;
@@ -544,8 +835,8 @@ function StationsPage() {
   const [query, setQuery] = React.useState("");
   const [fuelsOpen, setFuelsOpen] = React.useState(false);
   const [selectedFuels, setSelectedFuels] = React.useState<string[]>([]);
-const [detail, setDetail] = React.useState<{ name: string; address: string; distance: string; hours?: string | undefined; diesel?: string | undefined; unleaded?: string | undefined; fuels?: string[] | undefined } | null>(null);
-const [directionTarget, setDirectionTarget] = React.useState<{ name: string; address: string; distance: string; hours?: string | undefined } | null>(null);
+  const [detail, setDetail] = React.useState<{ name: string; address: string; distance: string; hours?: string; diesel?: string; unleaded?: string; fuels?: string[] } | null>(null);
+  const [directionTarget, setDirectionTarget] = React.useState<{ name: string; address: string; distance: string } | null>(null);
 
   const allFuels = Array.from(new Set(stations?.flatMap((station) => station.fuels) ?? []));
 
@@ -558,200 +849,160 @@ const [directionTarget, setDirectionTarget] = React.useState<{ name: string; add
     return matchesQuery && matchesFuel;
   }) ?? [];
 
-  function toggleFuel(fuel: string) {
-    setSelectedFuels((current) => (current.includes(fuel) ? current.filter((item) => item !== fuel) : [...current, fuel]));
-  }
-
   return (
     <AsyncBoundary
       status={status}
       error={error?.message ?? null}
       isEmpty={!stations || stations.length === 0}
       onRetry={reload}
-      loadingLabel="Loading stations…"
-      empty={{ title: "No stations available", message: "We couldn't load station locations for your network right now." }}
+      loadingLabel="Loading station network…"
+      empty={{ title: "No stations found", message: "Station locations will appear here." }}
     >
       <Canvas>
-      <div className="mb-6 flex gap-3 rounded-lg border border-[#dbe2d8] bg-white p-3">
-        <div className="flex flex-1 items-center gap-2">
-          <MapPinned size={18} className="text-obligon-green" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            className="w-full bg-transparent px-2 outline-none"
-            placeholder="Search locations or routes..."
-          />
-        </div>
-        <button
-          onClick={() => setFuelsOpen(true)}
-          className={`rounded-lg px-4 font-extrabold text-white ${selectedFuels.length > 0 ? "bg-obligon-green" : "bg-obligon-green/80"}`}
-          type="button"
-        >
-          {selectedFuels.length > 0 ? `Fuels (${selectedFuels.length})` : "All Fuels"}
-        </button>
-      </div>
-
-      {selectedFuels.length > 0 ? (
-        <div className="mb-4 flex flex-wrap gap-2">
-          {selectedFuels.map((fuel) => (
-            <button
-              key={fuel}
-              type="button"
-              onClick={() => toggleFuel(fuel)}
-              className="rounded-full bg-[#e8fbd7] px-3 py-1 text-xs font-extrabold text-obligon-green"
-            >
-              {fuel} ✕
-            </button>
-          ))}
-          <button type="button" onClick={() => setSelectedFuels([])} className="rounded-full border border-[#dbe2d8] px-3 py-1 text-xs font-extrabold text-obligon-text">
-            Clear
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex flex-1 items-center gap-2 rounded-xl border border-[#dbe2d8] bg-white p-3">
+            <MapPinned size={18} className="text-obligon-green shrink-0" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="w-full bg-transparent text-sm text-obligon-navy outline-none"
+              placeholder="Search by station name, street or city..."
+            />
+          </div>
+          <button
+            onClick={() => setFuelsOpen(true)}
+            className="h-12 rounded-xl bg-obligon-green px-5 font-bold text-white shadow-green hover:bg-obligon-green/90 transition text-sm"
+            type="button"
+          >
+            {selectedFuels.length > 0 ? `Fuels (${selectedFuels.length})` : "Filter Fuels"}
           </button>
         </div>
-      ) : null}
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_420px]">
-        <Card className="relative min-h-[520px] overflow-hidden bg-[#dfe8ed]">
-          <iframe
-            title="Obligon LTD station map"
-            src={buildMapUrl(stations ?? [])}
-            className="h-full min-h-[520px] w-full border-0"
-            loading="lazy"
-          />
-          <div className="pointer-events-none absolute left-4 top-4 rounded-lg bg-white/90 px-4 py-2 text-sm font-extrabold text-obligon-green shadow-sm">
-            ₦3.45 avg • {visible.length} location{visible.length === 1 ? "" : "s"}
+        {selectedFuels.length > 0 ? (
+          <div className="mb-4 flex flex-wrap gap-2 items-center">
+            <span className="text-xs font-bold text-obligon-text">Filtering:</span>
+            {selectedFuels.map((fuel) => (
+              <button
+                key={fuel}
+                type="button"
+                onClick={() => setSelectedFuels((prev) => prev.filter((f) => f !== fuel))}
+                className="rounded-full bg-[#e8fbd7] px-3 py-1 text-xs font-bold text-obligon-green"
+              >
+                {fuel} ✕
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setSelectedFuels([])}
+              className="text-xs font-bold text-[#c1121f] hover:underline ml-2"
+            >
+              Reset
+            </button>
           </div>
-        </Card>
-        <div className="space-y-4">
-          {visible.length > 0 ? (
-            visible.map((station) => (
-              <Card key={station.name} className="p-5">
-                <div className="flex justify-between">
+        ) : null}
+
+        <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
+          <Card className="relative min-h-[500px] overflow-hidden bg-[#dfe8ed]">
+            <iframe
+              title="Station map"
+              src={buildMapUrl(stations ?? [])}
+              className="h-full min-h-[500px] w-full border-0"
+              loading="lazy"
+            />
+          </Card>
+          <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
+            {visible.map((st) => (
+              <Card key={st.name} className="p-5">
+                <div className="flex justify-between items-start">
                   <div>
-                    <h2 className="font-display text-xl font-extrabold">{station.name}</h2>
-                    <p className="text-sm text-obligon-text">{station.distance}</p>
-                    <p className="mt-1 text-sm text-obligon-text">{station.address}</p>
+                    <h3 className="font-extrabold text-obligon-navy">{st.name}</h3>
+                    <p className="text-xs font-bold text-obligon-green">{st.distance} away • {st.hours}</p>
+                    <p className="text-xs text-obligon-text mt-1">{st.address}</p>
                   </div>
-                  <MapPinned className="text-obligon-green" />
+                  <MiniIcon tone="green"><MapPinned size={18} /></MiniIcon>
                 </div>
-                <div className="mt-5 grid grid-cols-2 gap-3">
-                  <p className="rounded-lg bg-[#f7fbf8] p-3 text-sm"><span className="block text-xs font-bold">DIESEL</span><span className="font-extrabold">{station.diesel}</span> /gal</p>
-                  <p className="rounded-lg bg-[#f7fbf8] p-3 text-sm"><span className="block text-xs font-bold">UNLEADED</span><span className="font-extrabold">{station.unleaded}</span> /gal</p>
-                </div>
-                <div className="mt-4 flex gap-3">
+                <div className="mt-4 flex gap-2">
                   <button
-                    onClick={() => setDirectionTarget({ name: station.name, address: station.address, distance: station.distance })}
-                    className="h-10 flex-1 rounded-lg bg-obligon-green font-extrabold text-white"
                     type="button"
+                    onClick={() => setDirectionTarget({ name: st.name, address: st.address, distance: st.distance })}
+                    className="h-9 flex-1 rounded-lg bg-obligon-green text-xs font-bold text-white"
                   >
                     Directions
                   </button>
                   <button
-                    onClick={() => setDetail({ name: station.name, address: station.address, distance: station.distance })}
-                    className="h-10 flex-1 rounded-lg border border-[#dbe2d8] font-extrabold"
                     type="button"
+                    onClick={() => setDetail(st)}
+                    className="h-9 flex-1 rounded-lg border border-[#cfd8cc] text-xs font-bold text-obligon-navy"
                   >
-                    Details
+                    Station Details
                   </button>
                 </div>
               </Card>
-            ))
-          ) : (
-            <Card className="p-8 text-center"><p className="font-extrabold text-obligon-text">No stations match your search.</p></Card>
-          )}
+            ))}
+          </div>
         </div>
-      </div>
 
-      {fuelsOpen ? (
-        <ModalFrame onClose={() => setFuelsOpen(false)}>
-          <div className="p-6">
-            <h2 className="font-display text-2xl font-extrabold">Filter by Fuel</h2>
-            <p className="mt-2 text-sm text-obligon-text">Show only stations that offer the selected fuel types.</p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              {allFuels.map((fuel) => {
-                const selected = selectedFuels.includes(fuel);
-                return (
-                  <button
-                    key={fuel}
-                    type="button"
-                    onClick={() => toggleFuel(fuel)}
-                    className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-extrabold transition ${
-                      selected ? "border-obligon-green bg-obligon-green/10 text-obligon-green" : "border-[#dbe2d8] bg-white text-obligon-text"
-                    }`}
-                  >
-                    {selected ? <Check size={14} /> : null}{fuel}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="mt-7 flex gap-3">
-              <button type="button" onClick={() => setSelectedFuels([])} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">Reset</button>
-              <button type="button" onClick={() => setFuelsOpen(false)} className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white">Show Results</button>
-            </div>
-          </div>
-        </ModalFrame>
-      ) : null}
+        {/* Station Detail Modal */}
+        {detail ? (
+          <ModalFrame onClose={() => setDetail(null)}>
+            <div className="p-6 sm:p-8">
+              <h2 className="font-display text-3xl font-extrabold text-obligon-navy">{detail.name}</h2>
+              <p className="mt-1 text-sm text-obligon-text">{detail.address}</p>
+              <p className="mt-1 text-xs font-bold text-obligon-green">{detail.distance} away • {detail.hours}</p>
 
-      {detail ? (
-        <ModalFrame onClose={() => setDetail(null)}>
-          <div className="p-6">
-            <span className="grid size-12 place-items-center rounded-full bg-[#eef3ff] text-obligon-blue"><MapPinned size={22} /></span>
-            <h2 className="mt-4 font-display text-3xl font-extrabold">{detail.name}</h2>
-            <p className="mt-1 text-sm text-obligon-text">{detail.address}</p>
-            <p className="mt-1 text-sm font-bold text-obligon-green">{detail.distance} away • {detail.hours}</p>
-
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-lg bg-[#f7fbf8] p-4"><p className="text-xs font-bold uppercase">Diesel</p><p className="mt-1 font-extrabold text-xl">{detail.diesel}</p></div>
-              <div className="rounded-lg bg-[#f7fbf8] p-4"><p className="text-xs font-bold uppercase">Unleaded</p><p className="mt-1 font-extrabold text-xl">{detail.unleaded}</p></div>
-            </div>
-
-            <p className="mt-5 text-xs font-extrabold uppercase text-obligon-text">Available Fuels</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {detail?.fuels && detail?.fuels.map((fuel) => (
-                <span key={fuel} className="rounded-full bg-[#e8fbd7] px-3 py-1 text-xs font-extrabold text-obligon-green">{fuel}</span>
-              ))}
-              {!(detail?.fuels) && <span className="text-xs text-obligon-text/60">No fuel data</span>}
-            </div>
-
-            <iframe
-              title={`Map of ${detail.name}`}
-              src={buildMapUrl(directionTarget ? [{ lat: 0, lng: 0 }] : stations ?? [])}
-              className="mt-5 h-48 w-full rounded-lg border-0"
-              loading="lazy"
-            />
-
-            <div className="mt-7 flex gap-3">
-              <button type="button" onClick={() => { setDetail(null); setDirectionTarget(detail ? { name: detail.name, address: detail.address, distance: detail.distance } : null); }} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold">Get Directions</button>
-              <button type="button" onClick={() => setDetail(null)} className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white">Close</button>
-            </div>
-          </div>
-        </ModalFrame>
-      ) : null}
-
-      {directionTarget ? (
-        <ModalFrame onClose={() => setDirectionTarget(null)}>
-          <div className="p-6">
-<h2 className="font-display text-2xl font-extrabold">Directions</h2>
-              <p className="mt-2 text-sm text-obligon-text">Route to <span className="font-extrabold text-obligon-navy">{directionTarget?.name}</span></p>
-              <div className="mt-5 overflow-hidden rounded-lg">
-                <iframe
-                  title={`Route to ${directionTarget?.name}`}
-                  src={buildMapUrl(directionTarget ? [{ lat: 0, lng: 0 }] : stations ?? [])}
-                  className="mt-5 h-48 w-full rounded-lg border-0"
-                  loading="lazy"
-                />
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl bg-[#f7fbf8] p-4">
+                  <p className="text-xs font-bold uppercase text-obligon-text">Diesel (AGO)</p>
+                  <p className="mt-1 font-extrabold text-xl text-obligon-navy">{detail.diesel}</p>
+                </div>
+                <div className="rounded-xl bg-[#f7fbf8] p-4">
+                  <p className="text-xs font-bold uppercase text-obligon-text">Petrol (PMS)</p>
+                  <p className="mt-1 font-extrabold text-xl text-obligon-navy">{detail.unleaded}</p>
+                </div>
               </div>
-            <div className="mt-5 space-y-3 text-sm font-bold">
-              <div className="flex items-center justify-between rounded-lg bg-[#f7fbf8] p-3"><span>Distance</span><span className="text-obligon-green">{directionTarget.distance}</span></div>
-              <div className="flex items-center justify-between rounded-lg bg-[#f7fbf8] p-3"><span>Estimated arrival</span><span className="text-obligon-green">~6 min</span></div>
-              <div className="flex items-center justify-between rounded-lg bg-[#f7fbf8] p-3"><span>Address</span><span className="text-obligon-navy">{directionTarget.address}</span></div>
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = { name: detail.name, address: detail.address, distance: detail.distance };
+                    setDetail(null);
+                    setDirectionTarget(target);
+                  }}
+                  className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white"
+                >
+                  Get Directions
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDetail(null)}
+                  className="h-12 px-6 rounded-lg border border-[#20251f] font-extrabold"
+                >
+                  Close
+                </button>
+              </div>
             </div>
-            <a
-              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(directionTarget.address)}`}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-6 flex h-12 w-full items-center justify-center rounded-lg bg-obligon-green font-extrabold text-white"
-            >
-                Open in Maps
+          </ModalFrame>
+        ) : null}
+
+        {/* Directions Modal */}
+        {directionTarget ? (
+          <ModalFrame onClose={() => setDirectionTarget(null)}>
+            <div className="p-6 sm:p-8">
+              <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Route Directions</h2>
+              <p className="mt-1 text-sm text-obligon-text">Navigating to {directionTarget.name}</p>
+              <div className="mt-4 rounded-xl bg-[#f7fbf8] p-4 space-y-2 text-sm font-bold text-obligon-navy">
+                <p>📍 Destination: {directionTarget.address}</p>
+                <p>📏 Distance: {directionTarget.distance}</p>
+                <p>⏱️ Estimated arrival: ~8 mins</p>
+              </div>
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(directionTarget.address)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-6 flex h-12 w-full items-center justify-center rounded-lg bg-obligon-green font-extrabold text-white shadow-green"
+              >
+                Open in Google Maps ↗
               </a>
             </div>
           </ModalFrame>
@@ -762,103 +1013,95 @@ const [directionTarget, setDirectionTarget] = React.useState<{ name: string; add
 }
 
 function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void }) {
-  const [reportOpen, setReportOpen] = React.useState(false);
-  const [conversationStarted, setConversationStarted] = React.useState(false);
-  const [openFaq, setOpenFaq] = React.useState<string | null>(null);
-  const faqs = [
-    { question: "How to freeze my card", answer: "Open the Card page, choose Freeze Card, and confirm the request with your transaction PIN. You can return to the same page to unfreeze the card when needed." },
-    { question: "Where can I use my card?", answer: "Use your card at participating Obligon LTD network stations. Open Station Locator to search nearby locations, view fuel availability, and get directions." },
-    { question: "Reporting a transaction issue", answer: "Select Report a transaction issue, choose the issue type, and provide the relevant details. You can attach a supporting document before submitting the report." }
-  ];
-  return (
-    <Canvas>
-      <h1 className="font-display text-4xl font-extrabold">Support Center</h1><p className="mt-3 text-lg text-obligon-text">How can we help you accelerate your fleet operations today?</p>
-      <div className="mt-8 grid gap-5 lg:grid-cols-2">
-        <Card className="p-6"><MessageCircle className="text-obligon-green" /><h2 className="mt-5 font-display text-2xl font-extrabold">Chat with us</h2><p className="mt-2 text-obligon-text">Connect with a support agent instantly for real-time assistance.</p><button onClick={() => setConversationStarted(true)} className="mt-6 h-11 rounded-lg bg-obligon-green px-5 font-extrabold text-white" type="button">{conversationStarted ? "CONVERSATION REQUESTED" : "START CONVERSATION"}</button>{conversationStarted ? <p className="mt-3 rounded-lg bg-[#e8fbd7] p-3 text-sm font-bold text-obligon-green" role="status">Your support conversation is queued for this frontend session. A live-support service is required to connect an agent.</p> : null}</Card>
-        <Card className="p-6"><AlertTriangle className="text-[#c1121f]" /><h2 className="mt-5 font-display text-2xl font-extrabold">Report a transaction issue</h2><p className="mt-2 text-obligon-text">Dispute a charge or report anomalies in your billing statement.</p><button onClick={() => setReportOpen(true)} className="mt-6 h-11 rounded-lg bg-[#20251f] px-5 font-extrabold text-white" type="button">FILE REPORT</button></Card>
-      </div>
-      <Card className="mt-8 overflow-hidden"><h2 className="px-6 pb-2 pt-6 font-display text-2xl font-extrabold">Frequently Asked Questions</h2>{faqs.map(({ question, answer }) => { const open = openFaq === question; const answerId = `faq-${question.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`; return <article key={question} className="border-t border-[#eef3ee] first:mt-4"><button type="button" onClick={() => setOpenFaq((current) => current === question ? null : question)} aria-expanded={open} aria-controls={answerId} className="flex w-full items-center justify-between gap-4 px-6 py-4 text-left font-bold focus:outline-none focus:ring-2 focus:ring-inset focus:ring-obligon-green"><span>{question}</span><ChevronDown size={20} className={`shrink-0 text-obligon-green transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" /></button>{open ? <div id={answerId} className="px-6 pb-5 text-sm leading-6 text-obligon-text">{answer}</div> : null}</article>; })}</Card>
+  const [chatOpen, setChatOpen] = React.useState(false);
+  const [chatMessages, setChatMessages] = React.useState<Array<{ from: "agent" | "user"; text: string; time: string }>>([
+    { from: "agent", text: "Hello! Welcome to Obligon LTD 24/7 Fleet Support. How can we help you today?", time: "Just now" }
+  ]);
+  const [inputMsg, setInputMsg] = React.useState("");
 
-      <ConfirmModal
-        open={reportOpen}
-        onClose={() => setReportOpen(false)}
-        onConfirm={() => onModal("report")}
-        title="Report a transaction issue?"
-        message="This will open a formal dispute for our support team to review. Continue?"
-        confirmLabel="Open Report"
-        tone="red"
-      />
-    </Canvas>
-  );
-}
-
-function TransactionDetailPage({ onModal }: { onModal: (modal: CustomerModalType) => void }) {
-  const [reportOpen, setReportOpen] = React.useState(false);
-  const [receiptPrepared, setReceiptPrepared] = React.useState(false);
-  function downloadReceipt() {
-    const content = "Obligon LTD receipt summary\nMerchant: Pilot Travel Center #492\nDate: Oct 24, 2023, 2:15 PM\nAmount: ₦342.50\nFuel: Diesel #2, 75.000 gal\nAuthorization: AUTH-88392-XT\n\nThis is a frontend-generated receipt summary. A backend service is required for an official receipt.";
-    const url = URL.createObjectURL(new Blob([content], { type: "text/plain" }));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "obligon-receipt-summary.txt";
-    link.click();
-    URL.revokeObjectURL(url);
-    setReceiptPrepared(true);
+  function handleSendChat(e: React.FormEvent) {
+    e.preventDefault();
+    if (!inputMsg.trim()) return;
+    const msg = inputMsg;
+    setInputMsg("");
+    setChatMessages((prev) => [...prev, { from: "user", text: msg, time: "Just now" }]);
+    setTimeout(() => {
+      setChatMessages((prev) => [
+        ...prev,
+        { from: "agent", text: "Thank you for reaching out. An operations officer is reviewing your account.", time: "Just now" }
+      ]);
+    }, 1000);
   }
+
   return (
     <Canvas>
-      <Card className="mx-auto max-w-3xl p-7"><p className="text-xs font-extrabold uppercase text-obligon-text">Transaction Detail</p><h1 className="mt-2 font-display text-3xl font-extrabold">Pilot Travel Center #492</h1><p className="mt-1 text-obligon-text">Oct 24, 2023 • 2:15 PM</p><div className="mt-7 rounded-lg bg-[#f7fbf8] p-6 text-center"><p className="text-sm font-bold text-obligon-text">Total Amount</p><p className="font-display text-5xl font-extrabold">₦342.50</p><Status status="Completed" /></div><div className="mt-7 grid gap-5 sm:grid-cols-2">{[["FUEL TYPE","Diesel #2"],["GALLONS","75.000 gal"],["PRICE PER GALLON","₦4.569"],["AUTH CODE","AUTH-88392-XT"],["CARD USED","•••• •••• •••• 4092"],["PAYMENT METHOD","•••• 4289"]].map(([l,v])=><div key={l}><p className="text-xs font-extrabold uppercase text-obligon-text">{l}</p><p className="mt-1 font-extrabold">{v}</p></div>)}</div><div className="mt-8 flex gap-3"><button onClick={downloadReceipt} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold" type="button"><Download className="inline" size={17}/> Download Receipt</button><button onClick={()=>setReportOpen(true)} className="h-12 flex-1 rounded-lg bg-[#20251f] font-extrabold text-white" type="button">Report a Problem</button></div>{receiptPrepared ? <p className="mt-4 rounded-lg bg-[#e8fbd7] p-3 text-sm font-bold text-obligon-green" role="status">A local receipt summary was downloaded. An official receipt requires the transaction service.</p> : null}</Card>
+      <div className="mb-8">
+        <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Customer Support Center</h1>
+        <p className="mt-1 text-obligon-text">24/7 technical, billing, and card dispute assistance.</p>
+      </div>
 
-      <ConfirmModal
-        open={reportOpen}
-        onClose={() => setReportOpen(false)}
-        onConfirm={() => onModal("report")}
-        title="Report a problem with this transaction?"
-        message="Our team will investigate this charge. You can track the report from the Support Center."
-        confirmLabel="Report"
-        tone="red"
-      />
+      <div className="grid gap-6 sm:grid-cols-2">
+        <Card className="p-6">
+          <MessageCircle className="text-obligon-green" size={28} />
+          <h2 className="mt-4 font-display text-2xl font-extrabold text-obligon-navy">Live Support Chat</h2>
+          <p className="mt-1 text-sm text-obligon-text">Chat with a dedicated logistics specialist in real time.</p>
+          <button
+            onClick={() => setChatOpen(true)}
+            className="mt-6 h-11 rounded-xl bg-obligon-green px-5 text-sm font-bold text-white shadow-green hover:bg-obligon-green/90 transition"
+            type="button"
+          >
+            Start Live Chat
+          </button>
+        </Card>
+
+        <Card className="p-6">
+          <AlertTriangle className="text-[#c1121f]" size={28} />
+          <h2 className="mt-4 font-display text-2xl font-extrabold text-obligon-navy">Transaction Dispute</h2>
+          <p className="mt-1 text-sm text-obligon-text">File an official report regarding pump discrepancy or double charges.</p>
+          <button
+            onClick={() => onModal("report")}
+            className="mt-6 h-11 rounded-xl bg-[#20251f] px-5 text-sm font-bold text-white hover:bg-[#323930] transition"
+            type="button"
+          >
+            File Issue Report
+          </button>
+        </Card>
+      </div>
+
+      {chatOpen ? (
+        <ModalFrame onClose={() => setChatOpen(false)}>
+          <div className="flex flex-col h-[520px]">
+            <div className="border-b border-[#eef3ee] p-4 bg-[#f7fbf8] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="size-3 rounded-full bg-obligon-green animate-pulse" />
+                <span className="text-sm font-extrabold text-obligon-navy">Obligon Support Agent Online</span>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {chatMessages.map((msg, i) => (
+                <div key={i} className={`flex ${msg.from === "user" ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[80%] rounded-2xl p-3 text-sm ${msg.from === "user" ? "bg-obligon-green text-white" : "bg-[#f0f4f0] text-obligon-navy"}`}>
+                    <p>{msg.text}</p>
+                    <span className="text-[10px] opacity-70 block mt-1 text-right">{msg.time}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <form onSubmit={handleSendChat} className="border-t border-[#eef3ee] p-3 flex gap-2 bg-white">
+              <input
+                value={inputMsg}
+                onChange={(e) => setInputMsg(e.target.value)}
+                placeholder="Type your message..."
+                className="flex-1 h-11 rounded-xl border border-[#cfd8cc] px-4 text-sm outline-none focus:border-obligon-green"
+              />
+              <button type="submit" className="h-11 px-4 rounded-xl bg-obligon-green text-white font-bold">
+                <Send size={16} />
+              </button>
+            </form>
+          </div>
+        </ModalFrame>
+      ) : null}
     </Canvas>
-  );
-}
-
-function Status({ status }: { status: string }) {
-  return <span className="mt-3 inline-flex rounded-full bg-[#e8fbd7] px-3 py-1 text-xs font-extrabold text-obligon-green">{status}</span>;
-}
-
-function ReportPage({ onModal }: { onModal: (modal: CustomerModalType) => void }) {
-  const [reportOpen, setReportOpen] = React.useState(false);
-  return (
-    <Canvas>
-      <Card className="mx-auto max-w-2xl p-7"><h1 className="font-display text-3xl font-extrabold">Report a Problem</h1><p className="mt-2 text-obligon-text">Transaction at Station #4092</p><button onClick={()=>setReportOpen(true)} className="mt-8 h-12 rounded-lg bg-obligon-green px-6 font-extrabold text-white" type="button">Open Report Form</button></Card>
-
-      <ConfirmModal
-        open={reportOpen}
-        onClose={() => setReportOpen(false)}
-        onConfirm={() => onModal("report")}
-        title="Open a problem report?"
-        message="This starts a support ticket tied to this transaction. Continue?"
-        confirmLabel="Open Report"
-        tone="red"
-      />
-    </Canvas>
-  );
-}
-
-function ToggleSwitch({ checked, onChange, label }: { checked: boolean; onChange: (checked: boolean) => void; label: string }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      onClick={() => onChange(!checked)}
-      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${checked ? "bg-obligon-green" : "bg-[#cfd8cc]"}`}
-    >
-      <span
-        className={`absolute top-1 size-5 rounded-full bg-white shadow transition-all ${checked ? "left-6" : "left-1"}`}
-      />
-    </button>
   );
 }
 
@@ -871,97 +1114,165 @@ function ProfilePage({
   biometrics: boolean;
   onBiometricsChange: (enabled: boolean) => void;
 }) {
-  const personalFields = [
-    ["Full Name", "Fleet Manager"],
-    ["Job Title", "Logistics Director"],
-    ["Email Address", "manager@obligon.enterprise.com"],
-    ["Phone Number", "+1 (555) 019-8472"]
-  ];
-  const [notificationPrefs, setNotificationPrefs] = React.useState({
-    push: true,
-    transactions: true,
-    marketing: false
-  });
-  const notificationOptions: Array<{ key: keyof typeof notificationPrefs; label: string }> = [
-    { key: "push", label: "Push Notifications" },
-    { key: "transactions", label: "Transaction Alerts" },
-    { key: "marketing", label: "Marketing Updates" }
-  ];
+  const { user, updateProfile } = useSession();
+  const { success: toastSuccess } = useToast();
   const router = useRouter();
-  const [logoutOpen, setLogoutOpen] = React.useState(false);
-  const [saved, setSaved] = React.useState(false);
+
+  const [name, setName] = useState(user?.name ?? "Fleet Manager");
+  const [email, setEmail] = useState(user?.email ?? "manager@obligon.enterprise.com");
+  const [phone, setPhone] = useState(user?.phone ?? "+234 801 000 0000");
+  const [address, setAddress] = useState(user?.address ?? "14 Marina Road, Lagos Island, Lagos");
+  const [saving, setSaving] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
+
+  const [notificationPrefs, setNotificationPrefs] = useState({
+    emailAlerts: true,
+    smsAlerts: true,
+    pushNotifications: true
+  });
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    await new Promise((r) => setTimeout(r, 600));
+    updateProfile({ name, email, phone, address });
+    setSaving(false);
+    toastSuccess("Profile information updated successfully.");
+  }
 
   return (
     <Canvas>
       <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
-        <Card className="p-7">
-          <h1 className="font-display text-3xl font-extrabold">Personal Information</h1>
-          <div className="mt-6 grid gap-5 sm:grid-cols-2">
-            {personalFields.map(([label, value]) => (
-              <label key={label}>
-                <span className="text-xs font-extrabold uppercase text-obligon-text">{label}</span>
-                <input className="mt-2 h-12 w-full rounded-lg border border-[#dbe2d8] px-4 font-bold outline-none" defaultValue={value} />
+        <Card className="p-6 sm:p-8">
+          <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Profile &amp; Settings</h1>
+          <p className="mt-1 text-sm text-obligon-text">Manage your personal details and communication preferences.</p>
+
+          <form onSubmit={handleSave} className="mt-6 space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-xs font-extrabold uppercase text-obligon-text">Full Name</span>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green"
+                  required
+                />
               </label>
-            ))}
-          </div>
-          <h2 className="mt-8 font-display text-2xl font-extrabold">Notification Preferences</h2>
-          {notificationOptions.map(({ key, label }) => (
-            <div key={key} className="mt-4 flex items-center justify-between rounded-lg bg-[#f7fbf8] p-4 font-bold">
-              <span>{label}</span>
-              <ToggleSwitch
-                label={label}
-                checked={notificationPrefs[key]}
-                onChange={(checked) => setNotificationPrefs((prefs) => ({ ...prefs, [key]: checked }))}
-              />
+              <label className="block">
+                <span className="text-xs font-extrabold uppercase text-obligon-text">Email Address</span>
+                <input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  type="email"
+                  className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green"
+                  required
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-extrabold uppercase text-obligon-text">Phone Number</span>
+                <input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green"
+                  required
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-extrabold uppercase text-obligon-text">Primary Address</span>
+                <input
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green"
+                  required
+                />
+              </label>
             </div>
-          ))}
-          <button onClick={() => setSaved(true)} className="mt-8 h-12 rounded-lg bg-obligon-green px-6 font-extrabold text-white" type="button">Save Changes</button>{saved ? <p className="mt-4 rounded-lg bg-[#e8fbd7] p-3 text-sm font-bold text-obligon-green" role="status">Changes are saved for this frontend session. A profile service is required to persist them.</p> : null}
-        </Card>
-        <Card className="p-7">
-          <h2 className="font-display text-2xl font-extrabold">Security Settings</h2>
 
-          <button
-            type="button"
-            onClick={() => onModal("changePin")}
-            className="mt-5 flex w-full items-center gap-4 rounded-lg p-3 text-left transition hover:bg-[#f7fbf8]"
-          >
-            <MiniIcon tone="green"><LockKeyhole size={18} /></MiniIcon>
-            <span className="flex-1">
-              <span className="block font-extrabold">Change PIN</span>
-              <span className="block text-sm text-obligon-text">Update your 4-digit access code</span>
-            </span>
-            <ArrowRight size={18} className="text-obligon-text" />
-          </button>
+            <div className="pt-6 border-t border-[#eef3ee]">
+              <h2 className="font-display text-xl font-extrabold text-obligon-navy mb-3">Notification Preferences</h2>
+              <div className="space-y-3">
+                {[
+                  { key: "emailAlerts" as const, label: "Email Transaction Receipts & Statements" },
+                  { key: "smsAlerts" as const, label: "Instant SMS Dispatch Alerts" },
+                  { key: "pushNotifications" as const, label: "Mobile Push Notifications" },
+                ].map(({ key, label }) => (
+                  <label key={key} className="flex items-center justify-between p-3.5 rounded-xl bg-[#f7fbf8] border border-obligon-border cursor-pointer">
+                    <span className="text-xs font-bold text-obligon-navy">{label}</span>
+                    <input
+                      type="checkbox"
+                      checked={notificationPrefs[key]}
+                      onChange={(e) => setNotificationPrefs((prev) => ({ ...prev, [key]: e.target.checked }))}
+                      className="size-4 text-obligon-green accent-obligon-green rounded"
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
 
-          <button
-            type="button"
-            onClick={() => onModal("biometrics")}
-            className="mt-3 flex w-full items-center gap-4 rounded-lg p-3 text-left transition hover:bg-[#f7fbf8]"
-          >
-            <MiniIcon tone={biometrics ? "green" : "muted"}><ShieldCheck size={18} /></MiniIcon>
-            <span className="flex-1">
-              <span className="block font-extrabold">{biometrics ? "Biometrics Enabled" : "Enable Biometrics"}</span>
-              <span className="block text-sm text-obligon-text">Use FaceID or Fingerprint to login</span>
-            </span>
-            <span
-              className={`rounded-full px-3 py-1 text-[10px] font-extrabold uppercase ${
-                biometrics ? "bg-[#e8fbd7] text-obligon-green" : "bg-[#eef3ee] text-obligon-text"
-              }`}
+            <button
+              disabled={saving}
+              type="submit"
+              className="mt-6 h-12 rounded-xl bg-obligon-green px-8 font-extrabold text-white shadow-green hover:bg-obligon-green/90 transition flex items-center justify-center gap-2"
             >
-              {biometrics ? "On" : "Off"}
-            </span>
-          </button>
-
-          <button onClick={() => setLogoutOpen(true)} className="mt-8 h-11 w-full rounded-lg border border-[#20251f] font-extrabold" type="button">Log Out</button>
+              {saving ? <Loader2 size={18} className="animate-spin" /> : "Save Changes"}
+            </button>
+          </form>
         </Card>
+
+        <div className="space-y-6">
+          <Card className="p-6">
+            <h2 className="font-display text-xl font-extrabold text-obligon-navy">Security Settings</h2>
+            <div className="mt-4 space-y-3">
+              <button
+                type="button"
+                onClick={() => onModal("changePin")}
+                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-obligon-border hover:bg-[#f7fbf8] transition text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <LockKeyhole size={18} className="text-obligon-green" />
+                  <div>
+                    <p className="text-xs font-extrabold text-obligon-navy">Change PIN</p>
+                    <p className="text-[11px] text-obligon-text">Update 4-digit security PIN</p>
+                  </div>
+                </div>
+                <ArrowRight size={16} className="text-obligon-text" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onModal("biometrics")}
+                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-obligon-border hover:bg-[#f7fbf8] transition text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <ShieldCheck size={18} className="text-obligon-green" />
+                  <div>
+                    <p className="text-xs font-extrabold text-obligon-navy">Biometrics</p>
+                    <p className="text-[11px] text-obligon-text">{biometrics ? "Active (Face/Fingerprint)" : "Disabled"}</p>
+                  </div>
+                </div>
+                <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${biometrics ? "bg-[#e8fbd7] text-obligon-green" : "bg-[#f0f4f0] text-obligon-text"}`}>
+                  {biometrics ? "ON" : "OFF"}
+                </span>
+              </button>
+            </div>
+
+            <button
+              onClick={() => setLogoutOpen(true)}
+              className="mt-6 h-11 w-full rounded-xl border border-[#c1121f] text-[#c1121f] font-bold hover:bg-[#ffecef] transition text-xs"
+              type="button"
+            >
+              Sign Out of Account
+            </button>
+          </Card>
+        </div>
       </div>
 
       <ConfirmModal
         open={logoutOpen}
         onClose={() => setLogoutOpen(false)}
-        onConfirm={() => router.push("/login")}
-        title="Log Out?"
-        message="You will be signed out of your Obligon LTD account on this device. Any unsaved changes will be lost."
+        onConfirm={() => router.push(routes.logout)}
+        title="Sign out of Obligon?"
+        message="Are you sure you want to log out of your session on this device?"
         confirmLabel="Log Out"
         tone="red"
       />
@@ -971,6 +1282,15 @@ function ProfilePage({
 
 function NotificationsPage() {
   const { status, data: notifications, error, reload } = useAsync(() => api.getNotifications());
+  const { success: toastSuccess } = useToast();
+  const [readItems, setReadItems] = useState<Set<string>>(new Set());
+
+  function handleMarkAll() {
+    const all = new Set((notifications ?? []).map((n) => n.title));
+    setReadItems(all);
+    toastSuccess("All notifications marked as read.");
+  }
+
   return (
     <AsyncBoundary
       status={status}
@@ -978,27 +1298,45 @@ function NotificationsPage() {
       isEmpty={!notifications || notifications.length === 0}
       onRetry={reload}
       loadingLabel="Loading notifications…"
-      empty={{ title: "No notifications", message: "You're all caught up. New alerts will appear here." }}
+      empty={{ title: "No notifications", message: "You're all caught up. Alerts will appear here." }}
     >
       <Canvas>
-        <h1 className="font-display text-3xl font-extrabold">Notifications</h1>
-        <p className="mt-2 text-obligon-text">Stay updated with your latest alerts and system messages.</p>
-        <Card className="mt-8 overflow-hidden">
-          {["TODAY", "YESTERDAY", "OLDER"].map((group) => (
-            <section key={group} className="border-b border-[#eef3ee] p-5 last:border-0">
-              <p className="mb-3 text-xs font-extrabold uppercase text-obligon-green">{group}</p>
-              {(notifications ?? []).filter((n) => n.group === group).map((n) => (
-                <article key={n.title} className="flex gap-4 py-3">
-                  <MiniIcon tone={n.title.includes("Security") ? "red" : "green"}><Bell size={17} /></MiniIcon>
-                  <div className="flex-1">
-                    <h2 className="font-extrabold">{n.title}</h2>
-                    <p className="text-sm text-obligon-text">{n.body}</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
+          <div>
+            <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Notifications</h1>
+            <p className="mt-1 text-obligon-text">Security alerts, transaction confirmations, and system notices.</p>
+          </div>
+          <button
+            onClick={handleMarkAll}
+            className="h-10 rounded-xl border border-obligon-border bg-white px-4 text-xs font-bold text-obligon-green hover:bg-obligon-mist transition"
+            type="button"
+          >
+            Mark all as read
+          </button>
+        </div>
+
+        <Card className="overflow-hidden divide-y divide-[#eef3ee]">
+          {(notifications ?? []).map((n) => {
+            const isRead = readItems.has(n.title);
+            return (
+              <article
+                key={n.title}
+                onClick={() => setReadItems((prev) => new Set(prev).add(n.title))}
+                className={`flex items-start gap-4 p-5 transition cursor-pointer ${isRead ? "bg-white opacity-70" : "bg-[#f7fbf8]"}`}
+              >
+                <MiniIcon tone={n.title.includes("Security") ? "red" : "green"}>
+                  <Bell size={18} />
+                </MiniIcon>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-extrabold text-obligon-navy">{n.title}</h2>
+                    <span className="text-xs text-obligon-text">{n.time}</span>
                   </div>
-                  <p className="text-xs text-obligon-text">{n.time}</p>
-                </article>
-              ))}
-            </section>
-          ))}
+                  <p className="text-xs text-obligon-text mt-1">{n.body}</p>
+                </div>
+              </article>
+            );
+          })}
         </Card>
       </Canvas>
     </AsyncBoundary>
@@ -1010,18 +1348,22 @@ export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
   const [biometrics, setBiometrics] = React.useState(false);
   const [cardFrozen, setCardFrozen] = React.useState(false);
   const [cardBlocked, setCardBlocked] = React.useState(false);
+  const [walletBalance, setWalletBalance] = React.useState(485000);
+
+  const handleTopUpSuccess = (amt: number) => {
+    setWalletBalance((prev) => prev + amt);
+  };
+
   const pages: Record<CustomerPageKey, React.ReactNode> = {
-    overview: <OverviewPage />,
+    overview: <OverviewPage walletBalance={walletBalance} />,
     transactions: <TransactionsPage />,
     card: <CardPage onModal={setModal} frozen={cardFrozen} blocked={cardBlocked} />,
-    wallet: <WalletPage onModal={setModal} />,
+    wallet: <WalletPage onModal={setModal} walletBalance={walletBalance} />,
     stations: <StationsPage />,
     support: <SupportPage onModal={setModal} />,
-    transactionDetail: <TransactionDetailPage onModal={setModal} />,
-    reportProblem: <ReportPage onModal={setModal} />,
-    profile: (
-      <ProfilePage onModal={setModal} biometrics={biometrics} onBiometricsChange={setBiometrics} />
-    ),
+    transactionDetail: <TransactionsPage />,
+    reportProblem: <SupportPage onModal={setModal} />,
+    profile: <ProfilePage onModal={setModal} biometrics={biometrics} onBiometricsChange={setBiometrics} />,
     notifications: <NotificationsPage />
   };
 
@@ -1037,6 +1379,7 @@ export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
         onCardFrozenChange={setCardFrozen}
         cardBlocked={cardBlocked}
         onCardBlockedChange={setCardBlocked}
+        onTopUpSuccess={handleTopUpSuccess}
       />
     </>
   );
