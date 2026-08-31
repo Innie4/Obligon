@@ -106,26 +106,25 @@ export function PartnershipSidebar() {
       <Link
         key={nav.key}
         href={nav.href}
-        className={`relative flex min-h-[42px] items-center gap-3 rounded-lg px-4 text-[13px] font-semibold transition ${
-          active ? "bg-white/10 text-obligon-lime" : "text-white/68 hover:bg-white/6 hover:text-white"
+        className={`relative flex min-h-[42px] items-center gap-3 rounded-xl px-4 text-[13px] font-bold transition ${
+          active ? "bg-obligon-green text-white shadow-green" : "text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green"
         }`}
       >
         <Icon size={18} className="shrink-0" />
         <span className="truncate">{nav.label}</span>
-        {active ? <span className="absolute right-0 top-2 h-6 w-1 rounded-l-full bg-obligon-lime" /> : null}
       </Link>
     );
   };
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col bg-white text-white lg:flex">
-      <div className="flex h-[181px] items-start px-6 pt-8">
-        <Link href="/" className="relative block h-[149px] w-[223px]" aria-label="Obligon LTD home">
-          <Image src={assets.obligonLogo} fill sizes="223px" alt="Obligon LTD" className="object-contain object-left-top" priority />
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r border-[#dfe5ec] bg-white text-[#07162f] lg:flex">
+      <div className="flex h-[140px] items-start px-6 pt-8">
+        <Link href="/dashboard" className="relative block h-[64px] w-[200px]" aria-label="Obligon LTD home">
+          <Image src={assets.obligonLogo} fill sizes="200px" alt="Obligon LTD" className="object-contain object-left-top" priority />
         </Link>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-6 pb-5">
+      <nav className="flex-1 overflow-y-auto px-5 pb-5">
         <div className="space-y-1">
           {primaryItems.map(renderLink)}
 
@@ -135,12 +134,12 @@ export function PartnershipSidebar() {
             const groupActive = group.items.some((nav) => isActive(pathname, nav));
 
             return (
-              <div key={group.key}>
+              <div key={group.key} className="pt-2">
                 <button
                   type="button"
                   onClick={() => toggleGroup(group.key)}
-                  className={`relative flex min-h-[42px] w-full items-center gap-3 rounded-lg px-4 text-[13px] font-semibold transition ${
-                    groupActive ? "bg-white/10 text-obligon-lime" : "text-white/68 hover:bg-white/6 hover:text-white"
+                  className={`relative flex min-h-[42px] w-full items-center gap-3 rounded-xl px-4 text-[13px] font-bold transition ${
+                    groupActive ? "bg-[#f2f6f2] text-obligon-green" : "text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green"
                   }`}
                   aria-expanded={open}
                 >
@@ -152,20 +151,22 @@ export function PartnershipSidebar() {
                   />
                 </button>
 
-                {open ? <div className="mt-1 space-y-1 pl-6">{group.items.map(renderLink)}</div> : null}
+                {open ? <div className="mt-1 space-y-1 pl-4 border-l-2 border-obligon-border/60 ml-3">{group.items.map(renderLink)}</div> : null}
               </div>
             );
           })}
 
-          {bottomItems.map(renderLink)}
+          <div className="pt-2">
+            {bottomItems.map(renderLink)}
+          </div>
         </div>
       </nav>
 
-      <div className="mx-6 border-t border-white/15 py-6">
+      <div className="mx-5 border-t border-[#dfe5ec] py-5">
         <button
           type="button"
           onClick={() => setLogoutOpen(true)}
-          className="flex h-[42px] w-full items-center gap-3 rounded-lg px-4 text-[13px] font-semibold text-[#ff6b7b] hover:bg-white/5"
+          className="flex h-[42px] w-full items-center gap-3 rounded-xl px-4 text-[13px] font-bold text-[#c1121f] hover:bg-[#fff0f3] transition"
         >
           <LogOut size={18} />
           Log Out

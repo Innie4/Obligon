@@ -60,42 +60,42 @@ function Sidebar() {
     <Link
       key={item.key}
       href={item.href}
-      className={`flex h-12 items-center gap-3 rounded-lg px-4 text-base font-semibold ${
-        active === item.key ? "bg-[#63b800] text-[#1b3c00]" : "text-[#3f463d] hover:bg-white"
+      className={`flex h-12 items-center gap-3 rounded-xl px-4 text-base font-semibold transition ${
+        active === item.key ? "bg-obligon-green text-white font-bold shadow-green" : "text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green"
       }`}
     >
-      <span className={active === item.key ? "text-[#1b3c00]" : "text-[#3f463d]"}>{iconMap[item.key]}</span>
+      <span className={active === item.key ? "text-white" : "text-[#4f5663]"}>{iconMap[item.key]}</span>
       {item.label}
     </Link>
   );
 
   return (
-    <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-[#dbe2d8] bg-[#f7fbf8] px-4 py-8 lg:flex">
-      <Link href="/customer" className="relative ml-8 block h-20 w-48" aria-label="Obligon LTD customer dashboard">
-        <Image src={assets.obligonLogo} alt="Obligon LTD" fill sizes="192px" className="object-contain object-left" priority />
+    <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-[#dfe5ec] bg-white px-4 py-8 lg:flex">
+      <Link href="/customer" className="relative ml-4 block h-16 w-44" aria-label="Obligon LTD customer dashboard">
+        <Image src={assets.obligonLogo} alt="Obligon LTD" fill sizes="176px" className="object-contain object-left" priority />
       </Link>
 
-      <div className="mt-16 flex items-center gap-4 px-4">
-        <span className="grid size-12 place-items-center rounded-full bg-[#dbe7ff] text-sm font-extrabold text-obligon-blue">{user?.initials ?? "FM"}</span>
-        <div>
-          <p className="font-extrabold text-obligon-green">{user?.name ?? "Guest"}</p>
-          <p className="text-sm text-obligon-text">{user?.organization ?? "Sign in to manage your fleet"}</p>
-          <p className="text-xs font-medium text-[#3754a5]">{user?.accountTier ?? "No active session"}</p>
+      <div className="mt-10 flex items-center gap-3.5 rounded-xl bg-[#f7fbf8] p-3.5 border border-obligon-border">
+        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-obligon-lime/30 text-sm font-extrabold text-[#131f00]">{user?.initials ?? "FM"}</span>
+        <div className="min-w-0 flex-1">
+          <p className="font-extrabold text-obligon-navy truncate text-sm">{user?.name ?? "Customer"}</p>
+          <p className="text-xs text-obligon-text truncate">{user?.organization ?? "Fuelvista Consumer"}</p>
+          <p className="text-[11px] font-bold text-obligon-green mt-0.5">{user?.accountTier ?? "Active Wallet"}</p>
         </div>
       </div>
 
-      <nav className="mt-10 space-y-3">
+      <nav className="mt-8 space-y-2 flex-1 overflow-y-auto pr-1">
         {customerNav.map(renderLink)}
 
         <button
           type="button"
           onClick={() => setAccountOpen((open) => !open)}
           aria-expanded={accountOpen}
-          className={`flex h-12 w-full items-center gap-3 rounded-lg px-4 text-base font-semibold ${
-            accountKeys.includes(active) ? "bg-[#63b800] text-[#1b3c00]" : "text-[#3f463d] hover:bg-white"
+          className={`flex h-12 w-full items-center gap-3 rounded-xl px-4 text-base font-semibold transition ${
+            accountKeys.includes(active) ? "bg-obligon-green text-white font-bold shadow-green" : "text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green"
           }`}
         >
-          <span className={accountKeys.includes(active) ? "text-[#1b3c00]" : "text-[#3f463d]"}>
+          <span className={accountKeys.includes(active) ? "text-white" : "text-[#4f5663]"}>
             <Settings size={20} />
           </span>
           Account
@@ -105,12 +105,12 @@ function Sidebar() {
           />
         </button>
 
-        {accountOpen ? <div className="space-y-3 pl-6">{secondaryCustomerNav.map(renderLink)}</div> : null}
+        {accountOpen ? <div className="space-y-2 pl-4 border-l-2 border-obligon-border/60 ml-2 mt-1">{secondaryCustomerNav.map(renderLink)}</div> : null}
       </nav>
 
-      <Link href="/customer/support" className="mt-auto flex items-center gap-3 px-4 text-base text-[#3f463d]">
+      <Link href="/customer/support" className="mt-auto flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green transition">
         <CircleHelp size={20} />
-        Support
+        Customer Support
       </Link>
     </aside>
   );

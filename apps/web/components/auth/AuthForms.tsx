@@ -3,7 +3,26 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
-import { Check, Eye, EyeOff, ShieldCheck, Loader2, AlertCircle, Mail, Lock, AlertTriangle, ChevronDown, Building2, User, Fuel, Wrench } from "lucide-react";
+import {
+  Check,
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  Loader2,
+  AlertCircle,
+  Mail,
+  Lock,
+  AlertTriangle,
+  ChevronDown,
+  Building2,
+  User,
+  Fuel,
+  Wrench,
+  Zap,
+  Gauge,
+  Truck,
+  Warehouse
+} from "lucide-react";
 import { routes } from "@/components/site/routes";
 import { useToast } from "@/components/shared/Toast";
 import { useSession } from "@/components/shared/AuthContext";
@@ -11,56 +30,139 @@ import { readRememberedEmail, writeRememberedEmail } from "@/lib/session-store";
 import type { UserRole } from "@/lib/services/types";
 
 export type AuthFormMode = "login" | "signup";
-type SignupRole = "customer" | "company" | "fuelStation" | "mechanic";
+type TopRole = "customer" | "company" | "partner";
 
-const signupFields: Record<SignupRole, Array<{ label: string; name: string; placeholder: string; type?: string; required?: boolean }>> = {
-  customer: [
-    { label: "Full Name", name: "name", placeholder: "Adaora Emeka", required: true },
-    { label: "Phone Number", name: "phone", placeholder: "+234 801 234 5678", required: true },
-    { label: "Email Address", name: "email", placeholder: "adaora@gmail.com", type: "email", required: true },
-    { label: "City / State", name: "location", placeholder: "Lagos, Nigeria", required: true },
-  ],
-  company: [
-    { label: "Company / Fleet Name", name: "company", placeholder: "Apex Logistics Ltd", required: true },
-    { label: "Fleet Size (Est. Vehicles)", name: "fleetSize", placeholder: "25", required: true },
-    { label: "Contact Person", name: "contact", placeholder: "James Adenuga", required: true },
-    { label: "Phone Number", name: "phone", placeholder: "+234 802 345 6789", required: true },
-    { label: "Work Email Address", name: "email", placeholder: "james@apexlogistics.ng", type: "email", required: true },
-    { label: "CAC Registration Number", name: "license", placeholder: "RC 9876543", required: true },
-  ],
-  fuelStation: [
-    { label: "Station Brand / Name", name: "station", placeholder: "Mainland Energy Station", required: true },
-    { label: "Primary Location", name: "location", placeholder: "Ikeja, Lagos", required: true },
-    { label: "Station Manager Name", name: "contact", placeholder: "Tunde Bakare", required: true },
-    { label: "Phone Number", name: "phone", placeholder: "+234 803 456 7890", required: true },
-    { label: "Email Address", name: "email", placeholder: "ops@mainlandenergy.ng", type: "email", required: true },
-    { label: "DPR / License Number", name: "license", placeholder: "DPR-NG-2024-884", required: true },
-  ],
-  mechanic: [
-    { label: "Workshop / Service Center Name", name: "workshop", placeholder: "Ade Auto Clinic", required: true },
-    { label: "Service Coverage Area", name: "location", placeholder: "Lekki-Epe Expressway, Lagos", required: true },
-    { label: "Lead Technician Name", name: "contact", placeholder: "Ade Balogun", required: true },
-    { label: "Phone Number", name: "phone", placeholder: "+234 804 567 8901", required: true },
-    { label: "Email Address", name: "email", placeholder: "service@adeauto.ng", type: "email", required: true },
-    { label: "Certification / CAC Number", name: "license", placeholder: "MECH-20458", required: true },
-  ],
+export type PartnerType =
+  | "fuelStation"
+  | "mechanic"
+  | "evCharging"
+  | "cngConversion"
+  | "heavyDuty"
+  | "logisticsDepot";
+
+interface PartnerTypeMeta {
+  id: PartnerType;
+  title: string;
+  subtitle: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  capabilities: string[];
+  fields: Array<{ label: string; name: string; placeholder: string; type?: string; required?: boolean }>;
+}
+
+const partnerTypeConfigs: Record<PartnerType, PartnerTypeMeta> = {
+  fuelStation: {
+    id: "fuelStation",
+    title: "Fuel Station / Energy Retailer",
+    subtitle: "DPR licensed filling stations and fuel dispensers",
+    icon: Fuel,
+    capabilities: ["PMS Petrol", "AGO Diesel", "DPK Kerosene", "CNG Compressed Gas", "LPG Autogas", "Car Wash Bay"],
+    fields: [
+      { label: "Station Brand / Name", name: "stationName", placeholder: "Mainland Energy Station", required: true },
+      { label: "Station Location / Address", name: "location", placeholder: "Plot 14 Commercial Ave, Ikeja, Lagos", required: true },
+      { label: "Station Manager Full Name", name: "contactName", placeholder: "Tunde Bakare", required: true },
+      { label: "Manager Phone Number", name: "phone", placeholder: "+234 803 456 7890", required: true },
+      { label: "Official Station Email", name: "email", placeholder: "ops@mainlandenergy.ng", type: "email", required: true },
+      { label: "DPR / NMDPRA License Number", name: "license", placeholder: "DPR-NG-2024-884", required: true },
+    ]
+  },
+  mechanic: {
+    id: "mechanic",
+    title: "Auto Mechanic / Repair Center",
+    subtitle: "Fleet diagnostics, servicing, and repair workshops",
+    icon: Wrench,
+    capabilities: ["Computer Diagnostics", "Engine Overhaul", "Brake & Suspension", "Tyres & Wheel Alignment", "Auto Electrical", "Mobile Roadside Unit"],
+    fields: [
+      { label: "Workshop / Garage Name", name: "workshopName", placeholder: "Ade Auto Diagnostic Hub", required: true },
+      { label: "Service Area / Workshop Address", name: "location", placeholder: "Lekki-Epe Expressway, Lagos", required: true },
+      { label: "Lead Technician / Manager Name", name: "contactName", placeholder: "Ade Balogun", required: true },
+      { label: "Workshop Phone Number", name: "phone", placeholder: "+234 804 567 8901", required: true },
+      { label: "Business Email", name: "email", placeholder: "service@adeauto.ng", type: "email", required: true },
+      { label: "Trade Certification / CAC Number", name: "license", placeholder: "RC-8921004", required: true },
+    ]
+  },
+  evCharging: {
+    id: "evCharging",
+    title: "EV Charging & Battery Hub",
+    subtitle: "Commercial EV fast-charging and battery swap bays",
+    icon: Zap,
+    capabilities: ["DC Rapid Charger 150kW", "Dual CCS2 Outlets", "AC Type 2 22kW", "Swappable Battery Bank", "Solar Canopy Backup"],
+    fields: [
+      { label: "Charging Hub / Facility Name", name: "hubName", placeholder: "VoltDrive Lagos E-Station", required: true },
+      { label: "Hub Location / Grid Node", name: "location", placeholder: "Victoria Island Power Corridor, Lagos", required: true },
+      { label: "Site Operations Lead", name: "contactName", placeholder: "Chinedu Okeke", required: true },
+      { label: "Contact Phone Number", name: "phone", placeholder: "+234 805 678 9012", required: true },
+      { label: "Operational Email", name: "email", placeholder: "grid@voltdrive.ng", type: "email", required: true },
+      { label: "Grid Interconnection / CAC Ref", name: "license", placeholder: "NERC-EV-2024-110", required: true },
+    ]
+  },
+  cngConversion: {
+    id: "cngConversion",
+    title: "CNG Conversion & Refueling Center",
+    subtitle: "Autogas vehicle conversion kits and cylinder recertification",
+    icon: Gauge,
+    capabilities: ["Sequential Gas Injection Kit", "Composite Type 4 Cylinders", "Cylinder Hydrostatic Testing", "Dual-Fuel ECU Tuning", "Mother-Daughter CNG Dispenser"],
+    fields: [
+      { label: "Conversion Facility Name", name: "cngCenterName", placeholder: "CleanEnergy Autogas Hub", required: true },
+      { label: "Workshop & Testing Station Address", name: "location", placeholder: "Ibadan Expressway Logistics Park, Ogun", required: true },
+      { label: "Certified Gas Engineer Name", name: "contactName", placeholder: "Engr. Yusuf Ibrahim", required: true },
+      { label: "Operations Phone Number", name: "phone", placeholder: "+234 806 789 0123", required: true },
+      { label: "Inquiry Email", name: "email", placeholder: "cng@cleanenergy.ng", type: "email", required: true },
+      { label: "SON / NMDPRA Conversion License", name: "license", placeholder: "SON-CNG-90214", required: true },
+    ]
+  },
+  heavyDuty: {
+    id: "heavyDuty",
+    title: "Heavy Duty Recovery & Towing",
+    subtitle: "Interstate heavy truck breakdown and emergency recovery",
+    icon: Truck,
+    capabilities: ["50-Ton Heavy Duty Wrecker", "Flatbed Carrier", "Mobile Air Compressor Unit", "Interstate Highway Response", "Heavy Diesel Onsite Repair"],
+    fields: [
+      { label: "Fleet Recovery Company Name", name: "recoveryCompanyName", placeholder: "Eagle Eye Heavy Towing Ltd", required: true },
+      { label: "Corridor / Base Depot Location", name: "location", placeholder: "Sagamu Interchange Base, Ogun/Lagos", required: true },
+      { label: "Fleet Dispatch Officer", name: "contactName", placeholder: "Alhaji Musa Garba", required: true },
+      { label: "24/7 Hotline Phone Number", name: "phone", placeholder: "+234 800 EAGLE TOW", required: true },
+      { label: "Dispatch Email", name: "email", placeholder: "dispatch@eagletowing.ng", type: "email", required: true },
+      { label: "Federal Safety / CAC License", name: "license", placeholder: "FRSC-REC-8840", required: true },
+    ]
+  },
+  logisticsDepot: {
+    id: "logisticsDepot",
+    title: "Energy Depot & Terminal Hub",
+    subtitle: "Bulk storage, fuel gantry loading, and terminal logistics",
+    icon: Warehouse,
+    capabilities: ["Bulk PMS Storage (MT)", "AGO Pipeline Offtake", "Automated Gantry Meters", "24/7 Tanker Loading", "Quality Lab Testing"],
+    fields: [
+      { label: "Depot / Terminal Facility Name", name: "depotName", placeholder: "Ibafon Energy Terminal Hub", required: true },
+      { label: "Terminal Port / Jetty Address", name: "location", placeholder: "Dockyard Road, Apapa, Lagos", required: true },
+      { label: "Terminal Operations Manager", name: "contactName", placeholder: "Khadija Danjuma", required: true },
+      { label: "Terminal Phone Number", name: "phone", placeholder: "+234 807 890 1234", required: true },
+      { label: "Terminal Scheduling Email", name: "email", placeholder: "terminal@ibafonenergy.ng", type: "email", required: true },
+      { label: "DPR Bulk Terminal License", name: "license", placeholder: "DPR-DEPOT-2024-001", required: true },
+    ]
+  }
 };
 
-const roleLabels: Record<SignupRole, string> = {
-  customer: "Customer / Driver",
-  company: "Fleet Enterprise",
-  fuelStation: "Partner Station",
-  mechanic: "Roadside & Mechanic",
-};
+const customerFields = [
+  { label: "Full Name", name: "name", placeholder: "Adaora Emeka", required: true },
+  { label: "Phone Number", name: "phone", placeholder: "+234 801 234 5678", required: true },
+  { label: "Personal Email Address", name: "email", placeholder: "adaora@gmail.com", type: "email", required: true },
+  { label: "City / State", name: "location", placeholder: "Lagos, Nigeria", required: true },
+];
 
-const fuelTypes = ["PMS Petrol", "AGO Diesel", "DPK Kerosene", "CNG Compressed Gas", "EV Charging"];
-const mechanicServices = ["Diagnostics", "Engine Repair", "Brake Service", "Tyres & Alignment", "Electrical", "Emergency Towing"];
+const companyFields = [
+  { label: "Company / Enterprise Name", name: "company", placeholder: "Apex Logistics Ltd", required: true },
+  { label: "Estimated Fleet Size (Vehicles)", name: "fleetSize", placeholder: "35", required: true },
+  { label: "Fleet Manager Full Name", name: "contact", placeholder: "James Adenuga", required: true },
+  { label: "Official Phone Number", name: "phone", placeholder: "+234 802 345 6789", required: true },
+  { label: "Enterprise Work Email", name: "email", placeholder: "james@apexlogistics.ng", type: "email", required: true },
+  { label: "CAC Registration Number", name: "license", placeholder: "RC 9876543", required: true },
+];
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phoneRegex = /^\+?[\d\s-]{10,}$/;
 
 const fieldClass = (invalid: boolean) =>
-  `h-12 w-full rounded-lg border px-4 text-sm text-obligon-navy outline-none transition placeholder:text-[#92929c] focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20 ${
+  `h-12 w-full rounded-xl border px-4 text-sm text-obligon-navy outline-none transition placeholder:text-[#92929c] focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20 ${
     invalid ? "border-[#fecaca] bg-[#fff0f0]" : "border-obligon-border bg-white"
   }`;
 
@@ -131,7 +233,7 @@ function LoginForm() {
           ? routes.adminDashboard
           : selectedRole === "company"
             ? routes.companyDashboard
-            : selectedRole === "partner"
+            : selectedRole === "partner" || selectedRole === "mechanic"
               ? routes.dashboard
               : routes.customerDashboard;
 
@@ -148,7 +250,7 @@ function LoginForm() {
   const isLoginDisabled = loginSubmitting || !loginForm.email || !loginForm.password;
 
   return (
-    <form onSubmit={handleLoginSubmit} className="mx-auto w-full max-w-[460px] rounded-2xl border border-obligon-border bg-white p-6 sm:p-8 shadow-card" noValidate>
+    <form onSubmit={handleLoginSubmit} className="mx-auto w-full max-w-[480px] rounded-2xl border border-obligon-border bg-white p-6 sm:p-8 shadow-card" noValidate>
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[1.2px] text-obligon-green">Access Portal</p>
@@ -158,7 +260,7 @@ function LoginForm() {
       </div>
 
       {status === "authenticated" && user ? (
-        <div className="mt-4 rounded-lg border border-obligon-border bg-obligon-mist p-3 text-sm text-obligon-text">
+        <div className="mt-4 rounded-xl border border-obligon-border bg-obligon-mist p-3.5 text-sm text-obligon-text">
           Active session as <strong>{user.email}</strong> ({user.role}).{" "}
           <Link
             href={
@@ -166,7 +268,7 @@ function LoginForm() {
                 ? routes.adminDashboard
                 : user.role === "company"
                   ? routes.companyDashboard
-                  : user.role === "partner"
+                  : user.role === "partner" || user.role === "mechanic"
                     ? routes.dashboard
                     : routes.customerDashboard
             }
@@ -178,7 +280,7 @@ function LoginForm() {
       ) : null}
 
       {loginServerError && (
-        <div className="mt-4 rounded-lg bg-[#fff0f0] border border-[#fecaca] p-3 text-sm text-[#93000a] flex items-start gap-2" role="alert">
+        <div className="mt-4 rounded-xl bg-[#fff0f0] border border-[#fecaca] p-3.5 text-sm text-[#93000a] flex items-start gap-2" role="alert">
           <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
           <span>{loginServerError}</span>
         </div>
@@ -187,12 +289,12 @@ function LoginForm() {
       {/* Role Selection Tabs */}
       <div className="mt-6">
         <label className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-2">
-          Select Role / Dashboard
+          Select Dashboard Portal
         </label>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
             { role: "customer" as UserRole, label: "Customer", icon: User },
-            { role: "company" as UserRole, label: "Company", icon: Building2 },
+            { role: "company" as UserRole, label: "Fleet Co.", icon: Building2 },
             { role: "partner" as UserRole, label: "Partner", icon: Fuel },
             { role: "admin" as UserRole, label: "Admin", icon: ShieldCheck },
           ].map((item) => {
@@ -203,13 +305,13 @@ function LoginForm() {
                 key={item.role}
                 type="button"
                 onClick={() => setSelectedRole(item.role)}
-                className={`flex flex-col items-center justify-center gap-1 rounded-xl border py-2.5 px-2 text-xs font-bold transition ${
+                className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border py-2.5 px-2 text-xs font-bold transition ${
                   active
                     ? "border-obligon-green bg-[#e8fbd7] text-obligon-green ring-2 ring-obligon-green/20"
                     : "border-obligon-border bg-white text-obligon-text hover:bg-obligon-mist"
                 }`}
               >
-                <Icon size={16} />
+                <Icon size={18} />
                 <span>{item.label}</span>
               </button>
             );
@@ -223,7 +325,7 @@ function LoginForm() {
             Email Address
           </label>
           <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-obligon-text/50" aria-hidden="true" />
+            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-5 text-obligon-text/50" aria-hidden="true" />
             <input
               id="login-email"
               name="email"
@@ -252,7 +354,7 @@ function LoginForm() {
             Password
           </label>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-obligon-text/50" aria-hidden="true" />
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-5 text-obligon-text/50" aria-hidden="true" />
             <input
               id="login-password"
               name="password"
@@ -301,7 +403,7 @@ function LoginForm() {
 
         <button
           type="submit"
-          className={`mt-6 inline-flex h-12 w-full items-center justify-center rounded-lg text-base font-bold text-white shadow-green transition ${
+          className={`mt-6 inline-flex h-12 w-full items-center justify-center rounded-xl text-base font-bold text-white shadow-green transition ${
             isLoginDisabled ? "bg-obligon-green/50 cursor-not-allowed" : "bg-obligon-green hover:bg-obligon-green/90"
           }`}
           disabled={isLoginDisabled}
@@ -312,7 +414,7 @@ function LoginForm() {
               Signing in...
             </>
           ) : (
-            `Sign in to ${roleLabels[selectedRole === "partner" ? "fuelStation" : selectedRole === "admin" ? "company" : selectedRole]}`
+            `Sign in as ${selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}`
           )}
         </button>
 
@@ -334,21 +436,50 @@ function SignupForm() {
   const { login } = useSession();
   const { error: toastError, success: toastSuccess } = useToast();
 
-  const [role, setRole] = React.useState<SignupRole>("customer");
+  const [topRole, setTopRole] = React.useState<TopRole>("customer");
+  const [partnerType, setPartnerType] = React.useState<PartnerType>("fuelStation");
   const [signupForm, setSignupForm] = React.useState<Record<string, string>>({});
   const [password, setPassword] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
   const [signupErrors, setSignupErrors] = React.useState<Record<string, string>>({});
   const [signupSubmitting, setSignupSubmitting] = React.useState(false);
   const [signupServerError, setSignupServerError] = React.useState<string | null>(null);
-  const [selectedFuelTypes, setSelectedFuelTypes] = React.useState<string[]>(["PMS Petrol", "AGO Diesel"]);
-  const [fuelError, setFuelError] = React.useState(false);
-  const [selectedMechanicServices, setSelectedMechanicServices] = React.useState<string[]>(["Diagnostics", "Brake Service"]);
-  const [mechanicServiceError, setMechanicServiceError] = React.useState(false);
+
+  const [selectedCapabilities, setSelectedCapabilities] = React.useState<string[]>([
+    "PMS Petrol",
+    "AGO Diesel"
+  ]);
+
+  const activePartnerMeta = partnerTypeConfigs[partnerType];
+
+  const handleTopRoleChange = (newRole: TopRole) => {
+    setTopRole(newRole);
+    setSignupForm({});
+    setSignupErrors({});
+    setSignupServerError(null);
+    if (newRole === "partner") {
+      setSelectedCapabilities(partnerTypeConfigs[partnerType].capabilities.slice(0, 2));
+    }
+  };
+
+  const handlePartnerTypeChange = (newType: PartnerType) => {
+    setPartnerType(newType);
+    setSignupForm({});
+    setSignupErrors({});
+    setSignupServerError(null);
+    setSelectedCapabilities(partnerTypeConfigs[newType].capabilities.slice(0, 2));
+  };
+
+  const currentFields =
+    topRole === "customer"
+      ? customerFields
+      : topRole === "company"
+        ? companyFields
+        : activePartnerMeta.fields;
 
   const validateSignup = (): boolean => {
     const errors: Record<string, string> = {};
-    signupFields[role].forEach((field) => {
+    currentFields.forEach((field) => {
       const value = signupForm[field.name] ?? "";
       const err = field.required ? validateRequired(value, field.label) : null;
       if (err) errors[field.name] = err;
@@ -362,14 +493,8 @@ function SignupForm() {
     if (!password) errors.password = "Password is required";
     else if (password.length < 8) errors.password = "Password must be at least 8 characters";
 
-    if (role === "fuelStation" && selectedFuelTypes.length === 0) {
-      errors.fuelTypes = "Select at least one fuel type";
-      setFuelError(true);
-    }
-
-    if (role === "mechanic" && selectedMechanicServices.length === 0) {
-      errors.mechanicServices = "Select at least one service";
-      setMechanicServiceError(true);
+    if (topRole === "partner" && selectedCapabilities.length === 0) {
+      errors.capabilities = "Select at least one capability / service offered";
     }
 
     setSignupErrors(errors);
@@ -382,15 +507,6 @@ function SignupForm() {
     if (signupServerError) setSignupServerError(null);
   };
 
-  const handleRoleChange = (newRole: SignupRole) => {
-    setRole(newRole);
-    setFuelError(false);
-    setMechanicServiceError(false);
-    setSignupForm({});
-    setSignupErrors({});
-    setSignupServerError(null);
-  };
-
   const handleSignupSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!validateSignup()) return;
@@ -400,23 +516,47 @@ function SignupForm() {
 
     try {
       const email = signupForm.email;
-      const roleMap: Record<SignupRole, UserRole> = {
-        customer: "customer",
-        company: "company",
-        fuelStation: "partner",
-        mechanic: "mechanic",
-      };
-      await login({ email, password, role: roleMap[role] });
-      toastSuccess(`${roleLabels[role]} registration submitted successfully!`);
-      router.push(`${routes.authSuccess}?redirect=${
-        role === "company"
+      const roleToAssign: UserRole =
+        topRole === "customer"
+          ? "customer"
+          : topRole === "company"
+            ? "company"
+            : partnerType === "mechanic"
+              ? "mechanic"
+              : "partner";
+
+      const orgName =
+        topRole === "customer"
+          ? "Individual Consumer"
+          : topRole === "company"
+            ? (signupForm.company ?? "Fleet Enterprise")
+            : (signupForm.stationName ??
+               signupForm.workshopName ??
+               signupForm.hubName ??
+               signupForm.cngCenterName ??
+               signupForm.recoveryCompanyName ??
+               signupForm.depotName ??
+               "Partner Facility");
+
+      await login({
+        email,
+        password,
+        role: roleToAssign,
+      });
+
+      const partnerRoleLabel =
+        topRole === "partner" ? activePartnerMeta.title : topRole === "company" ? "Fleet Company" : "Customer";
+
+      toastSuccess(`${partnerRoleLabel} account registered successfully!`);
+
+      const destination =
+        topRole === "company"
           ? routes.companyDashboard
-          : role === "fuelStation"
+          : topRole === "partner"
             ? routes.dashboard
-            : role === "mechanic"
-              ? "/company/roadside"
-              : routes.customerDashboard
-      }`);
+            : routes.customerDashboard;
+
+      router.push(`${routes.authSuccess}?redirect=${destination}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Registration failed. Please try again.";
       setSignupServerError(message);
@@ -426,51 +566,111 @@ function SignupForm() {
     }
   };
 
-  const isSignupDisabled = signupSubmitting;
-
   return (
-    <form id="signup" onSubmit={handleSignupSubmit} className="mx-auto w-full max-w-[640px] rounded-2xl border border-obligon-border bg-white p-6 sm:p-8 shadow-card" noValidate>
+    <form id="signup" onSubmit={handleSignupSubmit} className="mx-auto w-full max-w-[680px] rounded-2xl border border-obligon-border bg-white p-6 sm:p-8 shadow-card" noValidate>
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[1.2px] text-obligon-green">Register on Obligon</p>
+          <p className="text-xs font-bold uppercase tracking-[1.2px] text-obligon-green">Onboard to Obligon</p>
           <h2 className="mt-2 font-display text-2xl font-bold text-obligon-navy">Create your account</h2>
         </div>
         <ShieldCheck className="text-obligon-green" size={28} />
       </div>
 
       {signupServerError && (
-        <div className="mt-4 rounded-lg bg-[#fff0f0] border border-[#fecaca] p-3 text-sm text-[#93000a] flex items-start gap-2" role="alert">
+        <div className="mt-4 rounded-xl bg-[#fff0f0] border border-[#fecaca] p-3.5 text-sm text-[#93000a] flex items-start gap-2" role="alert">
           <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
           <span>{signupServerError}</span>
         </div>
       )}
 
-      <div className="mt-6 space-y-4">
-        <div>
-          <label htmlFor="signup-role" className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-1">
-            Account Type
-          </label>
-          <div className="relative">
-            <select
-              id="signup-role"
-              name="role"
-              value={role}
-              onChange={(e) => handleRoleChange(e.target.value as SignupRole)}
-              className={`${fieldClass(false)} appearance-none pr-10`}
-              disabled={signupSubmitting}
-            >
-              {(Object.keys(roleLabels) as SignupRole[]).map((key) => (
-                <option key={key} value={key}>
-                  {roleLabels[key]}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-obligon-text/50" aria-hidden="true" />
+      {/* Top Level Role Selector */}
+      <div className="mt-6">
+        <label className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-2">
+          Select Account Category
+        </label>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { key: "customer" as TopRole, title: "Customer / Driver", desc: "For individual vehicle owners & cards", icon: User },
+            { key: "company" as TopRole, title: "Fleet Enterprise", desc: "For corporate fleets & transport firms", icon: Building2 },
+            { key: "partner" as TopRole, title: "Partner Network", desc: "Stations, Mechanics, EV, CNG & Depots", icon: Fuel },
+          ].map((item) => {
+            const Icon = item.icon;
+            const active = topRole === item.key;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => handleTopRoleChange(item.key)}
+                className={`p-3.5 rounded-xl border text-left transition flex flex-col justify-between ${
+                  active
+                    ? "border-obligon-green bg-[#e8fbd7] text-obligon-green ring-2 ring-obligon-green/20"
+                    : "border-obligon-border bg-white text-obligon-navy hover:bg-obligon-mist"
+                }`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <Icon size={20} className={active ? "text-obligon-green" : "text-obligon-navy"} />
+                  {active && <span className="size-2 rounded-full bg-obligon-green" />}
+                </div>
+                <div className="mt-2.5">
+                  <p className="font-extrabold text-xs leading-4">{item.title}</p>
+                  <p className="text-[11px] font-medium text-obligon-text mt-0.5 leading-tight line-clamp-2">{item.desc}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Sub-Partner Type Selector (When Partner Network is selected) */}
+      {topRole === "partner" && (
+        <div className="mt-6 rounded-2xl border border-obligon-border bg-[#f8fafc] p-4 sm:p-5">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-extrabold uppercase tracking-[1px] text-obligon-navy">
+              Select Specific Partner Specialization
+            </span>
+            <span className="text-[10px] font-bold uppercase bg-obligon-green text-white px-2.5 py-0.5 rounded-full">
+              6 Options Available
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+            {(Object.keys(partnerTypeConfigs) as PartnerType[]).map((key) => {
+              const meta = partnerTypeConfigs[key];
+              const Icon = meta.icon;
+              const active = partnerType === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => handlePartnerTypeChange(key)}
+                  className={`p-3 rounded-xl border text-left transition flex items-start gap-2.5 ${
+                    active
+                      ? "border-obligon-green bg-white shadow-sm ring-2 ring-obligon-green/30"
+                      : "border-obligon-border/80 bg-white/70 hover:bg-white text-obligon-navy"
+                  }`}
+                >
+                  <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${active ? "bg-obligon-green text-white" : "bg-[#f1f5f9] text-obligon-navy"}`}>
+                    <Icon size={16} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className={`font-bold text-xs leading-4 ${active ? "text-obligon-green" : "text-obligon-navy"}`}>
+                      {meta.title}
+                    </p>
+                    <p className="text-[10px] font-medium text-obligon-text mt-0.5 leading-tight line-clamp-1">
+                      {meta.subtitle}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
+      )}
 
+      {/* Dynamic Form Fields */}
+      <div className="mt-6 space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          {signupFields[role].map((field) => (
+          {currentFields.map((field) => (
             <div key={field.name} className="relative">
               <label htmlFor={`signup-${field.name}`} className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-1">
                 {field.label}
@@ -495,17 +695,54 @@ function SignupForm() {
           ))}
         </div>
 
-        <div className="relative">
+        {/* Partner Capabilities & Specialties */}
+        {topRole === "partner" && (
+          <div className="mt-4 pt-2">
+            <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-2">
+              Capabilities, Products &amp; Amenities Offered
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {activePartnerMeta.capabilities.map((cap) => {
+                const selected = selectedCapabilities.includes(cap);
+                return (
+                  <button
+                    key={cap}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCapabilities((prev) =>
+                        prev.includes(cap) ? prev.filter((c) => c !== cap) : [...prev, cap]
+                      );
+                    }}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition ${
+                      selected
+                        ? "border-obligon-green bg-[#e8fbd7] text-obligon-green ring-1 ring-obligon-green"
+                        : "border-obligon-border bg-white text-obligon-text hover:border-obligon-green"
+                    }`}
+                  >
+                    {selected && <Check size={13} />}
+                    {cap}
+                  </button>
+                );
+              })}
+            </div>
+            {signupErrors.capabilities && (
+              <p className="mt-1.5 text-xs font-medium text-[#93000a]">{signupErrors.capabilities}</p>
+            )}
+          </div>
+        )}
+
+        {/* Password */}
+        <div className="relative pt-2">
           <label htmlFor="signup-password" className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-1">
-            Password
+            Create Password
           </label>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-obligon-text/50" aria-hidden="true" />
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-5 text-obligon-text/50" aria-hidden="true" />
             <input
               id="signup-password"
               name="password"
               type={showPassword ? "text" : "password"}
-              placeholder="Minimum 8 characters"
+              placeholder="Minimum 8 characters with numbers & symbols"
               value={password}
               onChange={(e) => {
                 setPassword(e.target.value);
@@ -533,101 +770,27 @@ function SignupForm() {
         </div>
       </div>
 
-      {role === "fuelStation" ? (
-        <div className="mt-5">
-          <p className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Available Fuel Types</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {fuelTypes.map((item) => {
-              const selected = selectedFuelTypes.includes(item);
-              return (
-                <button
-                  key={item}
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() => {
-                    setSelectedFuelTypes((current) =>
-                      current.includes(item) ? current.filter((entry) => entry !== item) : [...current, item]
-                    );
-                    setFuelError(false);
-                  }}
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold transition ${
-                    selected
-                      ? "border-obligon-green bg-obligon-green/10 text-obligon-green"
-                      : "border-obligon-border bg-white text-obligon-text hover:border-obligon-green hover:text-obligon-green"
-                  }`}
-                  disabled={signupSubmitting}
-                >
-                  {selected ? <Check size={14} /> : null}
-                  {item}
-                </button>
-              );
-            })}
-          </div>
-          {fuelError || signupErrors.fuelTypes ? (
-            <p className="mt-2 text-xs font-semibold text-[#93000a]" role="alert">
-              {signupErrors.fuelTypes ?? "Select at least one available fuel type before submitting."}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-
-      {role === "mechanic" ? (
-        <div className="mt-5">
-          <p className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Service Specializations</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {mechanicServices.map((item) => {
-              const selected = selectedMechanicServices.includes(item);
-              return (
-                <button
-                  key={item}
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() => {
-                    setSelectedMechanicServices((current) =>
-                      current.includes(item) ? current.filter((entry) => entry !== item) : [...current, item]
-                    );
-                    setMechanicServiceError(false);
-                  }}
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold transition ${
-                    selected
-                      ? "border-obligon-green bg-obligon-green/10 text-obligon-green"
-                      : "border-obligon-border bg-white text-obligon-text hover:border-obligon-green hover:text-obligon-green"
-                  }`}
-                  disabled={signupSubmitting}
-                >
-                  {selected ? <Check size={14} /> : null}
-                  {item}
-                </button>
-              );
-            })}
-          </div>
-          {mechanicServiceError || signupErrors.mechanicServices ? (
-            <p className="mt-2 text-xs font-semibold text-[#93000a]" role="alert">
-              {signupErrors.mechanicServices ?? "Select at least one service before submitting."}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-
       <button
         type="submit"
-        className={`mt-6 inline-flex h-12 w-full items-center justify-center rounded-lg text-base font-bold text-white shadow-green transition ${
-          isSignupDisabled ? "bg-obligon-green/50 cursor-not-allowed" : "bg-obligon-green hover:bg-obligon-green/90"
+        className={`mt-7 inline-flex h-12 w-full items-center justify-center rounded-xl text-base font-bold text-white shadow-green transition ${
+          signupSubmitting ? "bg-obligon-green/50 cursor-not-allowed" : "bg-obligon-green hover:bg-obligon-green/90"
         }`}
-        disabled={isSignupDisabled}
+        disabled={signupSubmitting}
       >
         {signupSubmitting ? (
           <>
             <Loader2 size={18} className="mr-2 animate-spin" />
-            Submitting Registration...
+            Registering Account...
           </>
         ) : (
-          `Complete ${roleLabels[role]} Registration`
+          `Complete ${
+            topRole === "partner" ? activePartnerMeta.title : topRole === "company" ? "Fleet Company" : "Customer"
+          } Signup`
         )}
       </button>
 
       <p className="mt-4 text-center text-sm text-obligon-text">
-        Already registered?{" "}
+        Already registered on Obligon?{" "}
         <Link href={routes.login} className="font-bold text-obligon-green hover:underline">
           Sign In Here
         </Link>
