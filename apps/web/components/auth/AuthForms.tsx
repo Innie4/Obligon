@@ -26,7 +26,7 @@ import {
 import { routes } from "@/components/site/routes";
 import { useToast } from "@/components/shared/Toast";
 import { useSession } from "@/components/shared/AuthContext";
-import { readRememberedEmail, writeRememberedEmail } from "@/lib/session-store";
+import { readPersistedSession, readRememberedEmail, writeRememberedEmail } from "@/lib/session-store";
 import type { UserRole } from "@/lib/services/types";
 
 export type AuthFormMode = "login" | "signup";
@@ -182,7 +182,6 @@ function LoginForm() {
   const { login, status, user } = useSession();
   const { error: toastError, success: toastSuccess } = useToast();
 
-  const [selectedRole, setSelectedRole] = React.useState<UserRole>("customer");
   const [loginForm, setLoginForm] = React.useState({
     email: "",
     password: "",
@@ -224,16 +223,40 @@ function LoginForm() {
     setLoginServerError(null);
 
     try {
-      await login({ email: loginForm.email, password: loginForm.password, role: selectedRole });
+      const emailLower = loginForm.email.toLowerCase();
+      const stored = readPersistedSession();
+      let roleToUse: UserRole = "customer";
+
+      if (stored && stored.email.toLowerCase() === emailLower) {
+        roleToUse = stored.role;
+      } else if (emailLower.includes("admin")) {
+        roleToUse = "admin";
+      } else if (
+        emailLower.includes("fleet") ||
+        emailLower.includes("company") ||
+        emailLower.includes("logistics")
+      ) {
+        roleToUse = "company";
+      } else if (
+        emailLower.includes("station") ||
+        emailLower.includes("partner") ||
+        emailLower.includes("mechanic") ||
+        emailLower.includes("energy") ||
+        emailLower.includes("pos")
+      ) {
+        roleToUse = "partner";
+      }
+
+      await login({ email: loginForm.email, password: loginForm.password, role: roleToUse });
       writeRememberedEmail(loginForm.email, loginForm.rememberMe);
-      toastSuccess(`Welcome back! Logged in as ${selectedRole}.`);
+      toastSuccess("Welcome back! Signed in successfully.");
 
       const destination =
-        selectedRole === "admin"
+        roleToUse === "admin"
           ? routes.adminDashboard
-          : selectedRole === "company"
+          : roleToUse === "company"
             ? routes.companyDashboard
-            : selectedRole === "partner" || selectedRole === "mechanic"
+            : roleToUse === "partner" || roleToUse === "mechanic"
               ? routes.dashboard
               : routes.customerDashboard;
 
@@ -253,8 +276,8 @@ function LoginForm() {
     <form onSubmit={handleLoginSubmit} className="mx-auto w-full max-w-[480px] rounded-2xl border border-obligon-border bg-white p-6 sm:p-8 shadow-card" noValidate>
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[1.2px] text-obligon-green">Access Portal</p>
-          <h2 className="mt-2 font-display text-2xl font-bold text-obligon-navy">Welcome back</h2>
+          <h2 className="font-display text-2xl font-bold text-obligon-navy">Welcome back</h2>
+          <p className="mt-1 text-xs text-obligon-text">Sign in to your Obligon account</p>
         </div>
         <ShieldCheck className="text-obligon-green" size={28} />
       </div>
@@ -285,39 +308,6 @@ function LoginForm() {
           <span>{loginServerError}</span>
         </div>
       )}
-
-      {/* Role Selection Tabs */}
-      <div className="mt-6">
-        <label className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-2">
-          Select Dashboard Portal
-        </label>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {[
-            { role: "customer" as UserRole, label: "Customer", icon: User },
-            { role: "company" as UserRole, label: "Fleet Co.", icon: Building2 },
-            { role: "partner" as UserRole, label: "Partner", icon: Fuel },
-            { role: "admin" as UserRole, label: "Admin", icon: ShieldCheck },
-          ].map((item) => {
-            const Icon = item.icon;
-            const active = selectedRole === item.role;
-            return (
-              <button
-                key={item.role}
-                type="button"
-                onClick={() => setSelectedRole(item.role)}
-                className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border py-2.5 px-2 text-xs font-bold transition ${
-                  active
-                    ? "border-obligon-green bg-[#e8fbd7] text-obligon-green ring-2 ring-obligon-green/20"
-                    : "border-obligon-border bg-white text-obligon-text hover:bg-obligon-mist"
-                }`}
-              >
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
       <div className="mt-6 space-y-4">
         <div className="relative">
@@ -414,7 +404,7 @@ function LoginForm() {
               Signing in...
             </>
           ) : (
-            `Sign in as ${selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}`
+            "Sign In"
           )}
         </button>
 
