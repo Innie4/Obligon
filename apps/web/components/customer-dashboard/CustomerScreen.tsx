@@ -44,6 +44,7 @@ import { useSession } from "@/components/shared/AuthContext";
 import { useToast } from "@/components/shared/Toast";
 import { CustomerModals, ModalFrame, type CustomerModalType } from "./CustomerModals";
 import { ConfirmModal, PinModal } from "../shared/Dialogs";
+import { StationMap } from "../shared/StationMap";
 import { routes } from "../site/routes";
 
 const toneClasses: Record<CustomerTone, string> = {
@@ -292,7 +293,7 @@ function TransactionsPage() {
   const [selectedTxn, setSelectedTxn] = React.useState<CustomerTransaction | null>(null);
   const [currentPage, setCurrentPage] = React.useState(1);
   const pageSize = 5;
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
   const [downloadingReceipt, setDownloadingReceipt] = React.useState(false);
 
   const stations = Array.from(new Set((transactionHistory ?? []).map((row) => row.station)));
@@ -831,6 +832,7 @@ function buildMapUrl(list: Array<{ lat: number; lng: number }>) {
 }
 
 function StationsPage() {
+  const router = useRouter();
   const { status, data: stations, error, reload } = useAsync(() => api.getStations());
   const [query, setQuery] = React.useState("");
   const [fuelsOpen, setFuelsOpen] = React.useState(false);
@@ -903,11 +905,10 @@ function StationsPage() {
 
         <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
           <Card className="relative min-h-[500px] overflow-hidden bg-[#dfe8ed]">
-            <iframe
-              title="Station map"
-              src={buildMapUrl(stations ?? [])}
-              className="h-full min-h-[500px] w-full border-0"
-              loading="lazy"
+            <StationMap
+              points={(stations ?? []).map((st) => ({ id: st.name, name: st.name, lat: st.lat, lng: st.lng }))}
+              onSelect={(point) => router.push(`/customer/stations?station=${encodeURIComponent(point.name)}`)}
+              height="h-[500px]"
             />
           </Card>
           <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
@@ -1115,7 +1116,7 @@ function ProfilePage({
   onBiometricsChange: (enabled: boolean) => void;
 }) {
   const { user, updateProfile } = useSession();
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
   const router = useRouter();
 
   const [name, setName] = useState(user?.name ?? "Fleet Manager");
@@ -1282,7 +1283,7 @@ function ProfilePage({
 
 function NotificationsPage() {
   const { status, data: notifications, error, reload } = useAsync(() => api.getNotifications());
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
   const [readItems, setReadItems] = useState<Set<string>>(new Set());
 
   function handleMarkAll() {

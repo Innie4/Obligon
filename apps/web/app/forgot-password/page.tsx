@@ -8,6 +8,7 @@ import { AuthShell } from "@/components/auth/AuthShell";
 import { routes } from "@/components/site/routes";
 import { Input } from "@/components/site/Input";
 import { useToast } from "@/components/shared/Toast";
+import { authApi } from "@/lib/services";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -45,13 +46,9 @@ export default function ForgotPasswordPage() {
     setServerError(null);
 
     try {
-      // In a real app, this would call an API endpoint
-      // await api.forgotPassword({ email });
-      await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate API call
-
-      toastSuccess("Reset link sent! Check your email.");
+      await authApi.forgotPassword(email);
+      toastSuccess("If an account exists for that email, a reset code has been sent.");
       setSent(true);
-      setEmail("");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to send reset link. Please try again.";
       setServerError(message);
@@ -80,21 +77,35 @@ export default function ForgotPasswordPage() {
         </h1>
         <p className="mt-4 text-center text-base leading-6 text-obligon-text">
           {sent
-            ? "We've sent a password reset link to your email. Follow the link to create a new password."
+            ? "If an account exists for that email, we've sent a 6-digit reset code. Enter it on the reset screen to create a new password."
             : "Enter your email address and we'll send you a secure link to reset your password."}
         </p>
 
         {sent ? (
           <div className="mt-8 space-y-4">
             <Link
-              href={routes.login}
+              href={`/reset-password${email ? `?email=${encodeURIComponent(email)}` : ""}`}
               className="inline-flex h-12 w-full items-center justify-center rounded-lg bg-obligon-green text-base font-bold text-white shadow-green"
             >
-              Back to Login
+              Enter Reset Code
             </Link>
             <Link href={routes.login} className="inline-flex w-full items-center justify-center text-sm font-bold text-obligon-green">
-              Didn't receive the email? <span className="underline">Resend</span>
+              Back to Login
             </Link>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  setSubmitting(true);
+                  await authApi.forgotPassword(email);
+                } finally {
+                  setSubmitting(false);
+                }
+              }}
+              className="inline-flex w-full items-center justify-center text-sm font-bold text-obligon-green"
+            >
+              Didn&apos;t receive it? <span className="underline">Resend code</span>
+            </button>
           </div>
         ) : (
           <form onSubmit={(e) => { e.preventDefault(); if (!submitting && email.trim()) handleSubmit(e); }} className="mt-8 space-y-5">

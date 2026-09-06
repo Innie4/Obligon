@@ -8,6 +8,7 @@ import { Loader2, CheckCircle2, AlertTriangle, ArrowLeft, Mail, Phone, ShieldChe
 import { AuthShell } from "@/components/auth/AuthShell";
 import { routes } from "@/components/site/routes";
 import { useToast } from "@/components/shared/Toast";
+import { authApi } from "@/lib/services";
 
 type VerificationType = "email" | "phone";
 type VerificationStage = "input" | "sent" | "verifying" | "success" | "failed";
@@ -37,7 +38,13 @@ export function VerificationUI({ type, redirect = "/" }: VerificationUIProps) {
   const [error, setError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const [resendCooldown, setResendCooldown] = React.useState(0);
-  const { success: toastSuccess } = useToast();
+
+  React.useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => setResendCooldown((c) => (c > 0 ? c - 1 : 0)), 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+  const { success: toastSuccess, error: toastError } = useToast();
 
   // Read contact value from URL params (for display/masking) - safe for SSR
   const contactValue = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("contact") ?? "" : "";
@@ -45,13 +52,37 @@ export function VerificationUI({ type, redirect = "/" }: VerificationUIProps) {
   const verifyCode = async (codeToVerify: string) => {
     setSubmitting(true);
     setError(null);
+    setStage("verifying");
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      if (type === "email") {
+        await authApi.verifyEmailConfirm(codeToVerify);
+      } else {
+        await authApi.verifyPhoneConfirm(codeToVerify);
+      }
       setStage("success");
-      setTimeout(() => router.push(redirect), 2000);
+      setTimeout(() => router.push(redirect), 1500);
     } catch (err) {
-      setError("Invalid or expired code. Please try again.");
+      setError(err instanceof Error ? err.message : "Invalid or expired code. Please try again.");
       setStage("failed");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const resendCode = async () => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      if (type === "email") {
+        await authApi.verifyEmailSend();
+      } else {
+        await authApi.verifyPhoneSend(contactValue || undefined);
+      }
+      setStage("sent");
+      toastSuccess("A new code has been sent.");
+      setResendCooldown(30);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not resend the code. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -146,25 +177,7 @@ export function VerificationUI({ type, redirect = "/" }: VerificationUIProps) {
     <button
       onClick={() => {
         if (resendCooldown > 0 || submitting) return;
-        setSubmitting(true);
-        setError(null);
-        try {
-          setResendCooldown(60);
-          const timer = setInterval(() => {
-            setResendCooldown((c) => {
-              if (c <= 1) {
-                clearInterval(timer);
-                return 0;
-              }
-              return c - 1;
-            });
-          }, 1000);
-          toastSuccess(`${type === "email" ? "Email" : "SMS"} verification code resent`);
-        } catch (err) {
-          setError("Failed to resend code. Please try again.");
-        } finally {
-          setSubmitting(false);
-        }
+        void resendCode();
       }}
       disabled={submitting || resendCooldown > 0}
       className="mt-6 inline-flex w-full items-center justify-center text-sm font-bold text-obligon-green hover:underline disabled:opacity-50 disabled:cursor-not-allowed"

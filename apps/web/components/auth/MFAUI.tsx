@@ -8,6 +8,44 @@ import { AuthShell } from "@/components/auth/AuthShell";
 import { routes } from "@/components/site/routes";
 import { useToast } from "@/components/shared/Toast";
 import { Input } from "@/components/site/Input";
+import { authApi } from "@/lib/services";
+
+/** Six-box controlled TOTP input bound to a single 6-digit state value. */
+function TotpInput({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
+  return (
+    <div className="flex gap-3">
+      {[...Array(6)].map((_, i) => (
+        <input
+          key={i}
+          type="text"
+          inputMode="numeric"
+          maxLength={1}
+          value={value[i] ?? ""}
+          onChange={(e) => {
+            const digit = e.target.value.replace(/\D/g, "").slice(-1);
+            const next = (value.slice(0, i) + digit + value.slice(i + 1)).slice(0, 6);
+            onChange(next);
+            if (digit && e.target.parentElement) {
+              const boxes = e.target.parentElement.querySelectorAll("input");
+              (boxes[i + 1] as HTMLInputElement | undefined)?.focus();
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Backspace" && !value[i] && i > 0) {
+              const boxes = (e.target as HTMLInputElement).parentElement?.querySelectorAll("input");
+              (boxes?.[i - 1] as HTMLInputElement | undefined)?.focus();
+            }
+          }}
+          className="h-14 w-12 text-center text-2xl font-bold rounded-lg border-obligon-border bg-white focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20"
+          autoComplete="one-time-code"
+          disabled={disabled}
+          autoFocus={i === 0}
+          aria-label={`Digit ${i + 1}`}
+        />
+      ))}
+    </div>
+  );
+}
 
 type MFAStage = "setup" | "verify" | "backup" | "complete" | "challenge";
 
@@ -26,9 +64,37 @@ export function MFASetupUI({ stage = "setup", redirect = "/dashboard" }: MFAUIPr
   const [copiedIndex, setCopiedIndex] = React.useState<number | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = React.useState<string | null>(null);
+  const [secretKey, setSecretKey] = React.useState("");
+  const [challengeEmail, setChallengeEmail] = React.useState("");
 
-  const qrCodeDataUrl = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjFmMWYxIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+UVIgQ29kZSBQbGFjZWhvbGRlcjwvdGV4dD48L3N2Zz4=";
-  const secretKey = "JBSWY3DPEHPK3PXP";
+  // Setup stage: fetch the real TOTP secret + QR from the API
+  React.useEffect(() => {
+    if (stage !== "setup") {
+      if (stage === "challenge") {
+        const email = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("email") ?? "" : "";
+        setChallengeEmail(email);
+      }
+      return;
+    }
+    let active = true;
+    (async () => {
+      try {
+        const setup = await authApi.mfaSetup();
+        if (!active) return;
+        setQrCodeDataUrl(setup.qrDataUrl);
+        setSecretKey(setup.secret);
+      } catch (err) {
+        if (!active) return;
+        // Offline/mock mode: show a placeholder so the flow remains explorable
+        setQrCodeDataUrl("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjFmMWYxIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+UVIgQ29kZSBQbGFjZWhvbGRlcjwvdGV4dD48L3N2Zz4=");
+        setSecretKey("MOCK-SECRET-KEY234");
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [stage]);
 
   const handleVerifyTOTP = async () => {
     if (!/^\d{6}$/.test(totpCode)) {
@@ -36,35 +102,44 @@ export function MFASetupUI({ stage = "setup", redirect = "/dashboard" }: MFAUIPr
       return;
     }
     setSubmitting(true);
+    setError(null);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setBackupCodes([
-        "A1B2-C3D4", "E5F6-G7H8", "I9J0-K1L2",
-        "M3N4-O5P6", "Q7R8-S9T0", "U1V2-W3X4",
-        "Y5Z6-A7B8", "C9D0-E1F2", "G3H4-I5J6",
-        "K7L8-M9N0",
-      ]);
+      const result = await authApi.mfaEnable(totpCode);
+      if (result?.backupCodes) setBackupCodes(result.backupCodes);
       setCurrentStage("backup");
     } catch (err) {
-      setError("Invalid code. Please try again.");
+      setError(err instanceof Error ? err.message : "Invalid code. Please try again.");
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleComplete = async () => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    toastSuccess("Two-factor authentication enabled!");
-    router.push("/dashboard");
+    setSubmitting(true);
+    try {
+      toastSuccess("Two-factor authentication enabled!");
+      router.push(redirect);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleChallenge = async () => {
+    if (!/^\d{6}$/.test(totpCode)) {
+      setError("Enter the 6-digit code from your authenticator app");
+      return;
+    }
     setSubmitting(true);
+    setError(null);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      router.push("/dashboard");
-    } catch {
-      setError("Invalid code. Please try again.");
+      if (challengeEmail) {
+        await authApi.mfaChallenge({ email: challengeEmail, totp: totpCode });
+      } else {
+        await authApi.mfaChallenge({ email: "", totp: totpCode });
+      }
+      router.push(redirect);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Invalid code. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -87,7 +162,13 @@ export function MFASetupUI({ stage = "setup", redirect = "/dashboard" }: MFAUIPr
 
             <div className="mt-8 flex flex-col items-center gap-4">
               <div className="rounded-xl border border-obligon-border bg-white p-6">
-                <img src={qrCodeDataUrl} alt="QR Code for TOTP setup" className="mx-auto w-48 h-48" />
+                {qrCodeDataUrl ? (
+                  <img src={qrCodeDataUrl} alt="QR Code for TOTP setup" className="mx-auto w-48 h-48" />
+                ) : (
+                  <div className="mx-auto grid h-48 w-48 place-items-center rounded-lg bg-obligon-mist text-xs font-bold text-obligon-text">
+                    <Loader2 size={24} className="animate-spin" />
+                  </div>
+                )}
                 <p className="mt-4 text-center text-sm font-bold text-obligon-navy">{secretKey}</p>
                 <p className="mt-2 text-center text-xs text-obligon-text">Enter this key manually if QR scan fails</p>
               </div>
@@ -104,9 +185,10 @@ export function MFASetupUI({ stage = "setup", redirect = "/dashboard" }: MFAUIPr
 
             <button
               onClick={() => setCurrentStage("verify")}
-              className="mt-6 h-12 w-full rounded-lg bg-obligon-green text-base font-bold text-white shadow-green"
+              disabled={!qrCodeDataUrl}
+              className="mt-6 h-12 w-full rounded-lg bg-obligon-green text-base font-bold text-white shadow-green disabled:opacity-60"
             >
-              Continue
+              {qrCodeDataUrl ? "Continue" : "Loading authenticator setup..."}
             </button>
           </div>
         )}
@@ -122,21 +204,10 @@ export function MFASetupUI({ stage = "setup", redirect = "/dashboard" }: MFAUIPr
               Open your authenticator app and enter the 6-digit code.
             </p>
             <form onSubmit={(e) => { e.preventDefault(); if (totpCode.length === 6) handleVerifyTOTP(); }} className="mt-6 space-y-4">
-              <div className="flex gap-3">
-                {[...Array(6)].map((_, i) => (
-                  <input
-                    key={i}
-                    type="text"
-                    maxLength={1}
-                    className="h-14 w-12 text-center text-2xl font-bold rounded-lg border-obligon-border bg-white focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20"
-                    autoComplete="one-time-code"
-                    disabled={submitting}
-                    autoFocus
-                  />
-                ))}
-              </div>
+              <TotpInput value={totpCode} onChange={setTotpCode} disabled={submitting} />
+              {error ? <p className="rounded-lg bg-[#ffe8e8] p-3 text-sm font-bold text-[#c1121f]">{error}</p> : null}
               <button type="submit" className="h-12 w-full rounded-lg bg-obligon-green text-base font-bold text-white shadow-green" disabled={submitting}>
-                Verify & Continue
+                {submitting ? "Verifying..." : "Verify & Continue"}
               </button>
             </form>
           </div>
@@ -154,22 +225,22 @@ export function MFASetupUI({ stage = "setup", redirect = "/dashboard" }: MFAUIPr
             </p>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
-                {Array.from({ length: 10 }).map((_, i) => (
+                {(backupCodes.length ? backupCodes : Array.from({ length: 8 }, () => "— — — —")).map((code, i) => (
                   <div key={i} className="flex items-center gap-2 p-3 rounded-lg border border-obligon-border bg-white">
                     <code className="font-mono text-sm font-bold text-obligon-navy flex-1">
                       {i < 9 ? `0${i + 1}` : i + 1}.{" "}
-                      <span className="font-mono text-sm font-bold text-obligon-green">
-                        {i < 5 ? "A1B2-C3D4" : "E5F6-G7H8"}
-                      </span>
+                      <span className="font-mono text-sm font-bold text-obligon-green">{code}</span>
                     </code>
                     <button
+                      type="button"
                       onClick={() => {
-                        navigator.clipboard.writeText(`A1B2-C3D4-${i}`);
+                        navigator.clipboard.writeText(code);
+                        setCopiedIndex(i);
                       }}
                       className="p-2 rounded-lg border border-obligon-border hover:bg-obligon-mist"
                       aria-label="Copy code"
                     >
-                      <Copy size={16} />
+                      {copiedIndex === i ? <Check size={16} /> : <Copy size={16} />}
                     </button>
                   </div>
                 ))}
@@ -211,22 +282,14 @@ export function MFASetupUI({ stage = "setup", redirect = "/dashboard" }: MFAUIPr
             <p className="mt-4 text-center text-base leading-6 text-obligon-text">
               Enter the 6-digit code from your authenticator app to continue.
             </p>
+            {challengeEmail ? (
+              <p className="mt-2 text-center text-xs font-bold text-obligon-text">Signing in as {challengeEmail}</p>
+            ) : null}
             <form onSubmit={(e) => { e.preventDefault(); if (totpCode.length === 6) handleChallenge(); }} className="mt-6 space-y-4">
-              <div className="flex gap-3">
-                {[...Array(6)].map((_, i) => (
-                  <input
-                    key={i}
-                    type="text"
-                    maxLength={1}
-                    className="h-14 w-12 text-center text-2xl font-bold rounded-lg border-obligon-border bg-white focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20"
-                    autoComplete="one-time-code"
-                    disabled={submitting}
-                    autoFocus
-                  />
-                ))}
-              </div>
+              <TotpInput value={totpCode} onChange={setTotpCode} disabled={submitting} />
+              {error ? <p className="rounded-lg bg-[#ffe8e8] p-3 text-sm font-bold text-[#c1121f]">{error}</p> : null}
               <button type="submit" className="h-12 w-full rounded-lg bg-obligon-green text-base font-bold text-white shadow-green" disabled={submitting}>
-                Verify & Continue
+                {submitting ? "Verifying..." : "Verify & Continue"}
               </button>
             </form>
           </div>

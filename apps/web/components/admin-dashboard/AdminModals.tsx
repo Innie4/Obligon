@@ -3,12 +3,15 @@
 import * as React from "react";
 import { Check, Grid2X2, ReceiptText, ShieldCheck, UserRoundCheck, X, Loader2, Building2, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/components/shared/Toast";
+import { mutationsApi } from "@/lib/services";
 
 export type AdminModalType = "permissions" | "fleet" | "resolve" | "partnerReview" | "addStaff" | "action" | null;
 
 type AdminModalsProps = {
   modal: AdminModalType;
   onClose: () => void;
+  selectedApplicationId?: string;
+  selectedDisputeId?: string;
   onFleetProvisioned?: (fleet: { name: string; tier: string; credit: string }) => void;
   onDisputeResolved?: (dispute: { id: string; resolution: string }) => void;
 };
@@ -31,17 +34,17 @@ function ModalShell({ children, onClose, label }: { children: React.ReactNode; o
   );
 }
 
-export function AdminModals({ modal, onClose, onFleetProvisioned, onDisputeResolved }: AdminModalsProps) {
+export function AdminModals({ modal, onClose, selectedApplicationId, selectedDisputeId, onFleetProvisioned, onDisputeResolved }: AdminModalsProps) {
   if (!modal) return null;
   if (modal === "permissions") return <EditStaffPermissionsModal onClose={onClose} />;
   if (modal === "fleet") return <ProvisionFleetModal onClose={onClose} onSuccess={onFleetProvisioned} />;
   if (modal === "resolve") return <ResolveDisputeModal onClose={onClose} onSuccess={onDisputeResolved} />;
   if (modal === "partnerReview") return <PartnerReviewModal onClose={onClose} />;
-  return <AddStaffModal onClose={onClose} />;
+  return <PartnerReviewModal onClose={onClose} applicationId={selectedApplicationId} />;
 }
 
 function EditStaffPermissionsModal({ onClose }: { onClose: () => void }) {
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
   const rows = [["Dashboard", Grid2X2, "write"], ["Billing", ReceiptText, "none"], ["Approvals", UserRoundCheck, "full"], ["Admin Oversight", ShieldCheck, "write"]] as const;
   const columns = ["NONE", "READ", "WRITE", "FULL"] as const;
   const [permissions, setPermissions] = React.useState<Record<string, string>>(() => Object.fromEntries(rows.map(([label, , selected]) => [label, selected])));
@@ -53,10 +56,12 @@ function EditStaffPermissionsModal({ onClose }: { onClose: () => void }) {
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setSubmitting(false);
-    setSuccess(true);
-    toastSuccess("Staff permissions updated successfully.");
+    try {
+      setSuccess(true);
+      toastSuccess("Staff permissions updated successfully.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -153,7 +158,7 @@ function EditStaffPermissionsModal({ onClose }: { onClose: () => void }) {
 }
 
 function ProvisionFleetModal({ onClose, onSuccess }: { onClose: () => void; onSuccess?: (f: { name: string; tier: string; credit: string }) => void }) {
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
   const [tier, setTier] = React.useState("Enterprise");
   const [companyName, setCompanyName] = React.useState("Dangote Logistics PLC");
   const [credit, setCredit] = React.useState("25,000,000");
@@ -165,11 +170,22 @@ function ProvisionFleetModal({ onClose, onSuccess }: { onClose: () => void; onSu
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 700));
-    setSubmitting(false);
-    setSuccess(true);
-    onSuccess?.({ name: companyName, tier, credit: `₦${credit}` });
-    toastSuccess(`Fleet partner ${companyName} provisioned successfully.`);
+    try {
+      await mutationsApi.provisionFleet({
+        companyName,
+        adminName: contactName,
+        adminEmail: email,
+        planCode: tier.toLowerCase(),
+        creditLimit: Number(credit.replace(/[^0-9.]/g, "")) || 0
+      });
+      setSuccess(true);
+      onSuccess?.({ name: companyName, tier, credit: `₦${credit}` });
+      toastSuccess(`Fleet partner ${companyName} provisioned successfully.`);
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Provisioning failed. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -250,8 +266,8 @@ function ProvisionFleetModal({ onClose, onSuccess }: { onClose: () => void; onSu
   );
 }
 
-function ResolveDisputeModal({ onClose, onSuccess }: { onClose: () => void; onSuccess?: (d: { id: string; resolution: string }) => void }) {
-  const { success: toastSuccess } = useToast();
+function ResolveDisputeModal({ onClose, onSuccess, disputeId }: { onClose: () => void; disputeId?: string; onSuccess?: (d: { id: string; resolution: string }) => void }) {
+  const { success: toastSuccess, error: toastError } = useToast();
   const [resolution, setResolution] = React.useState("Refund to Fleet Account");
   const [notes, setNotes] = React.useState("Pump meter log confirmed overdispense anomaly on dispenser nozzle 04.");
   const [submitting, setSubmitting] = React.useState(false);
@@ -260,11 +276,26 @@ function ResolveDisputeModal({ onClose, onSuccess }: { onClose: () => void; onSu
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setSubmitting(false);
-    setSuccess(true);
-    onSuccess?.({ id: "#DS-90214", resolution });
-    toastSuccess("Dispute case resolved and settlement updated.");
+    try {
+      const outcome = resolution.toLowerCase().includes("refund") ? "refund" : "resolve";
+      if (!disputeId) {
+        toastError("Select a dispute row first.");
+        setSubmitting(false);
+        return;
+      }
+      await mutationsApi.resolveDispute(disputeId, {
+        outcome,
+        note: notes,
+        refundAmount: outcome === "refund" ? Number(notes.replace(/[^0-9.]/g, "")) || 0 : undefined
+      });
+      setSuccess(true);
+      onSuccess?.({ id: disputeId, resolution });
+      toastSuccess("Dispute case resolved and settlement updated.");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Could not resolve the dispute. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -338,16 +369,27 @@ function ResolveDisputeModal({ onClose, onSuccess }: { onClose: () => void; onSu
   );
 }
 
-function PartnerReviewModal({ onClose }: { onClose: () => void }) {
-  const { success: toastSuccess } = useToast();
+function PartnerReviewModal({ onClose, applicationId }: { onClose: () => void; applicationId?: string }) {
+  const { success: toastSuccess, error: toastError } = useToast();
   const [submitting, setSubmitting] = React.useState(false);
 
   async function handleAction(approved: boolean) {
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setSubmitting(false);
-    toastSuccess(approved ? "Partner station approved and live in locator." : "Application rejected.");
-    onClose();
+    try {
+      if (!applicationId) {
+        toastError("Select an application row first.");
+        setSubmitting(false);
+        return;
+      }
+      const result = await mutationsApi.reviewApplication(applicationId, approved ? "approve" : "reject");
+      void result;
+      toastSuccess(approved ? "Partner station approved and live in locator." : "Application rejected.");
+      onClose();
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Review action failed. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -374,7 +416,7 @@ function PartnerReviewModal({ onClose }: { onClose: () => void }) {
 }
 
 function AddStaffModal({ onClose }: { onClose: () => void }) {
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [role, setRole] = React.useState("Operations Officer");

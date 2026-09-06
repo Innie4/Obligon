@@ -8,6 +8,7 @@ import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { routes } from "@/components/site/routes";
 import { useToast } from "@/components/shared/Toast";
+import { publicApi } from "@/lib/services";
 
 export default function SupportPage() {
   const { success: toastSuccess, error: toastError } = useToast();
@@ -28,11 +29,15 @@ export default function SupportPage() {
       return;
     }
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 800));
-    const ref = `REQ-${Math.floor(10000 + Math.random() * 89999)}`;
-    setTicketRef(ref);
-    setSubmitting(false);
-    toastSuccess(`Support request ${ref} submitted successfully.`);
+    try {
+      await publicApi.submitContact({ name, email, subject: requestType, message, phone });
+      setTicketRef(`REQ-${Math.floor(10000 + Math.random() * 89999)}`);
+      setSubmitting(false);
+      toastSuccess("Support request submitted successfully.");
+    } catch (err) {
+      setSubmitting(false);
+      toastError(err instanceof Error ? err.message : "Could not submit the request. Please try again.");
+    }
   }
 
   return (

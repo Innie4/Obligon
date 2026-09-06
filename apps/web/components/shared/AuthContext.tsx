@@ -1,9 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { api } from "@/lib/services";
-import { sessionUser } from "@/lib/mock/customer-data";
-import { readPersistedSession, writePersistedSession } from "@/lib/session-store";
+import { api, authApi, mutationsApi } from "@/lib/services";
+import { readPersistedSession, writePersistedSession, readRememberedEmail, writeRememberedEmail } from "@/lib/session-store";
 import type { SessionUser, UserRole } from "@/lib/services/types";
 
 export type SessionStatus = "loading" | "authenticated" | "unauthenticated";
@@ -11,28 +10,20 @@ export type SessionStatus = "loading" | "authenticated" | "unauthenticated";
 interface AuthContextValue {
   status: SessionStatus;
   user: SessionUser | null;
-  /** Future: exchange credentials with the backend and store the session. */
-  login: (payload: { email: string; password: string; role?: UserRole }) => Promise<void>;
-  /** Future: invalidate the server session/token. */
-  logout: () => void;
+  /** Exchange credentials with the backend and store the session. */
+  login: (payload: { email: string; password: string; role?: UserRole; rememberMe?: boolean; totp?: string }) => Promise<{ mfaRequired?: boolean }>;
+  /** Invalidate the server session/token and clear local state. */
+  logout: () => Promise<void>;
   /** Replace the current user (used by dashboards that resolve a role-specific profile). */
   setUser: (user: SessionUser | null) => void;
-  /** Update current user's profile fields. */
+  /** Update current user's profile fields (local + server). */
   updateProfile: (partial: Partial<SessionUser>) => void;
   /** Re-fetch the session from the service layer. */
   refresh: () => Promise<void>;
+  rememberedEmail: string;
 }
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
-
-function displayNameFromEmail(email: string): string {
-  const local = email.split("@")[0] ?? "User";
-  return local
-    .split(/[._-]+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ") || "User";
-}
 
 function initialsFromName(name: string): string {
   const parts = name.trim().split(/\s+/);
@@ -43,6 +34,11 @@ function initialsFromName(name: string): string {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = React.useState<SessionStatus>("loading");
   const [user, setUserState] = React.useState<SessionUser | null>(null);
+  const [rememberedEmail, setRememberedEmail] = React.useState("");
+
+  React.useEffect(() => {
+    setRememberedEmail(readRememberedEmail());
+  }, []);
 
   const setUser = React.useCallback((next: SessionUser | null) => {
     writePersistedSession(next);
@@ -60,6 +56,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       writePersistedSession(updated);
       return updated;
     });
+    // Best-effort server sync for profile fields
+    if (partial.name || partial.phone || partial.address) {
+      void mutationsApi.updateProfile({
+        fullName: partial.name,
+        phone: partial.phone,
+        address: partial.address
+      }).catch(() => undefined);
+    }
   }, []);
 
   const refresh = React.useCallback(async () => {
@@ -78,35 +82,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void refresh();
   }, [refresh]);
 
-  const login = React.useCallback(async (payload: { email: string; password: string; role?: UserRole }) => {
-    if (!payload.email || payload.password.length < 8) {
-      throw new Error("Invalid credentials. Please try again.");
-    }
+  const login = React.useCallback(
+    async (payload: { email: string; password: string; role?: UserRole; rememberMe?: boolean; totp?: string }) => {
+      if (!payload.email || !payload.password) {
+        throw new Error("Enter your email and password to continue.");
+      }
+      const result = await authApi.login({
+        email: payload.email,
+        password: payload.password,
+        rememberMe: payload.rememberMe,
+        role: payload.role,
+        totp: payload.totp
+      });
+      writeRememberedEmail(payload.email, Boolean(payload.rememberMe));
+      setRememberedEmail(payload.rememberMe ? payload.email : "");
+      if (result.mfaRequired) {
+        return { mfaRequired: true };
+      }
+      setUserState(result.user);
+      writePersistedSession(result.user);
+      setStatus("authenticated");
+      return { mfaRequired: false };
+    },
+    []
+  );
 
-    const name = displayNameFromEmail(payload.email);
-    const next: SessionUser = {
-      ...sessionUser,
-      id: `usr_${payload.email.replace(/[^a-z0-9]/gi, "").slice(0, 12)}`,
-      email: payload.email,
-      name,
-      initials: initialsFromName(name),
-      role: payload.role ?? "customer"
-    };
-
-    writePersistedSession(next);
-    setUserState(next);
-    setStatus("authenticated");
-  }, []);
-
-  const logout = React.useCallback(() => {
-    writePersistedSession(null);
+  const logout = React.useCallback(async () => {
+    await authApi.logout();
     setUserState(null);
     setStatus("unauthenticated");
   }, []);
 
   const value = React.useMemo<AuthContextValue>(
-    () => ({ status, user, login, logout, setUser, updateProfile, refresh }),
-    [status, user, login, logout, setUser, updateProfile, refresh]
+    () => ({ status, user, login, logout, setUser, updateProfile, refresh, rememberedEmail }),
+    [status, user, login, logout, setUser, updateProfile, refresh, rememberedEmail]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -363,7 +363,7 @@ function Team({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
 function Notifications({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
   const [allRead, setAllRead] = React.useState(false);
   const { status, data: notifications, error, reload } = useAsync(() => api.getCompanyNotifications());
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
 
   function handleMarkAll() {
     setAllRead(true);
@@ -429,7 +429,7 @@ function Support({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
 }
 
 function SettingsPage({ onModal }: { onModal: (modal: CompanyModalKey) => void }) {
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
   const [saving, setSaving] = React.useState(false);
   const [companyName, setCompanyName] = React.useState("Apex Fleet Logistics Nigeria Ltd");
   const [address, setAddress] = React.useState("14 Marina Road, Lagos Island, Lagos");

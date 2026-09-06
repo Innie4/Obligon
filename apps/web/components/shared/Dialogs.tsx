@@ -31,7 +31,7 @@ export function ActionFeedback({
     return (
       <p className="mt-4 flex items-center gap-2 rounded-lg bg-[#eaf7db] px-3 py-2 text-sm font-semibold text-[#315d00]" role="status" aria-live="polite">
         <CheckCircle2 size={16} aria-hidden="true" />
-        {successMessage ?? "Your changes have been saved for this session."}
+        {successMessage ?? "Your changes have been saved."}
       </p>
     );
   }

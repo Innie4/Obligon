@@ -8,6 +8,7 @@ import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { routes } from "@/components/site/routes";
 import { useToast } from "@/components/shared/Toast";
+import { publicApi } from "@/lib/services";
 
 type LegalCard = {
   title: string;
@@ -43,7 +44,7 @@ const iconMap = {
 };
 
 export function LegalPage({ active, eyebrow, title, updated, intro, sections }: LegalPageProps) {
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
   const [cookiePrefs, setCookiePrefs] = useState({
     essential: true,
     analytics: true,
@@ -67,13 +68,14 @@ export function LegalPage({ active, eyebrow, title, updated, intro, sections }: 
 
   function handleSavePreferences() {
     setSavingPrefs(true);
-    setTimeout(() => {
+    (async () => {
       try {
         localStorage.setItem("obligon_cookie_consent", JSON.stringify(cookiePrefs));
+        await publicApi.saveCookieConsent(cookiePrefs, navigator.doNotTrack === "1");
       } catch {}
       setSavingPrefs(false);
       toastSuccess("Cookie preferences saved.");
-    }, 400);
+    })();
   }
 
   function handleAcceptAll() {
@@ -82,6 +84,7 @@ export function LegalPage({ active, eyebrow, title, updated, intro, sections }: 
     try {
       localStorage.setItem("obligon_cookie_consent", JSON.stringify(all));
     } catch {}
+    void publicApi.saveCookieConsent(all, navigator.doNotTrack === "1").catch(() => undefined);
     toastSuccess("All cookies accepted.");
   }
 
@@ -240,11 +243,20 @@ export function LegalPage({ active, eyebrow, title, updated, intro, sections }: 
                   </div>
                 ) : (
                   <form
-                    onSubmit={(e) => {
+                    onSubmit={async (e) => {
                       e.preventDefault();
-                      if (dataReqEmail) {
+                      if (!dataReqEmail) return;
+                      try {
+                        const typeMap: Record<string, string> = {
+                          "Export Personal Data Copy": "export",
+                          "Delete Telemetry & Location History": "deletion",
+                          "Rectify Incorrect Account Data": "correction"
+                        };
+                        await publicApi.submitDataRequest({ email: dataReqEmail, requestType: typeMap[dataReqType] ?? "export" });
                         setDataReqSent(true);
                         toastSuccess("Data subject request submitted.");
+                      } catch (err) {
+                        toastError(err instanceof Error ? err.message : "Could not submit the request. Please try again.");
                       }
                     }}
                     className="mt-6 space-y-4"

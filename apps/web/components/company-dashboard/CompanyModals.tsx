@@ -4,6 +4,7 @@ import * as React from "react";
 import { AlertTriangle, Car, CheckCircle2, CreditCard, Download, Loader2, UserPlus, Wrench, X, ShieldCheck, Snowflake, FileText, ChevronDown, Check } from "lucide-react";
 import type { CompanyModalKey } from "@/lib/mock/company-data";
 import { useToast } from "@/components/shared/Toast";
+import { api, mutationsApi } from "@/lib/services";
 
 type CompanyModalsProps = {
   modal: CompanyModalKey;
@@ -102,11 +103,16 @@ export function CompanyModals({
       return;
     }
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setSubmitting(false);
-    onVehicleAdded?.({ make: vehicleForm.make, model: vehicleForm.model, plate: vehicleForm.plate, card: vehicleForm.card });
-    setSuccessMsg(`Vehicle ${vehicleForm.plate} registered successfully into fleet.`);
-    toastSuccess(`Vehicle ${vehicleForm.plate} added.`);
+    try {
+      await mutationsApi.createVehicle({ plate: vehicleForm.plate, model: `${vehicleForm.make} ${vehicleForm.model}`, fuelType: vehicleForm.fuelType, vehicleType: vehicleForm.status === "Active" ? "truck" : "pickup" });
+      onVehicleAdded?.({ make: vehicleForm.make, model: vehicleForm.model, plate: vehicleForm.plate, card: vehicleForm.card });
+      setSuccessMsg(`Vehicle ${vehicleForm.plate} registered successfully into fleet.`);
+      toastSuccess(`Vehicle ${vehicleForm.plate} added.`);
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Could not register the vehicle. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function handleDriverSubmit(e: React.FormEvent) {
@@ -116,45 +122,88 @@ export function CompanyModals({
       return;
     }
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setSubmitting(false);
-    onDriverAdded?.({ name: driverForm.name, id: driverForm.employeeId, phone: driverForm.phone, license: driverForm.licenseNumber });
-    setSuccessMsg(`Driver ${driverForm.name} added to roster.`);
-    toastSuccess(`Driver ${driverForm.name} registered.`);
+    try {
+      await mutationsApi.createDriver({ name: driverForm.name, phone: driverForm.phone, licenseNo: driverForm.licenseNumber });
+      onDriverAdded?.({ name: driverForm.name, id: driverForm.employeeId, phone: driverForm.phone, license: driverForm.licenseNumber });
+      setSuccessMsg(`Driver ${driverForm.name} added to roster.`);
+      toastSuccess(`Driver ${driverForm.name} registered.`);
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Could not register the driver. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function handleCardSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 700));
-    setSubmitting(false);
-    const cardNum = `•••• •••• •••• ${Math.floor(1000 + Math.random() * 8999)}`;
-    onCardIssued?.({ cardNumber: cardNum, driver: cardForm.driver, limit: `₦${cardForm.dailyLimit}` });
-    setSuccessMsg(`New ${cardForm.type} (${cardNum}) issued and assigned.`);
-    toastSuccess("Fuelvista Card issued successfully.");
+    try {
+      const result = await mutationsApi.issueCompanyCard({ label: cardForm.type, dailyLimit: Number(cardForm.dailyLimit) || 0, monthlyLimit: (Number(cardForm.dailyLimit) || 0) * 10 });
+      const cardNum = result?.maskedPan ?? `•••• •••• •••• ${Math.floor(1000 + Math.random() * 8999)}`;
+      onCardIssued?.({ cardNumber: cardNum, driver: cardForm.driver, limit: `₦${cardForm.dailyLimit}` });
+      setSuccessMsg(`New ${cardForm.type} (${cardNum}) issued and assigned.`);
+      toastSuccess("Fuelvista Card issued successfully.");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Could not issue the card. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function handleMaintenanceSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setSubmitting(false);
-    onMaintenanceScheduled?.({ vehicle: maintenanceForm.vehicle, service: maintenanceForm.service, date: maintenanceForm.date });
-    setSuccessMsg(`Maintenance booking confirmed for ${maintenanceForm.vehicle} on ${maintenanceForm.date}.`);
-    toastSuccess("Service scheduled.");
+    try {
+      await mutationsApi.bookMaintenance({ serviceType: maintenanceForm.service, scheduledDate: maintenanceForm.date, notes: maintenanceForm.vehicle });
+      onMaintenanceScheduled?.({ vehicle: maintenanceForm.vehicle, service: maintenanceForm.service, date: maintenanceForm.date });
+      setSuccessMsg(`Maintenance booking confirmed for ${maintenanceForm.vehicle} on ${maintenanceForm.date}.`);
+      toastSuccess("Service scheduled.");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Could not book the service. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function handleRoadsideSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setSubmitting(false);
-    onRoadsideRequested?.({ vehicle: roadsideForm.vehicle, location: roadsideForm.location, issue: roadsideForm.issue });
-    setSuccessMsg(`Emergency dispatch received for ${roadsideForm.vehicle}. Technician en route.`);
-    toastSuccess("Roadside dispatch initiated.");
+    try {
+      await mutationsApi.createRoadsideRequest({ location: roadsideForm.location, issueType: roadsideForm.issue, priority: "high", details: `Vehicle: ${roadsideForm.vehicle}` });
+      onRoadsideRequested?.({ vehicle: roadsideForm.vehicle, location: roadsideForm.location, issue: roadsideForm.issue });
+      setSuccessMsg(`Emergency dispatch received for ${roadsideForm.vehicle}. Technician en route.`);
+      toastSuccess("Roadside dispatch initiated.");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Could not submit the request. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function handleExportSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const format = exportForm.format.includes("PDF") ? "pdf" : "csv";
+      const data = await api.request<Blob>("/api/company/reports/export?format=" + format, { headers: {} });
+      const blob = data instanceof Blob ? data : new Blob([String(data)], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Obligon_Fleet_Export_${Date.now()}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toastSuccess("Export file downloaded.");
+      onClose();
+    } catch (err) {
+      setSubmitting(false);
+      toastError(err instanceof Error ? err.message : "Export failed. Please try again.");
+    }
+  }
+
+  async function handleLegacyExportSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     await new Promise((r) => setTimeout(r, 600));
@@ -177,10 +226,15 @@ export function CompanyModals({
     e.preventDefault();
     if (!teamForm.email) return;
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setSubmitting(false);
-    setSuccessMsg(`Invitation sent to ${teamForm.email} as ${teamForm.role}.`);
-    toastSuccess(`Invited ${teamForm.name}`);
+    try {
+      await mutationsApi.inviteTeamMember({ email: teamForm.email, role: teamForm.role.toLowerCase() });
+      setSuccessMsg(`Invitation sent to ${teamForm.email} as ${teamForm.role}.`);
+      toastSuccess(`Invited ${teamForm.name || teamForm.email}`);
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Could not send the invitation. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (

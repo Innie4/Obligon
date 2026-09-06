@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Cookie, X } from "lucide-react";
 import { routes } from "@/components/site/routes";
+import { publicApi } from "@/lib/services";
 
 export function CookieConsentBanner() {
   const [visible, setVisible] = useState(false);
@@ -20,16 +21,20 @@ export function CookieConsentBanner() {
   }, []);
 
   function handleAcceptAll() {
+    const prefs = { essential: true, analytics: true, functional: true, marketing: true };
     try {
-      localStorage.setItem("obligon_cookie_consent", JSON.stringify({ essential: true, analytics: true, functional: true, marketing: true }));
+      localStorage.setItem("obligon_cookie_consent", JSON.stringify(prefs));
     } catch {}
+    void publicApi.saveCookieConsent(prefs, navigator.doNotTrack === "1").catch(() => undefined);
     setVisible(false);
   }
 
   function handleEssentialOnly() {
+    const prefs = { essential: true, analytics: false, functional: false, marketing: false };
     try {
-      localStorage.setItem("obligon_cookie_consent", JSON.stringify({ essential: true, analytics: false, functional: false, marketing: false }));
+      localStorage.setItem("obligon_cookie_consent", JSON.stringify(prefs));
     } catch {}
+    void publicApi.saveCookieConsent(prefs, navigator.doNotTrack === "1").catch(() => undefined);
     setVisible(false);
   }
 

@@ -226,8 +226,8 @@ function AdminTable({
   );
 }
 
-function ApplicationsPage({ onModal }: { onModal: (modal: AdminModalType) => void }) {
-  const { success: toastSuccess } = useToast();
+function ApplicationsPage({ onModal, onSelect }: { onModal: (modal: AdminModalType) => void; onSelect: (row: AdminRow) => void }) {
+  const { success: toastSuccess, error: toastError } = useToast();
 
   return (
     <AdminCanvas>
@@ -255,7 +255,7 @@ function ApplicationsPage({ onModal }: { onModal: (modal: AdminModalType) => voi
           search="Search partner applications..."
           footer="Showing 1 to 4 of 42 entries"
           actionLabel="Review Application"
-          onRowAction={() => onModal("partnerReview")}
+          onRowAction={(row) => { onSelect(row); onModal("partnerReview"); }}
         />
       </div>
       <footer className="mt-10 flex flex-col gap-3 text-xs font-extrabold uppercase tracking-[1.5px] text-[#7d8293] sm:flex-row sm:items-center sm:justify-between">
@@ -267,7 +267,7 @@ function ApplicationsPage({ onModal }: { onModal: (modal: AdminModalType) => voi
 }
 
 function ReportsPage({ onModal }: { onModal: (modal: AdminModalType) => void }) {
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
 
   return (
     <AdminCanvas>
@@ -326,8 +326,8 @@ function ReportsPage({ onModal }: { onModal: (modal: AdminModalType) => void }) 
   );
 }
 
-function DisputesPage({ onModal }: { onModal: (modal: AdminModalType) => void }) {
-  const { success: toastSuccess } = useToast();
+function DisputesPage({ onModal, onSelect }: { onModal: (modal: AdminModalType) => void; onSelect: (row: AdminRow) => void }) {
+  const { success: toastSuccess, error: toastError } = useToast();
 
   return (
     <AdminCanvas>
@@ -348,7 +348,7 @@ function DisputesPage({ onModal }: { onModal: (modal: AdminModalType) => void })
           rows={disputeRows}
           footer="Showing 1-10 of 24 open disputes"
           actionLabel="Investigate & Resolve"
-          onRowAction={() => onModal("resolve")}
+          onRowAction={(row) => { onSelect(row); onModal("resolve"); }}
         />
       </div>
     </AdminCanvas>
@@ -389,10 +389,11 @@ function StaffPage({ onModal }: { onModal: (modal: AdminModalType) => void }) {
 
 export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
   const [modal, setModal] = React.useState<AdminModalType>(null);
+  const [selectedRow, setSelectedRow] = React.useState<AdminRow | null>(null);
   const pages: Record<AdminPageKey, React.ReactNode> = {
-    applications: <ApplicationsPage onModal={setModal} />,
+    applications: <ApplicationsPage onModal={setModal} onSelect={setSelectedRow} />,
     reports: <ReportsPage onModal={setModal} />,
-    disputes: <DisputesPage onModal={setModal} />,
+    disputes: <DisputesPage onModal={setModal} onSelect={setSelectedRow} />,
     companies: <CompaniesPage onModal={setModal} />,
     staff: <StaffPage onModal={setModal} />
   };
@@ -400,7 +401,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
   return (
     <>
       {pages[pageKey]}
-      <AdminModals modal={modal} onClose={() => setModal(null)} />
+      <AdminModals modal={modal} onClose={() => { setModal(null); setSelectedRow(null); }} selectedApplicationId={modal === "partnerReview" ? selectedRow?.applicationId ?? selectedRow?.id : undefined} selectedDisputeId={modal === "resolve" ? selectedRow?.disputeId ?? selectedRow?.id : undefined} />
     </>
   );
 }

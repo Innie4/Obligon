@@ -10,6 +10,7 @@ import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { routes } from "@/components/site/routes";
 import { useToast } from "@/components/shared/Toast";
+import { publicApi } from "@/lib/services";
 
 const stats = [
   { value: "150M+", label: "Litres Managed", body: "Powering the backbone of logistics across Nigeria with precision and speed." },
@@ -86,10 +87,19 @@ export function CareersPage() {
       return;
     }
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setSubmitting(false);
-    setSubmitted(true);
-    toastSuccess(`Application submitted for ${activeRole?.title}!`);
+    try {
+      const resume = fileInputRef.current?.files?.[0] ?? null;
+      await publicApi.applyToJob(
+        { name: applicantName, email: applicantEmail, phone: applicantPhone, coverNote, jobId: activeRole?.id },
+        resume
+      );
+      setSubmitting(false);
+      setSubmitted(true);
+      toastSuccess(`Application submitted for ${activeRole?.title}!`);
+    } catch (err) {
+      setSubmitting(false);
+      toastError(err instanceof Error ? err.message : "Could not submit the application. Please try again.");
+    }
   }
 
   function handleCloseModal() {

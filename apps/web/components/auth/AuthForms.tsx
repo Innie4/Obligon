@@ -27,6 +27,7 @@ import { routes } from "@/components/site/routes";
 import { useToast } from "@/components/shared/Toast";
 import { useSession } from "@/components/shared/AuthContext";
 import { readPersistedSession, readRememberedEmail, writeRememberedEmail } from "@/lib/session-store";
+import { authApi, LIVE_MODE } from "@/lib/services";
 import type { UserRole } from "@/lib/services/types";
 
 export type AuthFormMode = "login" | "signup";
@@ -247,16 +248,28 @@ function LoginForm() {
         roleToUse = "partner";
       }
 
-      await login({ email: loginForm.email, password: loginForm.password, role: roleToUse });
+      // Live mode: the server decides the role (guessed role only used offline)
+      const result = await login({
+        email: loginForm.email,
+        password: loginForm.password,
+        rememberMe: loginForm.rememberMe,
+        role: LIVE_MODE ? undefined : roleToUse
+      });
+      if (result?.mfaRequired) {
+        writeRememberedEmail(loginForm.email, loginForm.rememberMe);
+        router.push(`${routes.mfaChallenge}?email=${encodeURIComponent(loginForm.email)}`);
+        return;
+      }
       writeRememberedEmail(loginForm.email, loginForm.rememberMe);
       toastSuccess("Welcome back! Signed in successfully.");
 
+      const session = readPersistedSession();
       const destination =
-        roleToUse === "admin"
+        session?.role === "admin"
           ? routes.adminDashboard
-          : roleToUse === "company"
+          : session?.role === "company"
             ? routes.companyDashboard
-            : roleToUse === "partner" || roleToUse === "mechanic"
+            : session?.role === "partner" || session?.role === "mechanic"
               ? routes.dashboard
               : routes.customerDashboard;
 
@@ -528,11 +541,24 @@ function SignupForm() {
                signupForm.depotName ??
                "Partner Facility");
 
-      await login({
-        email,
-        password,
-        role: roleToAssign,
-      });
+      if (LIVE_MODE) {
+        const partnerTypeMap: Record<string, string> = {
+          fuelStation: "fuel_station", mechanic: "mechanic", other: "other"
+        };
+        await authApi.signup({
+          email,
+          password,
+          fullName: signupForm.contactName ?? signupForm.name ?? email.split("@")[0],
+          role: topRole === "customer" ? "customer" : topRole === "company" ? "company" : topRole === "partner" ? (partnerType === "mechanic" ? "mechanic" : "partner") : "customer",
+          partnerType: topRole === "partner" ? (partnerTypeMap[partnerType] ?? "other") : undefined,
+          organizationName: orgName,
+          phone: signupForm.phone,
+          address: signupForm.location,
+          fuelTypes: topRole === "partner" && partnerType === "fuelStation" ? selectedCapabilities : undefined
+        });
+      } else {
+        await login({ email, password, role: roleToAssign });
+      }
 
       const partnerRoleLabel =
         topRole === "partner" ? activePartnerMeta.title : topRole === "company" ? "Fleet Company" : "Customer";

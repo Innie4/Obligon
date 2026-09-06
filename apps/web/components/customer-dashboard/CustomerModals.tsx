@@ -4,6 +4,17 @@ import * as React from "react";
 import type { ComponentType } from "react";
 import { AlertTriangle, Building2, Check, CreditCard, FileWarning, Fingerprint, LockKeyhole, ShieldCheck, Snowflake, Upload, X, Loader2, ArrowRight, type LucideProps } from "lucide-react";
 import { useToast } from "@/components/shared/Toast";
+import { api, mutationsApi } from "@/lib/services";
+
+/** Resolve the signed-in customer's card id against the live API (null in mock mode). */
+async function resolveCardId(): Promise<string | null> {
+  try {
+    const data = await api.request<{ card: { id?: string } | null }>("/api/customer/card");
+    return data?.card?.id ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export type CustomerModalType = "topup" | "report" | "changePin" | "biometrics" | "replaceCard" | "lostCard" | "freezeCard" | null;
 
@@ -113,7 +124,7 @@ function ChangePinModal({ onClose }: { onClose: () => void }) {
   const [confirmPin, setConfirmPin] = React.useState("");
   const [error, setError] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -137,10 +148,20 @@ function ChangePinModal({ onClose }: { onClose: () => void }) {
 
     setError("");
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setSubmitting(false);
-    setStep("success");
-    toastSuccess("Transaction PIN changed successfully.");
+    try {
+      const cardId = await resolveCardId();
+      if (cardId) {
+        await mutationsApi.cardAction(cardId, "pin", { currentPin, newPin });
+      } else {
+        await new Promise((r) => setTimeout(r, 600));
+      }
+      setSubmitting(false);
+      setStep("success");
+      toastSuccess("Transaction PIN changed successfully.");
+    } catch (err) {
+      setSubmitting(false);
+      setError(err instanceof Error ? err.message : "Could not update your PIN. Please try again.");
+    }
   }
 
   return (
@@ -198,7 +219,7 @@ function BiometricsModal({
   onChange: (enabled: boolean) => void;
 }) {
   const [step, setStep] = React.useState<"intro" | "scanning" | "success" | "disable">(enabled ? "disable" : "intro");
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
 
   React.useEffect(() => {
     if (step !== "scanning") return;
@@ -328,12 +349,18 @@ function TopUpModal({ onClose, onSuccess }: { onClose: () => void; onSuccess?: (
       return;
     }
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 900));
-    const ref = `TOPUP-${Math.floor(100000 + Math.random() * 899999)}`;
-    setSuccessData({ reference: ref, amount: numericAmount, method });
-    setSubmitting(false);
-    onSuccess?.(numericAmount);
-    toastSuccess(`₦${numericAmount.toLocaleString()} added to your fleet wallet.`);
+    try {
+      const result = await mutationsApi.topUpWallet(numericAmount, method);
+      const ref = result?.reference ?? `TOPUP-${Math.floor(100000 + Math.random() * 899999)}`;
+      setSuccessData({ reference: ref, amount: numericAmount, method });
+      setSubmitting(false);
+      onSuccess?.(numericAmount);
+      toastSuccess(`₦${numericAmount.toLocaleString()} top-up ${result?.simulated ? "recorded" : "initiated"}.`);
+    } catch (err) {
+      setSubmitting(false);
+      const message = err instanceof Error ? err.message : "Top-up failed. Please try again.";
+      toastError(message);
+    }
   }
 
   return (
@@ -496,11 +523,16 @@ function ReportProblemModal({ onClose }: { onClose: () => void }) {
       return;
     }
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 800));
-    const ticketId = `TKT-${Math.floor(10000 + Math.random() * 89999)}`;
-    setTicketResult({ ticketId, issue });
-    setSubmitting(false);
-    toastSuccess(`Ticket ${ticketId} created. Support team notified.`);
+    try {
+      const result = await mutationsApi.createSupportTicket({ subject: issue, category: "complaint", message: details });
+      const ticketId = result?.reference ?? `TKT-${Math.floor(10000 + Math.random() * 89999)}`;
+      setTicketResult({ ticketId, issue });
+      setSubmitting(false);
+      toastSuccess(`Ticket ${ticketId} created. Support team notified.`);
+    } catch (err) {
+      setSubmitting(false);
+      toastError(err instanceof Error ? err.message : "Could not create the ticket. Please try again.");
+    }
   }
 
   return (
@@ -635,7 +667,7 @@ function ReplaceCardModal({ onClose, blocked }: { onClose: () => void; blocked: 
   const [phone, setPhone] = React.useState("+234 801 234 5678");
   const [reference, setReference] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
 
   const reasons = ["Damaged Chip / Wear", "Card Expiring Soon", "Stolen / Lost", "Fleet Upgrade to NFC"];
 
@@ -643,12 +675,20 @@ function ReplaceCardModal({ onClose, blocked }: { onClose: () => void; blocked: 
     event.preventDefault();
     if (!address.trim() || !phone.trim()) return;
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 700));
-    const ref = `RC-${Math.floor(100000 + Math.random() * 899999)}`;
-    setReference(ref);
-    setSubmitting(false);
-    setStep("success");
-    toastSuccess(`Replacement card order ${ref} placed.`);
+    try {
+      const cardId = await resolveCardId();
+      if (cardId) {
+        await mutationsApi.cardAction(cardId, "replace", { reason });
+      }
+      const ref = `RC-${Math.floor(100000 + Math.random() * 899999)}`;
+      setReference(ref);
+      setSubmitting(false);
+      setStep("success");
+      toastSuccess(`Replacement card order ${ref} placed.`);
+    } catch (err) {
+      setSubmitting(false);
+      toastError(err instanceof Error ? err.message : "Could not place the replacement order. Please try again.");
+    }
   }
 
   return (
@@ -755,12 +795,25 @@ function LostCardModal({
   const [reason, setReason] = React.useState("Physical theft");
   const { error: toastError, success: toastSuccess } = useToast();
 
-  function handleBlock() {
-    const ref = `BL-${Math.floor(100000 + Math.random() * 899999)}`;
-    setReference(ref);
-    onBlockedChange(true);
-    setStep("success");
-    toastSuccess("Card permanently blocked. All future authorizations will be declined.");
+  const [blocking, setBlocking] = React.useState(false);
+
+  async function handleBlock() {
+    setBlocking(true);
+    try {
+      const cardId = await resolveCardId();
+      if (cardId) {
+        await mutationsApi.cardAction(cardId, "report-lost", { reason });
+      }
+      const ref = `BL-${Math.floor(100000 + Math.random() * 899999)}`;
+      setReference(ref);
+      onBlockedChange(true);
+      setStep("success");
+      toastSuccess("Card permanently blocked. All future authorizations will be declined.");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Could not block the card. Please try again.");
+    } finally {
+      setBlocking(false);
+    }
   }
 
   return (
@@ -804,9 +857,10 @@ function LostCardModal({
             <button
               type="button"
               onClick={handleBlock}
-              className="h-12 flex-1 rounded-lg bg-[#c1121f] font-extrabold text-white"
+              disabled={blocking}
+              className="h-12 flex-1 rounded-lg bg-[#c1121f] font-extrabold text-white disabled:opacity-60"
             >
-              Confirm Block
+              {blocking ? "Blocking..." : "Confirm Block"}
             </button>
           </div>
         </div>
@@ -837,13 +891,25 @@ function FreezeCardModal({
   frozen: boolean;
   onChange: (frozen: boolean) => void;
 }) {
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
+  const [working, setWorking] = React.useState(false);
 
-  function handleToggle() {
+  async function handleToggle() {
     const next = !frozen;
-    onChange(next);
-    toastSuccess(next ? "Card temporarily frozen." : "Card unfrozen and active.");
-    onClose();
+    setWorking(true);
+    try {
+      const cardId = await resolveCardId();
+      if (cardId) {
+        await mutationsApi.cardAction(cardId, next ? "freeze" : "unfreeze");
+      }
+      onChange(next);
+      toastSuccess(next ? "Card temporarily frozen." : "Card unfrozen and active.");
+      onClose();
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Could not update the card status. Please try again.");
+    } finally {
+      setWorking(false);
+    }
   }
 
   return (
@@ -868,11 +934,12 @@ function FreezeCardModal({
           <button
             type="button"
             onClick={handleToggle}
-            className={`h-12 flex-1 rounded-lg font-extrabold text-white ${
+            disabled={working}
+            className={`h-12 flex-1 rounded-lg font-extrabold text-white disabled:opacity-60 ${
               frozen ? "bg-obligon-green shadow-green" : "bg-[#bc5b00]"
             }`}
           >
-            {frozen ? "Unfreeze Card" : "Freeze Card"}
+            {working ? "Working..." : frozen ? "Unfreeze Card" : "Freeze Card"}
           </button>
         </div>
       </div>

@@ -46,6 +46,7 @@ import {
 } from "@/lib/mock/dashboard-data";
 import { MobileDashboardNav } from "./MobileDashboardNav";
 import { useToast } from "@/components/shared/Toast";
+import { mutationsApi } from "@/lib/services";
 
 const toneStyles: Record<StatusTone, string> = {
   success: "bg-[#eaf7db] text-[#315d00]",
@@ -225,7 +226,7 @@ function OverviewPage({ onOpenPayout }: { onOpenPayout: () => void }) {
 }
 
 function FuelPricingPage() {
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
   const [pms, setPms] = React.useState("1020");
   const [ago, setAgo] = React.useState("1180");
   const [cng, setCng] = React.useState("280");
@@ -234,9 +235,18 @@ function FuelPricingPage() {
   async function handleSync(e: React.FormEvent) {
     e.preventDefault();
     setSyncing(true);
-    await new Promise((r) => setTimeout(r, 700));
-    setSyncing(false);
-    toastSuccess("Fuel pricing updated and broadcast to all digital dispensers.");
+    try {
+      await mutationsApi.updatePrices([
+        { fuelType: "PMS Petrol", price: Number(pms) },
+        { fuelType: "AGO Diesel", price: Number(ago) },
+        { fuelType: "LPG Gas", price: Number(cng) }
+      ]);
+      toastSuccess("Fuel pricing updated and broadcast to all digital dispensers.");
+    } catch (err) {
+      toastError?.(err instanceof Error ? err.message : "Could not sync pricing. Please try again.");
+    } finally {
+      setSyncing(false);
+    }
   }
 
   return (
@@ -330,17 +340,22 @@ function POSTerminalPage() {
       return;
     }
     setVerifying(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setVerifying(false);
-    const receipt = {
-      code,
-      vehicle: "Toyota Hilux (LND-234-XY)",
-      amount: Number(amount) || 25000,
-      driver: "Emeka Okafor (DRV-104)",
-      ref: `POS-${Math.floor(100000 + Math.random() * 899999)}`
-    };
-    setAuthReceipt(receipt);
-    toastSuccess(`Authorization ${receipt.ref} APPROVED. Pump activated.`);
+    try {
+      const result = await mutationsApi.posAuthorize({ code, litres: Number(amount) ? Number(amount) / 1085 : undefined, fuelType: pump.includes("PMS") ? "PMS Petrol" : "AGO Diesel" });
+      const receipt = {
+        code,
+        vehicle: (result?.vehicle as string) ?? "Fleet vehicle",
+        amount: Number((result?.amountLabel as string)?.replace(/[^0-9.]/g, "")) || Number(amount) || 25000,
+        driver: (result?.driver as string) ?? "Fleet driver",
+        ref: (result?.reference as string) ?? `POS-${Math.floor(100000 + Math.random() * 899999)}`
+      };
+      setAuthReceipt(receipt);
+      toastSuccess(`Authorization ${receipt.ref} APPROVED. Pump activated.`);
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Authorization declined. Check the code and try again.");
+    } finally {
+      setVerifying(false);
+    }
   }
 
   return (
@@ -468,7 +483,7 @@ function POSTerminalPage() {
 }
 
 function SettlementsPage({ onOpenPayout }: { onOpenPayout: () => void }) {
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
 
   return (
     <DashboardCanvas>
@@ -515,7 +530,7 @@ function SettlementsPage({ onOpenPayout }: { onOpenPayout: () => void }) {
 }
 
 function DisputesPage() {
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
 
   return (
     <DashboardCanvas>
@@ -535,7 +550,7 @@ function DisputesPage() {
 }
 
 function StationProfilePage() {
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
   const [stationName, setStationName] = React.useState("Mainland Energy Station #492");
   const [address, setAddress] = React.useState("Plot 14, Commercial Avenue, Ikeja, Lagos");
   const [phone, setPhone] = React.useState("+234 803 456 7890");
@@ -614,7 +629,7 @@ function StationProfilePage() {
 }
 
 function StaffPage() {
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
 
   return (
     <DashboardCanvas>
@@ -642,7 +657,7 @@ function StaffPage() {
 }
 
 export function DashboardScreen({ pageKey }: { pageKey: DashboardPageKey }) {
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
   const [payoutModalOpen, setPayoutModalOpen] = React.useState(false);
   const [payoutAmount, setPayoutAmount] = React.useState("1500000");
 

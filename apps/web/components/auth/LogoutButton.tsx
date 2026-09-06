@@ -19,11 +19,12 @@ export function LogoutButton({ variant = "button", className = "" }: { variant?:
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
-      logout();
+      await logout(); // revokes the server session + clears local tokens
       toastSuccess("You have been logged out");
       router.push(routes.login);
     } catch {
-      // Handle error if needed
+      toastError("Could not reach the server — you have been signed out locally.");
+      router.push(routes.login);
     } finally {
       setLoggingOut(false);
       setShowConfirm(false);

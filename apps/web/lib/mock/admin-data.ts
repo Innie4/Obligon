@@ -18,6 +18,11 @@ export type AdminRow = {
   status?: string;
   tone?: AdminTone;
   flagged?: boolean;
+  /** Live-mode ids returned by the admin API for row-level actions */
+  applicationId?: string;
+  disputeId?: string;
+  orgId?: string;
+  staffId?: string;
 };
 
 export const adminNav: Array<{ key: AdminPageKey; label: string; href: string; icon: AdminIconKey }> = [

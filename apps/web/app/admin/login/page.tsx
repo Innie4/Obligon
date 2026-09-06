@@ -35,7 +35,12 @@ export default function AdminLoginPage() {
     setError(null);
 
     try {
-      await login({ email, password, role: "admin" });
+      const result = await login({ email, password, rememberMe, role: "admin" });
+      if (result?.mfaRequired) {
+        toastSuccess("Enter your authenticator code to continue.");
+        router.push(`${routes.mfaChallenge}?email=${encodeURIComponent(email)}`);
+        return;
+      }
       toastSuccess("Admin authorization granted. Welcome back.");
       router.push(routes.adminDashboard);
     } catch (err) {
