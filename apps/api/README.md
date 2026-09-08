@@ -52,11 +52,23 @@ Webhooks to register with providers:
 - Paystack → `<APP_URL>/api/webhooks/paystack` (signature: HMAC-SHA512 with secret key)
 - Sudo Africa → `<APP_URL>/api/webhooks/sudo` (signature: HMAC-SHA256 with webhook secret)
 
-## Real-time
+## Real-time & Push
 
 Server-Sent Events at `GET /api/realtime/stream` push `notification`,
 `pos.approved`, `pos.declined`, `roadside.updated`, `pricing.updated`,
 `verification.approved` events. Auth via the access token.
+
+Web push subscription management is available at `/api/push` (`/key`, `/subscribe`, `/unsubscribe`).
+
+## Scheduled Tasks & Cron
+
+The API includes automated maintenance routines (session/code purging, partner auto-settlement):
+
+- **In-process scheduler**: set `ENABLE_SCHEDULER=true` in `.env` to run hourly sweeps within the server process.
+- **Standalone cron job**: run on a schedule (e.g. AWS Lambda / K8s CronJob / GitHub Actions) via:
+  ```bash
+  pnpm --filter @obligon/api cron
+  ```
 
 ## Tests
 

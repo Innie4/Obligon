@@ -928,6 +928,23 @@ export const publicApi = {
   }
 };
 
+/** Web Push notifications management (VAPID) */
+export const pushApi = {
+  async getPublicKey(): Promise<string> {
+    if (!LIVE_MODE) return "";
+    const data = await http<{ publicKey: string }>("/api/push/key");
+    return data.publicKey;
+  },
+  async subscribe(subscription: Record<string, unknown>): Promise<{ ok: boolean }> {
+    if (!LIVE_MODE) return { ok: true };
+    return http<{ ok: boolean }>("/api/push/subscribe", { method: "POST", body: JSON.stringify(subscription) });
+  },
+  async unsubscribe(endpoint: string): Promise<{ ok: boolean }> {
+    if (!LIVE_MODE) return { ok: true };
+    return http<{ ok: boolean }>("/api/push/unsubscribe", { method: "POST", body: JSON.stringify({ endpoint }) });
+  }
+};
+
 /** Open an SSE stream for real-time feeds (POS, dispatch, notifications). */
 export function openRealtimeStream(onEvent: (event: string, payload: unknown) => void): () => void {
   if (!LIVE_MODE || typeof window === "undefined") return () => undefined;

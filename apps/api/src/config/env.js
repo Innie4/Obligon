@@ -8,7 +8,7 @@ const schema = z.object({
   CORS_ORIGINS: z.string().default("http://localhost:3000"),
 
   // Supabase (database + storage + auth)
-  DATABASE_URL: z.string().min(1, "DATABASE_URL (Supabase Postgres connection string) is required"),
+  DATABASE_URL: z.string().default(process.env.DATABASE_URL || (process.env.NODE_ENV === "test" ? "postgres://localhost:5432/obligon_test" : "")),
   SUPABASE_URL: z.string().default(""),
   SUPABASE_SERVICE_ROLE_KEY: z.string().default(""),
   SUPABASE_ANON_KEY: z.string().default(""),
@@ -49,6 +49,12 @@ const schema = z.object({
 
   // Maps
   GOOGLE_MAPS_API_KEY: z.string().default(""),
+
+  // Background scheduler (session/code purge + auto-settlement). Safe off in dev.
+  ENABLE_SCHEDULER: z
+    .string()
+    .default("false")
+    .transform((v) => v === "true"),
 
   // Feature flags: when a provider key is absent the API degrades to local
   // simulation instead of failing the whole request (recorded in audit logs).

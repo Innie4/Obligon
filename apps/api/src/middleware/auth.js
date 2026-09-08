@@ -5,7 +5,9 @@ import { one } from "../db.js";
 /** Attach req.user when a valid bearer token is present. Optional (public or hybrid routes). */
 export async function attachUser(req, _res, next) {
   const header = req.headers.authorization ?? "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
+  // EventSource cannot set headers — accept the access token via ?token= too.
+  const queryToken = typeof req.query?.token === "string" ? req.query.token : null;
+  const token = header.startsWith("Bearer ") ? header.slice(7) : queryToken;
   if (token) {
     try {
       const payload = verifyAccessToken(token);

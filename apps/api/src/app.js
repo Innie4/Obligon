@@ -13,6 +13,7 @@ import partnerRoutes from "./routes/partner.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import publicRoutes from "./routes/public.routes.js";
 import webhookRoutes from "./routes/webhooks.routes.js";
+import pushRoutes from "./routes/push.routes.js";
 import { sseHandler } from "./lib/sse.js";
 
 export function createApp() {
@@ -44,6 +45,7 @@ export function createApp() {
   app.use("/api/admin", adminRoutes);
   app.use("/api/public", publicRoutes);
   app.use("/api/webhooks", webhookRoutes);
+  app.use("/api/push", pushRoutes);
 
   // Real-time stream (SSE) — token passed as query param because EventSource can't set headers
   app.get("/api/realtime/stream", (req, res, next) => {

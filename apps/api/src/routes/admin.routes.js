@@ -361,15 +361,19 @@ router.get("/staff", asyncHandler(async (req, res) => {
   const params = [];
   let where = `u.role = 'admin'`;
   if (search) { params.push(`%${search}%`); where += ` AND (u.full_name ILIKE $${params.length} OR u.email ILIKE $${params.length})`; }
-  const rows = await q(`SELECT u.*, m.role AS member_role FROM users u LEFT JOIN memberships m ON m.user_id = u.id WHERE ${where} ORDER BY u.created_at DESC LIMIT ${Math.min(Number(limit) || 50, 200)}`, params);
-  const invites = await q(`SELECT COUNT(*)::int AS count FROM invites WHERE status = 'pending'`);
+  const rows = await q(
+    `SELECT u.*, COALESCE(u.staff_role, m.role, 'controller') AS member_role
+     FROM users u LEFT JOIN memberships m ON m.user_id = u.id
+     WHERE ${where} ORDER BY u.created_at DESC LIMIT ${Math.min(Number(limit) || 50, 200)}`,
+    params
+  );
+  const invites = await one(`SELECT COUNT(*)::int AS count FROM invites WHERE status = 'pending'`);
   const lastAudit = await one(`SELECT MAX(created_at) AS last FROM audit_logs WHERE action LIKE 'admin%'`);
-  const metrics = { total: rows.length };
   res.json({
     metrics: [
       { label: "TOTAL INTERNAL STAFF", value: String(rows.length), helper: `${rows.filter((r) => r.status === "active").length} active`, tone: "green" },
       { label: "ACTIVE ROLES", value: String(new Set(rows.map((r) => r.member_role ?? "controller")).size), tone: "green" },
-      { label: "PENDING INVITES", value: String(invites.count), tone: "muted" },
+      { label: "PENDING INVITES", value: String(invites?.count ?? 0), tone: "muted" },
       { label: "LAST AUDIT", value: lastAudit?.last ? fmtDate(lastAudit.last).toUpperCase() : "—", helper: "System Status: Secure", tone: "muted" }
     ],
     staff: rows.map((r) => ({
@@ -389,9 +393,9 @@ router.post("/staff", asyncHandler(async (req, res) => {
   if (existing) throw badRequest("A user with that email already exists");
   const tempPassword = randomToken(6);
   const user = await one(
-    `INSERT INTO users (email, password_hash, full_name, role, organization_name, email_verified, account_tier)
-     VALUES ($1,$2,$3,'admin','Obligon LTD Internal',TRUE,'Platform Admin') RETURNING *`,
-    [email, await hashPassword(tempPassword), fullName]
+    `INSERT INTO users (email, password_hash, full_name, role, organization_name, email_verified, account_tier, staff_role, staff_permissions)
+     VALUES ($1,$2,$3,'admin','Obligon LTD Internal',TRUE,'Platform Admin',$4,$5) RETURNING *`,
+    [email, await hashPassword(tempPassword), fullName, role, JSON.stringify(permissions ?? [])]
   );
   const { sendEmail } = await import("../lib/notify.js");
   const { env } = await import("../config/env.js");
@@ -406,10 +410,14 @@ router.post("/staff", asyncHandler(async (req, res) => {
 }));
 
 router.put("/staff/:id", asyncHandler(async (req, res) => {
-  const { role, status } = req.body ?? {};
+  const { role, status, permissions } = req.body ?? {};
   const user = await one(
-    `UPDATE users SET status = COALESCE($2, status) WHERE id = $1 AND role = 'admin' RETURNING *`,
-    [req.params.id, status ?? null]
+    `UPDATE users SET
+       status = COALESCE($2, status),
+       staff_role = COALESCE($3, staff_role),
+       staff_permissions = COALESCE($4, staff_permissions)
+     WHERE id = $1 AND role = 'admin' RETURNING *`,
+    [req.params.id, status ?? null, role ?? null, permissions ? JSON.stringify(permissions) : null]
   );
   if (!user) throw notFound("Staff member not found");
   audit({ actorUserId: req.user.id, actorRole: "admin", action: "admin.staff_updated", entityId: user.id, metadata: req.body });

@@ -2,8 +2,15 @@ import { env } from "./config/env.js";
 import { createApp } from "./app.js";
 import { getPool, q } from "./db.js";
 import { ensureBucket } from "./lib/storage.js";
+import { startScheduler, stopScheduler } from "./lib/scheduler.js";
 
 async function main() {
+  if (!env.DATABASE_URL) {
+    console.error("✗ DATABASE_URL is not configured.");
+    console.error("  Check DATABASE_URL in apps/api/.env — Supabase: Project Settings → Database → Connection string (URI).");
+    process.exit(1);
+  }
+
   // Fail fast if the database is unreachable
   try {
     await q("SELECT 1");
@@ -26,8 +33,12 @@ async function main() {
     console.log(`  CORS origins: ${env.CORS_ORIGINS}`);
   });
 
+  // Start background scheduler if configured
+  startScheduler();
+
   const shutdown = async () => {
     console.log("Shutting down...");
+    stopScheduler();
     await getPool().end();
     process.exit(0);
   };
