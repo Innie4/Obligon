@@ -19,6 +19,22 @@ Point the frontend at it: copy `apps/web/.env.example` to `apps/web/.env.local`
 and set `NEXT_PUBLIC_API_URL=http://localhost:4000`. Without that variable the
 frontend stays in offline mock mode.
 
+## Vercel + Render deployment
+
+The Next.js frontend can run on Vercel, but the Express API must run as a
+separate public HTTPS service. This repository includes `render.yaml` for a
+Render deployment. Create the service from that Blueprint, provide the
+`sync: false` values in the Render dashboard, and set `APP_URL` and
+`CORS_ORIGINS` to the final Vercel URL. Render runs migrations before each
+deployment and exposes `/health` for service checks.
+
+In Vercel, set `NEXT_PUBLIC_API_URL` to the deployed API URL, for example
+`https://obligon-api.onrender.com`, and set `NEXT_PUBLIC_APP_URL` to the Vercel
+domain. Keep `NEXT_PUBLIC_ENABLE_MOCK_MODE=false`. Login and signup then use
+the API, Supabase Auth, and the server-returned role to route customers to
+`/customer`, companies to `/company`, partners to `/dashboard`, and admins to
+`/admin`.
+
 ## Demo accounts (created by seed)
 
 | Role     | Email                 | Password      |

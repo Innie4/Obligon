@@ -1,0 +1,72 @@
+services:
+  - type: web
+    name: obligon-api
+    runtime: node
+    plan: free
+    buildCommand: corepack enable && pnpm install --frozen-lockfile
+    preDeployCommand: pnpm --filter @obligon/api migrate
+    startCommand: pnpm --filter @obligon/api start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: APP_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: SUPABASE_JWKS_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_AUTH_ENABLED
+        value: true
+      - key: SUPABASE_STORAGE_BUCKET
+        value: obligon
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: ACCESS_TOKEN_TTL
+        value: 15m
+      - key: REFRESH_TOKEN_TTL_DAYS
+        value: 7
+      - key: REMEMBER_REFRESH_TTL_DAYS
+        value: 30
+      - key: STRICT_PROVIDERS
+        value: true
+      - key: ENABLE_SCHEDULER
+        value: false
+      - key: SUDO_BASE_URL
+        value: https://api.sandbox.sudo.africa/v1
+      - key: SUDO_SECRET_API_KEY
+        sync: false
+      - key: SUDO_WEBHOOK_SECRET
+        sync: false
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_PUBLIC_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: TERMII_API_KEY
+        sync: false
+      - key: TERMII_SENDER_ID
+        sync: false
+      - key: WEB_PUSH_VAPID_PUBLIC_KEY
+        sync: false
+      - key: WEB_PUSH_VAPID_PRIVATE_KEY
+        sync: false
+      - key: WEB_PUSH_CONTACT
+        sync: false
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false

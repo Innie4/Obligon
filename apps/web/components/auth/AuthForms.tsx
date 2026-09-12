@@ -436,7 +436,7 @@ function LoginForm() {
 
 function SignupForm() {
   const router = useRouter();
-  const { login } = useSession();
+  const { login, setUser } = useSession();
   const { error: toastError, success: toastSuccess } = useToast();
 
   const [topRole, setTopRole] = React.useState<TopRole>("customer");
@@ -545,7 +545,7 @@ function SignupForm() {
         const partnerTypeMap: Record<string, string> = {
           fuelStation: "fuel_station", mechanic: "mechanic", other: "other"
         };
-        await authApi.signup({
+        const signupResult = await authApi.signup({
           email,
           password,
           fullName: signupForm.contactName ?? signupForm.name ?? email.split("@")[0],
@@ -556,6 +556,7 @@ function SignupForm() {
           address: signupForm.location,
           fuelTypes: topRole === "partner" && partnerType === "fuelStation" ? selectedCapabilities : undefined
         });
+        if (signupResult.user) setUser(signupResult.user);
       } else {
         await login({ email, password, role: roleToAssign });
       }
