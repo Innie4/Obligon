@@ -39,7 +39,13 @@ async function upsertUser({ email, password, name, role, org, tier = "Standard A
 async function main() {
   const existing = await one("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
   if (existing) {
-    console.log("Seed data already present — skipping.");
+    const jobs = await one("SELECT count(*)::int AS count FROM job_postings");
+    if (jobs.count >= 3) {
+      console.log("Seed data already present — skipping.");
+      process.exit(0);
+    }
+    await completeTailSeed(existing.id);
+    console.log("Seed completion finished.");
     process.exit(0);
   }
 
@@ -241,9 +247,15 @@ async function main() {
   // Careers + content
   await q(
     `INSERT INTO job_postings (title, department, location, employment_type, description, requirements) VALUES
-      ('Senior Backend Engineer','Engineering','Lagos, Nigeria (Hybrid)','Full-time','Build the APIs powering Nigeria''s fuel card network.','["5+ years Node.js","Postgres at scale","Fintech experience preferred"]'),
-      ('Fleet Success Manager','Operations','Abuja, Nigeria','Full-time','Own onboarding and retention for enterprise fleets.','["3+ years B2B SaaS","Fleet/logistics domain"]'),
-      ('Product Designer','Design','Remote','Contract','Design dashboard and mobile experiences.','["Portfolio required","Figma fluency"]')`
+      ($1,$2,$3,$4,$5,$6), ($7,$8,$9,$10,$11,$12), ($13,$14,$15,$16,$17,$18)`,
+    [
+      "Senior Backend Engineer", "Engineering", "Lagos, Nigeria (Hybrid)", "Full-time",
+      "Build the APIs powering Nigeria's fuel card network.", ["5+ years Node.js", "Postgres at scale", "Fintech experience preferred"],
+      "Fleet Success Manager", "Operations", "Abuja, Nigeria", "Full-time",
+      "Own onboarding and retention for enterprise fleets.", ["3+ years B2B SaaS", "Fleet/logistics domain"],
+      "Product Designer", "Design", "Remote", "Contract",
+      "Design dashboard and mobile experiences.", ["Portfolio required", "Figma fluency"]
+    ]
   );
   await q(
     `INSERT INTO content_items (kind, title, body, sort_order) VALUES
@@ -281,6 +293,49 @@ async function main() {
   console.log("  company  fleet@obligon.com    / " + PASSWORD.company);
   console.log("  partner  partner@obligon.com  / " + PASSWORD.partner);
   process.exit(0);
+}
+
+async function completeTailSeed(adminId) {
+  const customer = await one("SELECT id FROM users WHERE email = 'customer@obligon.com'");
+  const partnerOrg = await one("SELECT id FROM organizations WHERE type = 'partner' ORDER BY created_at LIMIT 1");
+  const companyOrg = await one("SELECT id FROM organizations WHERE type = 'company' ORDER BY created_at LIMIT 1");
+  if (!customer || !partnerOrg || !companyOrg) throw new Error("Seed is incomplete before the resumable tail; reset the test database and rerun seed.");
+
+  await q(
+    `INSERT INTO job_postings (title, department, location, employment_type, description, requirements) VALUES
+      ($1,$2,$3,$4,$5,$6), ($7,$8,$9,$10,$11,$12), ($13,$14,$15,$16,$17,$18)`,
+    [
+      "Senior Backend Engineer", "Engineering", "Lagos, Nigeria (Hybrid)", "Full-time",
+      "Build the APIs powering Nigeria's fuel card network.", ["5+ years Node.js", "Postgres at scale", "Fintech experience preferred"],
+      "Fleet Success Manager", "Operations", "Abuja, Nigeria", "Full-time",
+      "Own onboarding and retention for enterprise fleets.", ["3+ years B2B SaaS", "Fleet/logistics domain"],
+      "Product Designer", "Design", "Remote", "Contract",
+      "Design dashboard and mobile experiences.", ["Portfolio required", "Figma fluency"]
+    ]
+  );
+  await q(`INSERT INTO content_items (kind, title, body, sort_order) VALUES
+    ('product','Fuel Cards','Virtual fuel cards with real-time controls and spend limits.',1),
+    ('product','Wallet & Top-ups','Fund your fleet wallet via card, transfer or USSD.',2),
+    ('partner','Core Hub Fuel Station','Verified partner since 2024 — Lagos.',1),
+    ('story','Haulage Dynamics cut fuel spend 18%','With Obligon analytics and card controls.',1)`);
+  await q(
+    `INSERT INTO partner_applications (reference, business_name, partner_type, contact_email, contact_phone, rc_number, address, city, status)
+     VALUES ('APP-2026-041','Express Fueling Ltd','fuel_station','apply@expressfueling.ng','+2348099887766','RC-228411','88 Industrial Parkway','Lagos','submitted')
+     ON CONFLICT (reference) DO NOTHING`
+  );
+  await q(
+    `INSERT INTO notifications (user_id, title, body, category, created_at) VALUES
+      ($1,'Transaction Alert','Success: ₦500,000.00 added to your wallet.','transactions', now() - interval '2 hours'),
+      ($1,'Station Update','New Obligon Core Hub opened 2 miles from your current route.','general', now() - interval '4 hours'),
+      ($1,'Security Alert','New login detected from a Chrome browser in Lagos.','security', now() - interval '1 day'),
+      ($2,'New company onboarded','Haulage Dynamics Ltd completed verification.','general', now() - interval '3 hours')`,
+    [customer.id, adminId]
+  );
+  await q(
+    `INSERT INTO notifications (organization_id, title, body, category, action_required, created_at) VALUES
+      ($1,'Settlement ready','Your settlement for last month is ready for payout.','settlements',TRUE, now() - interval '6 hours')`,
+    [partnerOrg.id]
+  );
 }
 
 main().catch((err) => {
