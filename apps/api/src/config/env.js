@@ -9,13 +9,14 @@ const schema = z.object({
 
   // Supabase (database + storage + auth)
   DATABASE_URL: z.string().default(process.env.DATABASE_URL || (process.env.NODE_ENV === "test" ? "postgres://localhost:5432/obligon_test" : "")),
-  SUPABASE_URL: z.string().default(""),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().default(""),
-  SUPABASE_ANON_KEY: z.string().default(""),
+  SUPABASE_URL: z.string().default(process.env.NEXT_PUBLIC_SUPABASE_URL || ""),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().default(process.env.SUPABASE_SECRET_KEY || ""),
+  SUPABASE_ANON_KEY: z.string().default(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || ""),
+  SUPABASE_JWKS_URL: z.string().default(""),
   SUPABASE_STORAGE_BUCKET: z.string().default("obligon"),
   SUPABASE_AUTH_ENABLED: z
     .string()
-    .default("false")
+    .default(process.env.SUPABASE_AUTH_ENABLED || (process.env.SUPABASE_SECRET_KEY && (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL) ? "true" : "false"))
     .transform((v) => v === "true"),
 
   // Auth

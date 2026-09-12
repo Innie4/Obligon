@@ -7,6 +7,9 @@ import { env } from "../config/env.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 async function run() {
+  if (!env.DATABASE_URL) {
+    throw new Error("DATABASE_URL is required to run migrations. Add the Supabase Postgres connection URI to .env.");
+  }
   await q(`CREATE TABLE IF NOT EXISTS schema_migrations (
     name TEXT PRIMARY KEY,
     applied_at TIMESTAMPTZ NOT NULL DEFAULT now()

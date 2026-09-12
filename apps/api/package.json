@@ -4,11 +4,11 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node --watch src/index.js",
-    "start": "node src/index.js",
-    "migrate": "node src/scripts/migrate.js",
-    "seed": "node src/scripts/seed.js",
-    "cron": "node src/scripts/cron.js",
+    "dev": "node --env-file-if-exists=../../.env --watch src/index.js",
+    "start": "node --env-file-if-exists=../../.env src/index.js",
+    "migrate": "node --env-file-if-exists=../../.env src/scripts/migrate.js",
+    "seed": "node --env-file-if-exists=../../.env src/scripts/seed.js",
+    "cron": "node --env-file-if-exists=../../.env src/scripts/cron.js",
     "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
