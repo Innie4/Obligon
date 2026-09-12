@@ -91,7 +91,7 @@ export async function runAutoSettlements() {
             actorRole: "system",
             action: "settlement.auto_paid",
             entityId: payout.id,
-            metadata: { partnerId: partner.id, amountKobo: pendingKobo, simulated: !paystackEnabled() }
+            metadata: { partnerId: partner.id, amountKobo: pendingKobo }
           });
 
           results.push({ partnerId: partner.id, amountKobo: pendingKobo, reference: ref, status: "success" });

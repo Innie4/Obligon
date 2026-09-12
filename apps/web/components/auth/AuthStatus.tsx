@@ -118,7 +118,7 @@ export function AuthStatus({ status, message, serverError, redirect, onRetry }: 
             <ul className="mt-2 space-y-1 text-xs text-[#93000a] list-disc list-inside">
               <li>Verify your email and password are correct</li>
               <li>Check if Caps Lock is enabled</li>
-              <li>Try the "Forgot Password" link to reset your credentials</li>
+              <li>Try the &quot;Forgot Password&quot; link to reset your credentials</li>
               <li>Contact support if the issue persists</li>
             </ul>
           </div>
@@ -134,7 +134,7 @@ export function AuthStatus({ status, message, serverError, redirect, onRetry }: 
         <div className="flex h-[420px] flex-col justify-end rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(170,248,87,0.25),transparent_45%)] p-8">
           <p className="text-xs uppercase tracking-[1.6px] text-obligon-lime">Powering Logistics</p>
           <h2 className="mt-4 font-display text-4xl font-extrabold leading-[44px]">
-            Nigeria's most trusted energy fintech infrastructure.
+            Nigeria&apos;s most trusted energy fintech infrastructure.
           </h2>
           <Link href={routes.login} className="mt-8 text-sm font-bold text-white/80 hover:text-white">
             Cancel and return to login

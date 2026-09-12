@@ -202,8 +202,7 @@ router.post("/wallet/topup", asyncHandler(async (req, res) => {
     ok: true,
     reference: ref,
     paymentUrl: init.authorization_url ?? null,
-    simulated: !paystackEnabled(),
-    message: paystackEnabled() ? "Complete the payment via the Paystack checkout link." : "Payment provider not configured — top-up will be marked successful immediately."
+    message: "Complete the payment via the Paystack checkout link."
   });
 }));
 
@@ -213,8 +212,8 @@ router.post("/wallet/topup/confirm", asyncHandler(async (req, res) => {
   const topup = await one("SELECT * FROM top_ups WHERE reference = $1 AND user_id = $2", [reference, req.user.id]);
   if (!topup) throw notFound("Top-up not found");
   if (topup.status === "success") return res.json({ ok: true, alreadyPaid: true });
-  const verification = paystackEnabled() ? await verifyTransaction(reference) : { status: "success", local: true };
-  const paid = verification.status === "success" || verification.local === true;
+  const verification = await verifyTransaction(reference);
+  const paid = verification.status === "success";
   if (!paid) {
     await q("UPDATE top_ups SET status = 'failed' WHERE id = $1", [topup.id]);
     throw badRequest("Payment was not successful");
@@ -224,18 +223,26 @@ router.post("/wallet/topup/confirm", asyncHandler(async (req, res) => {
 }));
 
 export async function completeTopUp(topup) {
+  let completed = false;
   await tx(async (t) => {
     const wallet = await t.one("SELECT * FROM wallets WHERE user_id = $1 FOR UPDATE", [topup.user_id]);
+    const marked = await t.query(
+      "UPDATE top_ups SET status = 'success', paid_at = now() WHERE id = $1 AND status = 'pending' RETURNING id",
+      [topup.id]
+    );
+    if (!marked.length) return;
     const balance = wallet.balance_kobo + topup.amount_kobo;
     await t.query("UPDATE wallets SET balance_kobo = $2 WHERE id = $1", [wallet.id, balance]);
-    await t.query(`UPDATE top_ups SET status = 'success', paid_at = now() WHERE id = $1`, [topup.id]);
     await t.query(
       `INSERT INTO wallet_ledger (wallet_id, direction, amount_kobo, balance_after_kobo, reference, description)
        VALUES ($1,'credit',$2,$3,$4,$5)`,
       [wallet.id, topup.amount_kobo, balance, topup.reference, `Top-up via ${topup.method}`]
     );
+    completed = true;
   });
-  await notify({ userId: topup.user_id, title: "Transaction Alert", body: `Success: ${naira(topup.amount_kobo)} added to your wallet.`, category: "transactions", link: "/customer/wallet" });
+  if (completed) {
+    await notify({ userId: topup.user_id, title: "Transaction Alert", body: `Success: ${naira(topup.amount_kobo)} added to your wallet.`, category: "transactions", link: "/customer/wallet" });
+  }
 }
 
 // ============ PAYMENT METHODS ============
@@ -347,7 +354,7 @@ router.post("/cards/:id/replace", asyncHandler(async (req, res) => {
     await t.query("INSERT INTO card_actions (card_id, user_id, action, note) VALUES ($1,$2,'replaced',$3)", [created.id, req.user.id, reason]);
     return created;
   });
-  res.json({ ok: true, cardId: newCard.id, maskedPan: newCard.masked_pan, simulated: !sudoEnabled() });
+  res.json({ ok: true, cardId: newCard.id, maskedPan: newCard.masked_pan });
 }));
 
 router.post("/cards/:id/pin", asyncHandler(async (req, res) => {
@@ -384,7 +391,7 @@ router.post("/cards", asyncHandler(async (req, res) => {
       sudoCard.cardNumber ? maskFromSudo(sudoCard) : maskPan(String(Math.floor(Math.random() * 1e16))), sudoCard.id ?? null, sudoCustomer.id ?? sudoCustomer]
   );
   await cardAction(card, req, "issued", "");
-  res.json({ ok: true, cardId: card.id, maskedPan: card.masked_pan, simulated: !sudoEnabled() });
+  res.json({ ok: true, cardId: card.id, maskedPan: card.masked_pan });
 }));
 
 // ============ STATIONS ============

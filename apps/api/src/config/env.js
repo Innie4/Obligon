@@ -60,7 +60,7 @@ const schema = z.object({
   // simulation instead of failing the whole request (recorded in audit logs).
   STRICT_PROVIDERS: z
     .string()
-    .default("false")
+    .default("true")
     .transform((v) => v === "true")
 });
 

@@ -176,7 +176,7 @@ export function MFASetupUI({ stage = "setup", redirect = "/dashboard" }: MFAUIPr
                 <p className="text-xs font-bold uppercase tracking-[1.1px] text-obligon-text">Setup Instructions</p>
                 <ol className="mt-3 space-y-2 text-sm text-obligon-text list-decimal list-inside">
                   <li>Open Google Authenticator, Authy, or Microsoft Authenticator</li>
-                  <li>Tap "+" to add a new account</li>
+                  <li>Tap &quot;+&quot; to add a new account</li>
                   <li>Scan the QR code above or enter the secret key manually</li>
                   <li>Enter the 6-digit code from the app to verify</li>
                 </ol>

@@ -9,6 +9,14 @@ export interface StationMapPoint {
   lng: number;
 }
 
+type GoogleMapsApi = {
+  maps: {
+    Map: new (element: HTMLElement, options: Record<string, unknown>) => { fitBounds: (bounds: unknown) => void };
+    LatLngBounds: new () => { extend: (position: unknown) => void };
+    Marker: new (options: Record<string, unknown>) => { getPosition: () => unknown; addListener: (event: string, handler: () => void) => void };
+  };
+};
+
 function osmEmbedUrl(list: StationMapPoint[]) {
   if (list.length === 0) return "https://www.openstreetmap.org/export/embed.html?bbox=3.30,6.45,3.45,6.60&layer=mapnik";
   const lats = list.map((item) => item.lat);
@@ -61,7 +69,7 @@ export function StationMap({
   // Render Google markers when ready
   React.useEffect(() => {
     if (!apiKey || !googleReady || !mapRef.current) return;
-    const google = (window as unknown as { google: { maps: any } }).google;
+    const google = (window as unknown as { google: GoogleMapsApi }).google;
     const center = points[0] ?? { lat: 6.5244, lng: 3.3792, name: "Lagos" };
     const map = new google.maps.Map(mapRef.current, {
       center: { lat: center.lat, lng: center.lng },

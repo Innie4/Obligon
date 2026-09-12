@@ -382,7 +382,7 @@ export function CompanyModals({
                     />
                   </label>
                   <label className="block">
-                    <span className="text-xs font-extrabold uppercase text-obligon-text">Driver's License Number</span>
+                    <span className="text-xs font-extrabold uppercase text-obligon-text">Driver&apos;s License Number</span>
                     <input
                       value={driverForm.licenseNumber}
                       onChange={(e) => setDriverForm((prev) => ({ ...prev, licenseNumber: e.target.value }))}

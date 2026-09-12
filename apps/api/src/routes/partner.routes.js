@@ -217,8 +217,8 @@ router.post("/payouts", asyncHandler(async (req, res) => {
     throw err;
   }
   await notify({ orgId: partnerOrgId(req), title: "Payout requested", body: `${naira(amountKobo)} to ${account.bank_name} is being processed.`, category: "settlements" });
-  audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "payout.requested", entityId: payout.id, metadata: { amountKobo, simulated: !paystackEnabled() } });
-  res.json({ ok: true, reference: ref, simulated: !paystackEnabled() });
+  audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "payout.requested", entityId: payout.id, metadata: { amountKobo } });
+  res.json({ ok: true, reference: ref });
 }));
 
 router.post("/payouts/:id/retry", asyncHandler(async (req, res) => {

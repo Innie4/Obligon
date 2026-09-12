@@ -3,7 +3,7 @@ import { q, one, tx } from "../db.js";
 import { webhookLimiter } from "../middleware/security.js";
 import { verifyPaystackSignature } from "../lib/paystack.js";
 import { completeTopUp } from "./customer.routes.js";
-import { naira } from "../lib/format.js";
+import { naira, reference } from "../lib/format.js";
 import { notify, audit } from "../lib/notify.js";
 import { env } from "../config/env.js";
 

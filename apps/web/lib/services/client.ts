@@ -75,7 +75,8 @@ import type {
 } from "./types";
 
 const API_URL = (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) || "";
-export const LIVE_MODE = Boolean(API_URL);
+const MOCK_MODE = !API_URL && (typeof process !== "undefined" && process.env.NEXT_PUBLIC_ENABLE_MOCK_MODE) === "true";
+export const LIVE_MODE = !MOCK_MODE;
 
 export interface ApiClient {
   getSession(): Promise<SessionUser | null>;

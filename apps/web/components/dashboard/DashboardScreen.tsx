@@ -363,7 +363,7 @@ function POSTerminalPage() {
       <div className="max-w-2xl mx-auto">
         <div className="mb-8 text-center">
           <h1 className="font-display text-3xl font-extrabold text-obligon-navy">POS Authorization Terminal</h1>
-          <p className="mt-1 text-sm text-obligon-text">Enter driver's 6-digit OTC code or tap NFC Fuelvista card to unlock dispenser.</p>
+          <p className="mt-1 text-sm text-obligon-text">Enter driver&apos;s 6-digit OTC code or tap NFC Fuelvista card to unlock dispenser.</p>
         </div>
 
         {authReceipt ? (

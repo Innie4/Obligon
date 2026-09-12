@@ -1,4 +1,5 @@
 import { Router } from "express";
+import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { q, one, tx } from "../db.js";
 import { asyncHandler, badRequest, unauthorized, conflict, notFound } from "../lib/errors.js";
@@ -8,7 +9,7 @@ import {
 } from "../lib/security.js";
 import { authLimiter } from "../middleware/security.js";
 import { requireAuth } from "../middleware/auth.js";
-import { notify, audit, securityLog, sendEmail, emailTemplates } from "../lib/notify.js";
+import { notify, audit, securityLog, sendEmail, sendSms, emailTemplates } from "../lib/notify.js";
 import { initials } from "../lib/format.js";
 import { supabaseAuthEnabled, supabaseSignUp, supabaseSignIn, supabaseUpdatePassword, LOCAL_AUTH_PLACEHOLDER } from "../lib/supabaseAuth.js";
 

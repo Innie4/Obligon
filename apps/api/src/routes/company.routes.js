@@ -267,8 +267,8 @@ router.post("/cards", requireOrg, requirePermission("cards.manage"), asyncHandle
       sudoCard.cardNumber ? maskFromSudo(sudoCard) : maskPan(String(Math.floor(Math.random() * 1e16))),
       dailyKobo, monthlyKobo, sudoCard.id ?? null, sudoCustomer.id ?? sudoCustomer]
   );
-  audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "card.issued", entityType: "card", entityId: card.id, metadata: { simulated: !sudoEnabled() } });
-  res.json({ ok: true, cardId: card.id, maskedPan: card.masked_pan, simulated: !sudoEnabled() });
+  audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "card.issued", entityType: "card", entityId: card.id });
+  res.json({ ok: true, cardId: card.id, maskedPan: card.masked_pan });
 }));
 
 router.post("/cards/:id/freeze", requireOrg, requirePermission("cards.manage"), asyncHandler(async (req, res) => {

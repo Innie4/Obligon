@@ -5,6 +5,8 @@ import { hashPassword, verifyPassword, signAccessToken, verifyAccessToken, rando
 import { HttpError, badRequest, unauthorized, forbidden, notFound } from "../src/lib/errors.js";
 import { providerStatus } from "../src/config/env.js";
 import { createApp } from "../src/app.js";
+import { initializeTopUp, verifyPaystackSignature } from "../src/lib/paystack.js";
+import { createSudoCustomer, verifySudoSignature } from "../src/lib/sudo.js";
 
 test("naira formatting converts kobo to formatted currency string", () => {
   assert.equal(naira(0), "₦0");
@@ -106,6 +108,22 @@ test("config: providerStatus reports availability of integrated services", () =>
   assert.ok("sms" in status);
   assert.ok("push" in status);
   assert.ok("maps" in status);
+});
+
+test("provider boundaries fail closed without credentials", async () => {
+  await assert.rejects(
+    () => initializeTopUp({ email: "customer@example.com", amountKobo: 50000, reference: "TRX-test", callbackUrl: "http://localhost/callback" }),
+    /Paystack is not configured/
+  );
+  await assert.rejects(
+    () => createSudoCustomer({ firstName: "Test", lastName: "User", email: "customer@example.com" }),
+    /Sudo is not configured/
+  );
+});
+
+test("provider webhook signatures reject missing configuration or signatures", () => {
+  assert.equal(verifyPaystackSignature(Buffer.from("{}"), undefined), false);
+  assert.equal(verifySudoSignature(Buffer.from("{}"), undefined), false);
 });
 
 test("app: createApp initializes Express application with routes mounted", () => {
