@@ -3,8 +3,8 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "node --env-file-if-exists=../../.env ./node_modules/next/dist/bin/next dev",
+    "build": "node --env-file-if-exists=../../.env ./node_modules/next/dist/bin/next build",
     "start": "next start",
     "lint": "next lint"
   },
