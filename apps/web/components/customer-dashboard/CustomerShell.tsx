@@ -18,6 +18,7 @@ import {
 import { assets } from "@/components/landing/assets";
 import { customerNav, secondaryCustomerNav, pageTitles, type CustomerPageKey } from "@/lib/mock/customer-data";
 import { useSession } from "@/components/shared/AuthContext";
+import { AuthGuard } from "@/components/auth/AuthGuard";
 
 type CustomerShellProps = {
   children: React.ReactNode;
@@ -174,15 +175,17 @@ function MobileBottomNav() {
 
 export function CustomerShell({ children }: CustomerShellProps) {
   return (
-    <main className="min-h-screen bg-[#f7fbf8] text-[#20251f]">
-      <Sidebar />
+    <AuthGuard allowedRoles={["customer"]}>
+      <main className="min-h-screen bg-[#f7fbf8] text-[#20251f]">
+        <Sidebar />
       <div className="lg:pl-64">
         <DesktopHeader />
         <MobileHeader />
         {children}
       </div>
       <MobileBottomNav />
-    </main>
+      </main>
+    </AuthGuard>
   );
 }
 

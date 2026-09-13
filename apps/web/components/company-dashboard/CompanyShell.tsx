@@ -25,6 +25,7 @@ import {
 import { assets } from "@/components/landing/assets";
 import { companyNav, pageCopy, type CompanyPageKey } from "@/lib/mock/company-data";
 import { useSession } from "@/components/shared/AuthContext";
+import { AuthGuard } from "@/components/auth/AuthGuard";
 
 type CompanyShellProps = {
   children: React.ReactNode;
@@ -136,14 +137,16 @@ export function CompanyShell({ children }: CompanyShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <main className="min-h-screen bg-[#f8fafc] text-[#07162f]">
-      <CompanySidebar />
+    <AuthGuard allowedRoles={["company"]}>
+      <main className="min-h-screen bg-[#f8fafc] text-[#07162f]">
+        <CompanySidebar />
       {mobileMenuOpen ? <div className="fixed inset-0 z-50 bg-[#07162f]/55 lg:hidden" onMouseDown={() => setMobileMenuOpen(false)}><aside role="dialog" aria-modal="true" aria-label="Company navigation" onMouseDown={(event) => event.stopPropagation()} className="h-full w-[280px] overflow-y-auto bg-white p-5 shadow-hero"><div className="flex items-center justify-between"><p className="font-display text-xl font-extrabold">Menu</p><button type="button" onClick={() => setMobileMenuOpen(false)} className="grid size-10 place-items-center rounded-lg bg-[#f2f6fa]" aria-label="Close company menu"><X size={20} /></button></div><nav className="mt-7 space-y-1">{companyNav.map((item) => <Link key={item.key} href={item.href} onClick={() => setMobileMenuOpen(false)} className="flex h-11 items-center gap-3 rounded-lg px-4 text-sm font-bold text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green">{iconMap[item.key]}<span>{item.label}</span></Link>)}<Link href="/company/maintenance" onClick={() => setMobileMenuOpen(false)} className="flex h-11 items-center gap-3 rounded-lg px-4 text-sm font-bold text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green">{iconMap.maintenance}<span>Maintenance</span></Link></nav></aside></div> : null}
       <div className="lg:pl-[280px]">
         <CompanyTopbar onOpenMenu={() => setMobileMenuOpen(true)} />
         {children}
       </div>
-    </main>
+      </main>
+    </AuthGuard>
   );
 }
 

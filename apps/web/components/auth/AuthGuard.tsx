@@ -17,7 +17,7 @@ const rolePaths: Record<Role, string> = {
   customer: "/customer",
   partner: "/dashboard",
   company: "/company",
-  mechanic: "/company/roadside",
+  mechanic: "/mechanic",
   admin: "/admin",
 };
 

@@ -608,7 +608,7 @@ function SignupForm() {
         topRole === "company"
           ? routes.companyDashboard
           : topRole === "partner"
-            ? routes.dashboard
+            ? partnerType === "mechanic" ? "/mechanic" : routes.dashboard
             : routes.customerDashboard;
 
       router.push(`${routes.authSuccess}?redirect=${destination}`);
@@ -625,11 +625,11 @@ function SignupForm() {
   return (
     <>
       <AuthErrorDialog message={signupDialogError} onClose={() => setSignupDialogError(null)} />
-      <form id="signup" onSubmit={handleSignupSubmit} className="mx-auto w-full max-w-[680px] rounded-2xl border border-obligon-border bg-white p-6 sm:p-8 shadow-card" noValidate>
-      <div className="flex items-center justify-between">
+      <form id="signup" onSubmit={handleSignupSubmit} className="mx-auto w-full max-w-[680px] rounded-2xl border border-obligon-border bg-white p-4 shadow-card sm:p-8" noValidate>
+      <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[1.2px] text-obligon-green">Onboard to Obligon</p>
-          <h2 className="mt-2 font-display text-2xl font-bold text-obligon-navy">Create your account</h2>
+          <h2 className="mt-2 font-display text-xl font-bold text-obligon-navy sm:text-2xl">Create your account</h2>
         </div>
         <ShieldCheck className="text-obligon-green" size={28} />
       </div>
@@ -646,7 +646,7 @@ function SignupForm() {
         <label className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-2">
           Select Account Category
         </label>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {[
             { key: "customer" as TopRole, title: "Customer / Driver", desc: "For individual vehicle owners & cards", icon: User },
             { key: "company" as TopRole, title: "Fleet Enterprise", desc: "For corporate fleets & transport firms", icon: Building2 },
@@ -659,7 +659,7 @@ function SignupForm() {
                 key={item.key}
                 type="button"
                 onClick={() => handleTopRoleChange(item.key)}
-                className={`p-3.5 rounded-xl border text-left transition flex flex-col justify-between ${
+                className={`min-h-[112px] p-3.5 rounded-xl border text-left transition flex flex-col justify-between ${
                   active
                     ? "border-obligon-green bg-[#e8fbd7] text-obligon-green ring-2 ring-obligon-green/20"
                     : "border-obligon-border bg-white text-obligon-navy hover:bg-obligon-mist"
