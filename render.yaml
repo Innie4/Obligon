@@ -5,7 +5,7 @@ services:
     plan: free
     buildCommand: corepack enable && pnpm install --frozen-lockfile
     preDeployCommand: pnpm --filter @obligon/api migrate
-    startCommand: pnpm --filter @obligon/api start
+    startCommand: npm start
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
