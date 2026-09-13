@@ -12,9 +12,9 @@ export const randomToken = (bytes = 32) => crypto.randomBytes(bytes).toString("h
 export const randomCode = () => String(Math.floor(100000 + Math.random() * 900000));
 export const sha256 = (v) => crypto.createHash("sha256").update(String(v)).digest("hex");
 
-export function signAccessToken(user, org = null) {
+export function signAccessToken(user, org = null, sessionId = null) {
   return jwt.sign(
-    { sub: user.id, role: user.role, org: org?.id ?? null, orgType: org?.type ?? null },
+    { sub: user.id, sid: sessionId, role: user.role, org: org?.id ?? null, orgType: org?.type ?? null },
     env.JWT_ACCESS_SECRET,
     { expiresIn: env.ACCESS_TOKEN_TTL }
   );

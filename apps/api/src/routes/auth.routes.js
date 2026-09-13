@@ -49,8 +49,24 @@ async function issueSession(req, user, remember) {
      VALUES ($1,$2,$3,$4,$5,$6,$7)`,
     [sessionId, user.id, hashToken(refresh), Boolean(remember), req.headers["user-agent"] ?? null, req.ip ?? null, refreshExpiry(remember)]
   );
-  const accessToken = signAccessToken(user, await loadOrgForUser(user));
+  const accessToken = signAccessToken(user, await loadOrgForUser(user), sessionId);
   return { sessionId, accessToken, refreshToken: signRefreshToken(sessionId, user.id) + "." + refresh };
+}
+
+async function verifyCurrentPassword(user, password) {
+  if (supabaseAuthEnabled() && user.supabase_auth_uid) {
+    return Boolean(await supabaseSignIn({ email: user.email, password }));
+  }
+  return verifyPassword(password, user.password_hash);
+}
+
+function splitRefreshToken(refreshToken) {
+  const separator = refreshToken.lastIndexOf(".");
+  if (separator <= 0 || separator === refreshToken.length - 1) return null;
+  return {
+    jwtPart: refreshToken.slice(0, separator),
+    rawToken: refreshToken.slice(separator + 1)
+  };
 }
 
 // ---------- POST /api/auth/login ----------
@@ -230,8 +246,9 @@ router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
 // ---------- POST /api/auth/refresh ----------
 router.post("/refresh", asyncHandler(async (req, res) => {
   const { refreshToken } = req.body ?? {};
-  if (!refreshToken?.includes(".")) throw unauthorized("Refresh token required");
-  const [jwtPart, rawToken] = refreshToken.split(".");
+  const parts = typeof refreshToken === "string" ? splitRefreshToken(refreshToken) : null;
+  if (!parts) throw unauthorized("Refresh token required");
+  const { jwtPart, rawToken } = parts;
   let payload;
   try {
     payload = verifyRefreshToken(jwtPart);
@@ -251,17 +268,17 @@ router.post("/refresh", asyncHandler(async (req, res) => {
   const user = await one("SELECT * FROM users WHERE id = $1 AND status = 'active'", [payload.sub]);
   if (!user) throw unauthorized("Account unavailable");
   const org = await loadOrgForUser(user);
-  const accessToken = signAccessToken(user, org);
+  const accessToken = signAccessToken(user, org, session.id);
   res.json({ user: sessionPayload(user, org), accessToken });
 }));
 
 // ---------- POST /api/auth/logout ----------
 router.post("/logout", requireAuth, asyncHandler(async (req, res) => {
   const { refreshToken } = req.body ?? {};
-  if (refreshToken?.includes(".")) {
-    const [jwtPart] = refreshToken.split(".");
+  const parts = typeof refreshToken === "string" ? splitRefreshToken(refreshToken) : null;
+  if (parts) {
     try {
-      const payload = verifyRefreshToken(jwtPart);
+      const payload = verifyRefreshToken(parts.jwtPart);
       await q("UPDATE sessions SET revoked_at = now() WHERE id = $1", [payload.sid]);
     } catch { /* already invalid */ }
   } else {
@@ -400,7 +417,7 @@ router.post("/mfa/enable", requireAuth, asyncHandler(async (req, res) => {
 
 router.post("/mfa/disable", requireAuth, asyncHandler(async (req, res) => {
   const { password } = req.body ?? {};
-  if (!await verifyPassword(password ?? "", req.user.password_hash)) throw unauthorized("Password confirmation failed");
+  if (!await verifyCurrentPassword(req.user, password ?? "")) throw unauthorized("Password confirmation failed");
   await q("UPDATE users SET two_factor_enabled = FALSE, two_factor_secret = NULL, two_factor_backup_codes = '[]'::jsonb WHERE id = $1", [req.user.id]);
   await audit({ actorUserId: req.user.id, action: "auth.mfa_disabled", ip: req.ip });
   res.json({ ok: true, twoFactorEnabled: false });
@@ -434,7 +451,7 @@ router.post("/mfa/challenge", authLimiter, asyncHandler(async (req, res) => {
 // ---------- Password change (authenticated) ----------
 router.post("/change-password", requireAuth, asyncHandler(async (req, res) => {
   const { currentPassword, newPassword } = req.body ?? {};
-  if (!await verifyPassword(currentPassword ?? "", req.user.password_hash)) throw badRequest("Current password is incorrect");
+  if (!await verifyCurrentPassword(req.user, currentPassword ?? "")) throw badRequest("Current password is incorrect");
   if (String(newPassword ?? "").length < 8) throw badRequest("New password must be at least 8 characters");
   if (supabaseAuthEnabled() && req.user.supabase_auth_uid) {
     await supabaseUpdatePassword({ authUserId: req.user.supabase_auth_uid, password: newPassword });

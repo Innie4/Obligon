@@ -11,7 +11,14 @@ export async function attachUser(req, _res, next) {
   if (token) {
     try {
       const payload = verifyAccessToken(token);
-      const user = await one("SELECT * FROM users WHERE id = $1 AND status = 'active'", [payload.sub]);
+      const user = await one(
+        payload.sid
+          ? `SELECT u.* FROM users u JOIN sessions s ON s.user_id = u.id
+             WHERE u.id = $1 AND u.status = 'active' AND s.id = $2
+               AND s.revoked_at IS NULL AND s.expires_at > now()`
+          : "SELECT * FROM users WHERE id = $1 AND status = 'active'",
+        payload.sid ? [payload.sub, payload.sid] : [payload.sub]
+      );
       if (user) {
         req.user = { ...user, orgId: payload.org ?? null, orgType: payload.orgType ?? null };
       }

@@ -13,9 +13,9 @@ services:
       - key: PORT
         value: 10000
       - key: APP_URL
-        sync: false
+        value: https://obligon.vercel.app
       - key: CORS_ORIGINS
-        sync: false
+        value: https://obligon.vercel.app
       - key: DATABASE_URL
         sync: false
       - key: NEXT_PUBLIC_SUPABASE_URL

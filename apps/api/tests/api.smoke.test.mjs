@@ -66,6 +66,32 @@ test("login succeeds for seeded customer and session works", { skip: !BASE }, as
   assert.ok(stations.data.stations.length > 0);
 });
 
+test("refresh and logout preserve and revoke the authenticated session", { skip: !BASE }, async () => {
+  const login = await api("/api/auth/login", {
+    method: "POST",
+    body: { email: "customer@obligon.com", password: "Customer#123", rememberMe: true }
+  });
+  assert.equal(login.status, 200);
+
+  const refreshed = await api("/api/auth/refresh", {
+    method: "POST",
+    body: { refreshToken: login.data.refreshToken }
+  });
+  assert.equal(refreshed.status, 200);
+  assert.ok(refreshed.data.accessToken);
+
+  const logout = await api("/api/auth/logout", {
+    method: "POST",
+    token: refreshed.data.accessToken,
+    body: { refreshToken: login.data.refreshToken }
+  });
+  assert.equal(logout.status, 200);
+  assert.equal(logout.data.ok, true);
+
+  const session = await api("/api/auth/session", { token: refreshed.data.accessToken });
+  assert.equal(session.status, 401);
+});
+
 test("MFA challenge rejects invalid codes", { skip: !BASE }, async () => {
   const { status } = await api("/api/auth/mfa/challenge", {
     method: "POST",
