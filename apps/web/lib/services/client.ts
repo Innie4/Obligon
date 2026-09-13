@@ -74,7 +74,8 @@ import type {
   Vehicle
 } from "./types";
 
-const API_URL = (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) || "";
+const configuredApiUrl = (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) || "";
+const API_URL = configuredApiUrl || (typeof process !== "undefined" && process.env.NODE_ENV === "production" ? "https://obligon.onrender.com" : "");
 const MOCK_MODE = !API_URL && (typeof process !== "undefined" && process.env.NEXT_PUBLIC_ENABLE_MOCK_MODE) === "true";
 export const LIVE_MODE = !MOCK_MODE;
 

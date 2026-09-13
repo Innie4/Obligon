@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { routes } from "@/components/site/routes";
 import { useToast } from "@/components/shared/Toast";
+import { DialogFrame } from "@/components/shared/Dialogs";
 import { useSession } from "@/components/shared/AuthContext";
 import { readPersistedSession, readRememberedEmail, writeRememberedEmail } from "@/lib/session-store";
 import { authApi, LIVE_MODE } from "@/lib/services";
@@ -178,6 +179,37 @@ function validateRequired(value: string, fieldName: string): string | null {
   return null;
 }
 
+function friendlyAuthError(error: unknown, action: "sign in" | "create your account"): string {
+  const status = typeof error === "object" && error !== null && "status" in error ? Number(error.status) : 0;
+  if (status === 401) return "We couldn't sign you in. Check your email and password, then try again.";
+  if (status === 409) return "An account with this email already exists. Try signing in instead.";
+  if (status === 429) return "Too many attempts. Please wait a moment and try again.";
+  if (status >= 500 || status === 0) return `We couldn't ${action} right now. Please try again in a moment.`;
+  return `We couldn't ${action}. Please check your details and try again.`;
+}
+
+function AuthErrorDialog({ message, onClose }: { message: string | null; onClose: () => void }) {
+  if (!message) return null;
+  return (
+    <DialogFrame onClose={onClose} ariaLabel="Sign-in problem">
+      <div className="p-6 sm:p-8">
+        <div className="grid size-12 place-items-center rounded-full bg-[#fff0f0] text-[#c1121f]">
+          <AlertTriangle size={24} aria-hidden="true" />
+        </div>
+        <h2 className="mt-4 font-display text-2xl font-extrabold text-obligon-navy">Something went wrong</h2>
+        <p className="mt-2 text-sm leading-6 text-obligon-text">{message}</p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-6 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white shadow-green hover:bg-obligon-green/90"
+        >
+          Close
+        </button>
+      </div>
+    </DialogFrame>
+  );
+}
+
 function LoginForm() {
   const router = useRouter();
   const { login, status, user } = useSession();
@@ -191,6 +223,7 @@ function LoginForm() {
   const [loginErrors, setLoginErrors] = React.useState<Record<string, string>>({});
   const [loginSubmitting, setLoginSubmitting] = React.useState(false);
   const [loginServerError, setLoginServerError] = React.useState<string | null>(null);
+  const [loginDialogError, setLoginDialogError] = React.useState<string | null>(null);
   const [showPassword, setShowPassword] = React.useState(false);
 
   React.useEffect(() => {
@@ -275,8 +308,9 @@ function LoginForm() {
 
       router.push(destination);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Invalid credentials. Please try again.";
+      const message = friendlyAuthError(err, "sign in");
       setLoginServerError(message);
+      setLoginDialogError(message);
       toastError(message);
     } finally {
       setLoginSubmitting(false);
@@ -286,7 +320,9 @@ function LoginForm() {
   const isLoginDisabled = loginSubmitting || !loginForm.email || !loginForm.password;
 
   return (
-    <form onSubmit={handleLoginSubmit} className="mx-auto w-full max-w-[480px] rounded-2xl border border-obligon-border bg-white p-6 sm:p-8 shadow-card" noValidate>
+    <>
+      <AuthErrorDialog message={loginDialogError} onClose={() => setLoginDialogError(null)} />
+      <form onSubmit={handleLoginSubmit} className="mx-auto w-full max-w-[480px] rounded-2xl border border-obligon-border bg-white p-6 sm:p-8 shadow-card" noValidate>
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-display text-2xl font-bold text-obligon-navy">Welcome back</h2>
@@ -430,7 +466,8 @@ function LoginForm() {
           </p>
         </div>
       </div>
-    </form>
+      </form>
+    </>
   );
 }
 
@@ -447,6 +484,7 @@ function SignupForm() {
   const [signupErrors, setSignupErrors] = React.useState<Record<string, string>>({});
   const [signupSubmitting, setSignupSubmitting] = React.useState(false);
   const [signupServerError, setSignupServerError] = React.useState<string | null>(null);
+  const [signupDialogError, setSignupDialogError] = React.useState<string | null>(null);
 
   const [selectedCapabilities, setSelectedCapabilities] = React.useState<string[]>([
     "PMS Petrol",
@@ -575,8 +613,9 @@ function SignupForm() {
 
       router.push(`${routes.authSuccess}?redirect=${destination}`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Registration failed. Please try again.";
+      const message = friendlyAuthError(err, "create your account");
       setSignupServerError(message);
+      setSignupDialogError(message);
       toastError(message);
     } finally {
       setSignupSubmitting(false);
@@ -584,7 +623,9 @@ function SignupForm() {
   };
 
   return (
-    <form id="signup" onSubmit={handleSignupSubmit} className="mx-auto w-full max-w-[680px] rounded-2xl border border-obligon-border bg-white p-6 sm:p-8 shadow-card" noValidate>
+    <>
+      <AuthErrorDialog message={signupDialogError} onClose={() => setSignupDialogError(null)} />
+      <form id="signup" onSubmit={handleSignupSubmit} className="mx-auto w-full max-w-[680px] rounded-2xl border border-obligon-border bg-white p-6 sm:p-8 shadow-card" noValidate>
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[1.2px] text-obligon-green">Onboard to Obligon</p>
@@ -812,7 +853,8 @@ function SignupForm() {
           Sign In Here
         </Link>
       </p>
-    </form>
+      </form>
+    </>
   );
 }
 
