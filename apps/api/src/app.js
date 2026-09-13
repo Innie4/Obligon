@@ -21,7 +21,11 @@ export function createApp() {
 
   app.set("trust proxy", 1);
   app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
-  const origins = env.CORS_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean);
+  const origins = [...new Set([
+    ...env.CORS_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean),
+    env.APP_URL.replace(/\/$/, ""),
+    "https://obligon.vercel.app"
+  ])];
   app.use(cors({ origin: origins.length ? origins : true, credentials: true }));
 
   // Raw body capture for webhook signature verification (mounted before json parser)
