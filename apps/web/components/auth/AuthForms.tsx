@@ -608,7 +608,7 @@ function SignupForm() {
         topRole === "company"
           ? routes.companyDashboard
           : topRole === "partner"
-            ? partnerType === "mechanic" ? "/mechanic" : routes.dashboard
+            ? routes.dashboard
             : routes.customerDashboard;
 
       router.push(`${routes.authSuccess}?redirect=${destination}`);

@@ -19,6 +19,18 @@ router.use(requireAuth, (req, _res, next) => {
   next();
 });
 
+const mechanicAllowedPaths = new Set([
+  "/overview", "/overview/range", "/transactions", "/transactions/export",
+  "/reports", "/reports/export", "/staff", "/disputes", "/notifications", "/settings"
+]);
+
+router.use((req, _res, next) => {
+  if (req.user.role === "mechanic" && !mechanicAllowedPaths.has(req.path)) {
+    return next(forbidden("This partner feature is not available for mechanic accounts"));
+  }
+  next();
+});
+
 const partnerOrgId = (req) => req.user.orgId;
 
 // ============ OVERVIEW ============

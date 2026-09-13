@@ -37,13 +37,15 @@ export function DashboardHeader() {
         </label>
 
         <div className="ml-auto flex items-center gap-4">
-          <button
-            className="hidden h-8 items-center gap-1.5 rounded-lg bg-obligon-green px-4 text-xs font-bold text-white shadow-sm sm:inline-flex"
-            type="button"
-          >
-            <Plus size={14} />
-            {page.primaryAction ?? "Add Partner"}
-          </button>
+          {user?.role !== "mechanic" ? (
+            <button
+              className="hidden h-8 items-center gap-1.5 rounded-lg bg-obligon-green px-4 text-xs font-bold text-white shadow-sm sm:inline-flex"
+              type="button"
+            >
+              <Plus size={14} />
+              {page.primaryAction ?? "Add Partner"}
+            </button>
+          ) : null}
           <div className="flex h-8 items-center gap-3 border-l border-[#d7d8e4] pl-4">
             <Link
               href="/dashboard/notifications"

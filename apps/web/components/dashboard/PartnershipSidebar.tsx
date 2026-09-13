@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { assets } from "@/components/landing/assets";
 import { dashboardNav, type DashboardIcon, type DashboardPageKey } from "@/lib/mock/dashboard-data";
+import { useSession } from "@/components/shared/AuthContext";
 
 const iconMap = {
   overview: LayoutDashboard,
@@ -86,6 +87,7 @@ function isActive(pathname: string, nav: NavItem) {
 export function PartnershipSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { user } = useSession();
   const [logoutOpen, setLogoutOpen] = React.useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(
@@ -95,6 +97,15 @@ export function PartnershipSidebar() {
 
   const toggleGroup = (key: string) =>
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  const mechanicKeys = new Set<DashboardPageKey>([
+    "overview", "transactions", "reports", "staff", "disputes", "notifications", "settings"
+  ]);
+  const visible = (nav: NavItem) => user?.role !== "mechanic" || mechanicKeys.has(nav.key);
+  const visiblePrimaryItems = primaryItems.filter(visible);
+  const visibleGroups = navGroups
+    .map((group) => ({ ...group, items: group.items.filter(visible) }))
+    .filter((group) => group.items.length > 0);
 
   const renderLink = (nav: NavItem) => {
     const Icon = iconMap[
@@ -126,9 +137,9 @@ export function PartnershipSidebar() {
 
       <nav className="flex-1 overflow-y-auto px-5 pb-5">
         <div className="space-y-1">
-          {primaryItems.map(renderLink)}
+          {visiblePrimaryItems.map(renderLink)}
 
-          {navGroups.map((group) => {
+          {visibleGroups.map((group) => {
             const GroupIcon = group.icon;
             const open = openGroups[group.key];
             const groupActive = group.items.some((nav) => isActive(pathname, nav));

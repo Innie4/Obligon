@@ -9,7 +9,7 @@ type PartnershipShellProps = {
 
 export function PartnershipShell({ children, allowedRoles = ["partner"] }: PartnershipShellProps) {
   return (
-    <AuthGuard allowedRoles={allowedRoles}>
+    <AuthGuard allowedRoles={allowedRoles.length === 1 && allowedRoles[0] === "partner" ? ["partner", "mechanic"] : allowedRoles}>
       <main className="min-h-screen bg-[#f7f7fd] text-obligon-navy">
         <PartnershipSidebar />
         <div className="lg:pl-[280px]">
