@@ -109,6 +109,9 @@ function CompanySidebar() {
 function CompanyTopbar({ onOpenMenu }: { onOpenMenu: () => void }) {
   const pathname = usePathname();
   const page = pageCopy[activePage(pathname)];
+  const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const filteredNav = companyNav.filter((item) => item.label.toLowerCase().includes(query.trim().toLowerCase()));
 
   return (
     <header className="sticky top-0 z-30 border-b border-[#dfe5ec] bg-[#f8fafc]/95 backdrop-blur">
@@ -116,10 +119,57 @@ function CompanyTopbar({ onOpenMenu }: { onOpenMenu: () => void }) {
         <button type="button" onClick={onOpenMenu} className="grid size-10 place-items-center rounded-lg border border-[#dfe5ec] bg-white lg:hidden" aria-label="Open company menu">
           <Menu size={20} />
         </button>
-        <label className="hidden h-10 w-full max-w-[360px] items-center gap-3 rounded-lg border border-[#dfe5ec] bg-white px-3 md:flex">
-          <Search size={16} className="text-[#808793]" />
-          <input className="w-full bg-transparent text-sm outline-none placeholder:text-[#808793]" placeholder={page.search ?? "Search Obligon LTD..."} />
-        </label>
+        <div
+          className="relative hidden w-full max-w-[360px] md:block"
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setSearchOpen(false);
+          }}
+        >
+          <label className="flex h-10 w-full items-center gap-3 rounded-lg border border-[#dfe5ec] bg-white px-3">
+            <Search size={16} className="text-[#808793]" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onFocus={() => setSearchOpen(true)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  setSearchOpen(false);
+                  event.currentTarget.blur();
+                }
+              }}
+              className="w-full bg-transparent text-sm outline-none placeholder:text-[#808793]"
+              placeholder={page.search ?? "Search Obligon LTD..."}
+              role="combobox"
+              aria-expanded={searchOpen}
+              aria-controls="company-search-results"
+              aria-autocomplete="list"
+              aria-label={page.search ?? "Search Obligon LTD..."}
+            />
+          </label>
+          {searchOpen ? (
+            <ul id="company-search-results" role="listbox" className="absolute left-0 right-0 top-[calc(100%+6px)] z-40 max-h-72 overflow-y-auto rounded-lg border border-[#dfe5ec] bg-white p-1.5 shadow-hero">
+              {filteredNav.length ? (
+                filteredNav.map((item) => (
+                  <li key={item.key} role="option" aria-selected={activePage(pathname) === item.key}>
+                    <Link
+                      href={item.href}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        setSearchOpen(false);
+                        setQuery("");
+                      }}
+                      className={`block rounded-md px-3 py-2 text-sm font-bold ${activePage(pathname) === item.key ? "bg-[#f2f6f2] text-obligon-green" : "text-[#4f5663] hover:bg-[#f2f6f2]"}`}
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                ))
+              ) : (
+                <li className="px-3 py-2 text-sm font-medium text-obligon-text" role="status">No matching sections.</li>
+              )}
+            </ul>
+          ) : null}
+        </div>
         <div className="ml-auto flex items-center gap-4">
           <Link href="/company/notifications" aria-label="Notifications" className="relative grid size-10 place-items-center rounded-lg border border-[#dfe5ec] bg-white">
             <Bell size={18} />

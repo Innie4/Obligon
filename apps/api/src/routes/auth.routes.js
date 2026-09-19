@@ -407,7 +407,7 @@ router.post("/verify-phone/confirm", requireAuth, asyncHandler(async (req, res) 
 router.post("/mfa/setup", requireAuth, asyncHandler(async (req, res) => {
   const setup = await generateMfaSetup(req.user.email);
   await q("UPDATE users SET two_factor_secret = $2 WHERE id = $1", [req.user.id, setup.secret]);
-  res.json({ otpauth: setup.otpauth, qrDataUrl: setup.qrDataUrl, backupCodes: setup.backupCodes });
+  res.json({ secret: setup.secret, otpauth: setup.otpauth, qrDataUrl: setup.qrDataUrl, backupCodes: setup.backupCodes });
 }));
 
 router.post("/mfa/enable", requireAuth, asyncHandler(async (req, res) => {

@@ -20,8 +20,8 @@ const schema = z.object({
     .transform((v) => v === "true"),
 
   // Auth
-  JWT_ACCESS_SECRET: z.string().min(16).default(process.env.JWT_ACCESS_SECRET || "default-access-secret-change-me"),
-  JWT_REFRESH_SECRET: z.string().min(16).default(process.env.JWT_REFRESH_SECRET || "default-refresh-secret-change-me"),
+  JWT_ACCESS_SECRET: z.string().min(16).default("dev-access-secret-change-me-please"),
+  JWT_REFRESH_SECRET: z.string().min(16).default("dev-refresh-secret-change-me-please"),
   ACCESS_TOKEN_TTL: z.string().default("15m"),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().default(7),
   REMEMBER_REFRESH_TTL_DAYS: z.coerce.number().default(30),
@@ -83,7 +83,7 @@ export function configurationIssues() {
   const issues = [];
   if (!env.DATABASE_URL) issues.push("DATABASE_URL is required");
   if (isProd && (env.JWT_ACCESS_SECRET.startsWith("dev-") || env.JWT_REFRESH_SECRET.startsWith("dev-"))) {
-    console.warn("JWT_ACCESS_SECRET and JWT_REFRESH_SECRET should be replaced with unique production secrets");
+    issues.push("JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be replaced with unique production secrets");
   }
   if (isProd && !env.SUPABASE_AUTH_ENABLED) issues.push("SUPABASE_AUTH_ENABLED=true is required in production");
   if (isProd && env.SUPABASE_AUTH_ENABLED && (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY || !env.SUPABASE_ANON_KEY)) {

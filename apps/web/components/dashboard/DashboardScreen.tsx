@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   ArrowRight,
   BarChart3,
+  Bell,
   Check,
   CheckCircle2,
   CircleDollarSign,
@@ -628,6 +629,151 @@ function StationProfilePage() {
   );
 }
 
+function TransactionsPage() {
+  const { success: toastSuccess } = useToast();
+  const [query, setQuery] = React.useState("");
+  const filteredRows = transactionRows.filter((row) => row.cells.join(" ").toLowerCase().includes(query.trim().toLowerCase()));
+
+  return (
+    <DashboardCanvas>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
+        <div>
+          <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Fleet Transactions</h1>
+          <p className="mt-1 text-sm text-obligon-text">Every card-authorized fuel dispense across your partner network.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => toastSuccess("Transaction ledger exported as a local summary.")}
+          className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#d7d8e4] bg-white px-5 text-sm font-extrabold text-obligon-navy hover:bg-[#f7f7fd] transition"
+        >
+          <Download size={16} />
+          Export Ledger
+        </button>
+      </div>
+      <label className="mb-6 flex h-11 max-w-sm items-center gap-2 rounded-xl border border-[#d7d8e4] bg-white px-3">
+        <CreditCard size={16} className="text-obligon-text" />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by fleet, card, or amount..."
+          aria-label="Search transactions"
+          className="w-full bg-transparent text-sm outline-none"
+        />
+      </label>
+      {filteredRows.length ? (
+        <DataTable
+          title="Card Authorizations"
+          columns={["Date & Time", "Fleet / Vehicle", "Card", "Amount (₦)"]}
+          rows={filteredRows}
+          actionLabel="View Receipt"
+          onAction={(row) => toastSuccess(`Opened receipt for ${row?.cells[0] ?? "transaction"}.`)}
+        />
+      ) : (
+        <p className="rounded-xl border border-dashed border-[#d7d8e4] bg-white p-8 text-center font-bold text-obligon-text">No transactions match that search.</p>
+      )}
+    </DashboardCanvas>
+  );
+}
+
+function ReportsPage() {
+  const { success: toastSuccess } = useToast();
+
+  return (
+    <DashboardCanvas>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
+        <div>
+          <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Analytics &amp; Fleet Reports</h1>
+          <p className="mt-1 text-sm text-obligon-text">Consumption, spend, and routing insight across enrolled fleet partners.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => toastSuccess("Report exported as a local summary file.")}
+          className="inline-flex h-11 items-center gap-2 rounded-xl bg-obligon-green px-5 text-sm font-extrabold text-white shadow-green hover:bg-obligon-green/90 transition"
+        >
+          <Download size={16} />
+          Export Report
+        </button>
+      </div>
+      <div className="mb-8 grid gap-6 sm:grid-cols-3">
+        <SmallMetric metric={overviewMetrics[0]} icon={<BarChart3 size={20} />} />
+        <SmallMetric metric={overviewMetrics[1]} icon={<CircleDollarSign size={21} />} />
+        <SmallMetric metric={overviewMetrics[2]} icon={<Clock3 size={21} />} />
+      </div>
+      <DataTable
+        title="Fleet Consumption Report"
+        subtitle="Litres dispensed and spend by enrolled fleet account."
+        columns={["Fleet Account", "Primary Route", "Litres (L)", "Spend (₦)"]}
+        rows={reportRows}
+        actionLabel="View Fleet"
+        onAction={(row) => toastSuccess(`Opened fleet report for ${row?.cells[0]?.split("\n")[0] ?? "fleet"}.`)}
+      />
+    </DashboardCanvas>
+  );
+}
+
+function NotificationsPage() {
+  const { success: toastSuccess } = useToast();
+  const [readIds, setReadIds] = React.useState<Set<string>>(new Set());
+  const allIds = notificationGroups.flatMap((group, gi) => group.items.map((_, ii) => `${gi}-${ii}`));
+  const allRead = readIds.size >= allIds.length;
+
+  return (
+    <DashboardCanvas>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
+        <div>
+          <h1 className="font-display text-3xl font-extrabold text-obligon-navy">System Notifications</h1>
+          <p className="mt-1 text-sm text-obligon-text">Finance, support, security, and platform alerts for your station network.</p>
+        </div>
+        <button
+          type="button"
+          disabled={allRead}
+          onClick={() => {
+            setReadIds(new Set(allIds));
+            toastSuccess("All notifications marked as read.");
+          }}
+          className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#d7d8e4] bg-white px-5 text-sm font-extrabold text-obligon-navy hover:bg-[#f7f7fd] transition disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Check size={16} />
+          Mark all as read
+        </button>
+      </div>
+      <div className="space-y-8">
+        {notificationGroups.map((group, gi) => (
+          <section key={group.label}>
+            <h2 className="mb-3 text-xs font-extrabold uppercase tracking-[1px] text-obligon-text">{group.label}</h2>
+            <div className="divide-y divide-[#ececf5] overflow-hidden rounded-xl border border-[#d7d8e4] bg-white shadow-sm">
+              {group.items.map(([title, time, description], ii) => {
+                const id = `${gi}-${ii}`;
+                const isRead = readIds.has(id);
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setReadIds((prev) => new Set(prev).add(id))}
+                    className="flex w-full items-start gap-4 px-6 py-5 text-left hover:bg-[#fbfbff] transition"
+                  >
+                    <span className={`mt-1 grid size-9 shrink-0 place-items-center rounded-xl ${isRead ? "bg-[#eef0f6] text-[#737582]" : "bg-[#ecfbd7] text-obligon-green"}`}>
+                      <Bell size={16} />
+                    </span>
+                    <span className="flex-1">
+                      <span className="flex items-center justify-between gap-3">
+                        <span className={`text-sm ${isRead ? "font-bold text-obligon-text" : "font-extrabold text-obligon-navy"}`}>{title}</span>
+                        <span className="shrink-0 text-xs font-bold text-obligon-text">{time}</span>
+                      </span>
+                      <span className="mt-1 block text-xs text-obligon-text">{description}</span>
+                    </span>
+                    {!isRead ? <span className="mt-1.5 size-2 shrink-0 rounded-full bg-obligon-green" /> : null}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+      </div>
+    </DashboardCanvas>
+  );
+}
+
 function StaffPage() {
   const { success: toastSuccess, error: toastError } = useToast();
 
@@ -660,11 +806,31 @@ export function DashboardScreen({ pageKey }: { pageKey: DashboardPageKey }) {
   const { success: toastSuccess, error: toastError } = useToast();
   const [payoutModalOpen, setPayoutModalOpen] = React.useState(false);
   const [payoutAmount, setPayoutAmount] = React.useState("1500000");
+  const [payoutSubmitting, setPayoutSubmitting] = React.useState(false);
+  const [payoutFormError, setPayoutFormError] = React.useState<string | null>(null);
 
-  function handlePayoutSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function closePayoutModal() {
     setPayoutModalOpen(false);
-    toastSuccess(`Payout request for ₦${Number(payoutAmount).toLocaleString()} submitted to bank.`);
+    setPayoutFormError(null);
+  }
+
+  async function handlePayoutSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const amount = Number(payoutAmount);
+    if (!payoutAmount.trim() || Number.isNaN(amount) || amount <= 0) {
+      setPayoutFormError("Enter a payout amount greater than ₦0.");
+      return;
+    }
+    setPayoutFormError(null);
+    setPayoutSubmitting(true);
+    try {
+      setPayoutModalOpen(false);
+      toastSuccess(`Payout request for ₦${amount.toLocaleString()} submitted to bank. This is a local session request; no funds have moved.`);
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Could not submit the payout request. Please try again.");
+    } finally {
+      setPayoutSubmitting(false);
+    }
   }
 
   const pages: Record<DashboardPageKey, React.ReactNode> = {
@@ -676,10 +842,10 @@ export function DashboardScreen({ pageKey }: { pageKey: DashboardPageKey }) {
     profile: <StationProfilePage />,
     station: <StationProfilePage />,
     staff: <StaffPage />,
-    transactions: <OverviewPage onOpenPayout={() => setPayoutModalOpen(true)} />,
-    reports: <OverviewPage onOpenPayout={() => setPayoutModalOpen(true)} />,
-    verification: <OverviewPage onOpenPayout={() => setPayoutModalOpen(true)} />,
-    notifications: <OverviewPage onOpenPayout={() => setPayoutModalOpen(true)} />,
+    transactions: <TransactionsPage />,
+    reports: <ReportsPage />,
+    verification: <POSTerminalPage />,
+    notifications: <NotificationsPage />,
     settings: <StationProfilePage />
   };
 
@@ -692,6 +858,10 @@ export function DashboardScreen({ pageKey }: { pageKey: DashboardPageKey }) {
           <form onSubmit={handlePayoutSubmit} className="w-full max-w-md rounded-2xl bg-white p-6 shadow-hero">
             <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Request Settlement Payout</h2>
             <p className="mt-1 text-sm text-obligon-text">Funds will be disbursed to GTBank NUBAN ending in 2014.</p>
+
+            {payoutFormError ? (
+              <p role="alert" className="mt-4 rounded-xl border border-[#f3c6cc] bg-[#fff4f4] px-4 py-3 text-sm font-bold text-[#9f1027]">{payoutFormError}</p>
+            ) : null}
 
             <label className="mt-5 block">
               <span className="text-xs font-extrabold uppercase text-obligon-text">Payout Amount (₦)</span>
@@ -707,16 +877,17 @@ export function DashboardScreen({ pageKey }: { pageKey: DashboardPageKey }) {
             <div className="mt-6 flex gap-3">
               <button
                 type="button"
-                onClick={() => setPayoutModalOpen(false)}
+                onClick={closePayoutModal}
                 className="h-11 flex-1 rounded-xl border border-[#071853] text-sm font-bold"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="h-11 flex-1 rounded-xl bg-obligon-green text-sm font-extrabold text-white shadow-green"
+                disabled={payoutSubmitting}
+                className="h-11 flex-1 rounded-xl bg-obligon-green text-sm font-extrabold text-white shadow-green flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Confirm Payout
+                {payoutSubmitting ? <Loader2 size={16} className="animate-spin" /> : "Confirm Payout"}
               </button>
             </div>
           </form>

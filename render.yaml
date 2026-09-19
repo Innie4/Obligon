@@ -57,7 +57,7 @@ services:
       - key: STRICT_PROVIDERS
         value: true
       - key: ENABLE_SCHEDULER
-        value: false
+        value: true
       - key: SUDO_BASE_URL
         value: https://api.sandbox.sudo.africa/v1
       - key: SUDO_SECRET_API_KEY

@@ -34,10 +34,9 @@ import {
 import { useRouter } from "next/navigation";
 import {
   type CustomerPageKey,
-  type CustomerTone,
-  type CustomerTransaction
+  type CustomerTone
 } from "@/lib/mock/customer-data";
-import { api, mutationsApi } from "@/lib/services";
+import { api, mutationsApi, type CustomerTransaction } from "@/lib/services";
 import { AsyncBoundary } from "@/components/shared/States";
 import { useAsync } from "@/components/shared/useAsync";
 import { useSession } from "@/components/shared/AuthContext";
@@ -190,11 +189,12 @@ function greetingHour() {
   return "Good evening";
 }
 
-function OverviewPage({ walletBalance }: { walletBalance: number }) {
+function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
   const { user } = useSession();
   const router = useRouter();
-  const { status, data: metrics, error, reload } = useAsync(() => api.getCustomerOverviewMetrics());
+  const { status, data: metrics, error, reload } = useAsync(() => api.getCustomerOverviewMetrics(), [balanceRefreshKey]);
   const firstName = user?.name?.split(" ")[0] ?? "Driver";
+  const totalBalance = metricValue(metrics, "Total Account Balance", "₦0.00");
   const mtdSpend = metricValue(metrics, "MTD Spend", "₦215,600");
   const budgetUsage = metricValue(metrics, "Budget Usage", "43%");
   const budgetLimit = metricHelper(metrics, "Budget Usage") ?? "₦500,000 Limit";
@@ -228,7 +228,7 @@ function OverviewPage({ walletBalance }: { walletBalance: number }) {
               <WalletCards size={22} className="text-obligon-green" />
             </div>
             <p className="mt-4 font-display text-[40px] font-extrabold leading-none text-obligon-navy lg:text-[56px]">
-              ₦{walletBalance.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+              {totalBalance}
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
               <span className="rounded-xl border border-[#b6d894] bg-[#e8fbd7] px-4 py-3">
@@ -564,14 +564,20 @@ Support: support@obligon.energy | +234 800 OBLIGON
                 <span className="grid size-12 place-items-center rounded-full bg-[#eef3ff] text-obligon-blue">
                   <Receipt size={24} />
                 </span>
-                <span className="rounded-full bg-[#e8fbd7] px-3 py-1 text-xs font-extrabold text-obligon-green">
-                  APPROVED
+                <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${
+                  selectedTxn.status === "failed" || selectedTxn.status === "disputed"
+                    ? "bg-[#ffe8e8] text-[#c1121f]"
+                    : selectedTxn.status === "pending"
+                      ? "bg-[#fff3d8] text-[#9a6300]"
+                      : "bg-[#e8fbd7] text-obligon-green"
+                }`}>
+                  {selectedTxn.status ? selectedTxn.status.toUpperCase() : "APPROVED"}
                 </span>
               </div>
               <h2 className="mt-4 font-display text-3xl font-extrabold text-obligon-navy">Transaction Receipt</h2>
               <p className="mt-1 text-xs text-obligon-text">
                 Reference: <span className="font-mono font-extrabold text-obligon-navy">
-                  TXN-{Math.abs(hashString(selectedTxn.station + (selectedTxn.time ?? ""))).toString().slice(0, 8)}
+                  {selectedTxn.reference ?? `TXN-${Math.abs(hashString(selectedTxn.station + (selectedTxn.time ?? ""))).toString().slice(0, 8)}`}
                 </span>
               </p>
 
@@ -633,29 +639,49 @@ function hashString(input: string) {
   return hash;
 }
 
+interface CustomerCard {
+  id: string;
+  label?: string;
+  holder?: string;
+  maskedPan?: string;
+  brand?: string;
+  expiry?: string;
+  status: string;
+  dailyLimitLabel?: string;
+  monthlyLimitLabel?: string;
+  balanceLabel?: string;
+  spendTodayLabel?: string;
+}
+
 function CardPage({
   onModal,
-  frozen,
-  blocked
+  refreshKey,
+  onCardChange
 }: {
   onModal: (modal: CustomerModalType) => void;
-  frozen: boolean;
-  blocked: boolean;
+  refreshKey: number;
+  onCardChange?: (card: CustomerCard | null) => void;
 }) {
   const [hasCard, setHasCard] = React.useState<boolean | null>(null);
+  const [card, setCard] = React.useState<CustomerCard | null>(null);
   const [cardRequest, setCardRequest] = React.useState<{ status: string } | null>(null);
   const [requestingCard, setRequestingCard] = React.useState(false);
   const { success: toastSuccess, error: toastError } = useToast();
+  const onCardChangeRef = React.useRef(onCardChange);
+  onCardChangeRef.current = onCardChange;
 
   React.useEffect(() => {
     void Promise.all([
-      api.request<{ card: unknown | null }>("/api/customer/card"),
+      api.request<{ card: CustomerCard | null }>("/api/customer/card"),
       api.request<{ request: { status: string } | null }>("/api/customer/card-request")
     ]).then(([cardData, requestData]) => {
       setHasCard(Boolean(cardData.card));
+      setCard(cardData.card);
+      onCardChangeRef.current?.(cardData.card);
       setCardRequest(requestData.request);
     }).catch(() => setHasCard(null));
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]);
 
   async function requestCard() {
     setRequestingCard(true);
@@ -669,6 +695,9 @@ function CardPage({
       setRequestingCard(false);
     }
   }
+
+  const frozen = card?.status === "frozen";
+  const blocked = card?.status === "blocked";
 
   const status = blocked
     ? { label: "BLOCKED", className: "bg-[#ffe8e8] px-3 py-1 text-xs font-extrabold text-[#c1121f]" }
@@ -724,15 +753,15 @@ function CardPage({
               <span className={`rounded-full ${status.className}`}>{status.label}</span>
             </div>
             <div className="mt-8">
-              <p className="font-mono text-2xl tracking-[4px] text-white/90">•••• •••• •••• 4092</p>
+              <p className="font-mono text-2xl tracking-[4px] text-white/90">{card?.maskedPan ?? "•••• •••• •••• ••••"}</p>
               <div className="mt-8 grid gap-4 sm:grid-cols-2">
                 <div>
                   <p className="text-[10px] uppercase font-bold tracking-wider text-white/60">CARDHOLDER NAME</p>
-                  <p className="font-extrabold text-sm text-white">Obligon LTD Enterprise Fleet</p>
+                  <p className="font-extrabold text-sm text-white">{card?.holder ?? "—"}</p>
                 </div>
                 <div>
                   <p className="text-[10px] uppercase font-bold tracking-wider text-white/60">DAILY SPEND LIMIT</p>
-                  <p className="font-extrabold text-sm text-obligon-lime">₦150,000.00</p>
+                  <p className="font-extrabold text-sm text-obligon-lime">{card?.dailyLimitLabel ?? "—"}</p>
                 </div>
               </div>
             </div>
@@ -770,14 +799,16 @@ function CardPage({
 
 function WalletPage({
   onModal,
-  walletBalance
+  balanceRefreshKey
 }: {
   onModal: (modal: CustomerModalType) => void;
-  walletBalance: number;
+  balanceRefreshKey: number;
 }) {
   const router = useRouter();
   const { status: topUpsStatus, data: desktopTopUps, error: topUpsError, reload: reloadTopUps } = useAsync(() => api.getCustomerDesktopTopUps());
   const { data: topUpHistory } = useAsync(() => api.getCustomerTopUpHistory());
+  const { data: overviewMetrics } = useAsync(() => api.getCustomerOverviewMetrics(), [balanceRefreshKey]);
+  const totalBalance = metricValue(overviewMetrics, "Total Account Balance", "₦0.00");
 
   return (
     <AsyncBoundary
@@ -811,7 +842,7 @@ function WalletPage({
             </span>
           </div>
           <p className="mt-3 font-display text-5xl font-extrabold text-obligon-navy">
-            ₦{walletBalance.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+            {totalBalance}
           </p>
           <p className="mt-3 text-sm font-bold text-obligon-green">
             Auto-recharges ₦50,000 when balance falls below ₦10,000
@@ -1389,19 +1420,23 @@ function NotificationsPage() {
 export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
   const [modal, setModal] = React.useState<CustomerModalType>(null);
   const [biometrics, setBiometrics] = React.useState(false);
-  const [cardFrozen, setCardFrozen] = React.useState(false);
-  const [cardBlocked, setCardBlocked] = React.useState(false);
-  const [walletBalance, setWalletBalance] = React.useState(485000);
+  const [cardStatus, setCardStatus] = React.useState<string | null>(null);
+  const [cardRefreshKey, setCardRefreshKey] = React.useState(0);
+  const [balanceRefreshKey, setBalanceRefreshKey] = React.useState(0);
 
-  const handleTopUpSuccess = (amt: number) => {
-    setWalletBalance((prev) => prev + amt);
+  const handleTopUpSuccess = () => {
+    setBalanceRefreshKey((key) => key + 1);
+  };
+
+  const handleCardStatusChange = () => {
+    setCardRefreshKey((key) => key + 1);
   };
 
   const pages: Record<CustomerPageKey, React.ReactNode> = {
-    overview: <OverviewPage walletBalance={walletBalance} />,
+    overview: <OverviewPage balanceRefreshKey={balanceRefreshKey} />,
     transactions: <TransactionsPage />,
-    card: <CardPage onModal={setModal} frozen={cardFrozen} blocked={cardBlocked} />,
-    wallet: <WalletPage onModal={setModal} walletBalance={walletBalance} />,
+    card: <CardPage onModal={setModal} refreshKey={cardRefreshKey} onCardChange={(card) => setCardStatus(card?.status ?? null)} />,
+    wallet: <WalletPage onModal={setModal} balanceRefreshKey={balanceRefreshKey} />,
     stations: <StationsPage />,
     support: <SupportPage onModal={setModal} />,
     transactionDetail: <TransactionsPage />,
@@ -1418,10 +1453,10 @@ export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
         onClose={() => setModal(null)}
         biometrics={biometrics}
         onBiometricsChange={setBiometrics}
-        cardFrozen={cardFrozen}
-        onCardFrozenChange={setCardFrozen}
-        cardBlocked={cardBlocked}
-        onCardBlockedChange={setCardBlocked}
+        cardFrozen={cardStatus === "frozen"}
+        onCardFrozenChange={handleCardStatusChange}
+        cardBlocked={cardStatus === "blocked"}
+        onCardBlockedChange={handleCardStatusChange}
         onTopUpSuccess={handleTopUpSuccess}
       />
     </>

@@ -40,6 +40,7 @@ export function AdminModals({ modal, onClose, selectedApplicationId, selectedDis
   if (modal === "fleet") return <ProvisionFleetModal onClose={onClose} onSuccess={onFleetProvisioned} />;
   if (modal === "resolve") return <ResolveDisputeModal onClose={onClose} onSuccess={onDisputeResolved} />;
   if (modal === "partnerReview") return <PartnerReviewModal onClose={onClose} />;
+  if (modal === "addStaff") return <AddStaffModal onClose={onClose} />;
   return <PartnerReviewModal onClose={onClose} applicationId={selectedApplicationId} />;
 }
 
@@ -420,30 +421,83 @@ function AddStaffModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [role, setRole] = React.useState("Operations Officer");
+  const [submitting, setSubmitting] = React.useState(false);
+  const [success, setSuccess] = React.useState(false);
+  const [formError, setFormError] = React.useState<string | null>(null);
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    toastSuccess(`Staff member ${name} added.`);
-    onClose();
+    if (!name.trim() || !email.trim()) {
+      setFormError("Full name and official email are required.");
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+      setFormError("Enter a valid email address.");
+      return;
+    }
+    setFormError(null);
+    setSubmitting(true);
+    try {
+      setSuccess(true);
+      toastSuccess(`Staff member ${name} added.`);
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Could not add staff member. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
     <ModalShell onClose={onClose} label="Add Staff Member">
-      <form onSubmit={submit} className="p-6 sm:p-8 space-y-4">
-        <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Add Internal Staff</h2>
-        <label className="block">
-          <span className="text-xs font-extrabold uppercase text-obligon-text">Full Name</span>
-          <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1.5 h-12 w-full rounded-xl border border-[#c8ccdb] px-4 font-bold outline-none focus:border-obligon-green" required />
-        </label>
-        <label className="block">
-          <span className="text-xs font-extrabold uppercase text-obligon-text">Official Email</span>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" className="mt-1.5 h-12 w-full rounded-xl border border-[#c8ccdb] px-4 font-bold outline-none focus:border-obligon-green" required />
-        </label>
-        <div className="flex justify-end gap-3 pt-4 border-t border-[#eef1fb]">
-          <button type="button" onClick={onClose} className="h-11 px-6 rounded-xl border text-sm font-extrabold">Cancel</button>
-          <button type="submit" className="h-11 px-6 rounded-xl bg-obligon-green text-sm font-extrabold text-white">Save Staff</button>
+      {success ? (
+        <div className="p-8 text-center">
+          <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
+            <Check size={32} />
+          </span>
+          <h2 className="mt-5 font-display text-3xl font-extrabold text-obligon-navy">Staff Member Added</h2>
+          <p className="mt-2 text-sm text-obligon-text">
+            <strong>{name}</strong> was added as <strong>{role}</strong>. This session-only record is not yet persisted to a staff directory service.
+          </p>
+          <button type="button" onClick={onClose} className="mt-6 h-12 w-full rounded-xl bg-obligon-green font-extrabold text-white">
+            Done
+          </button>
         </div>
-      </form>
+      ) : (
+        <form onSubmit={submit} className="p-6 sm:p-8 space-y-4">
+          <div className="flex items-center justify-between border-b border-[#eef1fb] pb-4">
+            <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Add Internal Staff</h2>
+            <button className="grid size-9 place-items-center rounded-lg bg-[#f3f6fa]" onClick={onClose} type="button">
+              <X size={20} />
+            </button>
+          </div>
+          {formError ? (
+            <p role="alert" className="rounded-xl border border-[#f3c6cc] bg-[#fff4f4] px-4 py-3 text-sm font-bold text-[#9f1027]">{formError}</p>
+          ) : null}
+          <label className="block">
+            <span className="text-xs font-extrabold uppercase text-obligon-text">Full Name</span>
+            <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1.5 h-12 w-full rounded-xl border border-[#c8ccdb] px-4 font-bold outline-none focus:border-obligon-green" required />
+          </label>
+          <label className="block">
+            <span className="text-xs font-extrabold uppercase text-obligon-text">Official Email</span>
+            <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" className="mt-1.5 h-12 w-full rounded-xl border border-[#c8ccdb] px-4 font-bold outline-none focus:border-obligon-green" required />
+          </label>
+          <label className="block">
+            <span className="text-xs font-extrabold uppercase text-obligon-text">Role</span>
+            <select value={role} onChange={(e) => setRole(e.target.value)} className="mt-1.5 h-12 w-full rounded-xl border border-[#c8ccdb] px-4 font-bold outline-none focus:border-obligon-green">
+              <option>Operations Officer</option>
+              <option>Compliance Reviewer</option>
+              <option>Fleet Overseer</option>
+              <option>Senior Controller</option>
+            </select>
+          </label>
+          <div className="flex justify-end gap-3 pt-4 border-t border-[#eef1fb]">
+            <button type="button" onClick={onClose} className="h-11 px-6 rounded-xl border text-sm font-extrabold">Cancel</button>
+            <button disabled={submitting} type="submit" className="h-11 px-6 rounded-xl bg-obligon-green text-sm font-extrabold text-white shadow-green flex items-center gap-2">
+              {submitting ? <Loader2 size={16} className="animate-spin" /> : "Save Staff"}
+            </button>
+          </div>
+        </form>
+      )}
     </ModalShell>
   );
 }
