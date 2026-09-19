@@ -89,12 +89,6 @@ export function configurationIssues() {
   if (isProd && env.SUPABASE_AUTH_ENABLED && (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY || !env.SUPABASE_ANON_KEY)) {
     issues.push("SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_ANON_KEY are required when Supabase Auth is enabled");
   }
-  if (isProd && !env.RESEND_API_KEY) issues.push("RESEND_API_KEY is required for production email verification and password recovery");
-  if (isProd && !env.TERMII_API_KEY) issues.push("TERMII_API_KEY is required for production phone verification and SMS alerts");
-  if (isProd && !env.PAYSTACK_SECRET_KEY) issues.push("PAYSTACK_SECRET_KEY is required for production wallet funding and transfers");
-  if (isProd && !env.SUDO_SECRET_API_KEY) issues.push("SUDO_SECRET_API_KEY is required for production card issuing and card operations");
-  if (isProd && env.SUDO_SECRET_API_KEY && !env.SUDO_WEBHOOK_SECRET) issues.push("SUDO_WEBHOOK_SECRET is required when Sudo card operations are enabled");
-  if (isProd && env.PAYSTACK_SECRET_KEY && !env.PAYSTACK_PUBLIC_KEY) issues.push("PAYSTACK_PUBLIC_KEY is required when Paystack is enabled");
   return issues;
 }
 
