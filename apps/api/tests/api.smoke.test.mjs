@@ -66,6 +66,28 @@ test("login succeeds for seeded customer and session works", { skip: !BASE }, as
   assert.ok(stations.data.stations.length > 0);
 });
 
+test("customer card request persists, reports status, and rejects duplicates", { skip: !BASE }, async () => {
+  const login = await api("/api/auth/login", {
+    method: "POST",
+    body: { email: "customer@obligon.com", password: "Customer#123" }
+  });
+  assert.equal(login.status, 200);
+  const before = await api("/api/customer/card-request", { token: login.data.accessToken });
+  assert.equal(before.status, 200);
+  if (!before.data.request) {
+    const created = await api("/api/customer/card-request", {
+      method: "POST", token: login.data.accessToken, body: { label: "Smoke Test Card" }
+    });
+    assert.equal(created.status, 201);
+  }
+  const current = await api("/api/customer/card-request", { token: login.data.accessToken });
+  assert.equal(current.data.request.status, "pending");
+  const duplicate = await api("/api/customer/card-request", {
+    method: "POST", token: login.data.accessToken, body: { label: "Duplicate" }
+  });
+  assert.equal(duplicate.status, 409);
+});
+
 test("refresh and logout preserve and revoke the authenticated session", { skip: !BASE }, async () => {
   const login = await api("/api/auth/login", {
     method: "POST",
@@ -131,6 +153,12 @@ test("company login sees fleet overview and partner login sees POS area", { skip
   assert.equal(partner.status, 200);
   const pos = await api("/api/partner/overview", { token: partner.data.accessToken });
   assert.equal(pos.status, 200);
+  const companyLogout = await api("/api/auth/logout", { method: "POST", token: company.data.accessToken });
+  assert.equal(companyLogout.status, 200);
+  const companySession = await api("/api/auth/session", { token: company.data.accessToken });
+  assert.equal(companySession.status, 401);
+  const partnerLogout = await api("/api/auth/logout", { method: "POST", token: partner.data.accessToken });
+  assert.equal(partnerLogout.status, 200);
 });
 
 test("public endpoints are open", { skip: !BASE }, async () => {

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { api, authApi, mutationsApi } from "@/lib/services";
-import { readPersistedSession, writePersistedSession, readRememberedEmail, writeRememberedEmail } from "@/lib/session-store";
+import { readPersistedSession, writePersistedSession, readRememberedEmail, writeRememberedEmail, writeTokens } from "@/lib/session-store";
 import type { SessionUser, UserRole } from "@/lib/services/types";
 
 export type SessionStatus = "loading" | "authenticated" | "unauthenticated";
@@ -87,13 +87,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!payload.email || !payload.password) {
         throw new Error("Enter your email and password to continue.");
       }
-      const result = await authApi.login({
-        email: payload.email,
-        password: payload.password,
-        rememberMe: payload.rememberMe,
-        role: payload.role,
-        totp: payload.totp
-      });
+      // A new login must never inherit the previous account's client state.
+      await authApi.logout();
+      writePersistedSession(null);
+      writeTokens(null);
+      setUserState(null);
+      setStatus("loading");
+      let result;
+      try {
+        result = await authApi.login({
+          email: payload.email,
+          password: payload.password,
+          rememberMe: payload.rememberMe,
+          role: payload.role,
+          totp: payload.totp
+        });
+      } catch (error) {
+        setUserState(null);
+        setStatus("unauthenticated");
+        throw error;
+      }
       writeRememberedEmail(payload.email, Boolean(payload.rememberMe));
       setRememberedEmail(payload.rememberMe ? payload.email : "");
       if (result.mfaRequired) {

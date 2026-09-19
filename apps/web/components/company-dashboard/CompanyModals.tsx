@@ -37,8 +37,18 @@ export function CompanyModals({
     year: "2023",
     fuelType: "AGO Diesel",
     card: "Card #4092",
-    status: "Active"
+    status: "Active",
+    tankCapacity: "100",
+    driverId: ""
   });
+  const [drivers, setDrivers] = React.useState<Array<{ id: string; name: string }>>([]);
+
+  React.useEffect(() => {
+    if (modal !== "vehicle") return;
+    void api.request<{ drivers: Array<{ id: string; name: string }> }>("/api/company/drivers")
+      .then((data) => setDrivers(data.drivers))
+      .catch(() => setDrivers([]));
+  }, [modal]);
 
   const [driverForm, setDriverForm] = React.useState({
     name: "Emeka Okafor",
@@ -104,7 +114,7 @@ export function CompanyModals({
     }
     setSubmitting(true);
     try {
-      await mutationsApi.createVehicle({ plate: vehicleForm.plate, model: `${vehicleForm.make} ${vehicleForm.model}`, fuelType: vehicleForm.fuelType, vehicleType: vehicleForm.status === "Active" ? "truck" : "pickup" });
+      await mutationsApi.createVehicle({ plate: vehicleForm.plate, model: `${vehicleForm.make} ${vehicleForm.model}`, fuelType: vehicleForm.fuelType, vehicleType: vehicleForm.status === "Active" ? "truck" : "pickup", tankCapacity: Number(vehicleForm.tankCapacity), driverId: vehicleForm.driverId || undefined });
       onVehicleAdded?.({ make: vehicleForm.make, model: vehicleForm.model, plate: vehicleForm.plate, card: vehicleForm.card });
       setSuccessMsg(`Vehicle ${vehicleForm.plate} registered successfully into fleet.`);
       toastSuccess(`Vehicle ${vehicleForm.plate} added.`);
@@ -326,6 +336,17 @@ export function CompanyModals({
                       <option>PMS Petrol</option>
                       <option>CNG Gas</option>
                       <option>Electric (EV)</option>
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-extrabold uppercase text-obligon-text">Tank Capacity (litres)</span>
+                    <input type="number" min="1" max="5000" value={vehicleForm.tankCapacity} onChange={(e) => setVehicleForm((prev) => ({ ...prev, tankCapacity: e.target.value }))} className="mt-1.5 h-12 w-full rounded-xl border border-[#dfe5ec] px-4 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green" required />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-extrabold uppercase text-obligon-text">Driver</span>
+                    <select value={vehicleForm.driverId} onChange={(e) => setVehicleForm((prev) => ({ ...prev, driverId: e.target.value }))} className="mt-1.5 h-12 w-full rounded-xl border border-[#dfe5ec] px-3 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green">
+                      <option value="">Unassigned</option>
+                      {drivers.map((driver) => <option key={driver.id} value={driver.id}>{driver.name}</option>)}
                     </select>
                   </label>
                 </div>

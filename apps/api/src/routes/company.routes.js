@@ -72,8 +72,10 @@ router.get("/vehicles", requireOrg, asyncHandler(async (req, res) => {
   if (search) { params.push(`%${search}%`); where += ` AND (v.model ILIKE $${params.length} OR v.plate ILIKE $${params.length})`; }
   if (status) { params.push(status); where += ` AND v.status = $${params.length}`; }
   const rows = await q(
-    `SELECT v.*, c.masked_pan AS card_pan, c.label AS card_label, c.status AS card_status
+    `SELECT v.*, d.id AS driver_id, d.name AS driver_name, d.phone AS driver_phone,
+        c.masked_pan AS card_pan, c.label AS card_label, c.status AS card_status
      FROM vehicles v LEFT JOIN cards c ON c.vehicle_id = v.id AND c.status IN ('active','frozen')
+     LEFT JOIN drivers d ON d.id = v.driver_id AND d.organization_id = v.organization_id
      WHERE ${where} ORDER BY v.created_at DESC LIMIT ${Math.min(Number(limit) || 20, 100)} OFFSET ${Number(offset) || 0}`,
     params
   );
@@ -82,14 +84,16 @@ router.get("/vehicles", requireOrg, asyncHandler(async (req, res) => {
     vehicles: rows.map((v) => ({
       id: v.id,
       cells: [
-        `${v.model}\n${capitalize(v.vehicle_type)} • ${v.fuel_type}`,
+        `${v.model}\n${capitalize(v.vehicle_type)} • ${v.fuel_type}\nDriver: ${v.driver_name ?? "Unassigned"} • Tank: ${v.tank_capacity_l} L`,
         v.plate,
         v.card_pan ?? "No card assigned"
       ],
       status: capitalize(v.status),
       tone: v.status === "active" ? "green" : v.status === "maintenance" ? "amber" : "muted",
       plate: v.plate, model: v.model, fuelType: v.fuel_type, statusRaw: v.status,
-      assignedCard: v.card_pan ?? null, cardId: v.card_pan ? null : null
+      assignedCard: v.card_pan ?? null, cardId: v.card_pan ? null : null,
+      driverId: v.driver_id ?? null, driverName: v.driver_name ?? null,
+      tankCapacity: v.tank_capacity_l
     })),
     total: total.count
   });
@@ -98,26 +102,33 @@ router.get("/vehicles", requireOrg, asyncHandler(async (req, res) => {
 const capitalize = (s) => String(s ?? "").charAt(0).toUpperCase() + String(s ?? "").slice(1);
 
 router.post("/vehicles", requireOrg, requirePermission("fleet.manage"), asyncHandler(async (req, res) => {
-  const { plate, model, vehicleType, fuelType, tankCapacity } = req.valid ?? req.body ?? {};
+  const { plate, model, vehicleType, fuelType, tankCapacity, driverId } = req.valid ?? req.body ?? {};
   if (!plate) throw badRequest("Plate number is required");
+  const tankCapacityLitres = tankCapacity == null ? 100 : Number(tankCapacity);
+  if (!Number.isFinite(tankCapacityLitres) || tankCapacityLitres <= 0 || tankCapacityLitres > 5000) throw badRequest("Tank capacity must be between 1 and 5,000 litres");
+  if (driverId && !(await one("SELECT id FROM drivers WHERE id = $1 AND organization_id = $2 AND status = 'active'", [driverId, req.user.orgId]))) throw badRequest("Selected driver is not part of this fleet");
   const vehicle = await one(
-    `INSERT INTO vehicles (organization_id, plate, model, vehicle_type, fuel_type, tank_capacity_l)
-     VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-    [req.user.orgId, plate.toUpperCase(), model ?? "", vehicleType ?? "truck", fuelType ?? "diesel", Number(tankCapacity) || 100]
+    `INSERT INTO vehicles (organization_id, plate, model, vehicle_type, fuel_type, tank_capacity_l, driver_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+    [req.user.orgId, plate.toUpperCase(), model ?? "", vehicleType ?? "truck", fuelType ?? "diesel", tankCapacityLitres, driverId ?? null]
   );
   await audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "vehicle.created", entityType: "vehicle", entityId: vehicle.id, metadata: { plate: vehicle.plate } });
   emitToOrg(req.user.orgId, "fleet.updated", { plate: vehicle.plate });
-  res.json({ ok: true, vehicle: { id: vehicle.id, plate: vehicle.plate, model: vehicle.model } });
+  const driver = driverId ? await one("SELECT id, name FROM drivers WHERE id = $1", [driverId]) : null;
+  res.status(201).json({ ok: true, vehicle: { id: vehicle.id, plate: vehicle.plate, model: vehicle.model, driverId: driver?.id ?? null, driverName: driver?.name ?? null, tankCapacity: vehicle.tank_capacity_l } });
 }));
 
 router.put("/vehicles/:id", requireOrg, requirePermission("fleet.manage"), asyncHandler(async (req, res) => {
-  const { plate, model, fuelType, status } = req.body ?? {};
+  const { plate, model, vehicleType, fuelType, tankCapacity, driverId, status } = req.body ?? {};
+  if (tankCapacity != null && (!Number.isFinite(Number(tankCapacity)) || Number(tankCapacity) <= 0 || Number(tankCapacity) > 5000)) throw badRequest("Tank capacity must be between 1 and 5,000 litres");
+  if (driverId && !(await one("SELECT id FROM drivers WHERE id = $1 AND organization_id = $2 AND status = 'active'", [driverId, req.user.orgId]))) throw badRequest("Selected driver is not part of this fleet");
   const vehicle = await one(
     `UPDATE vehicles SET
        plate = COALESCE($2, plate), model = COALESCE($3, model),
-       fuel_type = COALESCE($4, fuel_type), status = COALESCE($5, status)
-     WHERE id = $1 AND organization_id = $6 RETURNING *`,
-    [req.params.id, plate ? plate.toUpperCase() : null, model ?? null, fuelType ?? null, status ?? null, req.user.orgId]
+       vehicle_type = COALESCE($4, vehicle_type), fuel_type = COALESCE($5, fuel_type),
+       tank_capacity_l = COALESCE($6, tank_capacity_l), driver_id = COALESCE($7, driver_id), status = COALESCE($8, status)
+     WHERE id = $1 AND organization_id = $9 RETURNING *`,
+    [req.params.id, plate ? plate.toUpperCase() : null, model ?? null, vehicleType ?? null, fuelType ?? null, tankCapacity == null ? null : Number(tankCapacity), driverId ?? null, status ?? null, req.user.orgId]
   );
   if (!vehicle) throw notFound("Vehicle not found");
   audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "vehicle.updated", entityType: "vehicle", entityId: vehicle.id });

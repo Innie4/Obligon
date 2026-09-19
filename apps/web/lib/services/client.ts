@@ -180,7 +180,7 @@ async function refreshTokens(): Promise<boolean> {
   return refreshing;
 }
 
-async function http<T>(path: string, init: RequestInit = {}, retried = false): Promise<T> {
+async function http<T>(path: string, init: RequestInit = {}, retried = false, allowRefresh = true): Promise<T> {
   if (!API_URL) throw new ApiError(0, "Live backend URL is not configured (NEXT_PUBLIC_API_URL missing).");
   const headers = new Headers(init.headers);
   if (!(init.body instanceof FormData) && !headers.has("Content-Type")) {
@@ -191,9 +191,9 @@ async function http<T>(path: string, init: RequestInit = {}, retried = false): P
 
   const res = await fetch(`${API_URL}${path}`, { ...init, headers });
 
-  if (res.status === 401 && !retried && readTokens()) {
+  if (res.status === 401 && allowRefresh && !retried && readTokens()) {
     const ok = await refreshTokens();
-    if (ok) return http<T>(path, init, true);
+    if (ok) return http<T>(path, init, true, allowRefresh);
     writeTokens(null);
     writePersistedSession(null);
     throw new ApiError(401, "Your session has expired. Please sign in again.");
@@ -540,7 +540,7 @@ export const authApi = {
     const data = await http<LoginResponse>("/api/auth/login", {
       method: "POST",
       body: JSON.stringify(payload)
-    });
+    }, false, false);
     if (data.accessToken && data.refreshToken) {
       writeTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
       writePersistedSession(data.user);
@@ -656,6 +656,16 @@ export const mutationsApi = {
   async cardStatus(cardId: string) {
     if (!LIVE_MODE) return null;
     return http<{ card: Record<string, unknown> | null }>(`/api/customer/card`);
+  },
+  async getCardRequest() {
+    if (!LIVE_MODE) return { request: null };
+    return http<{ request: { id: string; status: string; requestedAt: string } | null }>("/api/customer/card-request");
+  },
+  async requestCard(payload: { label?: string } = {}) {
+    if (!LIVE_MODE) { await simulate({}); return { ok: true, request: { id: "local", status: "pending" } }; }
+    return http<{ ok: boolean; request: { id: string; status: string; requestedAt: string } }>("/api/customer/card-request", {
+      method: "POST", body: JSON.stringify(payload)
+    });
   },
 
   // Customer: profile / notifications / support

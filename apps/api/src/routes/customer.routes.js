@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { q, one, tx } from "../db.js";
-import { asyncHandler, badRequest, notFound, forbidden } from "../lib/errors.js";
+import { asyncHandler, badRequest, notFound, forbidden, conflict } from "../lib/errors.js";
 import { requireAuth } from "../middleware/auth.js";
 import { hashPin, verifyPin, randomToken } from "../lib/security.js";
 import { naira, fmtDate, fmtDateTime, relativeTime, dayGroup, maskPan, maskAccount, distanceLabel, reference, initials } from "../lib/format.js";
@@ -273,6 +273,30 @@ router.post("/payment-methods/:id/default", asyncHandler(async (req, res) => {
 }));
 
 // ============ CARDS ============
+router.get("/card-request", asyncHandler(async (req, res) => {
+  const request = await one(
+    `SELECT id, label, status, created_at FROM card_requests
+     WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
+    [req.user.id]
+  );
+  res.json({ request: request ? { id: request.id, label: request.label, status: request.status, requestedAt: request.created_at } : null });
+}));
+
+router.post("/card-request", asyncHandler(async (req, res) => {
+  if (req.user.role !== "customer") throw forbidden("Only eligible customer accounts can request a personal fuel card");
+  const existingCard = await one("SELECT id FROM cards WHERE owner_user_id = $1 AND status NOT IN ('replaced','terminated') LIMIT 1", [req.user.id]);
+  if (existingCard) throw conflict("A fuel card already exists for this account");
+  const label = typeof req.body?.label === "string" && req.body.label.trim() ? req.body.label.trim().slice(0, 100) : "Fuel Card";
+  const request = await one(
+    `INSERT INTO card_requests (user_id, organization_id, label)
+     VALUES ($1, $2, $3) ON CONFLICT DO NOTHING RETURNING id, label, status, created_at`,
+    [req.user.id, req.user.orgId ?? null, label]
+  );
+  if (!request) throw conflict("A card request is already pending or approved for this account");
+  await audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "card.requested", entityType: "card_request", entityId: request.id });
+  res.status(201).json({ ok: true, request: { id: request.id, label: request.label, status: request.status, requestedAt: request.created_at } });
+}));
+
 router.get("/card", asyncHandler(async (req, res) => {
   const card = await one("SELECT * FROM cards WHERE owner_user_id = $1 ORDER BY created_at DESC LIMIT 1", [req.user.id]);
   if (!card) {

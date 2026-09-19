@@ -2,11 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import * as React from "react";
 import { useState } from "react";
 import type { ComponentType } from "react";
-import { ConfirmModal } from "@/components/shared/Dialogs";
 import {
   BarChart3,
   Bell,
@@ -19,7 +18,6 @@ import {
   LayoutDashboard,
   LifeBuoy,
   Layers,
-  LogOut,
   ReceiptText,
   Settings,
   Users
@@ -27,6 +25,7 @@ import {
 import { assets } from "@/components/landing/assets";
 import { dashboardNav, type DashboardIcon, type DashboardPageKey } from "@/lib/mock/dashboard-data";
 import { useSession } from "@/components/shared/AuthContext";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 
 const iconMap = {
   overview: LayoutDashboard,
@@ -86,9 +85,7 @@ function isActive(pathname: string, nav: NavItem) {
 
 export function PartnershipSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const { user } = useSession();
-  const [logoutOpen, setLogoutOpen] = React.useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(
       navGroups.map((group) => [group.key, group.items.some((nav) => isActive(pathname, nav))])
@@ -174,25 +171,9 @@ export function PartnershipSidebar() {
       </nav>
 
       <div className="mx-5 border-t border-[#dfe5ec] py-5">
-        <button
-          type="button"
-          onClick={() => setLogoutOpen(true)}
-          className="flex h-[42px] w-full items-center gap-3 rounded-xl px-4 text-[13px] font-bold text-[#c1121f] hover:bg-[#fff0f3] transition"
-        >
-          <LogOut size={18} />
-          Log Out
-        </button>
+        <LogoutButton className="h-[42px] w-full justify-start rounded-xl px-4 text-[13px] text-[#c1121f] hover:bg-[#fff0f3]" />
       </div>
 
-      <ConfirmModal
-        open={logoutOpen}
-        onClose={() => setLogoutOpen(false)}
-        onConfirm={() => router.push("/login")}
-        title="Log Out?"
-        message="You will be signed out of your partner dashboard. Any unsaved changes will be lost."
-        confirmLabel="Log Out"
-        tone="red"
-      />
     </aside>
   );
 }

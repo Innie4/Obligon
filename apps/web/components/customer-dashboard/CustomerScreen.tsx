@@ -37,7 +37,7 @@ import {
   type CustomerTone,
   type CustomerTransaction
 } from "@/lib/mock/customer-data";
-import { api } from "@/lib/services";
+import { api, mutationsApi } from "@/lib/services";
 import { AsyncBoundary } from "@/components/shared/States";
 import { useAsync } from "@/components/shared/useAsync";
 import { useSession } from "@/components/shared/AuthContext";
@@ -642,6 +642,34 @@ function CardPage({
   frozen: boolean;
   blocked: boolean;
 }) {
+  const [hasCard, setHasCard] = React.useState<boolean | null>(null);
+  const [cardRequest, setCardRequest] = React.useState<{ status: string } | null>(null);
+  const [requestingCard, setRequestingCard] = React.useState(false);
+  const { success: toastSuccess, error: toastError } = useToast();
+
+  React.useEffect(() => {
+    void Promise.all([
+      api.request<{ card: unknown | null }>("/api/customer/card"),
+      api.request<{ request: { status: string } | null }>("/api/customer/card-request")
+    ]).then(([cardData, requestData]) => {
+      setHasCard(Boolean(cardData.card));
+      setCardRequest(requestData.request);
+    }).catch(() => setHasCard(null));
+  }, []);
+
+  async function requestCard() {
+    setRequestingCard(true);
+    try {
+      const data = await mutationsApi.requestCard();
+      setCardRequest(data.request);
+      toastSuccess("Your fuel card request was submitted.");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Could not submit the card request.");
+    } finally {
+      setRequestingCard(false);
+    }
+  }
+
   const status = blocked
     ? { label: "BLOCKED", className: "bg-[#ffe8e8] px-3 py-1 text-xs font-extrabold text-[#c1121f]" }
     : frozen
@@ -665,7 +693,21 @@ function CardPage({
         <p className="mt-1 text-obligon-text">View and manage your active Fuelvista fleet subscription card.</p>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
+      {hasCard === false ? (
+        <Card className="mb-8 border-obligon-green/30 bg-[#f7fbf8] p-6">
+          <h2 className="font-display text-xl font-extrabold text-obligon-navy">Request a Fuelvista Card</h2>
+          <p className="mt-1 text-sm text-obligon-text">Submit one request and track its review status from this page.</p>
+          {cardRequest ? (
+            <p className="mt-4 text-sm font-extrabold text-obligon-green">Request status: {cardRequest.status.toUpperCase()}</p>
+          ) : (
+            <button type="button" onClick={() => void requestCard()} disabled={requestingCard} className="mt-4 h-11 rounded-xl bg-obligon-green px-5 text-sm font-extrabold text-white disabled:opacity-60">
+              {requestingCard ? "Submitting..." : "Request Card"}
+            </button>
+          )}
+        </Card>
+      ) : null}
+
+      {hasCard !== false ? <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
         <article
           className={`relative min-h-[290px] overflow-hidden rounded-2xl p-8 text-white shadow-xl ${
             blocked
@@ -721,7 +763,7 @@ function CardPage({
             );
           })}
         </div>
-      </div>
+      </div> : null}
     </Canvas>
   );
 }

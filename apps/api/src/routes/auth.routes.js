@@ -19,7 +19,13 @@ const ROLES = ["customer", "company", "partner", "mechanic", "admin"];
 
 async function loadOrgForUser(user) {
   if (!["company", "partner", "mechanic"].includes(user.role)) return null;
-  return one("SELECT * FROM organizations WHERE owner_user_id = $1 ORDER BY created_at LIMIT 1", [user.id]);
+  return one(
+    `SELECT o.* FROM organizations o
+     LEFT JOIN memberships m ON m.organization_id = o.id AND m.user_id = $1 AND m.status = 'active'
+     WHERE o.owner_user_id = $1 OR m.user_id IS NOT NULL
+     ORDER BY (o.owner_user_id = $1) DESC, o.created_at LIMIT 1`,
+    [user.id]
+  );
 }
 
 function sessionPayload(user, org) {

@@ -26,6 +26,7 @@ import { assets } from "@/components/landing/assets";
 import { companyNav, pageCopy, type CompanyPageKey } from "@/lib/mock/company-data";
 import { useSession } from "@/components/shared/AuthContext";
 import { AuthGuard } from "@/components/auth/AuthGuard";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 
 type CompanyShellProps = {
   children: React.ReactNode;
@@ -100,6 +101,7 @@ function CompanySidebar() {
         <p className="text-sm font-extrabold text-[#07162f]">{user?.organization ?? "Obligon LTD Logistics Inc."}</p>
         <p className="mt-1 text-xs text-obligon-text">{user?.accountTier ?? "Enterprise Fleet"}</p>
       </div>
+      <LogoutButton className="mt-3 w-full justify-start" />
     </aside>
   );
 }

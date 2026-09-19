@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import * as React from "react";
 import type { ComponentType } from "react";
 import {
@@ -11,14 +11,13 @@ import {
   Building2,
   Grid2X2,
   Handshake,
-  LogOut,
   Settings,
   WalletCards
 } from "lucide-react";
 import { assets } from "@/components/landing/assets";
 import { adminNav, type AdminIconKey } from "@/lib/mock/admin-data";
-import { ConfirmModal } from "@/components/shared/Dialogs";
 import { useSession } from "@/components/shared/AuthContext";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 
 const iconMap = {
   dashboard: Grid2X2,
@@ -32,9 +31,7 @@ const iconMap = {
 
 export function AdminSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const { user } = useSession();
-  const [logoutOpen, setLogoutOpen] = React.useState(false);
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r border-[#dfe5ec] bg-white text-[#07162f] lg:flex">
@@ -72,25 +69,9 @@ export function AdminSidebar() {
             <p className="text-xs font-medium text-obligon-text truncate">{user?.accountTier ?? "Level 4 Access"}</p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setLogoutOpen(true)}
-          className="mt-3 flex h-[42px] w-full items-center gap-3 rounded-xl px-4 text-[13px] font-bold text-[#c1121f] hover:bg-[#fff0f3] transition"
-        >
-          <LogOut size={18} />
-          Log Out
-        </button>
+        <LogoutButton className="mt-3 h-[42px] w-full justify-start rounded-xl px-4 text-[13px] text-[#c1121f] hover:bg-[#fff0f3]" />
       </div>
 
-      <ConfirmModal
-        open={logoutOpen}
-        onClose={() => setLogoutOpen(false)}
-        onConfirm={() => router.push("/login")}
-        title="Log Out?"
-        message="You will be signed out of the Obligon LTD admin console. Any unsaved changes will be lost."
-        confirmLabel="Log Out"
-        tone="red"
-      />
     </aside>
   );
 }
