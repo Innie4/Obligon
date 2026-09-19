@@ -3,12 +3,24 @@ import { env } from "../config/env.js";
 import { serviceUnavailable } from "./errors.js";
 
 let client = null;
+async function storageFetch(input, init = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), env.PROVIDER_HTTP_TIMEOUT_MS);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (error?.name === "AbortError") throw serviceUnavailable("File storage request timed out");
+    throw serviceUnavailable("File storage is temporarily unavailable");
+  } finally {
+    clearTimeout(timer);
+  }
+}
 function getClient() {
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
     throw serviceUnavailable("File storage is not configured (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing)");
   }
   if (!client) {
-    client = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+    client = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false }, global: { fetch: storageFetch } });
   }
   return client;
 }

@@ -10,6 +10,7 @@
     "start": "pnpm --filter @obligon/api start",
     "lint": "pnpm --filter @obligon/web lint",
     "migrate": "pnpm --filter @obligon/api migrate",
+    "config:check": "pnpm --filter @obligon/api config:check",
     "seed": "pnpm --filter @obligon/api seed",
     "test:api": "pnpm --filter @obligon/api test"
   },

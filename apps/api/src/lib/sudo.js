@@ -1,6 +1,7 @@
 import { env } from "../config/env.js";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { serviceUnavailable } from "./errors.js";
+import { providerFetch } from "./http.js";
 
 /**
  * Sudo Africa virtual card issuing (https://docs.sudo.africa).
@@ -13,13 +14,14 @@ import { serviceUnavailable } from "./errors.js";
 const BASE = env.SUDO_BASE_URL;
 
 async function sudoFetch(path, { method = "GET", body } = {}) {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await providerFetch(`${BASE}${path}`, {
     method,
     headers: {
       Authorization: `Bearer ${env.SUDO_SECRET_API_KEY}`,
       "Content-Type": "application/json"
     },
-    body: body ? JSON.stringify(body) : undefined
+    body: body ? JSON.stringify(body) : undefined,
+    safeToRetry: method === "GET"
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {

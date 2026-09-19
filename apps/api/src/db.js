@@ -1,4 +1,5 @@
 import pg from "pg";
+import { env } from "./config/env.js";
 
 const { Pool } = pg;
 
@@ -11,10 +12,21 @@ export function getPool() {
       ssl: /supabase\.(co|com)|neon\.tech|render\.com/.test(process.env.DATABASE_URL ?? "")
         ? { rejectUnauthorized: false }
         : undefined,
-      max: 10
+      max: env.DATABASE_MAX_CONNECTIONS,
+      connectionTimeoutMillis: env.DATABASE_CONNECTION_TIMEOUT_MS,
+      idleTimeoutMillis: env.DATABASE_IDLE_TIMEOUT_MS
     });
   }
   return pool;
+}
+
+export async function claimIdempotency(key) {
+  if (!key) return true;
+  const rows = await q(
+    "INSERT INTO idempotency_keys (key) VALUES ($1) ON CONFLICT (key) DO NOTHING RETURNING key",
+    [key]
+  );
+  return rows.length > 0;
 }
 
 /** Query helper: q("select * from users where id = $1", [id]) -> rows */

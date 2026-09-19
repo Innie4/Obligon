@@ -1,4 +1,5 @@
 import { env } from "../config/env.js";
+import { providerFetch } from "./http.js";
 
 /**
  * Google Maps Platform server wrappers: geocoding + directions.
@@ -12,7 +13,7 @@ async function mapsGet(path, params) {
   const url = new URL(`${BASE}${path}`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   url.searchParams.set("key", env.GOOGLE_MAPS_API_KEY);
-  const res = await fetch(url);
+  const res = await providerFetch(url);
   const data = await res.json();
   if (data.status !== "OK" && data.status !== "ZERO_RESULTS") {
     throw new Error(`Maps API error: ${data.status} ${data.error_message ?? ""}`);

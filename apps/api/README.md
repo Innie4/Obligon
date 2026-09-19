@@ -48,9 +48,12 @@ Change these immediately in production (`POST /api/auth/change-password`).
 
 ## Provider status
 
-`GET /health` reports which providers are configured. Missing optional keys
-degrade gracefully (simulated outcomes are recorded in `audit_logs`); only
-`DATABASE_URL` is mandatory.
+`GET /health` reports which providers are configured. Run
+`pnpm config:check` before deployment. Production startup fails with a clear
+list when database, authentication, email, SMS, payment, or card credentials
+required by the enabled product flows are missing. Maps and web push remain
+optional because the frontend has an OpenStreetMap fallback and notifications
+are best-effort.
 
 | Capability | Provider | Where the key lives |
 |---|---|---|
@@ -62,6 +65,14 @@ degrade gracefully (simulated outcomes are recorded in `audit_logs`); only
 | SMS / OTP | Termii | `TERMII_API_KEY` |
 | Maps / directions | Google Maps Platform | `GOOGLE_MAPS_API_KEY` (server) + `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (browser) |
 | Web push | VAPID web-push | `WEB_PUSH_VAPID_*` |
+
+There are no backup payment, transfer, card, email, SMS, or push vendors in
+this repository. The provider boundary therefore fails closed for writes,
+uses bounded timeouts, retries only safe reads, and relies on stable internal
+references plus webhook/idempotency reconciliation rather than submitting a
+financial write to an invented secondary vendor. Add a real secondary vendor
+only after its account, contract, API semantics, and reconciliation behavior
+are defined.
 
 Webhooks to register with providers:
 

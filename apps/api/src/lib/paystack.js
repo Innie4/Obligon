@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { env } from "../config/env.js";
 import { serviceUnavailable } from "./errors.js";
+import { providerFetch } from "./http.js";
 
 /**
  * Paystack integration (https://paystack.com/docs) — the payment processor for:
@@ -16,13 +17,14 @@ const BASE = "https://api.paystack.co";
 const enabled = () => Boolean(env.PAYSTACK_SECRET_KEY);
 
 async function paystackFetch(path, { method = "GET", body } = {}) {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await providerFetch(`${BASE}${path}`, {
     method,
     headers: {
       Authorization: `Bearer ${env.PAYSTACK_SECRET_KEY}`,
       "Content-Type": "application/json"
     },
-    body: body ? JSON.stringify(body) : undefined
+    body: body ? JSON.stringify(body) : undefined,
+    safeToRetry: method === "GET"
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.status === false) {

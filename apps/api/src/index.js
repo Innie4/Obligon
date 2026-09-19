@@ -1,10 +1,16 @@
-import { env } from "./config/env.js";
+import { env, configurationIssues } from "./config/env.js";
 import { createApp } from "./app.js";
 import { getPool, q } from "./db.js";
 import { ensureBucket } from "./lib/storage.js";
 import { startScheduler, stopScheduler } from "./lib/scheduler.js";
 
 async function main() {
+  const configIssues = configurationIssues();
+  if (configIssues.length && env.NODE_ENV === "production") {
+    console.error("✗ Production configuration is incomplete:");
+    for (const issue of configIssues) console.error(`  - ${issue}`);
+    process.exit(1);
+  }
   if (!env.DATABASE_URL) {
     console.error("✗ DATABASE_URL is not configured.");
     console.error("  Check DATABASE_URL in apps/api/.env — Supabase: Project Settings → Database → Connection string (URI).");

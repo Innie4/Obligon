@@ -8,15 +8,17 @@ import { initiateTransfer, paystackEnabled } from "./paystack.js";
  * Purges expired sessions, expired verification codes, and out-of-date invites.
  */
 export async function purgeExpiredData() {
-  const [sessionsRes, codesRes, invitesRes] = await Promise.all([
+  const [sessionsRes, codesRes, invitesRes, idempotencyRes] = await Promise.all([
     q("DELETE FROM sessions WHERE expires_at < now() OR (revoked_at IS NOT NULL AND revoked_at < now() - interval '7 days')"),
     q("DELETE FROM verification_codes WHERE expires_at < now() OR consumed_at IS NOT NULL"),
-    q("UPDATE invites SET status = 'expired' WHERE status = 'pending' AND created_at < now() - interval '7 days' RETURNING id")
+    q("UPDATE invites SET status = 'expired' WHERE status = 'pending' AND created_at < now() - interval '7 days' RETURNING id"),
+    q("DELETE FROM idempotency_keys WHERE created_at < now() - interval '90 days' RETURNING key")
   ]);
   return {
     sessionsPurged: sessionsRes.length ?? 0,
     codesPurged: codesRes.length ?? 0,
-    invitesExpired: invitesRes.length ?? 0
+    invitesExpired: invitesRes.length ?? 0,
+    idempotencyKeysPurged: idempotencyRes.length ?? 0
   };
 }
 

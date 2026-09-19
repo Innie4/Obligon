@@ -1,4 +1,5 @@
 import { env, isProd } from "../config/env.js";
+import { providerFetch } from "./http.js";
 
 /**
  * Transactional email via Resend (https://resend.com).
@@ -9,13 +10,14 @@ export async function sendEmail({ to, subject, html, text }) {
     console.log(`[email:dev] to=${to} subject="${subject}"`);
     return { delivered: false, skipped: true };
   }
-  const res = await fetch("https://api.resend.com/emails", {
+  const res = await providerFetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${env.RESEND_API_KEY}`,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ from: env.EMAIL_FROM, to: Array.isArray(to) ? to : [to], subject, html: html ?? `<p>${text ?? ""}</p>`, text: text ?? "" })
+    body: JSON.stringify({ from: env.EMAIL_FROM, to: Array.isArray(to) ? to : [to], subject, html: html ?? `<p>${text ?? ""}</p>`, text: text ?? "" }),
+    safeToRetry: false
   });
   if (!res.ok) {
     const body = await res.text();

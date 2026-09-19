@@ -1,4 +1,5 @@
 import { env } from "../config/env.js";
+import { providerFetch } from "./http.js";
 
 /**
  * Supabase Auth (GoTrue) integration.
@@ -33,10 +34,11 @@ const ADMIN_HEADERS = () => ({
 });
 
 async function gotrue(path, { method = "GET", body, headers } = {}) {
-  const res = await fetch(`${env.SUPABASE_URL}/auth/v1${path}`, {
+  const res = await providerFetch(`${env.SUPABASE_URL}/auth/v1${path}`, {
     method,
     headers: headers ?? ANON_HEADERS(),
-    body: body ? JSON.stringify(body) : undefined
+    body: body ? JSON.stringify(body) : undefined,
+    safeToRetry: false
   });
   const data = await res.json().catch(() => ({}));
   return { ok: res.ok, status: res.status, data };

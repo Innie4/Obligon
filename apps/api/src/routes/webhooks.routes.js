@@ -1,11 +1,12 @@
 import { Router } from "express";
-import { q, one, tx } from "../db.js";
+import { q, one, tx, claimIdempotency } from "../db.js";
 import { webhookLimiter } from "../middleware/security.js";
 import { verifyPaystackSignature } from "../lib/paystack.js";
 import { completeTopUp } from "./customer.routes.js";
 import { naira, reference } from "../lib/format.js";
 import { notify, audit } from "../lib/notify.js";
 import { env } from "../config/env.js";
+import crypto from "node:crypto";
 
 const router = Router();
 
@@ -20,6 +21,8 @@ router.post("/paystack", webhookLimiter, async (req, res) => {
     return res.status(401).json({ error: "Invalid signature" });
   }
   const event = req.body;
+  const eventKey = `webhook:paystack:${event.id ?? crypto.createHash("sha256").update(raw).digest("hex")}`;
+  if (!await claimIdempotency(eventKey)) return res.json({ received: true, duplicate: true });
   try {
     switch (event.event) {
       case "charge.success": {
@@ -73,6 +76,7 @@ router.post("/paystack", webhookLimiter, async (req, res) => {
     }
     await audit({ action: `webhook.paystack.${event.event}`, metadata: { reference: event.data?.reference ?? null } });
   } catch (err) {
+    await q("DELETE FROM idempotency_keys WHERE key = $1", [eventKey]);
     console.error("Paystack webhook processing error:", err.message);
     // Return 200 so Paystack doesn't infinitely retry a permanent failure
   }
@@ -90,6 +94,8 @@ router.post("/sudo", webhookLimiter, async (req, res) => {
     return res.status(401).json({ error: "Invalid signature" });
   }
   const event = req.body;
+  const eventKey = `webhook:sudo:${event.id ?? crypto.createHash("sha256").update(raw).digest("hex")}`;
+  if (!await claimIdempotency(eventKey)) return res.json({ received: true, duplicate: true });
   try {
     if (event.event === "card.status.updated" || event.type === "card.status.updated") {
       const card = await one("SELECT * FROM cards WHERE sudo_card_id = $1", [event.data?.cardId ?? event.cardId]);
@@ -107,6 +113,7 @@ router.post("/sudo", webhookLimiter, async (req, res) => {
     }
     await audit({ action: `webhook.sudo.${event.event ?? event.type ?? "unknown"}`, metadata: { cardId: event.data?.cardId ?? null } });
   } catch (err) {
+    await q("DELETE FROM idempotency_keys WHERE key = $1", [eventKey]);
     console.error("Sudo webhook processing error:", err.message);
   }
   res.json({ received: true });

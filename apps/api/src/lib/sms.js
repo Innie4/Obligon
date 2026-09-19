@@ -1,4 +1,5 @@
 import { env } from "../config/env.js";
+import { providerFetch } from "./http.js";
 
 /**
  * SMS via Termii (https://termii.com) — Nigerian-friendly OTP/alert delivery.
@@ -10,7 +11,7 @@ export async function sendSms({ to, message }) {
     return { delivered: false, skipped: true };
   }
   if (!to) return { delivered: false, error: "no phone number on file" };
-  const res = await fetch("https://api.ng.termii.com/api/sms/send", {
+  const res = await providerFetch("https://api.ng.termii.com/api/sms/send", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -20,7 +21,8 @@ export async function sendSms({ to, message }) {
       type: "plain",
       channel: "generic",
       api_key: env.TERMII_API_KEY
-    })
+    }),
+    safeToRetry: false
   });
   if (!res.ok) {
     const body = await res.text();
