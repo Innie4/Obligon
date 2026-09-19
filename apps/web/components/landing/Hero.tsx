@@ -5,7 +5,7 @@ import { assets } from "./assets";
 export function Hero() {
   return (
     <section
-      className="relative overflow-hidden bg-[linear-gradient(137deg,#011554_0%,#00010c_100%)] pt-[95px]"
+      className="relative overflow-hidden bg-[linear-gradient(137deg,#011554_0%,#00010c_100%)] pt-[104px]"
       data-node-id="2:3"
     >
       <div className="absolute right-0 top-0 h-full w-1/2 bg-[radial-gradient(circle_at_center,rgba(61,106,0,0.85)_0%,rgba(61,106,0,0.22)_20%,rgba(61,106,0,0)_45%)]" />

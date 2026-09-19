@@ -40,7 +40,7 @@ export function Story() {
 
           <div className="mt-4 space-y-6 text-base leading-[26px] text-obligon-text lg:mt-4">
             <p>
-              At Obligon LTD Limited, we are driven by a commitment to bridge the gap between energy accessibility and
+              At Obligon LTD, we are driven by a commitment to bridge the gap between energy accessibility and
               technological innovation. Our journey began with a vision to transform the Nigerian energy landscape
               through efficiency and transparency.
             </p>

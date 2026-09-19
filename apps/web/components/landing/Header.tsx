@@ -20,13 +20,13 @@ export function Header() {
 
   return (
     <header
-      className="absolute left-0 top-0 z-20 h-[95px] w-full border-b border-obligon-border bg-white/90 backdrop-blur-md"
+      className="absolute left-0 top-0 z-20 h-[104px] w-full border-b border-obligon-border bg-white/90 backdrop-blur-md"
       data-node-id="2:325"
     >
       <nav className="mx-auto flex h-full max-w-[1280px] items-center justify-between px-5 sm:px-8 lg:px-16">
-        <div className="flex h-[86px] items-center gap-12">
-          <Link className="relative block h-[86px] w-[160px]" href="/" aria-label="Obligon LTD home">
-            <Image src={assets.obligonLogo} fill sizes="160px" alt="Obligon LTD" className="scale-[1.2] object-contain" priority />
+        <div className="flex h-[95px] items-center gap-12">
+          <Link className="relative block h-[95px] w-[190px]" href="/" aria-label="Obligon LTD home">
+            <Image src={assets.obligonLogo} fill sizes="190px" alt="Obligon LTD" className="scale-[1.4] object-contain" priority />
           </Link>
 
           <div className="hidden items-center gap-8 lg:flex">
@@ -66,7 +66,7 @@ export function Header() {
       </nav>
 
       {open ? (
-        <div className="absolute inset-x-0 top-[95px] border-b border-obligon-border bg-white px-5 py-6 shadow-card md:hidden">
+        <div className="absolute inset-x-0 top-[104px] border-b border-obligon-border bg-white px-5 py-6 shadow-card md:hidden">
           <div className="flex flex-col gap-4">
             {navItems.map((item) => (
               <Link

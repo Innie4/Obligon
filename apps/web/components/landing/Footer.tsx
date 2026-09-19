@@ -37,17 +37,17 @@ export function Footer() {
       <div className="mx-auto w-full max-w-landing min-w-0 px-5 sm:px-8 lg:px-0">
         <div className="grid gap-12 lg:grid-cols-[2fr_1fr_1fr_1fr] lg:gap-12">
           <div>
-            <Link className="relative block h-16 w-[120px]" href="/" aria-label="Obligon LTD home">
+            <Link className="relative block h-20 w-[140px]" href="/" aria-label="Obligon LTD home">
               <Image
                 src={assets.obligonLogo}
                 fill
                 alt="Obligon LTD"
-                sizes="120px"
-                className="scale-[1.2] object-contain"
+                sizes="140px"
+                className="scale-[1.4] object-contain object-left origin-left"
               />
             </Link>
             <p className="mt-8 max-w-sm text-base leading-[26px] text-white/60">
-              Obligon LTD Limited is a Nigerian-based energy and technology firm committed to efficiency, transparency, and
+              Obligon LTD is a Nigerian-based energy and technology firm committed to efficiency, transparency, and
               innovation.
             </p>
             <div className="mt-8 flex gap-4">
@@ -81,7 +81,7 @@ export function Footer() {
         </div>
 
         <div className="mt-16 border-t border-white/[0.05] pt-8 text-center text-xs leading-4 text-white/40">
-          &copy; 2024 Obligon LTD Limited. Registered in the Federal Republic of Nigeria. All rights reserved.
+          &copy; {new Date().getFullYear()} Obligon LTD. Registered in the Federal Republic of Nigeria. All rights reserved.
         </div>
       </div>
     </footer>

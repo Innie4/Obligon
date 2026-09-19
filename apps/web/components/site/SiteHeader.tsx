@@ -12,10 +12,10 @@ const navLinks = [
 
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-30 h-20 border-b border-obligon-border bg-obligon-mist/95 backdrop-blur-md">
+    <header className="sticky top-0 z-30 h-[92px] border-b border-obligon-border bg-obligon-mist/95 backdrop-blur-md">
       <nav className="mx-auto flex h-full max-w-[1280px] items-center justify-between px-5 sm:px-8 lg:px-16">
-        <Link href={routes.home} className="relative block h-[76px] w-[140px]" aria-label="Obligon LTD home">
-          <Image src={assets.obligonLogo} fill sizes="140px" alt="Obligon LTD" className="scale-[1.2] object-contain" priority />
+        <Link href={routes.home} className="relative block h-[88px] w-[170px]" aria-label="Obligon LTD home">
+          <Image src={assets.obligonLogo} fill sizes="170px" alt="Obligon LTD" className="scale-[1.4] object-contain" priority />
         </Link>
 
         <div className="hidden items-center gap-8 md:flex">

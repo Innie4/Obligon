@@ -31,10 +31,24 @@ export function LogoutButton({ variant = "button", className = "" }: { variant?:
     }
   };
 
+  const confirmDialog = (
+    <ConfirmModal
+      open={showConfirm}
+      onClose={() => setShowConfirm(false)}
+      onConfirm={handleLogout}
+      title="Sign Out?"
+      message="Are you sure you want to sign out? You will need to sign in again to access your account."
+      confirmLabel="Sign Out"
+      cancelLabel="Cancel"
+      tone="red"
+    />
+  );
+
   if (variant === "dropdown") {
     return (
       <div className="relative">
         <button
+          type="button"
           onClick={() => setShowConfirm(true)}
           className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold text-obligon-navy hover:bg-obligon-mist ${className}`}
           disabled={loggingOut}
@@ -43,29 +57,25 @@ export function LogoutButton({ variant = "button", className = "" }: { variant?:
           <span>Sign Out</span>
         </button>
 
-        <ConfirmModal
-          open={showConfirm}
-          onClose={() => setShowConfirm(false)}
-          onConfirm={handleLogout}
-          title="Sign Out?"
-          message="Are you sure you want to sign out? You will need to sign in again to access your account."
-          confirmLabel="Sign Out"
-          cancelLabel="Cancel"
-          tone="red"
-        />
+        {confirmDialog}
       </div>
     );
   }
 
   return (
-    <button
-      onClick={() => setShowConfirm(true)}
-      className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold text-obligon-navy hover:bg-obligon-mist ${className}`}
-      disabled={loggingOut}
-    >
-      <LogOut size={18} />
-      <span>Sign Out</span>
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={() => setShowConfirm(true)}
+        className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold text-obligon-navy hover:bg-obligon-mist ${className}`}
+        disabled={loggingOut}
+      >
+        <LogOut size={18} />
+        <span>Sign Out</span>
+      </button>
+
+      {confirmDialog}
+    </>
   );
 }
 

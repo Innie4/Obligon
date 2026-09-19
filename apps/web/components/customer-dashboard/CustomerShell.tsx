@@ -19,6 +19,7 @@ import { assets } from "@/components/landing/assets";
 import { customerNav, secondaryCustomerNav, pageTitles, type CustomerPageKey } from "@/lib/mock/customer-data";
 import { useSession } from "@/components/shared/AuthContext";
 import { AuthGuard } from "@/components/auth/AuthGuard";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 
 type CustomerShellProps = {
   children: React.ReactNode;
@@ -72,8 +73,8 @@ function Sidebar() {
 
   return (
     <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-[#dfe5ec] bg-white px-4 py-8 lg:flex">
-      <Link href="/customer" className="relative ml-2 block h-[72px] w-[210px]" aria-label="Obligon LTD customer dashboard">
-        <Image src={assets.obligonLogo} alt="Obligon LTD" fill sizes="210px" className="scale-[1.2] object-contain object-left" priority />
+      <Link href="/customer" className="relative ml-2 block h-20 w-[210px]" aria-label="Obligon LTD customer dashboard">
+        <Image src={assets.obligonLogo} alt="Obligon LTD" fill sizes="210px" className="scale-[1.25] object-contain object-left origin-left" priority />
       </Link>
 
       <div className="mt-10 flex items-center gap-3.5 rounded-xl bg-[#f7fbf8] p-3.5 border border-obligon-border">
@@ -109,10 +110,7 @@ function Sidebar() {
         {accountOpen ? <div className="space-y-2 pl-4 border-l-2 border-obligon-border/60 ml-2 mt-1">{secondaryCustomerNav.map(renderLink)}</div> : null}
       </nav>
 
-      <Link href="/customer/support" className="mt-auto flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green transition">
-        <CircleHelp size={20} />
-        Customer Support
-      </Link>
+      <LogoutButton className="mt-auto w-full justify-start gap-3 px-4 py-3 rounded-xl text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green" />
     </aside>
   );
 }
@@ -121,7 +119,7 @@ function MobileHeader() {
   return (
     <header className="flex h-[84px] items-center justify-between border-b border-[#e0e7de] bg-[#f7fbf8] px-8 lg:hidden">
       <Link href="/customer" className="relative h-16 w-40" aria-label="Obligon LTD customer dashboard">
-        <Image src={assets.obligonLogo} alt="Obligon LTD" fill sizes="160px" className="scale-[1.2] object-contain object-left" priority />
+        <Image src={assets.obligonLogo} alt="Obligon LTD" fill sizes="160px" className="scale-[1.25] object-contain object-left origin-left" priority />
       </Link>
       <Link href="/customer/notifications" className="text-obligon-green" aria-label="Notifications">
         <Bell size={22} fill="currentColor" />
