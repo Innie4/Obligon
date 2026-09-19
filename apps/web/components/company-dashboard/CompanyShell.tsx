@@ -71,8 +71,8 @@ function CompanySidebar() {
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r border-[#dfe5ec] bg-white px-5 py-8 lg:flex">
-      <Link href="/company" className="relative mx-auto block h-14 w-44" aria-label="Obligon LTD company dashboard">
-        <Image src={assets.obligonLogo} alt="Obligon LTD" fill sizes="176px" className="object-contain" priority />
+      <Link href="/company" className="relative mx-auto block h-16 w-[220px]" aria-label="Obligon LTD company dashboard">
+        <Image src={assets.obligonLogo} alt="Obligon LTD" fill sizes="220px" className="scale-[1.2] object-contain" priority />
       </Link>
       <nav className="mt-10 flex-1 space-y-1 overflow-y-auto pr-1">
         {companyNav.map((item) => (

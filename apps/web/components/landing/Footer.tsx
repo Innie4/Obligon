@@ -37,13 +37,13 @@ export function Footer() {
       <div className="mx-auto w-full max-w-landing min-w-0 px-5 sm:px-8 lg:px-0">
         <div className="grid gap-12 lg:grid-cols-[2fr_1fr_1fr_1fr] lg:gap-12">
           <div>
-            <Link className="relative block h-14 w-[88px]" href="/" aria-label="Obligon LTD home">
+            <Link className="relative block h-16 w-[120px]" href="/" aria-label="Obligon LTD home">
               <Image
                 src={assets.obligonLogo}
                 fill
                 alt="Obligon LTD"
-                sizes="88px"
-                className="object-contain"
+                sizes="120px"
+                className="scale-[1.2] object-contain"
               />
             </Link>
             <p className="mt-8 max-w-sm text-base leading-[26px] text-white/60">

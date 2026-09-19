@@ -72,8 +72,8 @@ function Sidebar() {
 
   return (
     <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-[#dfe5ec] bg-white px-4 py-8 lg:flex">
-      <Link href="/customer" className="relative ml-4 block h-16 w-44" aria-label="Obligon LTD customer dashboard">
-        <Image src={assets.obligonLogo} alt="Obligon LTD" fill sizes="176px" className="object-contain object-left" priority />
+      <Link href="/customer" className="relative ml-2 block h-[72px] w-[210px]" aria-label="Obligon LTD customer dashboard">
+        <Image src={assets.obligonLogo} alt="Obligon LTD" fill sizes="210px" className="scale-[1.2] object-contain object-left" priority />
       </Link>
 
       <div className="mt-10 flex items-center gap-3.5 rounded-xl bg-[#f7fbf8] p-3.5 border border-obligon-border">
@@ -120,8 +120,8 @@ function Sidebar() {
 function MobileHeader() {
   return (
     <header className="flex h-[84px] items-center justify-between border-b border-[#e0e7de] bg-[#f7fbf8] px-8 lg:hidden">
-      <Link href="/customer" className="relative h-14 w-36" aria-label="Obligon LTD customer dashboard">
-        <Image src={assets.obligonLogo} alt="Obligon LTD" fill sizes="144px" className="object-contain object-left" priority />
+      <Link href="/customer" className="relative h-16 w-40" aria-label="Obligon LTD customer dashboard">
+        <Image src={assets.obligonLogo} alt="Obligon LTD" fill sizes="160px" className="scale-[1.2] object-contain object-left" priority />
       </Link>
       <Link href="/customer/notifications" className="text-obligon-green" aria-label="Notifications">
         <Bell size={22} fill="currentColor" />
