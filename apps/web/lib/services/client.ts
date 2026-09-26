@@ -68,6 +68,7 @@ import type {
   ApiResult,
   AppNotification,
   CardCheckout,
+  OpenCardRequest,
   CardPlan,
   CardPlanFeature,
   CardRequest,
@@ -869,6 +870,51 @@ export const mutationsApi = {
       }
       throw err;
     }
+  },
+  async getOpenCardRequest(): Promise<OpenCardRequest> {
+    if (!LIVE_MODE) {
+      await simulate({});
+      return { request: null, canResume: false, canCancel: false, canWithdraw: false };
+    }
+    try {
+      return await http<OpenCardRequest>("/api/customer/card-request/open");
+    } catch {
+      // Never block the plan picker on this: a failure to read the open request
+      // should leave the customer able to start one, not trap them.
+      return { request: null, canResume: false, canCancel: false, canWithdraw: false };
+    }
+  },
+  /**
+   * Re-issue a payment link for a plan the customer already started.
+   * Hosted checkout links expire, so the one they were given may be dead.
+   */
+  async resumeCardCheckout(reference: string): Promise<CardCheckout> {
+    if (!LIVE_MODE) {
+      await simulate({});
+      return {
+        ok: true,
+        reference: reference || "local",
+        provider: "flutterwave",
+        paymentUrl: null,
+        simulated: true,
+        message: "Payments are simulated in this environment.",
+        request: { ...LOCAL_CARD_REQUEST, planCode: LOCAL_CARD_REQUEST.planCode }
+      };
+    }
+    return http<CardCheckout>("/api/customer/card-request/resume", {
+      method: "POST",
+      body: JSON.stringify({ reference })
+    });
+  },
+  async cancelCardRequest(reference: string): Promise<{ ok: boolean; request: CardRequest }> {
+    if (!LIVE_MODE) {
+      await simulate({});
+      return { ok: true, request: LOCAL_CARD_REQUEST };
+    }
+    return http<{ ok: boolean; request: CardRequest }>("/api/customer/card-request/cancel", {
+      method: "POST",
+      body: JSON.stringify({ reference })
+    });
   },
   async verifyCardPayment(reference: string, simulated: boolean, transactionId?: string | null): Promise<{ ok: boolean; paid: boolean; request: CardRequest }> {
     if (!LIVE_MODE) {

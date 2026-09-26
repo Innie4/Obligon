@@ -101,6 +101,23 @@ export interface CardCheckout {
   request: CardRequest;
 }
 
+/**
+ * The customer's in-flight card request, if any.
+ *
+ * Checkout answers 409 when one already exists, which on its own is a dead end.
+ * These flags tell the client which ways out are actually available: an unpaid
+ * request can be resumed or cancelled, and a paid one can be withdrawn for a
+ * refund. Offering the wrong one would either re-charge a paid plan or strand
+ * money that was already taken.
+ */
+export interface OpenCardRequest {
+  request: CardRequest | null;
+  reference?: string | null;
+  canResume: boolean;
+  canCancel: boolean;
+  canWithdraw: boolean;
+}
+
 export interface CustomerTransaction {
   station: string;
   meta?: string;

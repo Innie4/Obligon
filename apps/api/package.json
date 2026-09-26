@@ -17,6 +17,7 @@
     "check:price": "node src/scripts/price-check.mjs",
     "check:wallet": "node tests/wallet-payments.check.mjs",
     "check:card": "node tests/card-request-flow.check.mjs",
+    "check:resume": "node --env-file-if-exists=../../.env tests/resume-payment.check.mjs",
     "check:prefs": "node tests/prefs-security.check.mjs"
   },
   "dependencies": {

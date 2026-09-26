@@ -371,3 +371,98 @@ export function CardSubmittedModal({
     </ModalFrame>
   );
 }
+
+/**
+ * Offered when checkout reports that a request is already in flight.
+ *
+ * "You already have a plan awaiting payment" is a dead end on its own: the
+ * customer cannot start the plan they just clicked, and nothing tells them what
+ * to do instead. This hands back the two real choices — finish the payment that
+ * was started, or cancel it and start fresh.
+ */
+export function PendingPaymentModal({
+  request,
+  reference,
+  attemptedPlanName,
+  resuming,
+  cancelling,
+  onResume,
+  onCancel,
+  onClose
+}: {
+  request: CardRequest;
+  reference: string;
+  attemptedPlanName: string | null;
+  resuming: boolean;
+  cancelling: boolean;
+  onResume: () => void;
+  onCancel: () => void;
+  onClose: () => void;
+}) {
+  const busy = resuming || cancelling;
+  const isSamePlan = attemptedPlanName && request.planName
+    ? attemptedPlanName.toLowerCase() === request.planName.toLowerCase()
+    : true;
+
+  return (
+    <ModalFrame onClose={busy ? () => undefined : onClose}>
+      <div className="p-6 text-center">
+        <span className="mx-auto grid size-16 place-items-center rounded-full bg-obligon-lime/30 text-obligon-navy">
+          <CreditCard size={28} />
+        </span>
+
+        <h2 className="mt-5 font-display text-2xl font-extrabold text-obligon-navy">
+          You have a plan awaiting payment
+        </h2>
+        <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-obligon-text">
+          {isSamePlan
+            ? "This plan is already started. Continue to payment to finish it, or cancel it and start again."
+            : `You already started the ${request.planName ?? "previous"} plan. Continue that payment, or cancel it to switch to ${attemptedPlanName}.`}
+        </p>
+
+        <div className="mx-auto mt-6 max-w-sm rounded-2xl border border-obligon-navy/10 bg-[#f7f9f8] p-5 text-left">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-sm font-bold text-obligon-navy">{request.planName ?? "Plan"}</span>
+            <span className="text-lg font-extrabold text-obligon-green">
+              {request.planAmountLabel ?? "—"}
+            </span>
+          </div>
+          <p className="mt-2 text-xs text-obligon-text">
+            Reference <span className="font-mono font-bold text-obligon-navy">{reference}</span>
+          </p>
+        </div>
+
+        <div className="mt-6 space-y-2.5">
+          <button
+            type="button"
+            onClick={onResume}
+            disabled={busy}
+            className="h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white disabled:opacity-60"
+          >
+            {resuming ? "Opening payment…" : "Continue to payment"}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={busy}
+            className="h-12 w-full rounded-lg border border-obligon-navy/20 font-extrabold text-obligon-navy disabled:opacity-60"
+          >
+            {cancelling ? "Cancelling…" : "Cancel this request"}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={busy}
+            className="h-10 w-full text-sm font-bold text-obligon-text underline-offset-2 hover:underline disabled:opacity-60"
+          >
+            Decide later
+          </button>
+        </div>
+
+        <p className="mt-4 text-xs leading-5 text-obligon-text">
+          No money has been taken yet. Cancelling costs nothing.
+        </p>
+      </div>
+    </ModalFrame>
+  );
+}

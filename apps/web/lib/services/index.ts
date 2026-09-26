@@ -6,6 +6,7 @@ export type {
   CardPlan,
   CardPlanFeature,
   CardRequest,
+  OpenCardRequest,
   CardRequestStatus,
   CustomerProfile,
   CustomerTransaction,

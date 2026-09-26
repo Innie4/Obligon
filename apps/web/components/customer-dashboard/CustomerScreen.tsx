@@ -36,7 +36,7 @@ import {
   type CustomerPageKey,
   type CustomerTone
 } from "@/lib/mock/customer-data";
-import { api, mutationsApi, DEFAULT_NOTIFICATION_PREFS, type CardCheckout, type CardPlan, type CardRequest, type CustomerTransaction, type NotificationPrefs } from "@/lib/services";
+import { api, mutationsApi, DEFAULT_NOTIFICATION_PREFS, ApiError, type CardCheckout, type CardPlan, type CardRequest, type CustomerTransaction, type NotificationPrefs, type OpenCardRequest } from "@/lib/services";
 import { AsyncBoundary } from "@/components/shared/States";
 import { useAsync } from "@/components/shared/useAsync";
 import { useSession } from "@/components/shared/AuthContext";
@@ -44,7 +44,7 @@ import { useToast } from "@/components/shared/Toast";
 import { Toggle } from "@/components/shared/Toggle";
 import { currentPushState, disableWebPush, enableWebPush, pushSupported } from "@/lib/push-subscription";
 import { CustomerModals, ModalFrame, type CustomerModalType } from "./CustomerModals";
-import { CardDetailsModal, CardPlanModal, CardSubmittedModal } from "./CardRequestModals";
+import { CardDetailsModal, CardPlanModal, CardSubmittedModal, PendingPaymentModal } from "./CardRequestModals";
 import { ConfirmModal, PinModal } from "../shared/Dialogs";
 import { StationMap } from "../shared/StationMap";
 import { routes } from "../site/routes";
@@ -678,6 +678,14 @@ function CardPage({
   const [submittingDetails, setSubmittingDetails] = React.useState(false);
   const [submittedModalOpen, setSubmittedModalOpen] = React.useState(false);
   const [checkout, setCheckout] = useState<CardCheckout | null>(null);
+  // A request already in flight. Checkout answers 409 when one exists, so this
+  // is what turns that dead end into a choice: finish paying, or cancel.
+  const [pendingResume, setPendingResume] = React.useState<{
+    open: OpenCardRequest;
+    attemptedPlan: CardPlan | null;
+  } | null>(null);
+  const [resuming, setResuming] = React.useState(false);
+  const [cancelling, setCancelling] = React.useState(false);
 
   const onCardChangeRef = React.useRef(onCardChange);
   onCardChangeRef.current = onCardChange;
@@ -700,6 +708,23 @@ function CardPage({
         }
       })
       .catch(() => setHasCard(null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]);
+
+  // An unpaid request in flight is offered straight away rather than waiting for
+  // the customer to click a plan and be told they are blocked. Without this the
+  // only way to discover a pending payment is to hit the 409.
+  React.useEffect(() => {
+    let cancelled = false;
+    void mutationsApi.getOpenCardRequest().then((open) => {
+      if (cancelled) return;
+      if (open.request && open.reference && open.canResume) {
+        setPendingResume({ open, attemptedPlan: null });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey]);
 
@@ -759,9 +784,76 @@ function CardPage({
       setPlanModalOpen(false);
       toastError("We could not start the payment. Please try again.");
     } catch (err) {
+      // A 409 means a request is already in flight. Telling the customer only
+      // that they are blocked leaves them stuck, so fetch the pending request
+      // and offer the two real ways out of it.
+      if (err instanceof ApiError && err.status === 409) {
+        const open = await mutationsApi.getOpenCardRequest();
+        if (open.request && (open.canResume || open.canCancel)) {
+          setPlanModalOpen(false);
+          setPendingResume({ open, attemptedPlan: plan });
+          return;
+        }
+      }
       toastError(err instanceof Error ? err.message : "Could not start checkout.");
     } finally {
       setBusyPlan(null);
+    }
+  }
+
+  /** Take the customer back to the payment they already started. */
+  async function handleResumePending() {
+    const target = pendingResume;
+    if (!target?.open.reference) return;
+    setResuming(true);
+    try {
+      const result = await mutationsApi.resumeCardCheckout(target.open.reference);
+      setCheckout(result);
+      setCardRequest(result.request);
+      setPendingResume(null);
+      if (result.simulated) {
+        const paid = await mutationsApi.verifyCardPayment(result.reference, true);
+        setCardRequest(paid.request);
+        setDetailsModalOpen(true);
+        toastSuccess("Payment confirmed. Complete your details to continue.");
+        return;
+      }
+      if (result.paymentUrl) {
+        window.location.assign(result.paymentUrl);
+        return;
+      }
+      toastError("We could not reopen the payment. Please try again.");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Could not reopen the payment.");
+    } finally {
+      setResuming(false);
+    }
+  }
+
+  /**
+   * Cancel the pending request. If the customer was trying to start a different
+   * plan, that request is started immediately afterwards so the click they made
+   * is not swallowed.
+   */
+  async function handleCancelPending() {
+    const target = pendingResume;
+    if (!target?.open.reference) return;
+    setCancelling(true);
+    try {
+      await mutationsApi.cancelCardRequest(target.open.reference);
+      const nextPlan = target.attemptedPlan;
+      setPendingResume(null);
+      await loadRequest();
+      if (nextPlan) {
+        toastSuccess("Previous request cancelled. Starting your new plan.");
+        await handleSelectPlan(nextPlan);
+        return;
+      }
+      toastSuccess("The pending plan request was cancelled.");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Could not cancel the request.");
+    } finally {
+      setCancelling(false);
     }
   }
 
@@ -909,6 +1001,19 @@ function CardPage({
           busyPlan={busyPlan}
           onSelect={(plan) => void handleSelectPlan(plan)}
           onClose={() => setPlanModalOpen(false)}
+        />
+      ) : null}
+
+      {pendingResume?.open.request && pendingResume.open.reference ? (
+        <PendingPaymentModal
+          request={pendingResume.open.request}
+          reference={pendingResume.open.reference}
+          attemptedPlanName={pendingResume.attemptedPlan?.name ?? null}
+          resuming={resuming}
+          cancelling={cancelling}
+          onResume={() => void handleResumePending()}
+          onCancel={() => void handleCancelPending()}
+          onClose={() => setPendingResume(null)}
         />
       ) : null}
 

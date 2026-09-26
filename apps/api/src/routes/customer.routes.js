@@ -485,6 +485,113 @@ router.post("/card-request/checkout", asyncHandler(async (req, res) => {
 }));
 
 /**
+ * The customer's open card request, if there is one.
+ *
+ * A 409 from checkout tells the customer they are blocked but not what to do
+ * about it. This lets the client show the pending plan and offer the two real
+ * ways out: finish paying it, or cancel it.
+ */
+router.get("/card-request/open", asyncHandler(async (req, res) => {
+  const open = await one(
+    `SELECT r.*, p.name AS plan_name, p.amount_kobo AS plan_amount_kobo
+     FROM card_requests r LEFT JOIN card_plans p ON p.code = r.plan_code
+     WHERE r.user_id = $1 AND r.status IN ('awaiting_payment','pending','pending_verification','approved')
+     ORDER BY r.created_at DESC LIMIT 1`,
+    [req.user.id]
+  );
+  // The action flags are always present so the client can rely on a single
+  // shape rather than treating absent keys as false.
+  if (!open) {
+    return res.json({ request: null, reference: null, canResume: false, canCancel: false, canWithdraw: false });
+  }
+
+  // Only an unpaid request can be resumed or cancelled. A paid one can instead be
+  // withdrawn for a refund, which is a different action with a different outcome.
+  const unpaid = open.payment_status !== "paid" && ["awaiting_payment", "pending"].includes(open.status);
+  res.json({
+    request: serializeCardRequest(open),
+    reference: open.payment_reference,
+    canResume: unpaid,
+    canCancel: unpaid,
+    canWithdraw: open.payment_status === "paid" && open.status === "pending_verification"
+  });
+}));
+
+/**
+ * Re-issue a payment link for a request the customer already started.
+ *
+ * Hosted checkout links expire and a customer often closes the tab, so the link
+ * they were given may be dead by the time they return. Rather than stranding
+ * them, a fresh session is created for the same request.
+ *
+ * The original payment reference is reused deliberately: if the earlier session
+ * was in fact paid and only the notification was lost, the retry resolves to the
+ * same request and credits it exactly once rather than orphaning the money.
+ */
+router.post("/card-request/resume", asyncHandler(async (req, res) => {
+  const ref = String(req.body?.reference ?? "").trim();
+  if (!ref) throw badRequest("reference is required");
+
+  const request = await one(
+    `SELECT r.*, p.name AS plan_name, p.amount_kobo AS plan_amount_kobo
+     FROM card_requests r LEFT JOIN card_plans p ON p.code = r.plan_code
+     WHERE r.payment_reference = $1 AND r.user_id = $2`,
+    [ref, req.user.id]
+  );
+  if (!request) throw notFound("Card request not found");
+
+  if (request.payment_status === "paid") {
+    // Never re-charge a paid request: that is how a customer ends up paying
+    // twice for one plan.
+    throw conflict("This plan has already been paid. Continue to verification instead.");
+  }
+  if (!["awaiting_payment", "pending"].includes(request.status)) {
+    throw conflict("This card request is no longer awaiting payment");
+  }
+  if (!request.plan_code) throw badRequest("This request has no plan to pay for");
+
+  const plan = await one("SELECT code, name, amount_kobo FROM card_plans WHERE code = $1", [request.plan_code]);
+  if (!plan) throw badRequest("That plan is no longer available");
+
+  const provider = activeProvider();
+  if (!provider) throw serviceUnavailable("No payment provider is configured");
+
+  const init = await startCheckout({
+    provider,
+    txRef: request.payment_reference,
+    amountKobo: Number(plan.amount_kobo),
+    email: req.user.email,
+    name: req.user.full_name || undefined,
+    phone: req.user.phone ?? undefined,
+    redirectUrl: `${env.APP_URL}/customer/card?plan=${encodeURIComponent(request.payment_reference)}`,
+    title: `Obligon ${plan.name} Plan`,
+    meta: { userId: req.user.id, planCode: plan.code, kind: "card_request", resumed: true }
+  });
+
+  await audit({
+    actorUserId: req.user.id,
+    actorRole: req.user.role,
+    action: "card_request.checkout_resumed",
+    entityType: "card_request",
+    entityId: request.id,
+    ip: req.ip,
+    metadata: { planCode: plan.code, amountKobo: plan.amount_kobo }
+  });
+
+  res.json({
+    ok: true,
+    request: serializeCardRequest({ ...request, plan_name: plan.name, plan_amount_kobo: plan.amount_kobo }),
+    reference: request.payment_reference,
+    provider,
+    paymentUrl: init.authorization_url ?? null,
+    simulated: init.simulated,
+    message: init.simulated
+      ? "Payment simulation is active because no payment processor is configured."
+      : "Complete your payment to continue with verification."
+  });
+}));
+
+/**
  * Withdraw a plan purchase and refund it.
  *
  * A customer who has paid but abandoned verification is otherwise stuck: the
