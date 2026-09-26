@@ -69,6 +69,7 @@ import type {
   AppNotification,
   CardCheckout,
   CardPlan,
+  CardPlanFeature,
   CardRequest,
   CheckoutResult,
   CustomerProfile,
@@ -99,76 +100,100 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
 };
 
 /**
- * Offline fallbacks for the card-request flow. Mirrors `card_plans` seeded by
- * `apps/api/src/migrations/007_card_request_plans.sql`.
+ * Offline fallbacks for the card-request flow. Mirrors `card_plans` as seeded by
+ * `apps/api/src/migrations/010_expand_plan_features.sql`.
+ *
+ * All three plans share one ordered catalogue so the columns always line up for
+ * side-by-side comparison. `unavailable` means "explicitly not in this plan";
+ * any other string is a tier or percentage that must render verbatim.
  */
+const PLAN_FEATURE_CATALOGUE = [
+  "Digital Fuel Wallet",
+  "Physical Fuel Card",
+  "Fuel Purchase",
+  "Digital Receipts",
+  "Transaction History",
+  "Fuel Spend Tracking",
+  "Fuel Budget Management",
+  "Spending Limits",
+  "Fuel Consumption Analytics",
+  "Loyalty Rewards",
+  "Partner Discounts",
+  "Partner Mechanics",
+  "Priority Support",
+  "Generator Repairer",
+  "Access to Car Wash",
+  "VIP Lounge",
+  "Intelligence Notifications",
+  "Towing Services"
+] as const;
+
+/** Per-plan state for each catalogue entry, keyed by feature label. */
+const PLAN_FEATURE_STATES: Record<string, Record<string, string>> = {
+  bronze: {
+    "Partner Discounts": "25%",
+    "Generator Repairer": "30%"
+  },
+  gold: {
+    "Fuel Spend Tracking": "Advanced",
+    "Fuel Consumption Analytics": "Advanced",
+    "Loyalty Rewards": "Premium",
+    "Partner Discounts": "50%",
+    "Priority Support": "included",
+    "Generator Repairer": "60%",
+    "Access to Car Wash": "included",
+    "Intelligence Notifications": "included"
+  },
+  platinum: {
+    "Fuel Spend Tracking": "Advanced",
+    "Fuel Consumption Analytics": "Advanced",
+    "Loyalty Rewards": "Premium",
+    "Partner Discounts": "75%",
+    "Partner Mechanics": "included",
+    "Priority Support": "included",
+    "Generator Repairer": "100%",
+    "Access to Car Wash": "included",
+    "VIP Lounge": "included",
+    "Intelligence Notifications": "included",
+    "Towing Services": "included"
+  }
+};
+
+function buildPlanFeatures(code: string): CardPlanFeature[] {
+  const states = PLAN_FEATURE_STATES[code] ?? {};
+  return PLAN_FEATURE_CATALOGUE.map((label) => ({
+    label,
+    state: states[label] ?? "included"
+  }));
+}
+
 const LOCAL_CARD_PLANS: CardPlan[] = [
   {
     code: "bronze",
     name: "Bronze",
     amountKobo: 250000,
-    amountLabel: "₦2,500",
+    amountLabel: "\u20a62,500",
     interval: "monthly",
     blurb: "Everyday fuel card with core wallet and spend controls.",
-    features: [
-      { label: "Digital Fuel Wallet", state: "included" },
-      { label: "Physical Fuel Card", state: "included" },
-      { label: "Fuel Purchase", state: "included" },
-      { label: "Digital Receipts", state: "included" },
-      { label: "Transaction History", state: "included" },
-      { label: "Fuel Spend Tracking", state: "included" },
-      { label: "Fuel Budget Management", state: "included" },
-      { label: "Spending Limits", state: "included" },
-      { label: "Partner Discounts", state: "25%" },
-      { label: "Generator Repairer", state: "30%" }
-    ]
+    features: buildPlanFeatures("bronze")
   },
   {
     code: "gold",
     name: "Gold",
     amountKobo: 350000,
-    amountLabel: "₦3,500",
+    amountLabel: "\u20a63,500",
     interval: "monthly",
     blurb: "Advanced tracking and rewards for higher-mileage drivers.",
-    features: [
-      { label: "Digital Fuel Wallet", state: "included" },
-      { label: "Physical Fuel Card", state: "included" },
-      { label: "Fuel Purchase", state: "included" },
-      { label: "Digital Receipts", state: "included" },
-      { label: "Transaction History", state: "included" },
-      { label: "Fuel Spend Tracking", state: "Advanced" },
-      { label: "Fuel Consumption Analytics", state: "Advanced" },
-      { label: "Loyalty Rewards", state: "Premium" },
-      { label: "Partner Discounts", state: "50%" },
-      { label: "Priority Support", state: "included" },
-      { label: "Generator Repairer", state: "60%" },
-      { label: "Access to Car Wash", state: "included" }
-    ]
+    features: buildPlanFeatures("gold")
   },
   {
     code: "platinum",
     name: "Platinum",
     amountKobo: 500000,
-    amountLabel: "₦5,000",
+    amountLabel: "\u20a65,000",
     interval: "monthly",
     blurb: "Full network access including mechanics, VIP lounge and towing.",
-    features: [
-      { label: "Digital Fuel Wallet", state: "included" },
-      { label: "Physical Fuel Card", state: "included" },
-      { label: "Fuel Purchase", state: "included" },
-      { label: "Digital Receipts", state: "included" },
-      { label: "Transaction History", state: "included" },
-      { label: "Fuel Spend Tracking", state: "Advanced" },
-      { label: "Fuel Consumption Analytics", state: "Advanced" },
-      { label: "Loyalty Rewards", state: "Premium" },
-      { label: "Partner Discounts", state: "75%" },
-      { label: "Partner Mechanics", state: "included" },
-      { label: "Priority Support", state: "included" },
-      { label: "Generator Repairer", state: "100%" },
-      { label: "Access to Car Wash", state: "included" },
-      { label: "VIP Lounge", state: "included" },
-      { label: "Towing Services", state: "included" }
-    ]
+    features: buildPlanFeatures("platinum")
   }
 ];
 

@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { DashboardLogo } from "@/components/shared/DashboardLogo";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
@@ -14,7 +14,6 @@ import {
   Settings,
   WalletCards
 } from "lucide-react";
-import { assets } from "@/components/landing/assets";
 import { adminNav, type AdminIconKey } from "@/lib/mock/admin-data";
 import { useSession } from "@/components/shared/AuthContext";
 import { LogoutButton } from "@/components/auth/LogoutButton";
@@ -34,10 +33,10 @@ export function AdminSidebar() {
   const { user } = useSession();
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r border-[#dfe5ec] bg-white text-[#07162f] lg:flex">
-      <div className="px-8 pt-10">
-        <Link href="/admin" className="relative block h-[86px] w-[210px]" aria-label="Obligon LTD home">
-          <Image src={assets.obligonLogo} fill sizes="210px" alt="Obligon LTD" className="scale-[1.35] object-contain object-left origin-left" priority />
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r border-[#dfe5ec] bg-white px-6 py-8 text-[#07162f] lg:flex">
+      <div>
+        <Link href="/admin" className="block" aria-label="Obligon LTD home">
+          <DashboardLogo priority />
         </Link>
       </div>
 

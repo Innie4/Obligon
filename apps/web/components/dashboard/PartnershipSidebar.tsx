@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { DashboardLogo } from "@/components/shared/DashboardLogo";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
@@ -22,7 +22,6 @@ import {
   Settings,
   Users
 } from "lucide-react";
-import { assets } from "@/components/landing/assets";
 import { dashboardNav, type DashboardIcon, type DashboardPageKey } from "@/lib/mock/dashboard-data";
 import { useSession } from "@/components/shared/AuthContext";
 import { LogoutButton } from "@/components/auth/LogoutButton";
@@ -125,14 +124,12 @@ export function PartnershipSidebar() {
   };
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r border-[#dfe5ec] bg-white text-[#07162f] lg:flex">
-      <div className="flex h-[168px] items-start px-6 pt-8">
-        <Link href="/dashboard" className="relative block h-[88px] w-[210px]" aria-label="Obligon LTD home">
-          <Image src={assets.obligonLogo} fill sizes="210px" alt="Obligon LTD" className="scale-[1.3] object-contain object-left-top origin-top-left" priority />
-        </Link>
-      </div>
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r border-[#dfe5ec] bg-white px-6 py-8 text-[#07162f] lg:flex">
+      <Link href="/dashboard" className="block" aria-label="Obligon LTD home">
+        <DashboardLogo priority />
+      </Link>
 
-      <nav className="flex-1 overflow-y-auto px-5 pb-5">
+      <nav className="mt-8 flex-1 overflow-y-auto pb-5">
         <div className="space-y-1">
           {visiblePrimaryItems.map(renderLink)}
 

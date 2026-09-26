@@ -139,8 +139,14 @@ export function CareersPage() {
         <div className="relative">
           <div className="absolute -inset-5 -rotate-2 rounded-[32px] bg-obligon-lime/20" />
           <div className="relative overflow-hidden rounded-[32px] border border-obligon-border bg-white p-1 shadow-card">
-            <Image src={assets.stationPhoto} width={760} height={512} alt="Obligon LTD operations team" className="h-[420px] w-full object-cover" priority />
-            <div className="absolute inset-x-1 bottom-1 h-28 bg-gradient-to-t from-obligon-navy/40 to-transparent" />
+            <Image
+              src="/assets/career-hero.jpg"
+              width={1920}
+              height={1280}
+              alt="Illustration of a professional climbing steps labelled Career"
+              className="h-[420px] w-full object-contain"
+              priority
+            />
           </div>
         </div>
       </section>

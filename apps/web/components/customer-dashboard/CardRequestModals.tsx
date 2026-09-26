@@ -18,15 +18,23 @@ const NIGERIAN_STATES = [
 ];
 
 function PlanBadge({ state }: { state: string }) {
+  if (state === "unavailable") {
+    return (
+      <span className="shrink-0 rounded-full bg-[#f0f4f0] px-2 py-0.5 text-[10px] font-extrabold uppercase text-obligon-text/60">
+        &mdash;
+      </span>
+    );
+  }
   if (state === "included") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-[#e8fbd7] px-2 py-0.5 text-[10px] font-extrabold uppercase text-obligon-green">
+      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#e8fbd7] px-2 py-0.5 text-[10px] font-extrabold uppercase text-obligon-green">
         <Check size={10} /> Included
       </span>
     );
   }
+  // "Advanced", "Premium" and percentage benefits stay distinct from Included.
   return (
-    <span className="rounded-full bg-obligon-blue/10 px-2 py-0.5 text-[10px] font-extrabold uppercase text-obligon-blue">
+    <span className="shrink-0 rounded-full bg-obligon-blue/10 px-2 py-0.5 text-[10px] font-extrabold uppercase text-obligon-blue">
       {state}
     </span>
   );
@@ -50,7 +58,7 @@ export function CardPlanModal({
   onClose: () => void;
 }) {
   return (
-    <ModalFrame onClose={onClose}>
+    <ModalFrame onClose={onClose} size="wide">
       <div className="p-6">
         <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Choose your plan</h2>
         <p className="mt-2 text-sm leading-6 text-obligon-text">
@@ -63,44 +71,68 @@ export function CardPlanModal({
             <Loader2 size={18} className="animate-spin" /> Loading plans…
           </div>
         ) : (
-          <div className="mt-6 space-y-3">
+          <div className="mt-6 grid items-stretch gap-4 md:grid-cols-3">
             {plans.map((plan) => {
               const busy = busyPlan === plan.code;
               return (
-                <button
+                <div
                   key={plan.code}
-                  type="button"
-                  disabled={busyPlan !== null}
-                  onClick={() => onSelect(plan)}
-                  className="w-full rounded-2xl border-2 border-obligon-border bg-white p-5 text-left transition hover:border-obligon-green disabled:opacity-60"
+                  className={`flex flex-col rounded-2xl border-2 bg-white p-5 transition ${
+                    busyPlan && !busy
+                      ? "border-obligon-border opacity-60"
+                      : "border-obligon-border hover:border-obligon-green"
+                  }`}
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="text-xs font-extrabold uppercase tracking-[1.2px] text-obligon-green">
-                        {plan.name}
-                      </p>
-                      <p className="mt-1.5 text-2xl font-extrabold text-obligon-navy">
-                        {plan.amountLabel}
-                        <span className="text-sm font-bold text-obligon-text">/{plan.interval}</span>
-                      </p>
-                      <p className="mt-1.5 text-xs leading-5 text-obligon-text">{plan.blurb}</p>
-                    </div>
-                    {busy ? <Loader2 size={20} className="mt-1 shrink-0 animate-spin text-obligon-green" /> : null}
+                  <div className="min-w-0">
+                    <p className="text-xs font-extrabold uppercase tracking-[1.2px] text-obligon-green">
+                      {plan.name}
+                    </p>
+                    <p className="mt-1.5 text-2xl font-extrabold text-obligon-navy">
+                      {plan.amountLabel}
+                      <span className="text-sm font-bold text-obligon-text">/{plan.interval}</span>
+                    </p>
+                    <p className="mt-1.5 text-xs leading-5 text-obligon-text">{plan.blurb}</p>
                   </div>
 
-                  <ul className="mt-4 flex flex-wrap gap-1.5">
-                    {plan.features.slice(0, 6).map((feature) => (
-                      <li key={feature.label}>
-                        <PlanBadge state={feature.state} />
-                      </li>
-                    ))}
-                    {plan.features.length > 6 ? (
-                      <li className="rounded-full bg-[#f0f4f0] px-2 py-0.5 text-[10px] font-extrabold text-obligon-text">
-                        +{plan.features.length - 6} more
-                      </li>
-                    ) : null}
+                  {/* Every benefit is listed under its own plan so the three
+                      columns can be compared directly. */}
+                  <ul className="mt-5 flex-1 space-y-2.5 border-t border-[#eef3ee] pt-4">
+                    {plan.features.map((feature) => {
+                      const unavailable = feature.state === "unavailable";
+                      return (
+                        <li key={feature.label} className="flex items-start justify-between gap-2">
+                          <span className="flex min-w-0 items-start gap-2">
+                            {unavailable ? (
+                              <span aria-hidden="true" className="mt-px w-3 shrink-0 text-center text-xs text-obligon-text/50">
+                                &mdash;
+                              </span>
+                            ) : (
+                              <Check size={13} className="mt-0.5 shrink-0 text-obligon-green" />
+                            )}
+                            <span
+                              className={`text-[11px] leading-4 ${
+                                unavailable ? "text-obligon-text/50" : "font-bold text-obligon-navy"
+                              }`}
+                            >
+                              {feature.label}
+                            </span>
+                          </span>
+                          <PlanBadge state={feature.state} />
+                        </li>
+                      );
+                    })}
                   </ul>
-                </button>
+
+                  <button
+                    type="button"
+                    disabled={busyPlan !== null}
+                    onClick={() => onSelect(plan)}
+                    className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-obligon-green text-sm font-extrabold text-white transition hover:bg-obligon-green/90 disabled:opacity-60"
+                  >
+                    {busy ? <Loader2 size={16} className="animate-spin" /> : null}
+                    {busy ? "Starting checkout…" : `Choose ${plan.name}`}
+                  </button>
+                </div>
               );
             })}
           </div>

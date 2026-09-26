@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { DashboardLogo } from "@/components/shared/DashboardLogo";
 import {
   Bell,
   ChevronDown,
@@ -15,7 +15,6 @@ import {
   Settings,
   WalletCards
 } from "lucide-react";
-import { assets } from "@/components/landing/assets";
 import { customerNav, secondaryCustomerNav, pageTitles, type CustomerPageKey } from "@/lib/mock/customer-data";
 import { useSession } from "@/components/shared/AuthContext";
 import { AuthGuard } from "@/components/auth/AuthGuard";
@@ -72,9 +71,9 @@ function Sidebar() {
   );
 
   return (
-    <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-[#dfe5ec] bg-white px-4 py-8 lg:flex">
-      <Link href="/customer" className="relative ml-2 block h-20 w-[210px]" aria-label="Obligon LTD customer dashboard">
-        <Image src={assets.obligonLogo} alt="Obligon LTD" fill sizes="210px" className="scale-[1.25] object-contain object-left origin-left" priority />
+    <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-[#dfe5ec] bg-white px-6 py-8 lg:flex">
+      <Link href="/customer" className="block" aria-label="Obligon LTD customer dashboard">
+        <DashboardLogo priority />
       </Link>
 
       <div className="mt-10 flex items-center gap-3.5 rounded-xl bg-[#f7fbf8] p-3.5 border border-obligon-border">
@@ -118,8 +117,8 @@ function Sidebar() {
 function MobileHeader() {
   return (
     <header className="flex h-[84px] items-center justify-between border-b border-[#e0e7de] bg-[#f7fbf8] px-8 lg:hidden">
-      <Link href="/customer" className="relative h-16 w-40" aria-label="Obligon LTD customer dashboard">
-        <Image src={assets.obligonLogo} alt="Obligon LTD" fill sizes="160px" className="scale-[1.25] object-contain object-left origin-left" priority />
+      <Link href="/customer" className="block" aria-label="Obligon LTD customer dashboard">
+        <DashboardLogo width={132} priority />
       </Link>
       <Link href="/customer/notifications" className="text-obligon-green" aria-label="Notifications">
         <Bell size={22} fill="currentColor" />

@@ -43,10 +43,23 @@ type CustomerModalsProps = {
   paymentProvider?: string;
 };
 
-export function ModalFrame({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+export function ModalFrame({
+  children,
+  onClose,
+  size = "default"
+}: {
+  children: React.ReactNode;
+  onClose: () => void;
+  /** `wide` is for comparison layouts that place cards side by side. */
+  size?: "default" | "wide";
+}) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-end bg-[#20251f]/55 px-0 backdrop-blur-sm sm:place-items-center sm:px-5">
-      <section className="max-h-[94vh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-hero sm:max-w-[560px] sm:rounded-2xl">
+      <section
+        className={`max-h-[94vh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-hero sm:rounded-2xl ${
+          size === "wide" ? "sm:max-w-[1040px]" : "sm:max-w-[560px]"
+        }`}
+      >
         <div className="flex items-center justify-between border-b border-[#e0e7de] px-6 py-5">
           <p className="font-display text-xl font-extrabold text-obligon-navy">Obligon LTD</p>
           <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-lg bg-[#f1f5f0] text-obligon-navy hover:bg-[#e2eae0] transition" aria-label="Close modal">

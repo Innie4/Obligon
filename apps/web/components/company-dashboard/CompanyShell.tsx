@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { DashboardLogo } from "@/components/shared/DashboardLogo";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -22,7 +22,6 @@ import {
   Wrench,
   X
 } from "lucide-react";
-import { assets } from "@/components/landing/assets";
 import { companyNav, pageCopy, type CompanyPageKey } from "@/lib/mock/company-data";
 import { useSession } from "@/components/shared/AuthContext";
 import { AuthGuard } from "@/components/auth/AuthGuard";
@@ -70,9 +69,9 @@ function CompanySidebar() {
   const active = activePage(pathname);
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r border-[#dfe5ec] bg-white px-5 py-8 lg:flex">
-      <Link href="/company" className="relative mx-auto block h-20 w-[210px]" aria-label="Obligon LTD company dashboard">
-        <Image src={assets.obligonLogo} alt="Obligon LTD" fill sizes="210px" className="scale-[1.35] object-contain" priority />
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r border-[#dfe5ec] bg-white px-6 py-8 lg:flex">
+      <Link href="/company" className="block" aria-label="Obligon LTD company dashboard">
+        <DashboardLogo priority />
       </Link>
       <nav className="mt-10 flex-1 space-y-1 overflow-y-auto pr-1">
         {companyNav.map((item) => (
