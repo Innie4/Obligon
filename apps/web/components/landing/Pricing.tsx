@@ -5,7 +5,35 @@ import Link from "next/link";
 import { useState } from "react";
 import { assets } from "./assets";
 
-const organizationPlans = [
+type FeatureCell = true | false | string;
+
+type SourcePlan = {
+  name: string;
+  price: string;
+  suffix?: string;
+  features: FeatureCell[];
+  cta: string;
+  recommended?: boolean;
+  dark?: boolean;
+};
+
+type ResolvedFeature = {
+  label: string;
+  value: string | null;
+  enabled: boolean;
+};
+
+type ResolvedPlan = {
+  name: string;
+  price: string;
+  suffix?: string;
+  features: ResolvedFeature[];
+  cta: string;
+  recommended?: boolean;
+  dark?: boolean;
+};
+
+const organizationPlans: SourcePlan[] = [
   {
     name: "Starter",
     price: "150k",
@@ -37,41 +65,128 @@ const organizationPlans = [
   }
 ];
 
-const individualPlans = [
+const individualFeatureLabels = [
+  "Digital Fuel Wallet",
+  "Physical Fuel Card",
+  "Fuel Purchase",
+  "Digital Receipts",
+  "Transaction History",
+  "Fuel Spend Tracking",
+  "Fuel Budget Management",
+  "Spending Limits",
+  "Fuel Consumption Analytics",
+  "Loyalty Rewards",
+  "Partner Discounts",
+  "Partner Mechanics",
+  "Priority Support",
+  "Generator Repairer",
+  "Access to Car Wash",
+  "VIP Lounge",
+  "Intelligence Notifications",
+  "Towing Services"
+];
+
+const individualPlans: SourcePlan[] = [
   {
-    name: "Pay As You Go",
-    price: "0",
-    suffix: "setup",
-    features: ["No monthly fee", "Pay only for fuel used", "Access to 850+ stations"],
+    name: "Bronze",
+    price: "2,500",
+    suffix: "/month",
+    features: [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      "25%",
+      false,
+      false,
+      "30%",
+      false,
+      false,
+      false,
+      false
+    ],
     cta: "Start Free"
   },
   {
-    name: "Personal",
-    price: "75k",
-    suffix: "/year",
-    features: ["1 Vehicle", "Monthly statements", "200 Partner Stations"],
-    cta: "Go Personal",
+    name: "Gold",
+    price: "3,500",
+    suffix: "/month",
+    features: [
+      true,
+      true,
+      true,
+      true,
+      true,
+      "Advanced",
+      true,
+      true,
+      "Advanced",
+      "Premium",
+      "50%",
+      false,
+      true,
+      "60%",
+      true,
+      false,
+      true,
+      false
+    ],
+    cta: "Go Gold",
     recommended: true
   },
   {
-    name: "Pro Driver",
-    price: "120k",
-    suffix: "/year",
-    features: ["Up to 3 Vehicles", "Fuel spend alerts", "500 Partner Stations"],
-    cta: "Go Pro"
-  },
-  {
-    name: "Family Fleet",
-    price: "Custom",
-    features: ["Up to 10 Vehicles", "Shared wallet", "Full Network Access"],
-    cta: "Custom Quote",
-    dark: true
+    name: "Platinum",
+    price: "5,000",
+    suffix: "/month",
+    features: [
+      true,
+      true,
+      true,
+      true,
+      true,
+      "Advanced",
+      true,
+      true,
+      "Advanced",
+      "Premium",
+      "75%",
+      true,
+      true,
+      "100%",
+      true,
+      true,
+      true,
+      true
+    ],
+    cta: "Go Platinum"
   }
 ];
 
+function resolvePlans(source: SourcePlan[], usesSharedLabels: boolean): ResolvedPlan[] {
+  return source.map((plan) => ({
+    ...plan,
+    features: plan.features.map((cell, index) => {
+      if (typeof cell === "string") {
+        return usesSharedLabels
+          ? { label: individualFeatureLabels[index], value: cell, enabled: true }
+          : { label: cell, value: null, enabled: true };
+      }
+
+      return { label: individualFeatureLabels[index], value: null, enabled: cell };
+    })
+  }));
+}
+
 export function Pricing() {
   const [tab, setTab] = useState<"individual" | "organization">("individual");
-  const plans = tab === "individual" ? individualPlans : organizationPlans;
+  const plans =
+    tab === "individual" ? resolvePlans(individualPlans, true) : resolvePlans(organizationPlans, false);
 
   return (
     <section id="pricing" className="bg-obligon-mist py-20 lg:py-32" data-node-id="2:71">
@@ -113,7 +228,11 @@ export function Pricing() {
           </div>
         </div>
 
-        <div className="mt-[52px] grid min-w-0 gap-5 lg:grid-cols-4 lg:items-start">
+        <div
+          className={`mt-[52px] grid min-w-0 gap-5 lg:items-start ${
+            plans.length === 4 ? "lg:grid-cols-4" : "lg:grid-cols-3"
+          }`}
+        >
           {plans.map((plan) => (
             <article
               key={plan.name}
@@ -152,16 +271,51 @@ export function Pricing() {
                 )}
               </div>
 
-              <ul className="mt-8 space-y-4">
+              <ul className="mt-8 space-y-3.5">
                 {plan.features.map((feature) => (
                   <li
-                    key={feature}
-                    className={`flex items-center gap-3 text-sm leading-5 ${
-                      plan.dark ? "text-white/80" : plan.recommended ? "font-medium text-obligon-navy" : "text-obligon-text"
+                    key={feature.label}
+                    className={`flex items-start gap-3 text-sm leading-5 ${
+                      !feature.enabled
+                        ? plan.dark
+                          ? "text-white/40"
+                          : "text-obligon-text/50"
+                        : plan.dark
+                          ? "text-white/80"
+                          : plan.recommended
+                            ? "font-medium text-obligon-navy"
+                            : "text-obligon-text"
                     }`}
                   >
-                    <Image src={plan.dark ? assets.checkGreen : assets.checkLarge} width={10} height={20} alt="" />
-                    <span>{feature}</span>
+                    {feature.enabled ? (
+                      <Image
+                        src={plan.dark ? assets.checkGreen : assets.checkLarge}
+                        width={10}
+                        height={20}
+                        alt=""
+                        className="shrink-0"
+                      />
+                    ) : (
+                      <>
+                        <span
+                          aria-hidden="true"
+                          className="inline-flex w-[10px] shrink-0 translate-y-[3px] justify-center text-xs"
+                        >
+                          &mdash;
+                        </span>
+                        <span className="sr-only">Not included</span>
+                      </>
+                    )}
+                    <span className="min-w-0">
+                      {feature.label}
+                      {feature.value ? (
+                        <span
+                          className={`ml-1.5 font-bold ${plan.dark ? "text-obligon-lime" : "text-obligon-green"}`}
+                        >
+                          {feature.value}
+                        </span>
+                      ) : null}
+                    </span>
                   </li>
                 ))}
               </ul>
