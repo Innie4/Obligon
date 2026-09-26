@@ -67,6 +67,9 @@ import { readPersistedSession, readTokens, writeTokens, writePersistedSession, t
 import type {
   ApiResult,
   AppNotification,
+  CardCheckout,
+  CardPlan,
+  CardRequest,
   CustomerProfile,
   CustomerTransaction,
   MobileTransactionGroup,
@@ -94,6 +97,97 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   }
 };
 
+/**
+ * Offline fallbacks for the card-request flow. Mirrors `card_plans` seeded by
+ * `apps/api/src/migrations/007_card_request_plans.sql`.
+ */
+const LOCAL_CARD_PLANS: CardPlan[] = [
+  {
+    code: "bronze",
+    name: "Bronze",
+    amountKobo: 250000,
+    amountLabel: "₦2,500",
+    interval: "monthly",
+    blurb: "Everyday fuel card with core wallet and spend controls.",
+    features: [
+      { label: "Digital Fuel Wallet", state: "included" },
+      { label: "Physical Fuel Card", state: "included" },
+      { label: "Fuel Purchase", state: "included" },
+      { label: "Digital Receipts", state: "included" },
+      { label: "Transaction History", state: "included" },
+      { label: "Fuel Spend Tracking", state: "included" },
+      { label: "Fuel Budget Management", state: "included" },
+      { label: "Spending Limits", state: "included" },
+      { label: "Partner Discounts", state: "25%" },
+      { label: "Generator Repairer", state: "30%" }
+    ]
+  },
+  {
+    code: "gold",
+    name: "Gold",
+    amountKobo: 350000,
+    amountLabel: "₦3,500",
+    interval: "monthly",
+    blurb: "Advanced tracking and rewards for higher-mileage drivers.",
+    features: [
+      { label: "Digital Fuel Wallet", state: "included" },
+      { label: "Physical Fuel Card", state: "included" },
+      { label: "Fuel Purchase", state: "included" },
+      { label: "Digital Receipts", state: "included" },
+      { label: "Transaction History", state: "included" },
+      { label: "Fuel Spend Tracking", state: "Advanced" },
+      { label: "Fuel Consumption Analytics", state: "Advanced" },
+      { label: "Loyalty Rewards", state: "Premium" },
+      { label: "Partner Discounts", state: "50%" },
+      { label: "Priority Support", state: "included" },
+      { label: "Generator Repairer", state: "60%" },
+      { label: "Access to Car Wash", state: "included" }
+    ]
+  },
+  {
+    code: "platinum",
+    name: "Platinum",
+    amountKobo: 500000,
+    amountLabel: "₦5,000",
+    interval: "monthly",
+    blurb: "Full network access including mechanics, VIP lounge and towing.",
+    features: [
+      { label: "Digital Fuel Wallet", state: "included" },
+      { label: "Physical Fuel Card", state: "included" },
+      { label: "Fuel Purchase", state: "included" },
+      { label: "Digital Receipts", state: "included" },
+      { label: "Transaction History", state: "included" },
+      { label: "Fuel Spend Tracking", state: "Advanced" },
+      { label: "Fuel Consumption Analytics", state: "Advanced" },
+      { label: "Loyalty Rewards", state: "Premium" },
+      { label: "Partner Discounts", state: "75%" },
+      { label: "Partner Mechanics", state: "included" },
+      { label: "Priority Support", state: "included" },
+      { label: "Generator Repairer", state: "100%" },
+      { label: "Access to Car Wash", state: "included" },
+      { label: "VIP Lounge", state: "included" },
+      { label: "Towing Services", state: "included" }
+    ]
+  }
+];
+
+const LOCAL_CARD_REQUEST: CardRequest = {
+  id: "local",
+  label: "Fuel Card",
+  status: "awaiting_payment",
+  planCode: null,
+  planName: null,
+  planAmountLabel: null,
+  paymentStatus: "unpaid",
+  paymentReference: null,
+  paidAt: null,
+  fullName: null,
+  bvnLastFour: null,
+  verificationStatus: "not_started",
+  verificationEta: null,
+  requestedAt: new Date(0).toISOString()
+};
+
 const configuredApiUrl = (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) || "";
 const API_URL = configuredApiUrl || (typeof process !== "undefined" && process.env.NODE_ENV === "production" ? "https://obligon.onrender.com" : "");
 const MOCK_MODE = !API_URL && (typeof process !== "undefined" && process.env.NEXT_PUBLIC_ENABLE_MOCK_MODE) === "true";
@@ -104,6 +198,7 @@ export interface ApiClient {
 
   // Customer domain
   getCustomerProfile(): Promise<CustomerProfile>;
+  getCardPlans(): Promise<CardPlan[]>;
   getCustomerTransactions(): Promise<CustomerTransaction[]>;
   getMobileHistory(): Promise<MobileTransactionGroup[]>;
   getStations(): Promise<Station[]>;
@@ -291,6 +386,10 @@ class LiveApiClient implements ApiClient {
   async getCustomerProfile(): Promise<CustomerProfile> {
     return http<CustomerProfile>("/api/customer/profile");
   }
+  async getCardPlans(): Promise<CardPlan[]> {
+    const data = await http<{ plans: CardPlan[] }>("/api/customer/card-plans");
+    return data.plans;
+  }
   async getNotifications(): Promise<AppNotification[]> {
     const data = await http<{ notifications: AppNotification[] }>("/api/customer/notifications");
     return data.notifications;
@@ -462,6 +561,10 @@ const simulate = <T>(result: T, ms = 600): Promise<T> =>
 class MockApiClient implements ApiClient {
   async getSession(): Promise<SessionUser | null> {
     return readPersistedSession();
+  }
+
+  async getCardPlans(): Promise<CardPlan[]> {
+    return LOCAL_CARD_PLANS;
   }
 
   async getCustomerProfile(): Promise<CustomerProfile> {
@@ -701,11 +804,65 @@ export const mutationsApi = {
   },
   async getCardRequest() {
     if (!LIVE_MODE) return { request: null };
-    return http<{ request: { id: string; status: string; requestedAt: string } | null }>("/api/customer/card-request");
+    return http<{ request: CardRequest | null }>("/api/customer/card-request");
+  },
+  async startCardCheckout(planCode: string): Promise<CardCheckout> {
+    if (!LIVE_MODE) {
+      await simulate({});
+      return {
+        ok: true,
+        reference: "local",
+        paymentUrl: null,
+        simulated: true,
+        message: "Payments are simulated in this environment.",
+        request: { ...LOCAL_CARD_REQUEST, planCode: planCode, planName: planCode }
+      };
+    }
+    return http<CardCheckout>("/api/customer/card-request/checkout", {
+      method: "POST",
+      body: JSON.stringify({ planCode })
+    });
+  },
+  async verifyCardPayment(reference: string, simulated: boolean): Promise<{ ok: boolean; paid: boolean; request: CardRequest }> {
+    if (!LIVE_MODE) {
+      await simulate({});
+      return { ok: true, paid: true, request: LOCAL_CARD_REQUEST };
+    }
+    return http<{ ok: boolean; paid: boolean; request: CardRequest }>("/api/customer/card-request/verify-payment", {
+      method: "POST",
+      body: JSON.stringify({ reference, simulated })
+    });
+  },
+  async submitCardRequestDetails(payload: {
+    reference: string;
+    fullName: string;
+    bvn: string;
+    address: string;
+    city: string;
+    state: string;
+  }): Promise<{ ok: boolean; request: CardRequest; verificationEta?: string }> {
+    if (!LIVE_MODE) {
+      await simulate({}, 700);
+      return {
+        ok: true,
+        verificationEta: "1-3 business days",
+        request: {
+          ...LOCAL_CARD_REQUEST,
+          status: "pending_verification",
+          paymentStatus: "paid",
+          verificationStatus: "pending",
+          verificationEta: "1-3 business days"
+        }
+      };
+    }
+    return http<{ ok: boolean; request: CardRequest; verificationEta?: string }>("/api/customer/card-request/details", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
   },
   async requestCard(payload: { label?: string } = {}) {
-    if (!LIVE_MODE) { await simulate({}); return { ok: true, request: { id: "local", status: "pending" } }; }
-    return http<{ ok: boolean; request: { id: string; status: string; requestedAt: string } }>("/api/customer/card-request", {
+    if (!LIVE_MODE) { await simulate({}); return { ok: true, request: LOCAL_CARD_REQUEST }; }
+    return http<{ ok: boolean; request: CardRequest }>("/api/customer/card-request", {
       method: "POST", body: JSON.stringify(payload)
     });
   },

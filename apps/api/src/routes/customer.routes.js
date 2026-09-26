@@ -5,7 +5,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { hashPin, verifyPin, randomToken } from "../lib/security.js";
 import { naira, fmtDate, fmtDateTime, relativeTime, dayGroup, maskPan, maskAccount, distanceLabel, reference, initials } from "../lib/format.js";
 import { notify, audit, securityLog } from "../lib/notify.js";
-import { paystackEnabled, initializeTopUp, verifyTransaction } from "../lib/paystack.js";
+import { paystackEnabled, initializeTopUp, verifyTransaction, initializePlanPayment, verifyPlanPayment } from "../lib/paystack.js";
 import { sudoEnabled, createSudoCustomer, issueSudoCard, setSudoCardStatus, fundSudoCard, maskFromSudo } from "../lib/sudo.js";
 import { receiptPdf } from "../lib/pdf.js";
 import { uploadFile, signedUrl } from "../lib/storage.js";
@@ -273,28 +273,299 @@ router.post("/payment-methods/:id/default", asyncHandler(async (req, res) => {
 }));
 
 // ============ CARDS ============
-router.get("/card-request", asyncHandler(async (req, res) => {
-  const request = await one(
-    `SELECT id, label, status, created_at FROM card_requests
-     WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
-    [req.user.id]
+const VERIFICATION_ETA = "1-3 business days";
+
+/** Nigerian BVN: 11 digits beginning with 2. */
+const BVN_RE = /^2\d{10}$/;
+
+function serializeCardRequest(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    label: row.label,
+    status: row.status,
+    planCode: row.plan_code ?? null,
+    planName: row.plan_name ?? null,
+    planAmountLabel: row.plan_amount_kobo != null ? naira(row.plan_amount_kobo) : null,
+    paymentStatus: row.payment_status ?? "unpaid",
+    paymentReference: row.payment_reference ?? null,
+    paidAt: row.paid_at ?? null,
+    fullName: row.full_name ?? null,
+    bvnLastFour: row.bvn ? `****${row.bvn.slice(-4)}` : null,
+    verificationStatus: row.verification_status ?? "not_started",
+    verificationEta: row.verification_eta ?? null,
+    requestedAt: row.created_at
+  };
+}
+
+/** Individual subscription plans a customer can buy with a fuel card. */
+router.get("/card-plans", asyncHandler(async (_req, res) => {
+  const plans = await q(
+    `SELECT code, name, amount_kobo, interval, blurb, features
+     FROM card_plans WHERE active = TRUE ORDER BY sort_order, amount_kobo`
   );
-  res.json({ request: request ? { id: request.id, label: request.label, status: request.status, requestedAt: request.created_at } : null });
+  res.json({
+    plans: plans.map((p) => ({
+      code: p.code,
+      name: p.name,
+      amountKobo: p.amount_kobo,
+      amountLabel: naira(p.amount_kobo),
+      interval: p.interval,
+      blurb: p.blurb,
+      features: p.features ?? []
+    }))
+  });
 }));
 
-router.post("/card-request", asyncHandler(async (req, res) => {
-  if (req.user.role !== "customer") throw forbidden("Only eligible customer accounts can request a personal fuel card");
-  const existingCard = await one("SELECT id FROM cards WHERE owner_user_id = $1 AND status NOT IN ('replaced','terminated') LIMIT 1", [req.user.id]);
+router.get("/card-request", asyncHandler(async (req, res) => {
+  const request = await one(
+    `SELECT r.*, p.name AS plan_name, p.amount_kobo AS plan_amount_kobo
+     FROM card_requests r LEFT JOIN card_plans p ON p.code = r.plan_code
+     WHERE r.user_id = $1 ORDER BY r.created_at DESC LIMIT 1`,
+    [req.user.id]
+  );
+  res.json({ request: serializeCardRequest(request) });
+}));
+
+/** Shared guard: only a customer without an existing card may request one. */
+async function assertEligibleForCardRequest(user) {
+  if (user.role !== "customer") throw forbidden("Only eligible customer accounts can request a personal fuel card");
+  const existingCard = await one(
+    "SELECT id FROM cards WHERE owner_user_id = $1 AND status NOT IN ('replaced','terminated') LIMIT 1",
+    [user.id]
+  );
   if (existingCard) throw conflict("A fuel card already exists for this account");
+}
+
+/**
+ * Step 1 - pick a plan and start payment. Nothing is verified or issued here;
+ * the request stays in `awaiting_payment` until the payment is confirmed.
+ */
+router.post("/card-request/checkout", asyncHandler(async (req, res) => {
+  await assertEligibleForCardRequest(req.user);
+
+  const planCode = String(req.body?.planCode ?? "").trim().toLowerCase();
+  if (!planCode) throw badRequest("Choose a subscription plan");
+
+  const plan = await one("SELECT code, name, amount_kobo FROM card_plans WHERE code = $1 AND active = TRUE", [planCode]);
+  if (!plan) throw badRequest("That plan is not available");
+
+  const open = await one(
+    `SELECT id, status FROM card_requests
+     WHERE user_id = $1 AND status IN ('awaiting_payment','pending','pending_verification','approved') LIMIT 1`,
+    [req.user.id]
+  );
+  if (open) {
+    throw conflict(
+      open.status === "awaiting_payment"
+        ? "You already have a plan awaiting payment"
+        : "A card request is already in progress for this account"
+    );
+  }
+
+  const ref = reference("PLAN");
+  const request = await one(
+    `INSERT INTO card_requests (user_id, organization_id, label, plan_code, payment_reference, payment_status, status, verification_eta)
+     VALUES ($1, $2, $3, $4, $5, 'unpaid', 'awaiting_payment', $6)
+     ON CONFLICT DO NOTHING
+     RETURNING id, label, status, plan_code, payment_reference, payment_status, verification_status, created_at`,
+    [req.user.id, req.user.orgId ?? null, `${plan.name} Fuel Card`, plan.code, ref, VERIFICATION_ETA]
+  );
+  if (!request) throw conflict("A card request is already in progress for this account");
+
+  const init = await initializePlanPayment({
+    email: req.user.email,
+    amountKobo: plan.amount_kobo,
+    reference: ref,
+    callbackUrl: `${env.APP_URL}/customer/card?plan=${encodeURIComponent(ref)}`,
+    metadata: { userId: req.user.id, planCode: plan.code, kind: "card_request" }
+  });
+
+  await audit({
+    actorUserId: req.user.id,
+    actorRole: req.user.role,
+    action: "card_request.checkout_started",
+    entityType: "card_request",
+    entityId: request.id,
+    ip: req.ip,
+    metadata: { planCode: plan.code, amountKobo: plan.amount_kobo, simulated: init.simulated }
+  });
+
+  res.status(201).json({
+    ok: true,
+    request: serializeCardRequest(request),
+    reference: ref,
+    paymentUrl: init.authorization_url ?? null,
+    simulated: init.simulated,
+    message: init.simulated
+      ? "Payment simulation is active because no payment processor is configured."
+      : "Complete your payment to continue with verification."
+  });
+}));
+
+/**
+ * Abandon a request. Without this a customer who starts checkout and never
+ * pays is permanently blocked from retrying by the one-open-request index.
+ */
+router.post("/card-request/cancel", asyncHandler(async (req, res) => {
+  const ref = String(req.body?.reference ?? "").trim();
+  const id = String(req.body?.id ?? "").trim();
+  if (!ref && !id) throw badRequest("reference or id is required");
+
+  // Accept either identifier: requests predating paid-plan checkout have no
+  // payment reference but must still be resolvable by the customer.
+  const request = ref
+    ? await one("SELECT * FROM card_requests WHERE payment_reference = $1 AND user_id = $2", [ref, req.user.id])
+    : await one("SELECT * FROM card_requests WHERE id = $1 AND user_id = $2", [id, req.user.id]);
+  if (!request) throw notFound("Card request not found");
+  if (!["awaiting_payment", "pending"].includes(request.status)) {
+    throw conflict("This card request can no longer be cancelled");
+  }
+
+  const cancelled = await one(
+    `UPDATE card_requests SET status = 'cancelled', updated_at = now()
+     WHERE id = $1 AND status IN ('awaiting_payment','pending') RETURNING *`,
+    [request.id]
+  );
+  const updated = cancelled ?? (await one("SELECT * FROM card_requests WHERE id = $1", [request.id]));
+
+  await audit({
+    actorUserId: req.user.id,
+    actorRole: req.user.role,
+    action: "card_request.cancelled",
+    entityType: "card_request",
+    entityId: request.id,
+    ip: req.ip
+  });
+  res.json({ ok: true, request: serializeCardRequest(updated) });
+}));
+
+/** Step 2 - confirm the payment actually went through before anything else. */
+router.post("/card-request/verify-payment", asyncHandler(async (req, res) => {
+  const ref = String(req.body?.reference ?? "").trim();
+  if (!ref) throw badRequest("reference is required");
+
+  const request = await one("SELECT * FROM card_requests WHERE payment_reference = $1 AND user_id = $2", [ref, req.user.id]);
+  if (!request) throw notFound("Card request not found");
+  if (request.payment_status === "paid") {
+    return res.json({ ok: true, paid: true, alreadyPaid: true, request: serializeCardRequest(request) });
+  }
+  if (request.status !== "awaiting_payment") {
+    throw conflict("This card request is no longer awaiting payment");
+  }
+
+  const verification = await verifyPlanPayment(ref, { simulated: Boolean(req.body?.simulated) });
+  if (verification.status !== "success") {
+    await q("UPDATE card_requests SET payment_status = 'failed', updated_at = now() WHERE id = $1", [request.id]);
+    throw badRequest("Payment was not successful. Please try again or choose another plan.");
+  }
+
+  const paid = await one(
+    `UPDATE card_requests SET payment_status = 'paid', paid_at = now(), updated_at = now()
+     WHERE id = $1 AND payment_status <> 'paid'
+     RETURNING *`,
+    [request.id]
+  );
+  const updated = paid ?? (await one("SELECT * FROM card_requests WHERE id = $1", [request.id]));
+
+  await audit({
+    actorUserId: req.user.id,
+    actorRole: req.user.role,
+    action: "card_request.payment_confirmed",
+    entityType: "card_request",
+    entityId: request.id,
+    ip: req.ip,
+    metadata: { reference: ref, planCode: request.plan_code, simulated: verification.simulated }
+  });
+  await notify({
+    userId: req.user.id,
+    title: "Payment received",
+    body: `Your ${request.plan_code ?? "plan"} plan payment was confirmed. Complete your details so we can verify you and issue your card.`,
+    category: "transactions",
+    link: "/customer/card"
+  });
+
+  res.json({ ok: true, paid: true, request: serializeCardRequest(updated) });
+}));
+
+/** Step 3 - identity details, submitted for verification. */
+router.post("/card-request/details", asyncHandler(async (req, res) => {
+  const ref = String(req.body?.reference ?? "").trim();
+  const fullName = String(req.body?.fullName ?? "").trim();
+  const bvn = String(req.body?.bvn ?? "").replace(/\s/g, "");
+  const address = String(req.body?.address ?? "").trim();
+  const city = String(req.body?.city ?? "").trim();
+  const state = String(req.body?.state ?? "").trim();
+
+  if (!ref) throw badRequest("reference is required");
+  if (fullName.length < 2) throw badRequest("Enter your full legal name as it appears on your ID");
+  if (!BVN_RE.test(bvn)) throw badRequest("BVN must be 11 digits starting with 2");
+  if (!address) throw badRequest("Enter your delivery address");
+  if (!city) throw badRequest("Enter your city");
+  if (!state) throw badRequest("Enter your state");
+
+  const request = await one("SELECT * FROM card_requests WHERE payment_reference = $1 AND user_id = $2", [ref, req.user.id]);
+  if (!request) throw notFound("Card request not found");
+  if (request.payment_status !== "paid") throw conflict("Confirm your plan payment before submitting your details");
+  if (request.verification_status === "pending") {
+    return res.json({ ok: true, alreadySubmitted: true, request: serializeCardRequest(request) });
+  }
+  if (request.status === "approved") throw conflict("Your fuel card has already been approved");
+
+  const updated = await one(
+    `UPDATE card_requests SET
+       full_name = $2, bvn = $3, address = $4, city = $5, state = $6,
+       verification_status = 'pending', status = 'pending_verification',
+       verification_eta = COALESCE(verification_eta, $7), updated_at = now()
+     WHERE id = $1 RETURNING *`,
+    [request.id, fullName.slice(0, 120), bvn, address.slice(0, 200), city.slice(0, 80), state.slice(0, 80), VERIFICATION_ETA]
+  );
+
+  await audit({
+    actorUserId: req.user.id,
+    actorRole: req.user.role,
+    action: "card_request.verification_submitted",
+    entityType: "card_request",
+    entityId: request.id,
+    ip: req.ip,
+    metadata: { planCode: request.plan_code, verificationEta: VERIFICATION_ETA }
+  });
+  await notify({
+    userId: req.user.id,
+    title: "Verification submitted",
+    body: `Thanks ${fullName.split(/\s+/)[0]} - we are verifying your details. Your fuel card will be verified within ${VERIFICATION_ETA}.`,
+    category: "security",
+    link: "/customer/card"
+  });
+
+  res.json({ ok: true, request: serializeCardRequest(updated), verificationEta: VERIFICATION_ETA });
+}));
+
+/**
+ * Back-office path. Customers must buy a plan first, so this is restricted to
+ * staff and cannot be used to obtain a card without payment.
+ */
+router.post("/card-request", asyncHandler(async (req, res) => {
+  if (!["admin", "company"].includes(req.user.role)) {
+    throw forbidden("Card requests must be started by choosing a subscription plan");
+  }
+  const targetUserId = req.body?.userId ?? req.user.id;
   const label = typeof req.body?.label === "string" && req.body.label.trim() ? req.body.label.trim().slice(0, 100) : "Fuel Card";
   const request = await one(
-    `INSERT INTO card_requests (user_id, organization_id, label)
-     VALUES ($1, $2, $3) ON CONFLICT DO NOTHING RETURNING id, label, status, created_at`,
-    [req.user.id, req.user.orgId ?? null, label]
+    `INSERT INTO card_requests (user_id, organization_id, label, status)
+     VALUES ($1, $2, $3, 'pending') ON CONFLICT DO NOTHING RETURNING id, label, status, created_at`,
+    [targetUserId, req.user.orgId ?? null, label]
   );
   if (!request) throw conflict("A card request is already pending or approved for this account");
-  await audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "card.requested", entityType: "card_request", entityId: request.id });
-  res.status(201).json({ ok: true, request: { id: request.id, label: request.label, status: request.status, requestedAt: request.created_at } });
+  await audit({
+    actorUserId: req.user.id,
+    actorRole: req.user.role,
+    action: "card.requested",
+    entityType: "card_request",
+    entityId: request.id,
+    ip: req.ip
+  });
+  res.status(201).json({ ok: true, request: serializeCardRequest(request) });
 }));
 
 router.get("/card", asyncHandler(async (req, res) => {

@@ -66,26 +66,84 @@ test("login succeeds for seeded customer and session works", { skip: !BASE }, as
   assert.ok(stations.data.stations.length > 0);
 });
 
-test("customer card request persists, reports status, and rejects duplicates", { skip: !BASE }, async () => {
+test("card requests require a paid plan, and staff can still open one directly", { skip: !BASE }, async () => {
   const login = await api("/api/auth/login", {
     method: "POST",
     body: { email: "customer@obligon.com", password: "Customer#123" }
   });
   assert.equal(login.status, 200);
-  const before = await api("/api/customer/card-request", { token: login.data.accessToken });
-  assert.equal(before.status, 200);
-  if (!before.data.request) {
-    const created = await api("/api/customer/card-request", {
-      method: "POST", token: login.data.accessToken, body: { label: "Smoke Test Card" }
-    });
-    assert.equal(created.status, 201);
-  }
-  const current = await api("/api/customer/card-request", { token: login.data.accessToken });
-  assert.equal(current.data.request.status, "pending");
-  const duplicate = await api("/api/customer/card-request", {
-    method: "POST", token: login.data.accessToken, body: { label: "Duplicate" }
+  const customerToken = login.data.accessToken;
+
+  // A customer must buy a plan before a card can be requested.
+  const unpaid = await api("/api/customer/card-request", {
+    method: "POST", token: customerToken, body: { label: "Unpaid Card" }
   });
-  assert.equal(duplicate.status, 409);
+  assert.equal(unpaid.status, 403);
+
+  const plans = await api("/api/customer/card-plans", { token: customerToken });
+  assert.equal(plans.status, 200);
+  assert.equal(plans.data.plans.length, 3);
+
+  // Clear residue so the flow assertions start from a known state. A request
+  // already in verification cannot be self-cancelled (the customer has paid),
+  // so the paid-plan assertions only run when the account is actually free.
+  const current = await api("/api/customer/card-request", { token: customerToken });
+  const open = current.data.request;
+  if (open && ["awaiting_payment", "pending"].includes(open.status)) {
+    await api("/api/customer/card-request/cancel", {
+      method: "POST",
+      token: customerToken,
+      body: { reference: open.paymentReference, id: open.id }
+    });
+  }
+
+  const checkout = await api("/api/customer/card-request/checkout", {
+    method: "POST", token: customerToken, body: { planCode: "bronze" }
+  });
+
+  if (checkout.status === 201) {
+    assert.equal(checkout.data.request.status, "awaiting_payment");
+    assert.equal(checkout.data.request.paymentStatus, "unpaid");
+
+    const duplicate = await api("/api/customer/card-request/checkout", {
+      method: "POST", token: customerToken, body: { planCode: "bronze" }
+    });
+    assert.equal(duplicate.status, 409);
+
+    // Abandoning checkout must free the customer to try again.
+    const cancelled = await api("/api/customer/card-request/cancel", {
+      method: "POST", token: customerToken, body: { reference: checkout.data.reference }
+    });
+    assert.equal(cancelled.status, 200);
+    assert.equal(cancelled.data.request.status, "cancelled");
+
+    const retry = await api("/api/customer/card-request/checkout", {
+      method: "POST", token: customerToken, body: { planCode: "bronze" }
+    });
+    assert.equal(retry.status, 201);
+    await api("/api/customer/card-request/cancel", {
+      method: "POST", token: customerToken, body: { reference: retry.data.reference }
+    });
+  } else {
+    // Already mid-verification from a previous run: the guard must still hold.
+    assert.equal(checkout.status, 409);
+  }
+
+  // Back-office path is still available to staff. Re-running against a database
+  // that already holds an open staff request is not an error, so accept either
+  // outcome and assert the resulting state instead.
+  const admin = await api("/api/auth/login", {
+    method: "POST",
+    body: { email: "admin@obligon.com", password: "Admin#1234" }
+  });
+  assert.equal(admin.status, 200);
+  const staffCreated = await api("/api/customer/card-request", {
+    method: "POST", token: admin.data.accessToken, body: { label: "Smoke Test Card" }
+  });
+  assert.ok([201, 409].includes(staffCreated.status), `unexpected status ${staffCreated.status}`);
+  if (staffCreated.status === 201) {
+    assert.equal(staffCreated.data.request.status, "pending");
+  }
 });
 
 test("refresh and logout preserve and revoke the authenticated session", { skip: !BASE }, async () => {

@@ -99,3 +99,47 @@ export function verifyPaystackSignature(rawBody, signature) {
     return false;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Card-request plan checkout
+//
+// A fuel card is only issued against a paid plan, so the plan purchase runs
+// through the same processor as wallet top-ups. When Paystack is not configured
+// the flow would otherwise be untestable and unusable outside production, so
+// outside production a clearly-labelled simulated checkout is used instead. It
+// can never activate in production, and the API reports `simulated: true` so no
+// client can mistake it for a real charge.
+// ---------------------------------------------------------------------------
+
+/** Simulated checkout is available everywhere except production. */
+export const simulatedCheckoutEnabled = () => env.NODE_ENV !== "production";
+
+/**
+ * Start payment for a card-request plan.
+ * Returns { authorization_url, reference, simulated }.
+ */
+export async function initializePlanPayment({ email, amountKobo, reference, callbackUrl, metadata }) {
+  if (enabled()) {
+    const data = await paystackFetch("/transaction/initialize", {
+      method: "POST",
+      body: { email, amount: amountKobo, reference, callback_url: callbackUrl, metadata }
+    });
+    return { authorization_url: data.authorization_url, reference, simulated: false };
+  }
+
+  if (!simulatedCheckoutEnabled()) throw serviceUnavailable("Paystack is not configured");
+  return { authorization_url: callbackUrl, reference, simulated: true };
+}
+
+/**
+ * Verify a plan payment. `simulated` must match how the payment was started so
+ * a simulated reference can never be presented as a verified real charge.
+ */
+export async function verifyPlanPayment(reference, { simulated = false } = {}) {
+  if (simulated) {
+    if (!simulatedCheckoutEnabled()) throw serviceUnavailable("Paystack is not configured");
+    return { reference, status: "success", simulated: true };
+  }
+  const verification = await verifyTransaction(reference);
+  return { ...verification, simulated: false };
+}

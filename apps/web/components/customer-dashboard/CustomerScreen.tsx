@@ -36,7 +36,7 @@ import {
   type CustomerPageKey,
   type CustomerTone
 } from "@/lib/mock/customer-data";
-import { api, mutationsApi, DEFAULT_NOTIFICATION_PREFS, type CustomerTransaction, type NotificationPrefs } from "@/lib/services";
+import { api, mutationsApi, DEFAULT_NOTIFICATION_PREFS, type CardCheckout, type CardPlan, type CardRequest, type CustomerTransaction, type NotificationPrefs } from "@/lib/services";
 import { AsyncBoundary } from "@/components/shared/States";
 import { useAsync } from "@/components/shared/useAsync";
 import { useSession } from "@/components/shared/AuthContext";
@@ -44,6 +44,7 @@ import { useToast } from "@/components/shared/Toast";
 import { Toggle } from "@/components/shared/Toggle";
 import { currentPushState, disableWebPush, enableWebPush, pushSupported } from "@/lib/push-subscription";
 import { CustomerModals, ModalFrame, type CustomerModalType } from "./CustomerModals";
+import { CardDetailsModal, CardPlanModal, CardSubmittedModal } from "./CardRequestModals";
 import { ConfirmModal, PinModal } from "../shared/Dialogs";
 import { StationMap } from "../shared/StationMap";
 import { routes } from "../site/routes";
@@ -664,37 +665,120 @@ function CardPage({
   refreshKey: number;
   onCardChange?: (card: CustomerCard | null) => void;
 }) {
+  const { success: toastSuccess, error: toastError } = useToast();
+  const { user } = useSession();
   const [hasCard, setHasCard] = React.useState<boolean | null>(null);
   const [card, setCard] = React.useState<CustomerCard | null>(null);
-  const [cardRequest, setCardRequest] = React.useState<{ status: string } | null>(null);
-  const [requestingCard, setRequestingCard] = React.useState(false);
-  const { success: toastSuccess, error: toastError } = useToast();
+  const [cardRequest, setCardRequest] = React.useState<CardRequest | null>(null);
+
+  const { status: plansStatus, data: plans } = useAsync(() => api.getCardPlans());
+  const [planModalOpen, setPlanModalOpen] = React.useState(false);
+  const [busyPlan, setBusyPlan] = React.useState<string | null>(null);
+  const [detailsModalOpen, setDetailsModalOpen] = React.useState(false);
+  const [submittingDetails, setSubmittingDetails] = React.useState(false);
+  const [submittedModalOpen, setSubmittedModalOpen] = React.useState(false);
+  const [checkout, setCheckout] = useState<CardCheckout | null>(null);
+
   const onCardChangeRef = React.useRef(onCardChange);
   onCardChangeRef.current = onCardChange;
 
+  const loadRequest = React.useCallback(async () => {
+    const data = await mutationsApi.getCardRequest();
+    setCardRequest(data.request ?? null);
+    return data.request ?? null;
+  }, []);
+
   React.useEffect(() => {
-    void Promise.all([
-      api.request<{ card: CustomerCard | null }>("/api/customer/card"),
-      api.request<{ request: { status: string } | null }>("/api/customer/card-request")
-    ]).then(([cardData, requestData]) => {
-      setHasCard(Boolean(cardData.card));
-      setCard(cardData.card);
-      onCardChangeRef.current?.(cardData.card);
-      setCardRequest(requestData.request);
-    }).catch(() => setHasCard(null));
+    void Promise.all([api.request<{ card: CustomerCard | null }>("/api/customer/card"), loadRequest()])
+      .then(([cardData, request]) => {
+        setHasCard(Boolean(cardData.card));
+        setCard(cardData.card);
+        onCardChangeRef.current?.(cardData.card);
+        // A paid request still needs the customer's identity details.
+        if (request?.paymentStatus === "paid" && request.verificationStatus === "not_started") {
+          setDetailsModalOpen(true);
+        }
+      })
+      .catch(() => setHasCard(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey]);
 
-  async function requestCard() {
-    setRequestingCard(true);
+  // Returning from the payment provider: confirm the charge, then ask for details.
+  React.useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get("plan");
+    if (!ref) return;
+
+    void (async () => {
+      try {
+        const paid = await mutationsApi.verifyCardPayment(ref, false);
+        setCardRequest(paid.request);
+        if (paid.paid) {
+          setDetailsModalOpen(true);
+          toastSuccess("Payment confirmed.");
+        }
+      } catch (err) {
+        toastError(
+          err instanceof Error
+            ? err.message
+            : "We could not confirm your payment. Please try again."
+        );
+      } finally {
+        window.history.replaceState({}, "", "/customer/card");
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleSelectPlan(plan: CardPlan) {
+    setBusyPlan(plan.code);
     try {
-      const data = await mutationsApi.requestCard();
-      setCardRequest(data.request);
-      toastSuccess("Your fuel card request was submitted.");
+      const result = await mutationsApi.startCardCheckout(plan.code);
+      setCheckout(result);
+      setCardRequest(result.request);
+      if (result.simulated) {
+        // No processor configured locally: confirm the simulated charge so the
+        // request reaches the paid state, then collect identity details.
+        const paid = await mutationsApi.verifyCardPayment(result.reference, true);
+        setCardRequest(paid.request);
+        setPlanModalOpen(false);
+        setDetailsModalOpen(true);
+        toastSuccess("Payment confirmed. Complete your details to continue.");
+        return;
+      }
+      if (result.paymentUrl) {
+        window.location.assign(result.paymentUrl);
+        return;
+      }
+      setPlanModalOpen(false);
+      toastError("We could not start the payment. Please try again.");
     } catch (err) {
-      toastError(err instanceof Error ? err.message : "Could not submit the card request.");
+      toastError(err instanceof Error ? err.message : "Could not start checkout.");
     } finally {
-      setRequestingCard(false);
+      setBusyPlan(null);
+    }
+  }
+
+  async function handleSubmitDetails(details: {
+    fullName: string;
+    bvn: string;
+    address: string;
+    city: string;
+    state: string;
+  }) {
+    if (!checkout?.reference && !cardRequest?.paymentReference) return;
+    setSubmittingDetails(true);
+    try {
+      const result = await mutationsApi.submitCardRequestDetails({
+        reference: (checkout?.reference ?? cardRequest?.paymentReference) as string,
+        ...details
+      });
+      setCardRequest(result.request);
+      setDetailsModalOpen(false);
+      setSubmittedModalOpen(true);
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Could not submit your details.");
+    } finally {
+      setSubmittingDetails(false);
     }
   }
 
@@ -726,16 +810,117 @@ function CardPage({
 
       {hasCard === false ? (
         <Card className="mb-8 border-obligon-green/30 bg-[#f7fbf8] p-6">
-          <h2 className="font-display text-xl font-extrabold text-obligon-navy">Request a Fuelvista Card</h2>
-          <p className="mt-1 text-sm text-obligon-text">Submit one request and track its review status from this page.</p>
+          <h2 className="font-display text-xl font-extrabold text-obligon-navy">Get your Fuelvista Card</h2>
+          <p className="mt-1 text-sm text-obligon-text">
+            Choose a subscription plan, pay for it, then verify your identity. We issue your card once
+            verification completes.
+          </p>
+
           {cardRequest ? (
-            <p className="mt-4 text-sm font-extrabold text-obligon-green">Request status: {cardRequest.status.toUpperCase()}</p>
+            <div className="mt-5 space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-obligon-blue/10 px-3 py-1 text-[10px] font-extrabold uppercase text-obligon-blue">
+                  {cardRequest.planName ?? "Plan"} {cardRequest.planAmountLabel ?? ""}
+                </span>
+                <span
+                  className={`rounded-full px-3 py-1 text-[10px] font-extrabold uppercase ${
+                    cardRequest.paymentStatus === "paid"
+                      ? "bg-[#e8fbd7] text-obligon-green"
+                      : cardRequest.paymentStatus === "failed"
+                        ? "bg-[#ffe8e8] text-[#c1121f]"
+                        : "bg-[#fff3d8] text-[#9a6300]"
+                  }`}
+                >
+                  {cardRequest.paymentStatus === "paid"
+                    ? "Payment confirmed"
+                    : cardRequest.paymentStatus === "failed"
+                      ? "Payment failed"
+                      : "Awaiting payment"}
+                </span>
+              </div>
+
+              {cardRequest.paymentStatus !== "paid" ? (
+                <>
+                  <p className="text-sm font-bold text-obligon-navy">
+                    Your {cardRequest.planName ?? "plan"} selection is waiting for payment.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setPlanModalOpen(true)}
+                    className="h-11 rounded-xl bg-obligon-green px-5 text-sm font-extrabold text-white"
+                  >
+                    {cardRequest.paymentStatus === "failed" ? "Try payment again" : "Complete payment"}
+                  </button>
+                </>
+              ) : cardRequest.verificationStatus === "not_started" ? (
+                <>
+                  <p className="text-sm font-bold text-obligon-navy">
+                    Payment received. Tell us who the card belongs to so we can verify you.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setDetailsModalOpen(true)}
+                    className="h-11 rounded-xl bg-obligon-green px-5 text-sm font-extrabold text-white"
+                  >
+                    Enter verification details
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-bold text-obligon-navy">
+                    We are verifying your details. Verification takes {cardRequest.verificationEta ?? "1-3 business days"}.
+                  </p>
+                  <p className="text-xs text-obligon-text">
+                    Name: {cardRequest.fullName} · BVN: {cardRequest.bvnLastFour}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setSubmittedModalOpen(true)}
+                    className="h-11 rounded-xl border border-obligon-border bg-white px-5 text-sm font-extrabold text-obligon-navy"
+                  >
+                    View verification status
+                  </button>
+                </>
+              )}
+            </div>
           ) : (
-            <button type="button" onClick={() => void requestCard()} disabled={requestingCard} className="mt-4 h-11 rounded-xl bg-obligon-green px-5 text-sm font-extrabold text-white disabled:opacity-60">
-              {requestingCard ? "Submitting..." : "Request Card"}
+            <button
+              type="button"
+              onClick={() => setPlanModalOpen(true)}
+              className="mt-5 h-11 rounded-xl bg-obligon-green px-5 text-sm font-extrabold text-white"
+            >
+              Choose a plan
             </button>
           )}
         </Card>
+      ) : null}
+
+      {planModalOpen ? (
+        <CardPlanModal
+          plans={plans ?? []}
+          loading={plansStatus === "loading"}
+          busyPlan={busyPlan}
+          onSelect={(plan) => void handleSelectPlan(plan)}
+          onClose={() => setPlanModalOpen(false)}
+        />
+      ) : null}
+
+      {detailsModalOpen ? (
+        <CardDetailsModal
+          defaultName={user?.name ?? ""}
+          defaultPhone={user?.phone ?? ""}
+          busy={submittingDetails}
+          onSubmit={(details) => void handleSubmitDetails(details)}
+          onClose={() => setDetailsModalOpen(false)}
+        />
+      ) : null}
+
+      {submittedModalOpen ? (
+        <CardSubmittedModal
+          request={cardRequest}
+          eta={cardRequest?.verificationEta ?? "1-3 business days"}
+          onClose={() => setSubmittedModalOpen(false)}
+        />
       ) : null}
 
       {hasCard !== false ? <div className="grid gap-8 lg:grid-cols-[1fr_340px]">

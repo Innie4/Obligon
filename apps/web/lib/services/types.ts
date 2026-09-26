@@ -38,6 +38,56 @@ export interface SessionUser {
   notificationPrefs?: NotificationPrefs;
 }
 
+export type CardRequestStatus =
+  | "awaiting_payment"
+  | "pending"
+  | "pending_verification"
+  | "approved"
+  | "rejected"
+  | "cancelled";
+
+export interface CardPlanFeature {
+  label: string;
+  /** "included" | "Advanced" | "Premium" | a percentage such as "25%". */
+  state: string;
+}
+
+export interface CardPlan {
+  code: string;
+  name: string;
+  amountKobo: number;
+  amountLabel: string;
+  interval: string;
+  blurb: string;
+  features: CardPlanFeature[];
+}
+
+export interface CardRequest {
+  id: string;
+  label: string;
+  status: CardRequestStatus;
+  planCode: string | null;
+  planName: string | null;
+  planAmountLabel: string | null;
+  paymentStatus: "unpaid" | "paid" | "failed" | "refunded";
+  paymentReference: string | null;
+  paidAt: string | null;
+  fullName: string | null;
+  bvnLastFour: string | null;
+  verificationStatus: "not_started" | "pending" | "verified" | "rejected";
+  verificationEta: string | null;
+  requestedAt: string;
+}
+
+export interface CardCheckout {
+  ok: boolean;
+  reference: string;
+  paymentUrl: string | null;
+  simulated: boolean;
+  message: string;
+  request: CardRequest;
+}
+
 export interface CustomerTransaction {
   station: string;
   meta?: string;
