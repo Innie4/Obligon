@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import type { ComponentType } from "react";
@@ -39,6 +39,8 @@ type CustomerModalsProps = {
   cardBlocked: boolean;
   onCardBlockedChange: (blocked: boolean) => void;
   onTopUpSuccess?: (amount: number) => void;
+  /** Which processor the API selected, surfaced for copy in the top-up modal. */
+  paymentProvider?: string;
 };
 
 export function ModalFrame({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
@@ -65,10 +67,11 @@ export function CustomerModals({
   onCardFrozenChange,
   cardBlocked,
   onCardBlockedChange,
-  onTopUpSuccess
+  onTopUpSuccess,
+  paymentProvider
 }: CustomerModalsProps) {
   if (!modal) return null;
-  if (modal === "topup") return <TopUpModal onClose={onClose} onSuccess={onTopUpSuccess} />;
+  if (modal === "topup") return <TopUpModal onClose={onClose} onSuccess={onTopUpSuccess} defaultProvider={paymentProvider} />;
   if (modal === "report") return <ReportProblemModal onClose={onClose} />;
   if (modal === "changePin") return <ChangePinModal onClose={onClose} />;
   if (modal === "changePassword") return <ChangePasswordModal onClose={onClose} />;
@@ -608,18 +611,27 @@ function TwoFactorModal({
   );
 }
 
-function TopUpModal({ onClose, onSuccess }: { onClose: () => void; onSuccess?: (amount: number) => void }) {
-  const [method, setMethod] = React.useState("Direct Bank Transfer");
+function TopUpModal({
+  onClose,
+  onSuccess,
+  defaultProvider
+}: {
+  onClose: () => void;
+  onSuccess?: (amount: number) => void;
+  defaultProvider?: string;
+}) {
+  const [method, setMethod] = React.useState("Card / Bank");
   const [amount, setAmount] = React.useState("25000");
   const [submitting, setSubmitting] = React.useState(false);
-  const [successData, setSuccessData] = React.useState<{ reference: string; amount: number; method: string } | null>(null);
+  const [pending, setPending] = React.useState<{ reference: string; amount: number; provider: string } | null>(null);
+  const [successData, setSuccessData] = React.useState<{ reference: string; amount: number; method: string; balanceLabel?: string } | null>(null);
   const { error: toastError, success: toastSuccess } = useToast();
 
   const quickAmounts = [5000, 10000, 25000, 50000, 100000];
 
   const paymentMethods = [
+    { title: "Card / Bank", body: "Pay securely through our payment provider", Icon: CreditCard },
     { title: "Direct Bank Transfer", body: "Instant funding via dedicated virtual NUBAN", Icon: Building2 },
-    { title: "Corporate Debit / Fuel Card", body: "Mastercard / Visa ending in â€¢â€¢â€¢â€¢ 4092", Icon: CreditCard },
     { title: "USSD / Quick Bank Code", body: "*737# or *894# direct checkout", Icon: ArrowRight },
   ];
 
@@ -628,17 +640,35 @@ function TopUpModal({ onClose, onSuccess }: { onClose: () => void; onSuccess?: (
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!Number.isFinite(numericAmount) || numericAmount < 1000) {
-      toastError("Please enter a valid top-up amount of at least â‚¦1,000.");
+      toastError("Please enter a valid top-up amount of at least \u20a61,000.");
       return;
     }
     setSubmitting(true);
     try {
       const result = await mutationsApi.topUpWallet(numericAmount, method);
       const ref = result?.reference ?? `TOPUP-${Math.floor(100000 + Math.random() * 899999)}`;
-      setSuccessData({ reference: ref, amount: numericAmount, method });
+      const provider = result?.provider ?? defaultProvider ?? "flutterwave";
+
+      if (result?.simulated) {
+        // No processor configured: settle immediately so the flow stays usable
+        // in development instead of redirecting to a checkout that cannot exist.
+        const confirmed = await mutationsApi.confirmTopUp(ref, { simulated: true });
+        setSuccessData({ reference: ref, amount: numericAmount, method, balanceLabel: confirmed?.balanceLabel });
+        onSuccess?.(numericAmount);
+        toastSuccess(`\u20a6${numericAmount.toLocaleString()} top-up recorded.`);
+        return;
+      }
+
+      if (result?.paymentUrl) {
+        setPending({ reference: ref, amount: numericAmount, provider });
+        // Keep the modal mounted while the browser navigates away.
+        window.location.assign(result.paymentUrl);
+        return;
+      }
+
+      // Provider accepted the intent but gave us nowhere to send the customer.
       setSubmitting(false);
-      onSuccess?.(numericAmount);
-      toastSuccess(`â‚¦${numericAmount.toLocaleString()} top-up ${result?.simulated ? "recorded" : "initiated"}.`);
+      toastError("We could not start the payment. Please try again.");
     } catch (err) {
       setSubmitting(false);
       const message = err instanceof Error ? err.message : "Top-up failed. Please try again.";
@@ -656,7 +686,11 @@ function TopUpModal({ onClose, onSuccess }: { onClose: () => void; onSuccess?: (
           <h2 className="mt-5 font-display text-3xl font-extrabold text-obligon-navy">Top-Up Successful</h2>
           <p className="mt-2 text-sm text-obligon-text">
             Your wallet balance has been credited with{" "}
-            <strong className="text-obligon-green font-extrabold text-base">â‚¦{successData.amount.toLocaleString()}</strong>.
+            <strong className="text-obligon-green font-extrabold text-base">
+              {"\u20a6"}
+              {successData.amount.toLocaleString()}
+            </strong>
+            {successData.balanceLabel ? `. New balance ${successData.balanceLabel}.` : "."}
           </p>
 
           <div className="mt-6 divide-y divide-[#eef3ee] rounded-xl border border-[#dbe2d8] bg-[#f7fbf8] p-4 text-left text-sm">
@@ -681,6 +715,19 @@ function TopUpModal({ onClose, onSuccess }: { onClose: () => void; onSuccess?: (
           >
             Done
           </button>
+        </div>
+      ) : pending ? (
+        <div className="p-8 text-center">
+          <Loader2 size={32} className="mx-auto animate-spin text-obligon-green" />
+          <h2 className="mt-5 font-display text-2xl font-extrabold text-obligon-navy">Redirecting to secure checkout</h2>
+          <p className="mt-2 text-sm text-obligon-text">
+            Taking you to {pending.provider === "paystack" ? "Paystack" : "Flutterwave"} to complete your{" "}
+            {"\u20a6"}
+            {pending.amount.toLocaleString()} payment.
+          </p>
+          <p className="mt-4 text-xs text-obligon-text">
+            Reference <span className="font-mono font-bold text-obligon-navy">{pending.reference}</span>
+          </p>
         </div>
       ) : (
         <form onSubmit={submit} className="p-6 sm:p-8">

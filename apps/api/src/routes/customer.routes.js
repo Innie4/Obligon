@@ -1,11 +1,12 @@
 import { Router } from "express";
 import { q, one, tx } from "../db.js";
-import { asyncHandler, badRequest, notFound, forbidden, conflict } from "../lib/errors.js";
+import { asyncHandler, badRequest, notFound, forbidden, conflict, serviceUnavailable } from "../lib/errors.js";
 import { requireAuth } from "../middleware/auth.js";
 import { hashPin, verifyPin, randomToken } from "../lib/security.js";
 import { naira, fmtDate, fmtDateTime, relativeTime, dayGroup, maskPan, maskAccount, distanceLabel, reference, initials } from "../lib/format.js";
 import { notify, audit, securityLog } from "../lib/notify.js";
-import { paystackEnabled, initializeTopUp, verifyTransaction, initializePlanPayment, verifyPlanPayment } from "../lib/paystack.js";
+import { resolveWallet } from "../lib/wallets.js";
+import { startCheckout, verifyCheckout, activeProvider, checkoutIsSimulated } from "../lib/payments.js";
 import { sudoEnabled, createSudoCustomer, issueSudoCard, setSudoCardStatus, fundSudoCard, maskFromSudo } from "../lib/sudo.js";
 import { receiptPdf } from "../lib/pdf.js";
 import { uploadFile, signedUrl } from "../lib/storage.js";
@@ -18,10 +19,8 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 
 router.use(requireAuth);
 
-async function getWallet(userId) {
-  let wallet = await one("SELECT * FROM wallets WHERE user_id = $1", [userId]);
-  if (!wallet) wallet = await one("INSERT INTO wallets (user_id) VALUES ($1) RETURNING *", [userId]);
-  return wallet;
+async function getWallet(userId, organizationId = null) {
+  return resolveWallet({ userId, organizationId });
 }
 
 function statusTone(status) {
@@ -153,7 +152,7 @@ router.get("/transactions/:id/receipt", asyncHandler(async (req, res) => {
 
 // ============ WALLET & TOP-UPS ============
 router.get("/wallet", asyncHandler(async (req, res) => {
-  const wallet = await getWallet(req.user.id);
+  const wallet = await getWallet(req.user.id, req.user.orgId ?? null);
   const ledger = await q(
     `SELECT direction, amount_kobo, balance_after_kobo, description, reference, created_at FROM wallet_ledger
      WHERE wallet_id = $1 ORDER BY created_at DESC LIMIT 20`,
@@ -164,6 +163,8 @@ router.get("/wallet", asyncHandler(async (req, res) => {
     balanceLabel: naira(wallet.balance_kobo),
     balanceKobo: wallet.balance_kobo,
     budgetLimitKobo: wallet.budget_limit_kobo,
+    walletKind: wallet.kind ?? "individual",
+    walletId: wallet.id,
     methods: methods.map((m) => ({
       id: m.id, type: m.type, label: m.label, brand: m.brand,
       last4: m.last4 ?? m.account_number_mask, isDefault: m.is_default,
@@ -184,48 +185,94 @@ router.post("/wallet/topup", asyncHandler(async (req, res) => {
   const amountKobo = Math.round(Number(amount) * 100);
   if (!amountKobo || amountKobo < 50000) throw badRequest("Minimum top-up is ₦500");
   if (amountKobo > 500000000) throw badRequest("Maximum top-up is ₦5,000,000 per transaction");
+
+  const provider = activeProvider();
+  if (!provider) throw serviceUnavailable("No payment provider is configured");
+
+  const wallet = await getWallet(req.user.id, req.user.orgId ?? null);
   const ref = reference("TRX");
   const topup = await one(
-    `INSERT INTO top_ups (user_id, reference, amount_kobo, method, status) VALUES ($1,$2,$3,$4,'pending') RETURNING *`,
-    [req.user.id, ref, amountKobo, method ?? "card"]
+    `INSERT INTO top_ups (user_id, reference, amount_kobo, method, status, provider, wallet_id)
+     VALUES ($1,$2,$3,$4,'pending',$5,$6) RETURNING *`,
+    [req.user.id, ref, amountKobo, method ?? "card", provider, wallet.id]
   );
-  const init = await initializeTopUp({
-    email: req.user.email,
+
+  const init = await startCheckout({
+    provider,
+    txRef: ref,
     amountKobo,
-    reference: ref,
-    callbackUrl: `${env.APP_URL}/customer/wallet`,
-    metadata: { userId: req.user.id }
+    email: req.user.email,
+    name: req.user.full_name || undefined,
+    phone: req.user.phone ?? undefined,
+    redirectUrl: `${env.APP_URL}/customer/wallet?topup=${encodeURIComponent(ref)}`,
+    title: "Obligon LTD Wallet Top-up",
+    meta: { userId: req.user.id, kind: "wallet_topup" }
   });
-  await q("UPDATE top_ups SET provider_reference = $2 WHERE id = $1", [topup.id, init.authorization_url ?? null]);
-  audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "wallet.topup_initiated", entityId: topup.id, metadata: { amountKobo, method } });
+
+  await q(
+    "UPDATE top_ups SET provider_reference = $2, provider_transaction_id = $3 WHERE id = $1",
+    [topup.id, init.authorization_url ?? null, init.providerTransactionId ?? null]
+  );
+  await audit({
+    actorUserId: req.user.id,
+    actorRole: req.user.role,
+    action: "wallet.topup_initiated",
+    entityId: topup.id,
+    ip: req.ip,
+    metadata: { amountKobo, method, provider, simulated: init.simulated }
+  });
   res.json({
     ok: true,
     reference: ref,
+    provider,
     paymentUrl: init.authorization_url ?? null,
-    message: "Complete the payment via the Paystack checkout link."
+    simulated: init.simulated,
+    message: init.simulated
+      ? "Payment simulation is active because no payment processor is configured."
+      : "Complete your payment to credit your wallet."
   });
 }));
 
-/** Verify/complete a top-up. In production the webhook normally calls this first. */
+/** Verify/complete a top-up. The webhook normally arrives first; this is the
+ *  customer-facing fallback that runs on return from the checkout page. */
 router.post("/wallet/topup/confirm", asyncHandler(async (req, res) => {
   const { reference } = req.body ?? {};
   const topup = await one("SELECT * FROM top_ups WHERE reference = $1 AND user_id = $2", [reference, req.user.id]);
   if (!topup) throw notFound("Top-up not found");
-  if (topup.status === "success") return res.json({ ok: true, alreadyPaid: true });
-  const verification = await verifyTransaction(reference);
-  const paid = verification.status === "success";
-  if (!paid) {
+  if (topup.status === "success") {
+    return res.json({ ok: true, alreadyPaid: true, balanceLabel: naira((await getWallet(req.user.id, topup.wallet_id ? undefined : req.user.orgId ?? null)).balance_kobo) });
+  }
+
+  const verification = await verifyCheckout({
+    provider: topup.provider,
+    reference,
+    transactionId: req.body?.transactionId ?? topup.provider_transaction_id ?? null,
+    expectedAmountKobo: topup.amount_kobo,
+    simulated: Boolean(req.body?.simulated)
+  });
+
+  if (!verification.paid) {
     await q("UPDATE top_ups SET status = 'failed' WHERE id = $1", [topup.id]);
     throw badRequest("Payment was not successful");
   }
   await completeTopUp(topup);
-  res.json({ ok: true, balanceLabel: naira((await getWallet(req.user.id)).balance_kobo) });
+  const wallet = await getWallet(req.user.id, topup.wallet_id ? undefined : req.user.orgId ?? null);
+  res.json({ ok: true, balanceLabel: naira(wallet.balance_kobo), provider: verification.provider });
 }));
 
 export async function completeTopUp(topup) {
   let completed = false;
   await tx(async (t) => {
-    const wallet = await t.one("SELECT * FROM wallets WHERE user_id = $1 FOR UPDATE", [topup.user_id]);
+    // Lock the wallet this top-up was raised against. Company accounts settle
+    // into the organization wallet, so we must not fall back to "any wallet for
+    // this user" here.
+    const wallet = topup.wallet_id
+      ? await t.one("SELECT * FROM wallets WHERE id = $1 FOR UPDATE", [topup.wallet_id])
+      : await t.one(
+          "SELECT * FROM wallets WHERE user_id = $1 AND organization_id IS NULL FOR UPDATE",
+          [topup.user_id]
+        );
+    if (!wallet) throw badRequest("No wallet is linked to this account");
     const marked = await t.query(
       "UPDATE top_ups SET status = 'success', paid_at = now() WHERE id = $1 AND status = 'pending' RETURNING id",
       [topup.id]
@@ -364,21 +411,28 @@ router.post("/card-request/checkout", asyncHandler(async (req, res) => {
   }
 
   const ref = reference("PLAN");
+  const provider = activeProvider();
+  if (!provider) throw serviceUnavailable("No payment provider is configured");
+
   const request = await one(
-    `INSERT INTO card_requests (user_id, organization_id, label, plan_code, payment_reference, payment_status, status, verification_eta)
-     VALUES ($1, $2, $3, $4, $5, 'unpaid', 'awaiting_payment', $6)
+    `INSERT INTO card_requests (user_id, organization_id, label, plan_code, payment_reference, payment_status, status, verification_eta, payment_provider)
+     VALUES ($1, $2, $3, $4, $5, 'unpaid', 'awaiting_payment', $6, $7)
      ON CONFLICT DO NOTHING
      RETURNING id, label, status, plan_code, payment_reference, payment_status, verification_status, created_at`,
-    [req.user.id, req.user.orgId ?? null, `${plan.name} Fuel Card`, plan.code, ref, VERIFICATION_ETA]
+    [req.user.id, req.user.orgId ?? null, `${plan.name} Fuel Card`, plan.code, ref, VERIFICATION_ETA, provider]
   );
   if (!request) throw conflict("A card request is already in progress for this account");
 
-  const init = await initializePlanPayment({
-    email: req.user.email,
+  const init = await startCheckout({
+    provider,
+    txRef: ref,
     amountKobo: plan.amount_kobo,
-    reference: ref,
-    callbackUrl: `${env.APP_URL}/customer/card?plan=${encodeURIComponent(ref)}`,
-    metadata: { userId: req.user.id, planCode: plan.code, kind: "card_request" }
+    email: req.user.email,
+    name: req.user.full_name || undefined,
+    phone: req.user.phone ?? undefined,
+    redirectUrl: `${env.APP_URL}/customer/card?plan=${encodeURIComponent(ref)}`,
+    title: `Obligon ${plan.name} Plan`,
+    meta: { userId: req.user.id, planCode: plan.code, kind: "card_request" }
   });
 
   await audit({
@@ -395,6 +449,7 @@ router.post("/card-request/checkout", asyncHandler(async (req, res) => {
     ok: true,
     request: serializeCardRequest(request),
     reference: ref,
+    provider,
     paymentUrl: init.authorization_url ?? null,
     simulated: init.simulated,
     message: init.simulated
@@ -454,8 +509,19 @@ router.post("/card-request/verify-payment", asyncHandler(async (req, res) => {
     throw conflict("This card request is no longer awaiting payment");
   }
 
-  const verification = await verifyPlanPayment(ref, { simulated: Boolean(req.body?.simulated) });
-  if (verification.status !== "success") {
+  const plan = request.plan_code
+    ? await one("SELECT amount_kobo FROM card_plans WHERE code = $1", [request.plan_code])
+    : null;
+
+  const verification = await verifyCheckout({
+    provider: request.payment_provider,
+    reference: ref,
+    transactionId: req.body?.transactionId ?? null,
+    expectedAmountKobo: plan?.amount_kobo ?? null,
+    simulated: Boolean(req.body?.simulated)
+  });
+
+  if (!verification.paid) {
     await q("UPDATE card_requests SET payment_status = 'failed', updated_at = now() WHERE id = $1", [request.id]);
     throw badRequest("Payment was not successful. Please try again or choose another plan.");
   }
@@ -475,7 +541,12 @@ router.post("/card-request/verify-payment", asyncHandler(async (req, res) => {
     entityType: "card_request",
     entityId: request.id,
     ip: req.ip,
-    metadata: { reference: ref, planCode: request.plan_code, simulated: verification.simulated }
+    metadata: {
+      reference: ref,
+      planCode: request.plan_code,
+      provider: verification.provider,
+      simulated: verification.simulated
+    }
   });
   await notify({
     userId: req.user.id,
@@ -857,7 +928,7 @@ router.put("/profile", asyncHandler(async (req, res) => {
 }));
 
 router.get("/profile", asyncHandler(async (req, res) => {
-  const wallet = await getWallet(req.user.id);
+  const wallet = await getWallet(req.user.id, req.user.orgId ?? null);
   res.json({
     user: {
       id: req.user.id, name: req.user.full_name, email: req.user.email, role: req.user.role,

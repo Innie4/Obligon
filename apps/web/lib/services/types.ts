@@ -62,6 +62,18 @@ export interface CardPlan {
   features: CardPlanFeature[];
 }
 
+export type PaymentProviderId = "paystack" | "flutterwave";
+
+/** Normalised result of starting a hosted checkout, whichever provider ran it. */
+export interface CheckoutResult {
+  ok: boolean;
+  reference: string;
+  provider: PaymentProviderId;
+  paymentUrl: string | null;
+  simulated: boolean;
+  message?: string;
+}
+
 export interface CardRequest {
   id: string;
   label: string;
@@ -82,6 +94,7 @@ export interface CardRequest {
 export interface CardCheckout {
   ok: boolean;
   reference: string;
+  provider: PaymentProviderId;
   paymentUrl: string | null;
   simulated: boolean;
   message: string;

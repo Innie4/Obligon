@@ -12,6 +12,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { notify, audit, securityLog, sendEmail, sendSms, emailTemplates } from "../lib/notify.js";
 import { initials } from "../lib/format.js";
 import { supabaseAuthEnabled, supabaseSignUp, supabaseSignIn, supabaseUpdatePassword, LOCAL_AUTH_PLACEHOLDER } from "../lib/supabaseAuth.js";
+import { createWalletForAccount, isCompanyRole, walletKindForRole } from "../lib/wallets.js";
 
 const router = Router();
 
@@ -225,7 +226,17 @@ router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
       await t.query(`INSERT INTO memberships (organization_id, user_id, email, role, status) VALUES ($1,$2,$3,'owner','active')`, [org.id, user.id, email]);
     }
 
-    await t.query("INSERT INTO wallets (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING", [user.id]);
+    // Every account gets its wallet at creation time, linked to the account it
+    // belongs to: an individual wallet for customer / partner / mechanic, and a
+    // company wallet attached to the new organization for company signups. Doing
+    // it here (inside the signup transaction) means no account can ever exist
+    // without a wallet.
+    await createWalletForAccount({
+      userId: user.id,
+      organizationId: isCompanyRole(role) && org ? org.id : null,
+      executor: t
+    });
+
     return { user, org };
   });
 

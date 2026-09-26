@@ -40,6 +40,16 @@ const schema = z.object({
   PAYSTACK_SECRET_KEY: z.string().default(""),
   PAYSTACK_PUBLIC_KEY: z.string().default(""),
 
+  // Flutterwave (hosted checkout, verification, webhooks)
+  FLW_PUBLIC_KEY: z.string().default(process.env.NEXT_PUBLIC_FLW_PUBLIC_KEY || ""),
+  FLW_SECRET_KEY: z.string().default(""),
+  FLW_ENCRYPTION_KEY: z.string().default(""),
+  FLW_SECRET_HASH: z.string().default(""),
+  // Which processor handles checkout when several are configured. Empty means
+  // "use whichever provider actually has credentials".
+  PAYMENT_PROVIDER: z.enum(["paystack", "flutterwave", ""]).default(""),
+  NEXT_PUBLIC_PAYMENT_PROVIDER: z.enum(["paystack", "flutterwave", ""]).default(""),
+
   // Email
   RESEND_API_KEY: z.string().default(""),
   EMAIL_FROM: z.string().default("Obligon <no-reply@obligon.com>"),
@@ -89,6 +99,17 @@ export function configurationIssues() {
   if (isProd && env.SUPABASE_AUTH_ENABLED && (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY || !env.SUPABASE_ANON_KEY)) {
     issues.push("SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_ANON_KEY are required when Supabase Auth is enabled");
   }
+  // A configured processor must actually be usable, otherwise checkout would
+  // fail at the last step instead of at boot.
+  if (env.PAYMENT_PROVIDER === "flutterwave" && !env.FLW_SECRET_KEY) {
+    issues.push("PAYMENT_PROVIDER=flutterwave requires FLW_SECRET_KEY");
+  }
+  if (env.PAYMENT_PROVIDER === "paystack" && !env.PAYSTACK_SECRET_KEY) {
+    issues.push("PAYMENT_PROVIDER=paystack requires PAYSTACK_SECRET_KEY");
+  }
+  if (isProd && /_TEST/.test(env.FLW_SECRET_KEY)) {
+    issues.push("FLW_SECRET_KEY is a test key; replace it with a live key before production");
+  }
   return issues;
 }
 
@@ -98,6 +119,8 @@ export const providerStatus = () => ({
   storage: Boolean(env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY),
   sudo: Boolean(env.SUDO_SECRET_API_KEY),
   paystack: Boolean(env.PAYSTACK_SECRET_KEY),
+  flutterwave: Boolean(env.FLW_SECRET_KEY && env.FLW_PUBLIC_KEY),
+  flutterwaveWebhooks: Boolean(env.FLW_SECRET_HASH),
   email: Boolean(env.RESEND_API_KEY),
   sms: Boolean(env.TERMII_API_KEY),
   push: Boolean(env.WEB_PUSH_VAPID_PUBLIC_KEY && env.WEB_PUSH_VAPID_PRIVATE_KEY),

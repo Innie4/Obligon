@@ -2,6 +2,7 @@ import { Router } from "express";
 import { q, one, tx, claimIdempotency } from "../db.js";
 import { webhookLimiter } from "../middleware/security.js";
 import { verifyPaystackSignature } from "../lib/paystack.js";
+import { verifyWebhook, parseWebhook, verifyCheckout } from "../lib/payments.js";
 import { completeTopUp } from "./customer.routes.js";
 import { naira, reference } from "../lib/format.js";
 import { notify, audit } from "../lib/notify.js";
@@ -116,6 +117,112 @@ router.post("/sudo", webhookLimiter, async (req, res) => {
     await q("DELETE FROM idempotency_keys WHERE key = $1", [eventKey]);
     console.error("Sudo webhook processing error:", err.message);
   }
+  res.json({ received: true });
+});
+
+/**
+ * Flutterwave webhooks.
+ *
+ * Authenticity is a plain equality check of the `verif-hash` header against
+ * FLW_SECRET_HASH (NOT an HMAC like Paystack). Fails closed when no hash is
+ * configured so this public endpoint can never be used to fake a payment.
+ *
+ * Flutterwave retries up to 3 times and requires a 200 within 60s, so the
+ * handler is idempotent and answers quickly.
+ */
+router.post("/flutterwave", webhookLimiter, async (req, res) => {
+  const verifHash = req.headers["verif-hash"];
+  if (!verifyWebhook("flutterwave", { verifHash })) {
+    return res.status(401).json({ error: "Invalid signature" });
+  }
+
+  const raw = req.rawBody ?? Buffer.from(JSON.stringify(req.body ?? {}));
+  const parsed = parseWebhook("flutterwave", req.body);
+
+  if (!parsed.isChargeEvent) {
+    // Acknowledge anything we do not act on so Flutterwave stops retrying.
+    return res.json({ received: true, ignored: parsed.event || "unknown" });
+  }
+
+  const eventKey = `webhook:flutterwave:${parsed.transactionId ?? crypto.createHash("sha256").update(raw).digest("hex")}`;
+  if (!await claimIdempotency(eventKey)) {
+    return res.json({ received: true, duplicate: true });
+  }
+
+  try {
+    if (!parsed.reference) throw new Error("charge.completed payload has no tx_ref");
+
+    // Wallet top-up
+    const topup = await one("SELECT * FROM top_ups WHERE reference = $1", [parsed.reference]);
+    if (topup && topup.status === "pending") {
+      // Trust the webhook to route, but never the amount: re-verify the charge
+      // with Flutterwave before crediting anything.
+      const check = await verifyCheckout({
+        provider: topup.provider,
+        reference: parsed.reference,
+        transactionId: parsed.transactionId,
+        expectedAmountKobo: topup.amount_kobo,
+        simulated: false
+      });
+      if (check.paid) {
+        await completeTopUp(topup);
+      } else {
+        await q("UPDATE top_ups SET status = 'failed' WHERE id = $1", [topup.id]);
+      }
+    }
+
+    // Fuel-card plan purchase
+    const cardRequest = await one(
+      "SELECT * FROM card_requests WHERE payment_reference = $1",
+      [parsed.reference]
+    );
+    if (cardRequest && cardRequest.payment_status !== "paid") {
+      const plan = cardRequest.plan_code
+        ? await one("SELECT amount_kobo FROM card_plans WHERE code = $1", [cardRequest.plan_code])
+        : null;
+      const check = await verifyCheckout({
+        provider: cardRequest.payment_provider,
+        reference: parsed.reference,
+        transactionId: parsed.transactionId,
+        expectedAmountKobo: plan?.amount_kobo ?? null,
+        simulated: false
+      });
+      if (check.paid) {
+        const updated = await one(
+          `UPDATE card_requests SET payment_status = 'paid', paid_at = now(), updated_at = now()
+           WHERE id = $1 AND payment_status <> 'paid' RETURNING *`,
+          [cardRequest.id]
+        );
+        if (updated) {
+          await notify({
+            userId: cardRequest.user_id,
+            title: "Payment received",
+            body: `Your ${cardRequest.plan_code ?? "plan"} plan payment was confirmed. Complete your details so we can verify you and issue your card.`,
+            category: "transactions",
+            link: "/customer/card"
+          });
+        }
+      } else {
+        await q("UPDATE card_requests SET payment_status = 'failed', updated_at = now() WHERE id = $1", [cardRequest.id]);
+      }
+    }
+
+    await audit({
+      action: "webhook.flutterwave.charge_completed",
+      metadata: {
+        reference: parsed.reference,
+        transactionId: parsed.transactionId,
+        amountKobo: parsed.amountKobo,
+        currency: parsed.currency,
+        paid: parsed.paid
+      }
+    });
+  } catch (err) {
+    // Release the idempotency claim so a retry can succeed.
+    await q("DELETE FROM idempotency_keys WHERE key = $1", [eventKey]);
+    console.error("Flutterwave webhook processing error:", err.message);
+  }
+
   res.json({ received: true });
 });
 

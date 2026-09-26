@@ -4,6 +4,8 @@ import { asyncHandler, badRequest, notFound } from "../lib/errors.js";
 import { attachUser } from "../middleware/auth.js";
 import { naira, reference } from "../lib/format.js";
 import { notify, sendEmail } from "../lib/notify.js";
+import { paymentProviderStatus, checkoutIsSimulated } from "../lib/payments.js";
+import { env } from "../config/env.js";
 import { uploadFile } from "../lib/storage.js";
 import multer from "multer";
 import crypto from "node:crypto";
@@ -11,6 +13,24 @@ import crypto from "node:crypto";
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 router.use(attachUser);
+
+/**
+ * Payment configuration for the browser. Exposes only the active provider and
+ * its browser-safe public key, so the checkout UI can name the processor
+ * without the secret ever leaving the server.
+ */
+router.get("/payments/config", asyncHandler(async (_req, res) => {
+  const status = paymentProviderStatus();
+  res.json({
+    provider: status.active,
+    simulated: checkoutIsSimulated(status.active),
+    // Public keys are safe to expose; secret keys never are.
+    publicKeys: {
+      paystack: env.PAYSTACK_PUBLIC_KEY || null,
+      flutterwave: env.FLW_PUBLIC_KEY || null
+    }
+  });
+}));
 
 // ============ PRICING PLANS ============
 router.get("/plans", asyncHandler(async (_req, res) => {

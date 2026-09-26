@@ -70,6 +70,7 @@ import type {
   CardCheckout,
   CardPlan,
   CardRequest,
+  CheckoutResult,
   CustomerProfile,
   CustomerTransaction,
   MobileTransactionGroup,
@@ -773,15 +774,21 @@ export const authApi = {
 /** Domain mutations — live HTTP when configured, simulated locally otherwise. */
 export const mutationsApi = {
   // Customer: wallet
-  async topUpWallet(amount: number, method: string) {
-    if (!LIVE_MODE) { await simulate({}, 900); return { ok: true, reference: `TRX-LOCAL-${Date.now()}`, simulated: true }; }
-    return http<{ ok: boolean; reference: string; paymentUrl?: string; simulated?: boolean; message?: string }>("/api/customer/wallet/topup", {
+  async topUpWallet(amount: number, method: string): Promise<CheckoutResult> {
+    if (!LIVE_MODE) {
+      await simulate({}, 900);
+      return { ok: true, reference: `TRX-LOCAL-${Date.now()}`, provider: "flutterwave", paymentUrl: null, simulated: true, message: "Payments are simulated in this environment." };
+    }
+    return http<CheckoutResult>("/api/customer/wallet/topup", {
       method: "POST", body: JSON.stringify({ amount, method })
     });
   },
-  async confirmTopUp(reference: string) {
+  async confirmTopUp(reference: string, options: { simulated?: boolean; transactionId?: string | null } = {}): Promise<{ ok: boolean; alreadyPaid?: boolean; balanceLabel?: string; provider?: string }> {
     if (!LIVE_MODE) { await simulate({}); return { ok: true }; }
-    return http<{ ok: boolean }>("/api/customer/wallet/topup/confirm", { method: "POST", body: JSON.stringify({ reference }) });
+    return http<{ ok: boolean; alreadyPaid?: boolean; balanceLabel?: string; provider?: string }>("/api/customer/wallet/topup/confirm", {
+      method: "POST",
+      body: JSON.stringify({ reference, simulated: Boolean(options.simulated), transactionId: options.transactionId ?? null })
+    });
   },
   async addPaymentMethod(payload: Record<string, unknown>) {
     if (!LIVE_MODE) { await simulate({}); return { ok: true }; }
@@ -812,6 +819,7 @@ export const mutationsApi = {
       return {
         ok: true,
         reference: "local",
+        provider: "flutterwave",
         paymentUrl: null,
         simulated: true,
         message: "Payments are simulated in this environment.",
@@ -823,14 +831,14 @@ export const mutationsApi = {
       body: JSON.stringify({ planCode })
     });
   },
-  async verifyCardPayment(reference: string, simulated: boolean): Promise<{ ok: boolean; paid: boolean; request: CardRequest }> {
+  async verifyCardPayment(reference: string, simulated: boolean, transactionId?: string | null): Promise<{ ok: boolean; paid: boolean; request: CardRequest }> {
     if (!LIVE_MODE) {
       await simulate({});
       return { ok: true, paid: true, request: LOCAL_CARD_REQUEST };
     }
     return http<{ ok: boolean; paid: boolean; request: CardRequest }>("/api/customer/card-request/verify-payment", {
       method: "POST",
-      body: JSON.stringify({ reference, simulated })
+      body: JSON.stringify({ reference, simulated, transactionId: transactionId ?? null })
     });
   },
   async submitCardRequestDetails(payload: {

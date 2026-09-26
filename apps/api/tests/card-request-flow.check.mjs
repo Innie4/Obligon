@@ -95,12 +95,50 @@ check("details are rejected before payment", early.status === 409, `status=${ear
 
 // ------------------------------------------------- step 2: verify payment
 const simulated = Boolean(checkout.data.simulated);
-const unverified = await call("POST", "/api/customer/card-request/verify-payment", { token, body: { reference, simulated } });
-check("verification succeeds for the issued reference", unverified.status === 200 && unverified.data?.paid === true, `status=${unverified.status}`);
-check("payment is marked paid", unverified.data?.request?.paymentStatus === "paid", unverified.data?.request?.paymentStatus);
+check("checkout reports the provider it used", Boolean(checkout.data.provider), `provider=${checkout.data.provider}`);
 
-const again = await call("POST", "/api/customer/card-request/verify-payment", { token, body: { reference, simulated } });
-check("re-verifying is idempotent", again.status === 200 && again.data?.alreadyPaid === true, `status=${again.status}`);
+const unverified = await call("POST", "/api/customer/card-request/verify-payment", { token, body: { reference, simulated } });
+
+if (simulated) {
+  check("verification succeeds for the issued reference", unverified.status === 200 && unverified.data?.paid === true, `status=${unverified.status}`);
+  check("payment is marked paid", unverified.data?.request?.paymentStatus === "paid", unverified.data?.request?.paymentStatus);
+
+  const again = await call("POST", "/api/customer/card-request/verify-payment", { token, body: { reference, simulated } });
+  check("re-verifying is idempotent", again.status === 200 && again.data?.alreadyPaid === true, `status=${again.status}`);
+} else {
+  // A real processor is configured and no payment was made through the hosted
+  // link, so verification must refuse. This is the security-critical path: an
+  // unpaid plan must never reach the verification stage.
+  check("verifying an unpaid plan is refused", unverified.status >= 400, `status=${unverified.status}`);
+  const state = await call("GET", "/api/customer/card-request", { token });
+  check(
+    "an unverified plan stays unpaid",
+    state.data?.request?.paymentStatus === "unpaid",
+    `paymentStatus=${state.data?.request?.paymentStatus}`
+  );
+  check(
+    "an unverified plan cannot reach verification",
+    state.data?.request?.verificationStatus === "not_started",
+    `verificationStatus=${state.data?.request?.verificationStatus}`
+  );
+
+  // Identity details must still be blocked while the plan is unpaid.
+  const blockedDetails = await call("POST", "/api/customer/card-request/details", {
+    token,
+    body: { reference, fullName: "Femi Balogun", bvn: "20123456789", address: "1 Test St", city: "Lagos", state: "Lagos" }
+  });
+  check("details are blocked until payment lands", blockedDetails.status === 409, `status=${blockedDetails.status}`);
+
+  const failed = results.filter((r) => !r.pass);
+  console.log(`\n${results.length - failed.length}/${results.length} checks passed (real provider, unpaid path)`);
+  console.log("Note: the post-payment happy path needs one real Flutterwave payment and is not");
+  console.log("exercised here. The unpaid path above is the security-critical behaviour.");
+  if (failed.length) {
+    console.log("Failed:", failed.map((f) => f.name).join("; "));
+    process.exit(1);
+  }
+  process.exit(0);
+}
 
 const unknownRef = await call("POST", "/api/customer/card-request/verify-payment", { token, body: { reference: "PLAN-NOPE" } });
 check("an unknown reference is rejected", unknownRef.status === 404, `status=${unknownRef.status}`);

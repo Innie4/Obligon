@@ -704,17 +704,24 @@ function CardPage({
   }, [refreshKey]);
 
   // Returning from the payment provider: confirm the charge, then ask for details.
+  // Flutterwave redirects back with `status`, `tx_ref` and `transaction_id`; the
+  // server re-verifies with the provider rather than trusting these parameters.
   React.useEffect(() => {
-    const ref = new URLSearchParams(window.location.search).get("plan");
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("plan") ?? params.get("tx_ref");
     if (!ref) return;
+    const transactionId = params.get("transaction_id");
+    const returnedStatus = params.get("status");
 
     void (async () => {
       try {
-        const paid = await mutationsApi.verifyCardPayment(ref, false);
+        const paid = await mutationsApi.verifyCardPayment(ref, false, transactionId);
         setCardRequest(paid.request);
         if (paid.paid) {
           setDetailsModalOpen(true);
           toastSuccess("Payment confirmed.");
+        } else {
+          toastError(returnedStatus === "failed" ? "That payment did not complete. Please try again." : "We could not confirm your payment yet.");
         }
       } catch (err) {
         toastError(
