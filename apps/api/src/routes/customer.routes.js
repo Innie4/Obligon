@@ -243,13 +243,25 @@ router.post("/wallet/topup/confirm", asyncHandler(async (req, res) => {
     return res.json({ ok: true, alreadyPaid: true, balanceLabel: naira((await getWallet(req.user.id, topup.wallet_id ? undefined : req.user.orgId ?? null)).balance_kobo) });
   }
 
-  const verification = await verifyCheckout({
-    provider: topup.provider,
-    reference,
-    transactionId: req.body?.transactionId ?? topup.provider_transaction_id ?? null,
-    expectedAmountKobo: topup.amount_kobo,
-    simulated: Boolean(req.body?.simulated)
-  });
+  let verification;
+  try {
+    verification = await verifyCheckout({
+      provider: topup.provider,
+      reference,
+      transactionId: req.body?.transactionId ?? topup.provider_transaction_id ?? null,
+      expectedAmountKobo: topup.amount_kobo,
+      simulated: Boolean(req.body?.simulated)
+    });
+  } catch (err) {
+    // A customer returning from the processor can easily beat the payment into
+    // the provider's records. "Not found yet" must read as "try again", not as a
+    // dead end, so the top-up is left pending for reconciliation rather than
+    // being failed here.
+    if (err?.transactionMissing) {
+      throw serviceUnavailable("We cannot confirm this payment yet. It usually appears within a minute — please try again.");
+    }
+    throw err;
+  }
 
   if (!verification.paid) {
     await q("UPDATE top_ups SET status = 'failed' WHERE id = $1", [topup.id]);
@@ -635,13 +647,23 @@ router.post("/card-request/verify-payment", asyncHandler(async (req, res) => {
     ? await one("SELECT amount_kobo FROM card_plans WHERE code = $1", [request.plan_code])
     : null;
 
-  const verification = await verifyCheckout({
-    provider: request.payment_provider,
-    reference: ref,
-    transactionId: req.body?.transactionId ?? null,
-    expectedAmountKobo: plan?.amount_kobo ?? null,
-    simulated: Boolean(req.body?.simulated)
-  });
+  let verification;
+  try {
+    verification = await verifyCheckout({
+      provider: request.payment_provider,
+      reference: ref,
+      transactionId: req.body?.transactionId ?? null,
+      expectedAmountKobo: plan?.amount_kobo ?? null,
+      simulated: Boolean(req.body?.simulated)
+    });
+  } catch (err) {
+    // Same reasoning as the top-up confirm: a just-returned customer may be
+    // ahead of the provider's records, so this must not fail the request.
+    if (err?.transactionMissing) {
+      throw serviceUnavailable("We cannot confirm this payment yet. It usually appears within a minute — please try again.");
+    }
+    throw err;
+  }
 
   if (!verification.paid) {
     await q("UPDATE card_requests SET payment_status = 'failed', updated_at = now() WHERE id = $1", [request.id]);

@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { env } from "../config/env.js";
-import { badRequest, serviceUnavailable } from "./errors.js";
+import { badRequest, notFound, serviceUnavailable } from "./errors.js";
 import { providerFetch } from "./http.js";
 
 /**
@@ -41,8 +41,20 @@ async function flutterwaveFetch(path, { method = "GET", body } = {}) {
     safeToRetry: method === "GET"
   });
   const data = await res.json().catch(() => ({}));
+
   if (!res.ok || data.status === "error") {
-    throw serviceUnavailable(data?.message || `Flutterwave error ${res.status}`);
+    const message = data?.message || `Flutterwave error ${res.status}`;
+
+    // A reference the provider has never heard of is a permanent answer, not an
+    // outage. It must not be reported as a retryable 503, or reconciliation
+    // retries a customer who abandoned checkout forever and cannot tell the two
+    // situations apart.
+    if (res.status === 404 || /could not be found|no transaction was found|not found/i.test(message)) {
+      const err = notFound(message);
+      err.transactionMissing = true;
+      throw err;
+    }
+    throw serviceUnavailable(message);
   }
   return data.data ?? data;
 }

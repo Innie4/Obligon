@@ -39,7 +39,7 @@ async function reconcileTopUps(limit) {
     [limit]
   );
 
-  const stats = { checked: pending.length, completed: 0, failed: 0, errored: 0, gaveUp: 0 };
+  const stats = { checked: pending.length, completed: 0, failed: 0, abandoned: 0, errored: 0, gaveUp: 0 };
 
   for (const topup of pending) {
     try {
@@ -97,6 +97,19 @@ async function reconcileTopUps(limit) {
         }
       }
     } catch (err) {
+      // A reference the provider has no record of is permanent: the customer
+      // abandoned checkout. Retrying it forever is pointless and would hide real
+      // provider outages, so it is retired on the first sighting.
+      if (err?.transactionMissing) {
+        const marked = await one(
+          `UPDATE top_ups SET status = 'failed', reconcile_attempts = reconcile_attempts + 1, last_reconciled_at = now()
+           WHERE id = $1 AND status = 'pending' RETURNING id`,
+          [topup.id]
+        );
+        if (marked) stats.abandoned += 1;
+        continue;
+      }
+
       // A provider outage must not abort the pass; count and try again later.
       const attempts = Number(topup.reconcile_attempts ?? 0) + 1;
       await q(
@@ -121,7 +134,7 @@ async function reconcilePlanCheckouts(limit) {
     [limit]
   );
 
-  const stats = { checked: pending.length, completed: 0, failed: 0, errored: 0, gaveUp: 0 };
+  const stats = { checked: pending.length, completed: 0, failed: 0, abandoned: 0, errored: 0, gaveUp: 0 };
 
   for (const request of pending) {
     try {
@@ -165,6 +178,16 @@ async function reconcilePlanCheckouts(limit) {
         }
       }
     } catch (err) {
+      if (err?.transactionMissing) {
+        const marked = await one(
+          `UPDATE card_requests SET payment_status = 'failed', reconcile_attempts = reconcile_attempts + 1, last_reconciled_at = now()
+           WHERE id = $1 AND status = 'awaiting_payment' RETURNING id`,
+          [request.id]
+        );
+        if (marked) stats.abandoned += 1;
+        continue;
+      }
+
       const attempts = Number(request.reconcile_attempts ?? 0) + 1;
       await q(
         `UPDATE card_requests SET reconcile_attempts = $2, last_reconciled_at = now() WHERE id = $1`,
