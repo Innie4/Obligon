@@ -12,6 +12,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -118,4 +119,33 @@ test("migrations run before the service starts", () => {
     /preDeployCommand:.*migrate/,
     "without a preDeploy migrate the deployed schema falls behind the code"
   );
+});
+
+test("each service names the package it actually starts", () => {
+  // The root `start` script launches the API. A web service that reuses it will
+  // build Next.js and then serve the API instead of the site, which fails
+  // silently: the deploy goes green and the wrong app answers requests.
+  const apiStart = renderYaml.match(/name: obligon-api[\s\S]*?startCommand:\s*(.+)/)?.[1]?.trim();
+  assert.ok(apiStart, "the API service must declare a startCommand");
+  assert.match(
+    apiStart,
+    /@obligon\/api/,
+    `the API service must start the API package explicitly, got: ${apiStart}`
+  );
+
+  const webStart = renderYaml.match(/name: obligon-web[\s\S]*?startCommand:\s*(.+)/)?.[1]?.trim();
+  if (webStart) {
+    assert.match(
+      webStart,
+      /@obligon\/web/,
+      `the web service must start the web package explicitly, got: ${webStart}`
+    );
+  }
+});
+
+test("the root scripts distinguish the two runnable apps", () => {
+  const pkg = JSON.parse(readFileSync(path.join(repoRoot, "package.json"), "utf8"));
+  assert.match(pkg.scripts.start, /@obligon\/api/, "root `start` is the API, so it must say so");
+  assert.ok(pkg.scripts["start:web"], "a start:web script must exist for web hosts");
+  assert.match(pkg.scripts["start:web"], /@obligon\/web/);
 });

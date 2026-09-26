@@ -89,6 +89,10 @@ if (!parsed.success) {
 export const env = parsed.data;
 export const isProd = env.NODE_ENV === "production";
 
+/**
+ * Problems that make the service unsafe or unable to run at all. These abort
+ * startup, because coming up in a broken state is worse than not coming up.
+ */
 export function configurationIssues() {
   const issues = [];
   if (!env.DATABASE_URL) issues.push("DATABASE_URL is required");
@@ -99,18 +103,45 @@ export function configurationIssues() {
   if (isProd && env.SUPABASE_AUTH_ENABLED && (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY || !env.SUPABASE_ANON_KEY)) {
     issues.push("SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_ANON_KEY are required when Supabase Auth is enabled");
   }
-  // A configured processor must actually be usable, otherwise checkout would
-  // fail at the last step instead of at boot.
+  return issues;
+}
+
+/**
+ * Problems that degrade one integration while the rest of the product works.
+ *
+ * These are deliberately NOT fatal. A test processor key, a missing SMS provider
+ * or an absent maps key must not take down sign-in, dashboards, wallets and
+ * reporting: the affected feature already fails closed on its own, and killing
+ * the process turns a payments misconfiguration into a total outage. That
+ * trade was made the hard way when a test Flutterwave key aborted boot and
+ * returned the whole API to 503.
+ */
+export function configurationWarnings() {
+  const warnings = [];
   if (env.PAYMENT_PROVIDER === "flutterwave" && !env.FLW_SECRET_KEY) {
-    issues.push("PAYMENT_PROVIDER=flutterwave requires FLW_SECRET_KEY");
+    warnings.push("PAYMENT_PROVIDER=flutterwave but FLW_SECRET_KEY is unset — checkout will fail (payments only)");
   }
   if (env.PAYMENT_PROVIDER === "paystack" && !env.PAYSTACK_SECRET_KEY) {
-    issues.push("PAYMENT_PROVIDER=paystack requires PAYSTACK_SECRET_KEY");
+    warnings.push("PAYMENT_PROVIDER=paystack but PAYSTACK_SECRET_KEY is unset — checkout will fail (payments only)");
   }
   if (isProd && /_TEST/.test(env.FLW_SECRET_KEY)) {
-    issues.push("FLW_SECRET_KEY is a test key; replace it with a live key before production");
+    warnings.push(
+      "FLW_SECRET_KEY is a test key: charges will be simulated by the processor and no real money moves. Swap in the live key before taking payments."
+    );
   }
-  return issues;
+  if (env.PAYMENT_PROVIDER === "flutterwave" && !env.FLW_SECRET_HASH) {
+    warnings.push("FLW_SECRET_HASH is unset — /api/webhooks/flutterwave will reject every event with 401. Reconciliation still recovers payments.");
+  }
+  if (!env.SUDO_SECRET_API_KEY) warnings.push("SUDO_SECRET_API_KEY is unset — card issuing and limits are unavailable");
+  if (!env.RESEND_API_KEY) warnings.push("RESEND_API_KEY is unset — no transactional email will be sent");
+  if (!env.TERMII_API_KEY) warnings.push("TERMII_API_KEY is unset — SMS OTP is unavailable");
+  if (!env.WEB_PUSH_VAPID_PRIVATE_KEY) warnings.push("WEB_PUSH_VAPID_PRIVATE_KEY is unset — web push notifications are disabled");
+  return warnings;
+}
+
+/** Everything worth reporting at boot, fatal first. */
+export function configurationReport() {
+  return { fatal: configurationIssues(), warnings: configurationWarnings() };
 }
 
 export const providerStatus = () => ({

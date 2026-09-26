@@ -13,6 +13,7 @@
     "test": "node --env-file-if-exists=../../.env --test tests/*.test.mjs",
     "test:money": "node --env-file-if-exists=../../.env --test tests/money.test.mjs",
     "check:payments": "node tests/payments-hardening.check.mjs",
+    "check:prodboot": "node src/scripts/prodboot.check.mjs",
     "check:wallet": "node tests/wallet-payments.check.mjs",
     "check:card": "node tests/card-request-flow.check.mjs",
     "check:prefs": "node tests/prefs-security.check.mjs"

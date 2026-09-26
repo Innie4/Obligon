@@ -5,7 +5,10 @@ services:
     plan: free
     buildCommand: corepack enable && pnpm install --frozen-lockfile
     preDeployCommand: pnpm --filter @obligon/api migrate
-    startCommand: npm start
+    # Explicit rather than `npm start`: the root `start` script launches the API,
+    # so a web service reusing it would build Next.js and then serve the API
+    # instead of the site. Naming the package keeps the two apart.
+    startCommand: pnpm --filter @obligon/api start
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV

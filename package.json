@@ -8,6 +8,8 @@
     "dev:api": "pnpm --filter @obligon/api dev",
     "build": "pnpm --filter @obligon/web build",
     "start": "pnpm --filter @obligon/api start",
+    "start:web": "pnpm --filter @obligon/web start",
+    "start:api": "pnpm --filter @obligon/api start",
     "lint": "pnpm --filter @obligon/web lint",
     "migrate": "pnpm --filter @obligon/api migrate",
     "config:check": "pnpm --filter @obligon/api config:check",
