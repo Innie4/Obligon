@@ -34,9 +34,30 @@ async function main() {
   }
 
   const app = createApp();
-  app.listen(env.PORT, () => {
+  app.listen(env.PORT, async () => {
     console.log(`✓ Obligon API running on http://localhost:${env.PORT} (${env.NODE_ENV})`);
     console.log(`  CORS origins: ${env.CORS_ORIGINS}`);
+
+    // Payments are the one integration whose absence is invisible until a
+    // customer tries to pay, so name the absent variables at boot. Previously a
+    // deployment missing its Flutterwave keys started cleanly and only surfaced
+    // as a 503 with no explanation in the browser.
+    try {
+      const { paymentProviderStatus, missingPaymentCredentials } = await import("./lib/payments.js");
+      const status = paymentProviderStatus();
+      const missing = missingPaymentCredentials();
+      if (status.active) {
+        console.log(`  Payment provider: ${status.active}`);
+      } else {
+        console.warn("  Payment provider: NONE — every checkout will fail with 503");
+      }
+      if (missing.length) {
+        console.warn(`  ⚠ Missing payment credentials: ${missing.join(", ")}`);
+        console.warn("    Set these in the deployment environment (see render.yaml).");
+      }
+    } catch (err) {
+      console.warn(`  Could not report payment provider status: ${err.message}`);
+    }
   });
 
   // Start background scheduler if configured

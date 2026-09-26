@@ -851,10 +851,24 @@ export const mutationsApi = {
         request: { ...LOCAL_CARD_REQUEST, planCode: planCode, planName: planCode }
       };
     }
-    return http<CardCheckout>("/api/customer/card-request/checkout", {
-      method: "POST",
-      body: JSON.stringify({ planCode })
-    });
+    try {
+      return await http<CardCheckout>("/api/customer/card-request/checkout", {
+        method: "POST",
+        body: JSON.stringify({ planCode })
+      });
+    } catch (err) {
+      // A 503 here almost always means the deployment has no payment processor
+      // configured. "Service Unavailable" tells a customer nothing useful, so
+      // say what actually happened while keeping the server's detail for logs.
+      if (err instanceof ApiError && err.status === 503) {
+        throw new ApiError(
+          503,
+          "Card purchases are temporarily unavailable. Please try again shortly or contact support on 0700 000 0000.",
+          err.details
+        );
+      }
+      throw err;
+    }
   },
   async verifyCardPayment(reference: string, simulated: boolean, transactionId?: string | null): Promise<{ ok: boolean; paid: boolean; request: CardRequest }> {
     if (!LIVE_MODE) {

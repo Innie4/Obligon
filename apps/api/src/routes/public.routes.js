@@ -4,7 +4,7 @@ import { asyncHandler, badRequest, notFound } from "../lib/errors.js";
 import { attachUser } from "../middleware/auth.js";
 import { naira, reference } from "../lib/format.js";
 import { notify, sendEmail } from "../lib/notify.js";
-import { paymentProviderStatus, checkoutIsSimulated } from "../lib/payments.js";
+import { paymentProviderStatus, checkoutIsSimulated, missingPaymentCredentials } from "../lib/payments.js";
 import { env } from "../config/env.js";
 import { uploadFile } from "../lib/storage.js";
 import multer from "multer";
@@ -21,6 +21,7 @@ router.use(attachUser);
  */
 router.get("/payments/config", asyncHandler(async (_req, res) => {
   const status = paymentProviderStatus();
+  const missing = missingPaymentCredentials();
   res.json({
     provider: status.active,
     simulated: checkoutIsSimulated(status.active),
@@ -28,7 +29,10 @@ router.get("/payments/config", asyncHandler(async (_req, res) => {
     publicKeys: {
       paystack: env.PAYSTACK_PUBLIC_KEY || null,
       flutterwave: env.FLW_PUBLIC_KEY || null
-    }
+    },
+    // Names of absent credentials only, so a misconfigured deployment reports
+    // itself here rather than as a bare 503 when a customer tries to pay.
+    ...(missing.length ? { misconfigured: true, missing } : {})
   });
 }));
 

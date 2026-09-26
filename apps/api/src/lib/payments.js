@@ -43,6 +43,23 @@ export function paymentProviderStatus() {
   };
 }
 
+/**
+ * Which credential names are absent, so a deployment that is missing keys can be
+ * diagnosed from a public endpoint instead of surfacing as an unexplained 503 to
+ * a customer. Names only, never values, and only the payment-related ones.
+ */
+export function missingPaymentCredentials() {
+  const required = ["PAYMENT_PROVIDER", "FLW_PUBLIC_KEY", "FLW_SECRET_KEY", "FLW_SECRET_HASH"];
+  const missing = required.filter((k) => !String(env[k] ?? "").trim());
+  if (!missing.includes("FLW_SECRET_HASH") && !String(env.PAYSTACK_SECRET_KEY ?? "").trim()) {
+    // Paystack verifies webhooks with its own secret, so FLW_SECRET_HASH is only
+    // required when Flutterwave is the processor in use.
+    const idx = missing.indexOf("FLW_SECRET_HASH");
+    if (idx >= 0 && String(env.PAYMENT_PROVIDER ?? "").toLowerCase() !== "flutterwave") missing.splice(idx, 1);
+  }
+  return missing;
+}
+
 function activeProviderSafely() {
   try {
     return activeProvider();

@@ -20,6 +20,11 @@ services:
         sync: false
       - key: NEXT_PUBLIC_SUPABASE_URL
         sync: false
+      # Declared under its canonical name too: env.js falls back to the
+      # NEXT_PUBLIC_ form, but the production config check requires SUPABASE_URL
+      # and relying on that fallback hides a genuinely unset variable.
+      - key: SUPABASE_URL
+        sync: false
       - key: SUPABASE_SECRET_KEY
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
@@ -58,6 +63,25 @@ services:
         value: true
       - key: ENABLE_SCHEDULER
         value: true
+      # ---------------------------------------------------------------- payments
+      # Without these the API starts cleanly but every checkout fails with 503
+      # "No payment provider is configured". Keep PAYMENT_PROVIDER and its
+      # NEXT_PUBLIC mirror in step: the browser needs to know which processor to
+      # render a checkout link for.
+      - key: PAYMENT_PROVIDER
+        value: flutterwave
+      - key: NEXT_PUBLIC_PAYMENT_PROVIDER
+        value: flutterwave
+      - key: FLW_PUBLIC_KEY
+        sync: false
+      - key: FLW_SECRET_KEY
+        sync: false
+      - key: FLW_ENCRYPTION_KEY
+        sync: false
+      # Must be identical to the Secret Hash in the Flutterwave dashboard, or
+      # /api/webhooks/flutterwave rejects every event with 401.
+      - key: FLW_SECRET_HASH
+        sync: false
       - key: SUDO_BASE_URL
         value: https://api.sandbox.sudo.africa/v1
       - key: SUDO_SECRET_API_KEY

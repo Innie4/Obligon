@@ -84,6 +84,31 @@ check("owner got a session token", Boolean(ownerToken));
 check("member got a session token", Boolean(memberToken));
 check("company signup linked an organization", Boolean(orgId), `org=${orgId}`);
 
+// ------------------------------------------------- payment config integrity
+section("Payment configuration is reported, not silently absent");
+const payConfig = await call("GET", "/api/public/payments/config");
+check("GET /public/payments/config responds", payConfig.status === 200, `status=${payConfig.status}`);
+check(
+  "an active provider is configured",
+  typeof payConfig.data?.provider === "string" && payConfig.data.provider.length > 0,
+  `provider=${payConfig.data?.provider}`
+);
+check(
+  "checkout is not falling back to simulation",
+  payConfig.data?.simulated === false,
+  `simulated=${payConfig.data?.simulated}`
+);
+check(
+  "the endpoint does not advertise itself as misconfigured",
+  payConfig.data?.misconfigured !== true,
+  payConfig.data?.missing ? `missing=${JSON.stringify(payConfig.data.missing)}` : "no missing keys reported"
+);
+check(
+  "no secret values are exposed by the public config",
+  !/FLWSECK_TEST-[A-Za-z0-9]{8}|sk_live_|sk_test_[A-Za-z0-9]{8}/.test(JSON.stringify(payConfig.data ?? {})),
+  "public config carries public keys only"
+);
+
 // ------------------------------------------- reconciliation of an idle system
 section("Reconciliation is a safe no-op when nothing is pending");
 const reconcile = await call("POST", "/api/admin/reconcile", { body: { limit: 25 } });
