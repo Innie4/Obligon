@@ -30,6 +30,71 @@ export const simulatedCheckoutEnabled = () => env.NODE_ENV !== "production";
 
 export const flutterwaveEnabled = enabled;
 
+// ---------------------------------------------------------------------------
+// Amount units
+//
+// Obligon stores every amount in kobo, the minor unit, which is the correct
+// representation for money: it is an integer, so no rounding can ever lose a
+// value. Paystack's API also speaks kobo.
+//
+// Flutterwave does not. Its `amount` field is the major unit, so a plan stored
+// as 250000 kobo must be sent as 2500 or the hosted page renders "NGN 250,000"
+// for a plan that costs N2,500. That mismatch was visible to customers.
+//
+// Verification is the dangerous half: if the amount came back in a different
+// unit than it was sent, a naive comparison credits a full plan for a fraction
+// of the price. So the unit is never assumed, it is inferred from the amount we
+// asked for. NGN has exactly two decimal places, so the major and minor readings
+// differ by a factor of 100 and cannot be confused with one another.
+// ---------------------------------------------------------------------------
+
+/** Kobo to the major-unit figure Flutterwave expects, as an exact 2dp number. */
+export function toProviderAmount(amountKobo) {
+  const kobo = Math.round(Number(amountKobo) || 0);
+  if (kobo < 0) throw badRequest("Amount cannot be negative");
+  if (kobo % 100 !== 0) {
+    throw badRequest(
+      `Amounts below one naira (${kobo} kobo) cannot be charged through Flutterwave hosted checkout`
+    );
+  }
+  return kobo / 100;
+}
+
+/**
+ * Work out whether a provider-reported amount is in major or minor units by
+ * matching it against the amount we expected.
+ *
+ * @returns {"major"|"minor"|null} null when the figure matches neither, which
+ *   the caller must treat as a mismatch rather than guess at.
+ */
+export function detectAmountUnit(providerAmount, expectedAmountKobo) {
+  const amount = Number(providerAmount);
+  if (!Number.isFinite(amount)) return null;
+  const expectedKobo = Math.round(Number(expectedAmountKobo) || 0);
+  const expectedMajor = expectedKobo / 100;
+  if (Math.abs(amount - expectedMajor) <= 0.005) return "major";
+  if (Math.abs(amount - expectedKobo) < 0.5) return "minor";
+  return null;
+}
+
+/** Normalise a provider-reported amount to kobo using an already-known unit. */
+export function toKobo(amount, unit) {
+  const value = Number(amount) || 0;
+  return unit === "minor" ? Math.round(value) : Math.round(value * 100);
+}
+
+/**
+ * The amount the customer actually paid, in kobo.
+ *
+ * `amount` is authoritative; `charged_amount` is deliberately not preferred
+ * because it includes the processor's fee, which would make an overpayment look
+ * larger than it is and refund the fee to the customer.
+ */
+export function paidAmountFrom(data) {
+  const raw = data?.amount ?? data?.charged_amount ?? 0;
+  return Number(raw) || 0;
+}
+
 async function flutterwaveFetch(path, { method = "GET", body } = {}) {
   const res = await providerFetch(`${BASE}${path}`, {
     method,
@@ -87,11 +152,11 @@ export async function initializeCheckout({
     };
   }
 
-  // Flutterwave expects the amount in the currency's minor unit, same as
-  // Paystack: NGN is a two-decimal currency, so kobo is correct as sent.
   const body = {
     tx_ref: txRef,
-    amount: String(amountKobo),
+    // Major units: Flutterwave's hosted page renders this figure as Naira, so
+    // sending kobo would show the customer 100x the plan price.
+    amount: toProviderAmount(amountKobo),
     currency,
     redirect_url: redirectUrl,
     customer: { email, name, phonenumber: phone || undefined },
@@ -147,8 +212,19 @@ export async function verifyCheckout({ transactionId, reference, expectedAmountK
 
   const status = String(data?.status ?? "").toLowerCase();
   const paid = status === "successful";
-  const amountKobo = Number(data?.charged_amount ?? data?.amount ?? 0);
   const currency = String(data?.currency ?? expectedCurrency);
+  const providerAmount = paidAmountFrom(data);
+
+  // Infer the unit the provider answered in rather than assuming it, then work
+  // in kobo from there on. Guessing wrong here would either reject honest
+  // payments or, far worse, accept a fraction of the price as full payment.
+  const unit = paid ? detectAmountUnit(providerAmount, expectedAmountKobo) : null;
+  if (paid && expectedAmountKobo != null && unit === null) {
+    throw badRequest(
+      `Payment amount ${providerAmount} does not match the ${expectedAmountKobo} kobo expected`
+    );
+  }
+  const amountKobo = paid && unit ? toKobo(providerAmount, unit) : Math.round(providerAmount);
 
   // Never trust the browser redirect alone: the reference we issued must match,
   // and we must have been paid at least the amount we asked for.
@@ -193,6 +269,10 @@ export function verifyWebhookSignature(verifHash) {
 export function parseWebhookEvent(payload) {
   const event = String(payload?.event ?? "");
   const data = payload?.data ?? {};
+  const currency = String(data?.currency ?? "NGN");
+  // Webhook amounts follow the same major-unit convention as the API, and
+  // `charged_amount` carries the processor fee, so normalise from `amount` and
+  // never refund a fee back to the customer.
   return {
     event,
     isChargeEvent: event === "charge.completed",
@@ -200,18 +280,18 @@ export function parseWebhookEvent(payload) {
     reference: data?.tx_ref ?? null,
     status: String(data?.status ?? "").toLowerCase(),
     paid: String(data?.status ?? "").toLowerCase() === "successful",
-    amountKobo: Number(data?.charged_amount ?? data?.amount ?? 0),
-    currency: String(data?.currency ?? "NGN")
+    amountKobo: toKobo(paidAmountFrom(data), "major"),
+    currency
   };
 }
 
 /**
  * Refund a charge, in full or in part.
  *
- * Flutterwave takes the *transaction id* (not the tx_ref) and the amount in the
- * currency's minor unit. Omitting `amount` refunds everything. Refunds settle
- * asynchronously, so the caller must reconcile `status` rather than assume the
- * money has moved.
+ * Flutterwave takes the *transaction id* (not the tx_ref), and its `amount` is
+ * the major unit, so a kobo figure is converted on the way out. Omitting `amount`
+ * refunds everything. Refunds settle asynchronously, so the caller must
+ * reconcile `status` rather than assume the money has moved.
  *
  * @returns {{ id: string|null, status: string, refundedKobo: number, simulated: boolean }}
  */
@@ -223,7 +303,7 @@ export async function refundTransaction({ transactionId, amountKobo = null, reas
   if (!transactionId) throw badRequest("A transaction id is required to issue a refund");
 
   const body = {};
-  if (amountKobo != null) body.amount = String(amountKobo);
+  if (amountKobo != null) body.amount = toProviderAmount(amountKobo);
   if (reason) body.reason = reason;
 
   const data = await flutterwaveFetch(`/transactions/${encodeURIComponent(transactionId)}/refund`, {
@@ -234,7 +314,7 @@ export async function refundTransaction({ transactionId, amountKobo = null, reas
   return {
     id: data?.id != null ? String(data.id) : null,
     status: String(data?.status ?? "pending").toLowerCase(),
-    refundedKobo: Number(data?.amount ?? amountKobo ?? 0),
+    refundedKobo: amountKobo != null ? Math.round(amountKobo) : toKobo(data?.amount ?? 0, "major"),
     simulated: false
   };
 }
