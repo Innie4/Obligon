@@ -122,8 +122,12 @@ export async function runScheduledTasks() {
   try {
     const purgeStats = await purgeExpiredData();
     const settlementStats = await runAutoSettlements();
-    console.log(`[scheduler] Completed:`, { purgeStats, autoSettlementsCount: settlementStats.length });
-    return { ok: true, timestamp, purgeStats, settlements: settlementStats };
+    // Payments are reconciled on every pass: webhooks and redirects are both
+    // best-effort, so pending charges must be polled until they settle.
+    const { runPaymentReconciliation } = await import("./reconcile.js");
+    const reconciliation = await runPaymentReconciliation();
+    console.log(`[scheduler] Completed:`, { purgeStats, autoSettlementsCount: settlementStats.length, reconciliation });
+    return { ok: true, timestamp, purgeStats, settlements: settlementStats, reconciliation };
   } catch (err) {
     console.error(`[scheduler] Execution failed:`, err);
     return { ok: false, timestamp, error: err.message };
@@ -131,6 +135,10 @@ export async function runScheduledTasks() {
 }
 
 let timer = null;
+let paymentTimer = null;
+
+/** Payments settle in minutes, so they are polled far more often than the sweep. */
+const PAYMENT_RECONCILE_INTERVAL_MS = 5 * 60 * 1000;
 
 /**
  * Start recurring background scheduler if ENABLE_SCHEDULER is enabled.
@@ -142,6 +150,7 @@ export function startScheduler(intervalMs = 60 * 60 * 1000) {
   if (timer) return;
 
   console.log(`✓ Background scheduler active (interval: ${intervalMs / 1000}s)`);
+  console.log(`✓ Payment reconciliation active (interval: ${PAYMENT_RECONCILE_INTERVAL_MS / 1000}s)`);
   // Run an initial sweep after startup grace period (15s)
   setTimeout(() => {
     runScheduledTasks().catch((err) => console.error("[scheduler] Initial run error:", err));
@@ -150,6 +159,22 @@ export function startScheduler(intervalMs = 60 * 60 * 1000) {
   timer = setInterval(() => {
     runScheduledTasks().catch((err) => console.error("[scheduler] Interval run error:", err));
   }, intervalMs);
+
+  if (!paymentTimer) {
+    const runPayments = async () => {
+      try {
+        const { runPaymentReconciliation } = await import("./reconcile.js");
+        const result = await runPaymentReconciliation();
+        if (result?.requiresAttention) {
+          console.warn("[scheduler] Payments need attention:", JSON.stringify(result));
+        }
+      } catch (err) {
+        console.error("[scheduler] Payment reconciliation error:", err.message);
+      }
+    };
+    setTimeout(runPayments, 30000);
+    paymentTimer = setInterval(runPayments, PAYMENT_RECONCILE_INTERVAL_MS);
+  }
 }
 
 export function stopScheduler() {
@@ -157,5 +182,10 @@ export function stopScheduler() {
     clearInterval(timer);
     timer = null;
     console.log("[scheduler] Background scheduler stopped.");
+  }
+  if (paymentTimer) {
+    clearInterval(paymentTimer);
+    paymentTimer = null;
+    console.log("[scheduler] Payment reconciliation stopped.");
   }
 }

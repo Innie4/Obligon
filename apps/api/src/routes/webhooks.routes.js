@@ -194,6 +194,30 @@ router.post("/flutterwave", webhookLimiter, async (req, res) => {
           [cardRequest.id]
         );
         if (updated) {
+          // The webhook can land before, after, or at the same time as the
+          // browser redirect and the reconciliation pass. All three funnel
+          // through the same keyed credit, so the wallet is funded once.
+          const { creditPlanPurchaseToWallet } = await import("../lib/money.js");
+          await creditPlanPurchaseToWallet({ cardRequest: updated, providerTransactionId: parsed.transactionId });
+
+          // Any money beyond the plan fee is returned rather than kept.
+          const dueKobo = plan?.amount_kobo != null ? Number(plan.amount_kobo) : null;
+          if (dueKobo != null && Number(parsed.amountKobo) > dueKobo) {
+            const excessKobo = Number(parsed.amountKobo) - dueKobo;
+            const { issueRefund } = await import("../lib/money.js");
+            await issueRefund({
+              provider: "flutterwave",
+              providerRef: parsed.reference,
+              providerTransactionId: parsed.transactionId,
+              userId: updated.user_id,
+              amountKobo: excessKobo,
+              kind: "excess",
+              reason: "Amount paid exceeded the plan fee",
+              metadata: { cardRequestId: updated.id, dueKobo, paidKobo: Number(parsed.amountKobo) },
+              ip: req.ip
+            });
+          }
+
           await notify({
             userId: cardRequest.user_id,
             title: "Payment received",

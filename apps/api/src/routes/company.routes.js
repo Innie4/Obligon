@@ -10,6 +10,7 @@ import { toCsv } from "../lib/format.js";
 import { reportPdf } from "../lib/pdf.js";
 import { emitToOrg } from "../lib/sse.js";
 import { distanceLabel } from "../lib/format.js";
+import { env } from "../config/env.js";
 
 const router = Router();
 
@@ -596,6 +597,200 @@ router.get("/team", requireOrg, asyncHandler(async (req, res) => {
       role: m.role, memberId: m.id
     }))
   });
+}));
+
+// ============ WALLET ALLOCATION ============
+/**
+ * A company holds a shared fuel budget; individual members spend from their own
+ * wallet. This is the only sanctioned way to move value from the company wallet
+ * into a member's spendable balance, which is why it is deliberately explicit,
+ * permission-checked and audited.
+ */
+router.get("/wallet", requireOrg, requirePermission("wallet.manage"), asyncHandler(async (req, res) => {
+  const company = await one(
+    "SELECT id, balance_kobo, kind, user_id, organization_id FROM wallets WHERE organization_id = $1",
+    [req.user.orgId]
+  );
+  const members = await q(
+    `SELECT m.user_id, m.role, COALESCE(u.full_name, u.email) AS name, u.email,
+            COALESCE(w.balance_kobo, 0) AS balance_kobo
+     FROM memberships m
+     JOIN users u ON u.id = m.user_id
+     LEFT JOIN wallets w ON w.user_id = m.user_id AND w.organization_id IS NULL
+     WHERE m.organization_id = $1 AND m.status = 'active'
+     ORDER BY name`,
+    [req.user.orgId]
+  );
+  const recent = await q(
+    `SELECT l.id, l.direction, l.amount_kobo, l.description, l.reference, l.created_at, l.wallet_id
+     FROM wallet_ledger l JOIN wallets w ON w.id = l.wallet_id
+     WHERE w.organization_id = $1 ORDER BY l.created_at DESC LIMIT 25`,
+    [req.user.orgId]
+  );
+  res.json({
+    company: company
+      ? { balanceKobo: Number(company.balance_kobo), balanceLabel: naira(Number(company.balance_kobo)) }
+      : { balanceKobo: 0, balanceLabel: naira(0) },
+    members: members.map((m) => ({ userId: m.user_id, role: m.role, name: m.name, email: m.email, balanceKobo: Number(m.balance_kobo), balanceLabel: naira(Number(m.balance_kobo)) })),
+    recent: recent.map((l) => ({ id: l.id, direction: l.direction, amountKobo: Number(l.amount_kobo), amountLabel: naira(Number(l.amount_kobo)), description: l.description, reference: l.reference, date: fmtDateTime(l.created_at) }))
+  });
+}));
+
+router.post("/wallet/allocate", requireOrg, requirePermission("wallet.manage"), asyncHandler(async (req, res) => {
+  const { memberId, toUserId, amountKobo, amountNaira, note } = req.valid ?? req.body ?? {};
+  const target = String(toUserId ?? memberId ?? "").trim();
+  if (!target) throw badRequest("Choose the member to credit");
+
+  // A member can only be credited by their own organization, and never by
+  // escalating to another org's wallet.
+  const member = await one(
+    "SELECT user_id, role FROM memberships WHERE organization_id = $1 AND user_id = $2 AND status = 'active'",
+    [req.user.orgId, target]
+  );
+  if (!member) throw forbidden("That person is not an active member of this company");
+
+  const kobo =
+    amountKobo != null
+      ? Math.round(Number(amountKobo))
+      : Math.round(Number(amountNaira) * 100);
+  if (!Number.isFinite(kobo) || kobo <= 0) throw badRequest("Enter an amount greater than zero");
+  if (kobo > 100_000_000_00) throw badRequest("Amounts above ₦1,000,000,000 need a manual request");
+
+  const { transferFromCompanyWallet } = await import("../lib/money.js");
+  const result = await transferFromCompanyWallet({
+    organizationId: req.user.orgId,
+    toUserId: target,
+    amountKobo: kobo,
+    actorUserId: req.user.id,
+    actorRole: req.user.role,
+    ip: req.ip,
+    note: typeof note === "string" ? note.slice(0, 140) : ""
+  });
+
+  res.json({
+    ok: true,
+    reference: result.ref,
+    amountKobo: kobo,
+    amountLabel: naira(kobo),
+    companyBalanceKobo: result.companyBalanceKobo,
+    memberBalanceKobo: result.memberBalanceKobo
+  });
+}));
+
+router.post("/wallet/topup", requireOrg, requirePermission("billing.manage"), asyncHandler(async (req, res) => {
+  const { amountKobo, amountNaira } = req.valid ?? req.body ?? {};
+  const kobo = amountKobo != null ? Math.round(Number(amountKobo)) : Math.round(Number(amountNaira) * 100);
+  if (!Number.isFinite(kobo) || kobo <= 0) throw badRequest("Enter an amount greater than zero");
+
+  const { startCheckout, activeProvider } = await import("../lib/payments.js");
+  const companyWallet = await one("SELECT * FROM wallets WHERE organization_id = $1", [req.user.orgId]);
+  if (!companyWallet) throw notFound("This company has no wallet yet");
+
+  const org = await one("SELECT name, owner_user_id FROM organizations WHERE id = $1", [req.user.orgId]);
+  const user = await one("SELECT email, full_name FROM users WHERE id = $1", [org.owner_user_id]);
+  const { reference: makeRef } = await import("../lib/format.js");
+  const txRef = makeRef("TOPUP");
+
+  const topup = await one(
+    `INSERT INTO top_ups (user_id, wallet_id, reference, amount_kobo, currency, provider, provider_transaction_id, status)
+     VALUES ($1,$2,$3,$4,'NGN',$5,NULL,'pending') RETURNING *`,
+    [org.owner_user_id, companyWallet.id, txRef, kobo, activeProvider()]
+  );
+
+  const checkout = await startCheckout({
+    provider: activeProvider(),
+    txRef,
+    amountKobo: kobo,
+    email: user.email,
+    name: org.name,
+    redirectUrl: `${env.APP_URL}/company?tab=billing&topup=${txRef}`,
+    title: `${org.name} wallet top-up`,
+    meta: { kind: "company_topup", organizationId: req.user.orgId, topupId: topup.id },
+    // Opt-in split settlement: when the org has a live subaccount, its share
+    // settles to the subaccount rather than the platform account.
+    split: await resolveCompanySplit(req.user.orgId)
+  });
+  await q("UPDATE top_ups SET provider_transaction_id = $2 WHERE id = $1", [topup.id, checkout.providerTransactionId ?? null]);
+
+  // Persist the split that was actually applied, so settlement can be proven
+  // later without re-deriving it from the checkout session.
+  const split = await resolveCompanySplit(req.user.orgId);
+  if (split) {
+    await recordPaymentSplit({
+      settlementAccount: split.account,
+      provider: activeProvider(),
+      providerRef: txRef,
+      subaccountId: split.subaccountId,
+      ratioBp: split.ratioBp,
+      amountKobo: kobo,
+      topUpId: topup.id
+    });
+  }
+
+  res.json({ ok: true, topup, checkout });
+}));
+
+/** Resolve the org's active processor subaccount, if one is linked. */
+async function resolveCompanySplit(organizationId) {
+  const account = await one(
+    "SELECT * FROM settlement_accounts WHERE organization_id = $1 AND status = 'active'",
+    [organizationId]
+  );
+  if (!account?.subaccount_id) return null;
+  return { account, subaccountId: account.subaccount_id, ratioBp: Number(account.split_ratio_bp ?? 0) };
+}
+
+/**
+ * Record the split applied to a charge. Idempotent on (provider, ref,
+ * subaccount) so a replayed webhook cannot double-record the same settlement.
+ */
+export async function recordPaymentSplit({
+  settlementAccount = null,
+  provider,
+  providerRef,
+  subaccountId,
+  ratioBp,
+  amountKobo,
+  topUpId = null,
+  cardRequestId = null,
+  providerSplitId = null,
+  status = "pending",
+  reference = null
+}) {
+  return one(
+    `INSERT INTO payment_splits
+       (settlement_account_id, organization_id, top_up_id, card_request_id, provider, provider_ref,
+        provider_split_id, subaccount_id, ratio_bp, amount_kobo, status, reference)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+     ON CONFLICT (provider, provider_ref, subaccount_id) DO NOTHING
+     RETURNING *`,
+    [
+      settlementAccount?.id ?? null,
+      settlementAccount?.organization_id ?? null,
+      topUpId,
+      cardRequestId,
+      provider,
+      providerRef,
+      providerSplitId,
+      subaccountId,
+      ratioBp,
+      amountKobo,
+      status,
+      reference
+    ]
+  );
+}
+
+router.get("/wallet/members", requireOrg, requirePermission("wallet.manage"), asyncHandler(async (req, res) => {
+  const rows = await q(
+    `SELECT m.user_id, m.role, COALESCE(u.full_name, u.email) AS name, u.email,
+            COALESCE(w.balance_kobo, 0) AS balance_kobo
+     FROM memberships m JOIN users u ON u.id = m.user_id
+     LEFT JOIN wallets w ON w.user_id = m.user_id AND w.organization_id IS NULL
+     WHERE m.organization_id = $1 AND m.status = 'active' ORDER BY name`,
+    [req.user.orgId]
+  );
+  res.json({ members: rows.map((m) => ({ userId: m.user_id, role: m.role, name: m.name, email: m.email, balanceKobo: Number(m.balance_kobo) })) });
 }));
 
 router.post("/team/invite", requireOrg, requirePermission("team.manage"), asyncHandler(async (req, res) => {

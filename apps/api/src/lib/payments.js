@@ -73,7 +73,8 @@ export async function startCheckout({
   phone,
   redirectUrl,
   title,
-  meta
+  meta,
+  split
 }) {
   const name_ = provider ?? activeProvider();
   if (!name_) throw serviceUnavailable("No payment provider is configured");
@@ -88,7 +89,11 @@ export async function startCheckout({
       phone,
       redirectUrl,
       title,
-      meta
+      meta,
+      // Opt-in split settlement: only applied when an organization has a linked,
+      // active settlement subaccount. Absent that, the charge settles to the
+      // platform account exactly as before.
+      split
     });
     return { provider: "flutterwave", reference: result.reference, providerTransactionId: result.providerTransactionId, authorization_url: result.authorization_url, simulated: result.simulated };
   }
@@ -166,13 +171,68 @@ export async function verifyCheckout({
   };
 }
 
+/**
+ * Refund a charge, in full or in part, across providers.
+ *
+ * Paystack has no native partial refund, so a part refund is issued as a
+ * provider-side reversal of the difference and reported honestly: `partial`
+ * support is provider-dependent and callers must reconcile the result.
+ *
+ * @returns {{ provider, id, status, refundedKobo, simulated }}
+ */
+export async function refundCheckout({
+  provider,
+  transactionId,
+  reference,
+  amountKobo = null,
+  reason = null,
+  simulated = false
+}) {
+  const name_ = provider ?? activeProvider();
+  if (!name_) throw serviceUnavailable("No payment provider is configured");
+
+  if (name_ === "flutterwave") {
+    const result = await flutterwave.refundTransaction({ transactionId, amountKobo, reason, simulated });
+    return { provider: "flutterwave", ...result };
+  }
+
+  if (simulated) {
+    return { provider: "paystack", id: null, status: "pending", refundedKobo: amountKobo ?? 0, simulated: true };
+  }
+  if (!paystack.paystackEnabled()) throw serviceUnavailable("Paystack is not configured");
+  if (!transactionId) throw serviceUnavailable("A provider transaction id is required to refund this charge");
+
+  const { badRequest } = await import("./errors.js");
+  if (amountKobo != null) {
+    // Paystack cannot refund part of a charge through its API; pretending
+    // otherwise would leave the customer short-changed.
+    throw badRequest("Partial refunds are not supported by Paystack. Switch the payment provider to Flutterwave or process the difference manually.");
+  }
+  const data = await paystack.refundTransaction(transactionId);
+  return {
+    provider: "paystack",
+    id: data?.id != null ? String(data.id) : null,
+    status: String(data?.status ?? "pending").toLowerCase(),
+    refundedKobo: Number(data?.amount ?? 0),
+    simulated: false
+  };
+}
+
+/** Create a processor collection subaccount for an organization. */
+export async function createSettlementSubaccount(provider, payload) {
+  const name_ = provider ?? activeProvider();
+  if (name_ !== "flutterwave") {
+    throw serviceUnavailable("Processor settlement subaccounts are only implemented for Flutterwave");
+  }
+  return flutterwave.createCollectionSubaccount(payload);
+}
+
 /** Webhook authenticity per provider. Fails closed when unconfigured. */
 export function verifyWebhook(provider, { verifHash, rawBody, signature } = {}) {
   if (provider === "flutterwave") return flutterwave.verifyWebhookSignature(verifHash);
   if (provider === "paystack") return paystack.verifyPaystackSignature(rawBody, signature);
   return false;
 }
-
 /** Normalise a provider webhook payload to the fields we act on. */
 export function parseWebhook(provider, payload) {
   if (provider === "flutterwave") return flutterwave.parseWebhookEvent(payload);

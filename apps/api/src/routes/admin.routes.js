@@ -110,6 +110,208 @@ router.put("/companies/:orgId", asyncHandler(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// ============ REFUNDS & RECONCILIATION ============
+/**
+ * Refunds are money going back out, so they are admin-initiated unless the
+ * customer withdrew their own plan. Every issue is recorded before it is sent to
+ * the provider, which makes a double-click or a retried request a no-op.
+ */
+router.get("/refunds", asyncHandler(async (req, res) => {
+  const { status } = req.query;
+  const params = [];
+  let where = "1=1";
+  if (status) { params.push(status); where += ` AND r.status = $${params.length}`; }
+  const rows = await q(
+    `SELECT r.*, COALESCE(u.full_name, u.email) AS customer_name, u.email
+     FROM payment_refunds r LEFT JOIN users u ON u.id = r.user_id
+     WHERE ${where} ORDER BY r.created_at DESC LIMIT 200`,
+    params
+  );
+  res.json({
+    refunds: rows.map((r) => ({
+      id: r.id,
+      customer: r.customer_name,
+      email: r.email,
+      provider: r.provider,
+      reference: r.provider_ref,
+      kind: r.kind,
+      status: r.status,
+      amountKobo: Number(r.amount_kobo ?? 0),
+      amountLabel: naira(Number(r.amount_kobo ?? 0)),
+      reason: r.reason,
+      createdAt: fmtDateTime(r.created_at),
+      settledAt: r.settled_at ? fmtDateTime(r.settled_at) : null
+    }))
+  });
+}));
+
+router.post("/refunds", asyncHandler(async (req, res) => {
+  const { userId, cardRequestId, amountKobo, reason } = req.valid ?? req.body ?? {};
+  if (!reason || String(reason).trim().length < 5) throw badRequest("Give a reason for the refund");
+
+  const request = cardRequestId ? await one("SELECT * FROM card_requests WHERE id = $1", [cardRequestId]) : null;
+  if (cardRequestId && !request) throw notFound("Card request not found");
+
+  const target = request ?? (userId ? await one("SELECT * FROM card_requests WHERE user_id = $1 AND payment_status = 'paid' ORDER BY created_at DESC LIMIT 1", [userId]) : null);
+  if (!target) throw notFound("No paid card request was found to refund");
+  if (["refunded"].includes(target.payment_status)) throw badRequest("This payment has already been refunded");
+
+  const plan = target.plan_code ? await one("SELECT * FROM card_plans WHERE code = $1", [target.plan_code]) : null;
+  const full = amountKobo == null || amountKobo === "";
+  const kobo = full ? (plan ? Number(plan.amount_kobo) : null) : Math.round(Number(amountKobo));
+  if (!full && (!Number.isFinite(kobo) || kobo <= 0)) throw badRequest("Enter a valid refund amount");
+  if (full && !kobo) throw badRequest("This payment has no recorded plan amount to refund");
+
+  // A full refund on a provider reference can only ever happen once.
+  const { issueRefund } = await import("../lib/money.js");
+  const result = await issueRefund({
+    provider: target.payment_provider,
+    providerRef: target.payment_reference,
+    providerTransactionId: target.provider_transaction_id ?? null,
+    userId: target.user_id,
+    amountKobo: kobo,
+    kind: full ? "full" : "partial",
+    reason: String(reason).trim().slice(0, 300),
+    metadata: { cardRequestId: target.id, issuedBy: req.user.id },
+    actorUserId: req.user.id,
+    actorRole: req.user.role,
+    ip: req.ip,
+    simulated: Boolean(req.body?.simulated)
+  });
+
+  if (result.duplicate) {
+    const { conflict } = await import("../lib/errors.js");
+    throw conflict("A refund was already issued for this payment");
+  }
+  if (full) {
+    await q(
+      `UPDATE card_requests SET payment_status = 'refunded', refund_id = $2, updated_at = now()
+       WHERE id = $1 AND payment_status = 'paid'`,
+      [target.id, result.refund?.id ?? null]
+    );
+  }
+  await notify({
+    userId: target.user_id,
+    title: "Refund issued",
+    body: `A refund of ${naira(kobo ?? 0)} for your ${plan?.name ?? "payment"} is on its way to your payment method.`,
+    category: "transactions",
+    link: "/customer/card"
+  });
+  res.json({ ok: true, refund: result.refund, amountLabel: naira(kobo ?? 0) });
+}));
+
+/** Run a reconciliation pass on demand, and see the result. */
+router.post("/reconcile", asyncHandler(async (req, res) => {
+  const { runPaymentReconciliation } = await import("../lib/reconcile.js");
+  const result = await runPaymentReconciliation({ limit: Math.min(Number(req.body?.limit) || 25, 100) });
+  await audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "payments.reconcile_triggered", metadata: result });
+  res.json(result);
+}));
+
+// ============ SETTLEMENT SUBACCOUNTS ============
+/**
+ * Optional, opt-in split settlement. When an organization has an active
+ * subaccount, its share of each charge settles there at the processor instead of
+ * pooling in the platform account. Organizations without one behave exactly as
+ * before, so this is safe to roll out incrementally.
+ */
+router.get("/settlement-accounts", asyncHandler(async (req, res) => {
+  const rows = await q(
+    `SELECT s.*, o.name AS organization_name
+     FROM settlement_accounts s JOIN organizations o ON o.id = s.organization_id
+     ORDER BY s.created_at DESC LIMIT 200`
+  );
+  res.json({
+    accounts: rows.map((s) => ({
+      id: s.id,
+      organizationId: s.organization_id,
+      organization: s.organization_name,
+      provider: s.provider,
+      subaccountId: s.subaccount_id,
+      accountNumber: s.account_number,
+      bankName: s.bank_name,
+      status: s.status,
+      splitRatioBp: Number(s.split_ratio_bp ?? 0),
+      splitPercent: Number(s.split_ratio_bp ?? 0) / 100,
+      createdAt: fmtDateTime(s.created_at)
+    }))
+  });
+}));
+
+router.post("/settlement-accounts", asyncHandler(async (req, res) => {
+  const { organizationId, businessName, email, phone, splitRatioBp, splitPercent, currency } = req.valid ?? req.body ?? {};
+  const org = await one("SELECT id, name, contact_email, contact_phone FROM organizations WHERE id = $1", [organizationId]);
+  if (!org) throw notFound("Organization not found");
+
+  const ratioBp = splitRatioBp != null ? Math.round(Number(splitRatioBp)) : Math.round(Number(splitPercent ?? 0) * 100);
+  if (!Number.isFinite(ratioBp) || ratioBp < 0 || ratioBp > 10000) {
+    throw badRequest("The split ratio must be between 0 and 10000 basis points (0-100%)");
+  }
+
+  const existing = await one("SELECT * FROM settlement_accounts WHERE organization_id = $1", [organizationId]);
+  if (existing?.status === "active") throw badRequest("This organization already has an active settlement account");
+
+  const { createSettlementSubaccount, activeProvider } = await import("../lib/payments.js");
+  const sub = await createSettlementSubaccount(activeProvider(), {
+    businessName: businessName || org.name,
+    email: email || org.contact_email,
+    phone: phone || org.contact_phone,
+    countryCode: (currency || "NGN").slice(0, 2),
+    splitRatioBp: ratioBp
+  });
+  if (!sub.id) throw badRequest("The provider did not return a subaccount id");
+
+  const saved = await one(
+    `INSERT INTO settlement_accounts (organization_id, provider, subaccount_id, account_number, bank_name, currency, split_ratio_bp, status)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,'active')
+     ON CONFLICT (organization_id) DO UPDATE SET provider = $2, subaccount_id = $3, account_number = $4,
+       bank_name = $5, currency = $6, split_ratio_bp = $7, status = 'active', updated_at = now()
+     RETURNING *`,
+    [organizationId, activeProvider(), sub.id, sub.accountNumber, sub.bankName, currency || "NGN", ratioBp]
+  );
+  await audit({
+    actorUserId: req.user.id,
+    actorRole: req.user.role,
+    action: "settlement.subaccount_linked",
+    entityType: "organization",
+    entityId: organizationId,
+    metadata: { subaccountId: sub.id, splitRatioBp: ratioBp }
+  });
+  res.json({ ok: true, account: saved, splitPercent: ratioBp / 100 });
+}));
+
+router.post("/settlement-accounts/:id/splits", asyncHandler(async (req, res) => {
+  const account = await one("SELECT * FROM settlement_accounts WHERE id = $1", [req.params.id]);
+  if (!account) throw notFound("Settlement account not found");
+  const splits = await q(
+    `SELECT ps.*, o.name AS organization_name
+     FROM payment_splits ps JOIN organizations o ON o.id = ps.organization_id
+     WHERE ps.settlement_account_id = $1 ORDER BY ps.created_at DESC LIMIT 100`,
+    [account.id]
+  );
+  res.json({
+    ok: true,
+    account: {
+      id: account.id,
+      provider: account.provider,
+      subaccountId: account.subaccount_id,
+      status: account.status,
+      splitPercent: Number(account.split_ratio_bp ?? 0) / 100
+    },
+    splits: splits.map((s) => ({
+      id: s.id,
+      organization: s.organization_name,
+      amountKobo: Number(s.amount_kobo ?? 0),
+      amountLabel: naira(Number(s.amount_kobo ?? 0)),
+      currency: s.currency,
+      status: s.status,
+      providerSplitId: s.provider_split_id,
+      reference: s.reference,
+      createdAt: fmtDateTime(s.created_at)
+    }))
+  });
+}));
+
 router.get("/security-logs", asyncHandler(async (req, res) => {
   const { severity, limit = 50 } = req.query;
   const params = [];

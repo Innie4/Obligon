@@ -263,33 +263,47 @@ router.post("/wallet/topup/confirm", asyncHandler(async (req, res) => {
 export async function completeTopUp(topup) {
   let completed = false;
   await tx(async (t) => {
-    // Lock the wallet this top-up was raised against. Company accounts settle
-    // into the organization wallet, so we must not fall back to "any wallet for
-    // this user" here.
-    const wallet = topup.wallet_id
-      ? await t.one("SELECT * FROM wallets WHERE id = $1 FOR UPDATE", [topup.wallet_id])
-      : await t.one(
-          "SELECT * FROM wallets WHERE user_id = $1 AND organization_id IS NULL FOR UPDATE",
-          [topup.user_id]
-        );
-    if (!wallet) throw badRequest("No wallet is linked to this account");
+    // Claim the top-up first. The conditional UPDATE is the idempotency guard:
+    // only the first caller sees a row come back, whether that is a webhook, the
+    // browser redirect, or the reconciliation pass.
     const marked = await t.query(
-      "UPDATE top_ups SET status = 'success', paid_at = now() WHERE id = $1 AND status = 'pending' RETURNING id",
+      `UPDATE top_ups SET status = 'success', paid_at = now(), reconcile_attempts = reconcile_attempts + 1, last_reconciled_at = now()
+       WHERE id = $1 AND status = 'pending' RETURNING id`,
       [topup.id]
     );
     if (!marked.length) return;
-    const balance = wallet.balance_kobo + topup.amount_kobo;
-    await t.query("UPDATE wallets SET balance_kobo = $2 WHERE id = $1", [wallet.id, balance]);
-    await t.query(
-      `INSERT INTO wallet_ledger (wallet_id, direction, amount_kobo, balance_after_kobo, reference, description)
-       VALUES ($1,'credit',$2,$3,$4,$5)`,
-      [wallet.id, topup.amount_kobo, balance, topup.reference, `Top-up via ${topup.method}`]
-    );
     completed = true;
   });
-  if (completed) {
-    await notify({ userId: topup.user_id, title: "Transaction Alert", body: `Success: ${naira(topup.amount_kobo)} added to your wallet.`, category: "transactions", link: "/customer/wallet" });
+  if (!completed) return;
+
+  // Company accounts settle into the organization wallet, so the wallet this
+  // top-up was raised against must be used rather than "any wallet for this
+  // user". Crediting is keyed on the top-up, so this cannot double-credit.
+  const wallet = topup.wallet_id
+    ? await one("SELECT * FROM wallets WHERE id = $1", [topup.wallet_id])
+    : await one("SELECT * FROM wallets WHERE user_id = $1 AND organization_id IS NULL", [topup.user_id]);
+  if (!wallet) {
+    // Roll the claim back so support can fix the missing wallet and re-run.
+    await q("UPDATE top_ups SET status = 'pending', paid_at = NULL WHERE id = $1 AND status = 'success'", [topup.id]);
+    throw badRequest("No wallet is linked to this account");
   }
+  const { creditWalletOnce } = await import("../lib/money.js");
+  await creditWalletOnce({
+    walletId: wallet.id,
+    amountKobo: topup.amount_kobo,
+    idempotencyKey: `topup:${topup.id}`,
+    description: `Top-up via ${topup.method}`,
+    ledgerReference: topup.reference
+  });
+
+  // If this charge carried a split settlement, it has now actually happened.
+  await q(
+    `UPDATE payment_splits SET status = 'succeeded'
+     WHERE provider_ref = $1 AND status = 'pending'`,
+    [topup.reference]
+  );
+
+  await notify({ userId: topup.user_id, title: "Transaction Alert", body: `Success: ${naira(topup.amount_kobo)} added to your wallet.`, category: "transactions", link: "/customer/wallet" });
 }
 
 // ============ PAYMENT METHODS ============
@@ -459,6 +473,114 @@ router.post("/card-request/checkout", asyncHandler(async (req, res) => {
 }));
 
 /**
+ * Withdraw a plan purchase and refund it.
+ *
+ * A customer who has paid but abandoned verification is otherwise stuck: the
+ * request cannot be self-cancelled (money was taken) and cannot proceed. This
+ * closes that loop. The refund is recorded before it is issued, so a retry can
+ * never pay out twice, and the plan amount is clawed back from the fuel wallet
+ * so the refunded money is not double-spent.
+ */
+router.post("/card-request/withdraw", asyncHandler(async (req, res) => {
+  const ref = String(req.body?.reference ?? "").trim();
+  if (!ref) throw badRequest("reference is required");
+
+  const request = await one("SELECT * FROM card_requests WHERE payment_reference = $1 AND user_id = $2", [ref, req.user.id]);
+  if (!request) throw notFound("Card request not found");
+
+  if (request.status === "withdrawn" || request.refund_id) {
+    const refund = request.refund_id ? await one("SELECT * FROM payment_refunds WHERE id = $1", [request.refund_id]) : null;
+    return res.json({ ok: true, alreadyWithdrawn: true, refund });
+  }
+  if (request.payment_status !== "paid") {
+    throw conflict("There is no completed payment to withdraw");
+  }
+  if (["approved", "cancelled", "refunded"].includes(request.status)) {
+    throw conflict("This card request can no longer be withdrawn");
+  }
+
+  // Claw the opening balance back before refunding, so the customer is not
+  // refunded money they have already spent as fuel credit.
+  let clawbackKobo = 0;
+  if (request.wallet_credited_at) {
+    const credit = await one("SELECT * FROM plan_wallet_credits WHERE card_request_id = $1", [request.id]);
+    if (credit) {
+      const { debitWalletOnce } = await import("../lib/money.js");
+      const result = await debitWalletOnce({
+        walletId: credit.wallet_id,
+        amountKobo: Number(credit.amount_kobo),
+        idempotencyKey: `plan-clawback:${request.id}`,
+        description: "Reversal of plan opening balance on withdrawal"
+      });
+      if (result.debited) clawbackKobo = Number(credit.amount_kobo);
+      else {
+        // Funds already spent: refuse rather than refund money we cannot reclaim.
+        throw conflict(
+          "Your plan balance has already been spent, so this plan cannot be withdrawn automatically. Please contact support."
+        );
+      }
+    }
+  }
+
+  const plan = request.plan_code
+    ? await one("SELECT name, amount_kobo FROM card_plans WHERE code = $1", [request.plan_code])
+    : null;
+  const amountKobo = plan ? Number(plan.amount_kobo) : 0;
+
+  const { issueRefund } = await import("../lib/money.js");
+  const result = await issueRefund({
+    provider: request.payment_provider,
+    providerRef: request.payment_reference,
+    providerTransactionId: request.provider_transaction_id ?? null,
+    userId: req.user.id,
+    amountKobo: amountKobo || null,
+    kind: "full",
+    reason: "Customer withdrew the plan before verification completed",
+    metadata: { cardRequestId: request.id, clawbackKobo },
+    actorUserId: req.user.id,
+    actorRole: req.user.role,
+    ip: req.ip,
+    simulated: Boolean(req.body?.simulated)
+  });
+
+  const updated = await one(
+    `UPDATE card_requests SET status = 'withdrawn', payment_status = 'refunded', withdrawn_at = now(),
+       refund_id = $2, updated_at = now()
+     WHERE id = $1 AND status = $3 RETURNING *`,
+    [request.id, result.refund?.id ?? null, request.status]
+  );
+
+  await notify({
+    userId: req.user.id,
+    title: "Plan withdrawn",
+    body: `Your ${plan?.name ?? "plan"} purchase has been withdrawn and ${amountKobo ? naira(amountKobo) : "the amount"} will be refunded to your payment method.`,
+    category: "transactions",
+    link: "/customer/card"
+  });
+
+  res.json({
+    ok: true,
+    alreadyWithdrawn: false,
+    clawbackKobo,
+    refundStatus: result.refund?.status ?? null,
+    request: serializeCardRequest(updated ?? request)
+  });
+}));
+
+/** Status of a refund, so the UI can show settlement progress. */
+router.get("/card-request/refund", asyncHandler(async (req, res) => {
+  const ref = String(req.query.reference ?? "").trim();
+  if (!ref) throw badRequest("reference is required");
+  const request = await one("SELECT id FROM card_requests WHERE payment_reference = $1 AND user_id = $2", [ref, req.user.id]);
+  if (!request) throw notFound("Card request not found");
+  const refund = await one(
+    "SELECT id, status, amount_kobo, kind, reason, created_at, settled_at FROM payment_refunds WHERE provider_ref = $1 ORDER BY created_at DESC LIMIT 1",
+    [ref]
+  );
+  res.json({ refund: refund ? { ...refund, amountLabel: naira(Number(refund.amount_kobo)) } : null });
+}));
+
+/**
  * Abandon a request. Without this a customer who starts checkout and never
  * pays is permanently blocked from retrying by the one-open-request index.
  */
@@ -534,6 +656,63 @@ router.post("/card-request/verify-payment", asyncHandler(async (req, res) => {
   );
   const updated = paid ?? (await one("SELECT * FROM card_requests WHERE id = $1", [request.id]));
 
+  // If the customer somehow paid more than the plan is worth, the difference is
+  // returned to them automatically rather than being kept or, worse, silently
+  // absorbed into the wallet.
+  let excessRefundKobo = 0;
+  const dueKobo = plan ? Number(plan.amount_kobo) : null;
+  const paidKobo = Number(verification.amountKobo ?? 0);
+  if (dueKobo != null && paidKobo > dueKobo) {
+    excessRefundKobo = paidKobo - dueKobo;
+    try {
+      const { issueRefund } = await import("../lib/money.js");
+      await issueRefund({
+        provider: verification.provider,
+        providerRef: ref,
+        providerTransactionId: req.body?.transactionId ?? request.provider_transaction_id ?? null,
+        userId: req.user.id,
+        amountKobo: excessRefundKobo,
+        kind: "excess",
+        reason: "Amount paid exceeded the plan fee",
+        metadata: { cardRequestId: request.id, dueKobo, paidKobo },
+        actorUserId: req.user.id,
+        actorRole: req.user.role,
+        ip: req.ip,
+        simulated: Boolean(req.body?.simulated)
+      });
+      await notify({
+        userId: req.user.id,
+        title: "Excess payment refunded",
+        body: `You paid ${naira(paidKobo)} but the plan cost ${naira(dueKobo)}. ${naira(excessRefundKobo)} is being returned to you.`,
+        category: "transactions",
+        link: "/customer/card"
+      });
+    } catch (err) {
+      // An excess refund failing must not invalidate a genuine plan purchase;
+      // it is logged for support to action instead.
+      await audit({
+        actorUserId: req.user.id,
+        actorRole: req.user.role,
+        action: "payments.excess_refund_failed",
+        entityType: "card_request",
+        entityId: request.id,
+        severity: "warning",
+        metadata: { excessRefundKobo, error: err.message }
+      });
+      excessRefundKobo = 0;
+    }
+  }
+
+  // Money is in, so the plan's opening fuel balance is owed straight away. This
+  // is keyed on the card request, so a webhook and a reconciliation pass landing
+  // together still credit only once.
+  let walletCredited = false;
+  if (paid) {
+    const { creditPlanPurchaseToWallet } = await import("../lib/money.js");
+    const credit = await creditPlanPurchaseToWallet({ cardRequest: paid });
+    walletCredited = credit.credited;
+  }
+
   await audit({
     actorUserId: req.user.id,
     actorRole: req.user.role,
@@ -545,7 +724,9 @@ router.post("/card-request/verify-payment", asyncHandler(async (req, res) => {
       reference: ref,
       planCode: request.plan_code,
       provider: verification.provider,
-      simulated: verification.simulated
+      simulated: verification.simulated,
+      walletCredited,
+      excessRefundKobo
     }
   });
   await notify({
@@ -556,7 +737,7 @@ router.post("/card-request/verify-payment", asyncHandler(async (req, res) => {
     link: "/customer/card"
   });
 
-  res.json({ ok: true, paid: true, request: serializeCardRequest(updated) });
+  res.json({ ok: true, paid: true, walletCredited, excessRefundKobo, request: serializeCardRequest(updated) });
 }));
 
 /** Step 3 - identity details, submitted for verification. */

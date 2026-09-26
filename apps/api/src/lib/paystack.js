@@ -50,6 +50,19 @@ export async function verifyTransaction(reference) {
   return paystackFetch(`/transaction/verify/${encodeURIComponent(reference)}`);
 }
 
+/**
+ * Refund a charge. Paystack only supports full refunds through its API, so
+ * `amountKobo` is accepted for interface symmetry but must be omitted.
+ */
+export async function refundTransaction(transactionId) {
+  if (!enabled()) throw serviceUnavailable("Paystack is not configured");
+  if (!transactionId) throw serviceUnavailable("A transaction id is required to refund this charge");
+  return paystackFetch("/refund", {
+    method: "POST",
+    body: { transaction: String(transactionId) }
+  });
+}
+
 export async function createTransferRecipient({ name, accountNumber, bankCode }) {
   if (!enabled()) throw serviceUnavailable("Paystack is not configured");
   const data = await paystackFetch("/transferrecipient", {

@@ -62,7 +62,8 @@ export async function initializeCheckout({
   redirectUrl,
   title,
   meta,
-  sessionMinutes
+  sessionMinutes,
+  split = null
 }) {
   if (!enabled()) {
     if (!simulatedCheckoutEnabled()) throw serviceUnavailable("Flutterwave is not configured");
@@ -76,19 +77,26 @@ export async function initializeCheckout({
 
   // Flutterwave expects the amount in the currency's minor unit, same as
   // Paystack: NGN is a two-decimal currency, so kobo is correct as sent.
-  const data = await flutterwaveFetch("/payments", {
-    method: "POST",
-    body: {
-      tx_ref: txRef,
-      amount: String(amountKobo),
-      currency,
-      redirect_url: redirectUrl,
-      customer: { email, name, phonenumber: phone || undefined },
-      customizations: { title: title || "Obligon LTD Payment" },
-      ...(meta ? { meta } : {}),
-      ...(sessionMinutes ? { configurations: { session_duration: sessionMinutes } } : {})
-    }
-  });
+  const body = {
+    tx_ref: txRef,
+    amount: String(amountKobo),
+    currency,
+    redirect_url: redirectUrl,
+    customer: { email, name, phonenumber: phone || undefined },
+    customizations: { title: title || "Obligon LTD Payment" },
+    ...(meta ? { meta } : {}),
+    ...(sessionMinutes ? { configurations: { session_duration: sessionMinutes } } : {})
+  };
+
+  // Split settlement is opt-in per organization. Only applied when the caller
+  // supplies a verified, active subaccount.
+  if (split?.subaccountId) {
+    body.split_subaccounts = [
+      { id: String(split.subaccountId), ratio: Number(split.ratioBp ?? 0), type: "percentage" }
+    ];
+  }
+
+  const data = await flutterwaveFetch("/payments", { method: "POST", body });
 
   if (!data?.link) throw serviceUnavailable("Flutterwave did not return a checkout link");
   return {
@@ -182,5 +190,78 @@ export function parseWebhookEvent(payload) {
     paid: String(data?.status ?? "").toLowerCase() === "successful",
     amountKobo: Number(data?.charged_amount ?? data?.amount ?? 0),
     currency: String(data?.currency ?? "NGN")
+  };
+}
+
+/**
+ * Refund a charge, in full or in part.
+ *
+ * Flutterwave takes the *transaction id* (not the tx_ref) and the amount in the
+ * currency's minor unit. Omitting `amount` refunds everything. Refunds settle
+ * asynchronously, so the caller must reconcile `status` rather than assume the
+ * money has moved.
+ *
+ * @returns {{ id: string|null, status: string, refundedKobo: number, simulated: boolean }}
+ */
+export async function refundTransaction({ transactionId, amountKobo = null, reason = null, simulated = false }) {
+  if (!enabled()) {
+    if (!simulatedCheckoutEnabled()) throw serviceUnavailable("Flutterwave is not configured");
+    return { id: null, status: "pending", refundedKobo: amountKobo ?? 0, simulated: true };
+  }
+  if (!transactionId) throw badRequest("A transaction id is required to issue a refund");
+
+  const body = {};
+  if (amountKobo != null) body.amount = String(amountKobo);
+  if (reason) body.reason = reason;
+
+  const data = await flutterwaveFetch(`/transactions/${encodeURIComponent(transactionId)}/refund`, {
+    method: "POST",
+    body
+  });
+
+  return {
+    id: data?.id != null ? String(data.id) : null,
+    status: String(data?.status ?? "pending").toLowerCase(),
+    refundedKobo: Number(data?.amount ?? amountKobo ?? 0),
+    simulated: false
+  };
+}
+
+/** Fetch the refunds already recorded against a charge. */
+export async function listRefunds(transactionId) {
+  if (!enabled() || !transactionId) return [];
+  const data = await flutterwaveFetch(`/transactions/${encodeURIComponent(transactionId)}/refunds`);
+  return Array.isArray(data) ? data : [];
+}
+
+/**
+ * Create a collection subaccount so an organization's money is separated at the
+ * processor rather than only in our ledger. `split_ratio_bp` is the share of each
+ * charge (in basis points) that settles to the subaccount.
+ */
+export async function createCollectionSubaccount({
+  businessName,
+  email,
+  phone,
+  countryCode = "NG",
+  splitRatioBp = 0
+}) {
+  if (!enabled()) throw serviceUnavailable("Flutterwave is not configured");
+  const data = await flutterwaveFetch("/subaccounts", {
+    method: "POST",
+    body: {
+      name: businessName,
+      business_name: businessName,
+      email,
+      phone_number: phone,
+      country: countryCode,
+      split_ratio: splitRatioBp
+    }
+  });
+  return {
+    id: data?.id != null ? String(data.id) : null,
+    accountNumber: data?.account_number ?? null,
+    bankName: data?.bank_name ?? null,
+    status: String(data?.status ?? "pending").toLowerCase()
   };
 }
