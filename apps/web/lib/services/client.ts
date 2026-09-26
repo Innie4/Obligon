@@ -67,12 +67,32 @@ import { readPersistedSession, readTokens, writeTokens, writePersistedSession, t
 import type {
   ApiResult,
   AppNotification,
+  CustomerProfile,
   CustomerTransaction,
   MobileTransactionGroup,
+  NotificationPrefs,
   SessionUser,
   Station,
   Vehicle
 } from "./types";
+
+/**
+ * Mirrors the `users.notification_prefs` column default from
+ * `apps/api/src/migrations/001_init.sql`. Keep the two in sync.
+ */
+export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
+  inApp: true,
+  email: true,
+  sms: false,
+  push: true,
+  categories: {
+    transactions: true,
+    security: true,
+    marketing: false,
+    settlements: true,
+    support: true
+  }
+};
 
 const configuredApiUrl = (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) || "";
 const API_URL = configuredApiUrl || (typeof process !== "undefined" && process.env.NODE_ENV === "production" ? "https://obligon.onrender.com" : "");
@@ -83,6 +103,7 @@ export interface ApiClient {
   getSession(): Promise<SessionUser | null>;
 
   // Customer domain
+  getCustomerProfile(): Promise<CustomerProfile>;
   getCustomerTransactions(): Promise<CustomerTransaction[]>;
   getMobileHistory(): Promise<MobileTransactionGroup[]>;
   getStations(): Promise<Station[]>;
@@ -267,6 +288,9 @@ class LiveApiClient implements ApiClient {
       status: v.status ?? "Active"
     }));
   }
+  async getCustomerProfile(): Promise<CustomerProfile> {
+    return http<CustomerProfile>("/api/customer/profile");
+  }
   async getNotifications(): Promise<AppNotification[]> {
     const data = await http<{ notifications: AppNotification[] }>("/api/customer/notifications");
     return data.notifications;
@@ -440,6 +464,24 @@ class MockApiClient implements ApiClient {
     return readPersistedSession();
   }
 
+  async getCustomerProfile(): Promise<CustomerProfile> {
+    const session = readPersistedSession();
+    return {
+      user: {
+        ...(session ?? {
+          id: "usr_demo_001",
+          name: "Fleet Manager",
+          email: "manager@obligon.enterprise.com",
+          role: "customer" as const,
+          organization: "Obligon LTD Enterprise",
+          initials: "FM",
+          accountTier: "Premium Account"
+        }),
+        notificationPrefs: { ...DEFAULT_NOTIFICATION_PREFS }
+      },
+      wallet: { balanceLabel: "₦128,400.00", budgetLimitKobo: 2_000_000 }
+    };
+  }
   async getCustomerTransactions(): Promise<CustomerTransaction[]> { return transactionHistory; }
   async getMobileHistory(): Promise<MobileTransactionGroup[]> { return mobileHistory; }
   async getStations(): Promise<Station[]> { return stations; }

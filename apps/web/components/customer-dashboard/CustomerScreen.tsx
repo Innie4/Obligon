@@ -36,11 +36,13 @@ import {
   type CustomerPageKey,
   type CustomerTone
 } from "@/lib/mock/customer-data";
-import { api, mutationsApi, type CustomerTransaction } from "@/lib/services";
+import { api, mutationsApi, DEFAULT_NOTIFICATION_PREFS, type CustomerTransaction, type NotificationPrefs } from "@/lib/services";
 import { AsyncBoundary } from "@/components/shared/States";
 import { useAsync } from "@/components/shared/useAsync";
 import { useSession } from "@/components/shared/AuthContext";
 import { useToast } from "@/components/shared/Toast";
+import { Toggle } from "@/components/shared/Toggle";
+import { currentPushState, disableWebPush, enableWebPush, pushSupported } from "@/lib/push-subscription";
 import { CustomerModals, ModalFrame, type CustomerModalType } from "./CustomerModals";
 import { ConfirmModal, PinModal } from "../shared/Dialogs";
 import { StationMap } from "../shared/StationMap";
@@ -1179,44 +1181,139 @@ function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void 
   );
 }
 
-function ProfilePage({
-  onModal,
-  biometrics,
-  onBiometricsChange
-}: {
-  onModal: (modal: CustomerModalType) => void;
-  biometrics: boolean;
-  onBiometricsChange: (enabled: boolean) => void;
-}) {
+function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void }) {
   const { user, updateProfile } = useSession();
   const { success: toastSuccess, error: toastError } = useToast();
   const router = useRouter();
 
-  const [name, setName] = useState(user?.name ?? "Fleet Manager");
-  const [email, setEmail] = useState(user?.email ?? "manager@obligon.enterprise.com");
-  const [phone, setPhone] = useState(user?.phone ?? "+234 801 000 0000");
-  const [address, setAddress] = useState(user?.address ?? "14 Marina Road, Lagos Island, Lagos");
-  const [saving, setSaving] = useState(false);
-  const [logoutOpen, setLogoutOpen] = useState(false);
+  const { status: profileStatus, data: profile, error: profileError, reload } = useAsync(
+    () => api.getCustomerProfile()
+  );
 
-  const [notificationPrefs, setNotificationPrefs] = useState({
-    emailAlerts: true,
-    smsAlerts: true,
-    pushNotifications: true
-  });
+  const [name, setName] = useState(user?.name ?? "");
+  const [email, setEmail] = useState(user?.email ?? "");
+  const [phone, setPhone] = useState(user?.phone ?? "");
+  const [address, setAddress] = useState(user?.address ?? "");
+  const [saving, setSaving] = useState(false);
+  const [prefsSaving, setPrefsSaving] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushAvailable, setPushAvailable] = useState(true);
+
+  const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_NOTIFICATION_PREFS);
+  const [hydrated, setHydrated] = useState(false);
+
+  // Seed the form from the server once, so we never show a hardcoded default
+  // that disagrees with what is actually stored.
+  React.useEffect(() => {
+    if (!profile || hydrated) return;
+    setName(profile.user.name ?? "");
+    setEmail(profile.user.email ?? "");
+    setPhone(profile.user.phone ?? "");
+    setAddress(profile.user.address ?? "");
+    setPrefs({ ...DEFAULT_NOTIFICATION_PREFS, ...(profile.user.notificationPrefs ?? {}) });
+    setHydrated(true);
+  }, [profile, hydrated]);
+
+  // Reflect the browser's real push state so the toggle cannot claim push is on
+  // when the browser has never been subscribed.
+  React.useEffect(() => {
+    let active = true;
+    setPushAvailable(pushSupported());
+    void currentPushState().then((state) => {
+      if (!active) return;
+      if (state.permission === "denied") setPushAvailable(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const biometrics = Boolean(profile?.user.biometricsEnabled);
+  const twoFactor = Boolean(profile?.user.twoFactorEnabled);
+
+  async function savePrefs(next: NotificationPrefs, message = "Notification preferences updated.") {
+    const previous = prefs;
+    setPrefs(next);
+    setPrefsSaving(true);
+    try {
+      await mutationsApi.updateProfile({ notificationPrefs: next });
+      updateProfile({ notificationPrefs: next });
+      toastSuccess(message);
+      return true;
+    } catch (err) {
+      setPrefs(previous);
+      toastError(err instanceof Error ? err.message : "Could not save your notification preferences.");
+      return false;
+    } finally {
+      setPrefsSaving(false);
+    }
+  }
+
+  async function handleToggle(channel: "inApp" | "email" | "sms" | "push", next: boolean) {
+    const previous = prefs;
+
+    if (channel === "push") {
+      if (!pushAvailable) {
+        toastError("Push notifications are blocked or unsupported in this browser.");
+        return;
+      }
+      setPushBusy(true);
+      try {
+        const state = next ? await enableWebPush() : await disableWebPush();
+        const result = await savePrefs(
+          { ...previous, push: next },
+          state.reason ?? (next ? "Mobile push notifications enabled." : "Mobile push notifications disabled.")
+        );
+        if (result === false) setPrefs(previous);
+      } finally {
+        setPushBusy(false);
+      }
+      return;
+    }
+
+    if (channel === "sms" && next && !(profile?.user.phoneVerified ?? false)) {
+      toastError("Verify your phone number before enabling SMS alerts.");
+      return;
+    }
+
+    await savePrefs({ ...previous, [channel]: next });
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 600));
-    updateProfile({ name, email, phone, address });
-    setSaving(false);
-    toastSuccess("Profile information updated successfully.");
+    try {
+      await mutationsApi.updateProfile({ fullName: name, phone, address });
+      updateProfile({ name, phone, address });
+      toastSuccess("Profile information updated successfully.");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Could not save your profile. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleBiometrics(next: boolean) {
+    try {
+      await mutationsApi.updateProfile({ biometricsEnabled: next });
+      updateProfile({ biometricsEnabled: next });
+      void reload();
+      toastSuccess(next ? "Biometric sign-in enabled." : "Biometric sign-in disabled.");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Could not update biometric sign-in.");
+    }
   }
 
   return (
-    <Canvas>
-      <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
+    <AsyncBoundary
+      status={profileStatus}
+      error={profileError?.message ?? null}
+      onRetry={reload}
+      loadingLabel="Loading your profile…"
+    >
+      <Canvas>
+        <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
         <Card className="p-6 sm:p-8">
           <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Profile &amp; Settings</h1>
           <p className="mt-1 text-sm text-obligon-text">Manage your personal details and communication preferences.</p>
@@ -1263,23 +1360,79 @@ function ProfilePage({
             </div>
 
             <div className="pt-6 border-t border-[#eef3ee]">
-              <h2 className="font-display text-xl font-extrabold text-obligon-navy mb-3">Notification Preferences</h2>
-              <div className="space-y-3">
-                {[
-                  { key: "emailAlerts" as const, label: "Email Transaction Receipts & Statements" },
-                  { key: "smsAlerts" as const, label: "Instant SMS Dispatch Alerts" },
-                  { key: "pushNotifications" as const, label: "Mobile Push Notifications" },
-                ].map(({ key, label }) => (
-                  <label key={key} className="flex items-center justify-between p-3.5 rounded-xl bg-[#f7fbf8] border border-obligon-border cursor-pointer">
-                    <span className="text-xs font-bold text-obligon-navy">{label}</span>
-                    <input
-                      type="checkbox"
-                      checked={notificationPrefs[key]}
-                      onChange={(e) => setNotificationPrefs((prev) => ({ ...prev, [key]: e.target.checked }))}
-                      className="size-4 text-obligon-green accent-obligon-green rounded"
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="font-display text-xl font-extrabold text-obligon-navy">Notification Preferences</h2>
+                {prefsSaving ? (
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-obligon-text">
+                    <Loader2 size={12} className="animate-spin" /> Saving
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-1 text-xs text-obligon-text">
+                Choose how Obligon LTD reaches you. Changes save immediately.
+              </p>
+
+              <div className="mt-4 space-y-3">
+                {(
+                  [
+                    { key: "inApp" as const, label: "In-App Notifications", description: "Activity and alerts inside the dashboard." },
+                    { key: "email" as const, label: "Email Transaction Receipts & Statements", description: "Receipts, statements and monthly summaries." },
+                    {
+                      key: "sms" as const,
+                      label: "Instant SMS Dispatch Alerts",
+                      description: profile?.user.phoneVerified
+                        ? "Time-sensitive alerts to your verified number."
+                        : "Verify your phone number to enable SMS alerts."
+                    },
+                    {
+                      key: "push" as const,
+                      label: "Mobile Push Notifications",
+                      description: !pushAvailable
+                        ? "Blocked or unsupported in this browser. Enable it in your browser site settings."
+                        : pushBusy
+                          ? "Contacting your browser…"
+                          : "Real-time alerts on this device, even when the dashboard is closed."
+                    }
+                  ] as const
+                ).map((row) => (
+                  <div key={row.key} className="rounded-xl border border-obligon-border bg-[#f7fbf8] p-3.5">
+                    <Toggle
+                      label={row.label}
+                      description={row.description}
+                      checked={prefs[row.key]}
+                      disabled={prefsSaving || (row.key === "push" && pushBusy) || (row.key === "sms" && !profile?.user.phoneVerified)}
+                      onCheckedChange={(next) => void handleToggle(row.key, next)}
                     />
-                  </label>
+                  </div>
                 ))}
+              </div>
+
+              <div className="mt-4 rounded-xl border border-obligon-border bg-white p-3.5">
+                <p className="text-xs font-bold text-obligon-navy">Alert Categories</p>
+                <p className="mt-1 text-[11px] leading-4 text-obligon-text">
+                  Turn off whole categories you never want to hear about.
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {Object.keys(prefs.categories).map((category) => (
+                    <Toggle
+                      key={category}
+                      label={category.charAt(0).toUpperCase() + category.slice(1)}
+                      checked={prefs.categories[category]}
+                      disabled={prefsSaving}
+                      onCheckedChange={(next) => {
+                        const categories = { ...prefs.categories, [category]: next };
+                        setPrefs((current) => ({ ...current, categories }));
+                        void mutationsApi
+                          .updateProfile({ notificationPrefs: { ...prefs, categories } })
+                          .then(() => toastSuccess("Notification preferences updated."))
+                          .catch((err) => {
+                            setPrefs((current) => ({ ...current, categories: prefs.categories }));
+                            toastError(err instanceof Error ? err.message : "Could not save your preferences.");
+                          });
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -1299,14 +1452,14 @@ function ProfilePage({
             <div className="mt-4 space-y-3">
               <button
                 type="button"
-                onClick={() => onModal("changePin")}
+                onClick={() => onModal("changePassword")}
                 className="w-full flex items-center justify-between p-3.5 rounded-xl border border-obligon-border hover:bg-[#f7fbf8] transition text-left"
               >
                 <div className="flex items-center gap-3">
                   <LockKeyhole size={18} className="text-obligon-green" />
                   <div>
-                    <p className="text-xs font-extrabold text-obligon-navy">Change PIN</p>
-                    <p className="text-[11px] text-obligon-text">Update 4-digit security PIN</p>
+                    <p className="text-xs font-extrabold text-obligon-navy">Change Password</p>
+                    <p className="text-[11px] text-obligon-text">Update your account password</p>
                   </div>
                 </div>
                 <ArrowRight size={16} className="text-obligon-text" />
@@ -1314,20 +1467,54 @@ function ProfilePage({
 
               <button
                 type="button"
-                onClick={() => onModal("biometrics")}
+                onClick={() => onModal("changePin")}
+                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-obligon-border hover:bg-[#f7fbf8] transition text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <CreditCard size={18} className="text-obligon-green" />
+                  <div>
+                    <p className="text-xs font-extrabold text-obligon-navy">Transaction PIN</p>
+                    <p className="text-[11px] text-obligon-text">Update 4-digit card authorization PIN</p>
+                  </div>
+                </div>
+                <ArrowRight size={16} className="text-obligon-text" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onModal("twoFactor")}
                 className="w-full flex items-center justify-between p-3.5 rounded-xl border border-obligon-border hover:bg-[#f7fbf8] transition text-left"
               >
                 <div className="flex items-center gap-3">
                   <ShieldCheck size={18} className="text-obligon-green" />
                   <div>
-                    <p className="text-xs font-extrabold text-obligon-navy">Biometrics</p>
-                    <p className="text-[11px] text-obligon-text">{biometrics ? "Active (Face/Fingerprint)" : "Disabled"}</p>
+                    <p className="text-xs font-extrabold text-obligon-navy">Two-Factor Authentication</p>
+                    <p className="text-[11px] text-obligon-text">
+                      {twoFactor ? "Enabled — a code is required at sign-in" : "Add a verification code at sign-in"}
+                    </p>
                   </div>
                 </div>
-                <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${biometrics ? "bg-[#e8fbd7] text-obligon-green" : "bg-[#f0f4f0] text-obligon-text"}`}>
-                  {biometrics ? "ON" : "OFF"}
+                <span
+                  className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                    twoFactor ? "bg-[#e8fbd7] text-obligon-green" : "bg-[#f0f4f0] text-obligon-text"
+                  }`}
+                >
+                  {twoFactor ? "ON" : "OFF"}
                 </span>
               </button>
+
+              <div className="rounded-xl border border-obligon-border p-3.5">
+                <Toggle
+                  label="Biometric Sign-In"
+                  description={
+                    pushSupported()
+                      ? "Use FaceID or fingerprint to approve transactions on this device."
+                      : "Use FaceID or fingerprint to approve transactions on this device."
+                  }
+                  checked={biometrics}
+                  onCheckedChange={(next) => void handleBiometrics(next)}
+                />
+              </div>
             </div>
 
             <button
@@ -1350,7 +1537,8 @@ function ProfilePage({
         confirmLabel="Log Out"
         tone="red"
       />
-    </Canvas>
+      </Canvas>
+    </AsyncBoundary>
   );
 }
 
@@ -1419,7 +1607,6 @@ function NotificationsPage() {
 
 export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
   const [modal, setModal] = React.useState<CustomerModalType>(null);
-  const [biometrics, setBiometrics] = React.useState(false);
   const [cardStatus, setCardStatus] = React.useState<string | null>(null);
   const [cardRefreshKey, setCardRefreshKey] = React.useState(0);
   const [balanceRefreshKey, setBalanceRefreshKey] = React.useState(0);
@@ -1441,7 +1628,7 @@ export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
     support: <SupportPage onModal={setModal} />,
     transactionDetail: <TransactionsPage />,
     reportProblem: <SupportPage onModal={setModal} />,
-    profile: <ProfilePage onModal={setModal} biometrics={biometrics} onBiometricsChange={setBiometrics} />,
+    profile: <ProfilePage onModal={setModal} />,
     notifications: <NotificationsPage />
   };
 
@@ -1451,8 +1638,7 @@ export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
       <CustomerModals
         modal={modal}
         onClose={() => setModal(null)}
-        biometrics={biometrics}
-        onBiometricsChange={setBiometrics}
+        onTwoFactorChange={() => setModal(null)}
         cardFrozen={cardStatus === "frozen"}
         onCardFrozenChange={handleCardStatusChange}
         cardBlocked={cardStatus === "blocked"}

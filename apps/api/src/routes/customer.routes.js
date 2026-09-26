@@ -4,7 +4,7 @@ import { asyncHandler, badRequest, notFound, forbidden, conflict } from "../lib/
 import { requireAuth } from "../middleware/auth.js";
 import { hashPin, verifyPin, randomToken } from "../lib/security.js";
 import { naira, fmtDate, fmtDateTime, relativeTime, dayGroup, maskPan, maskAccount, distanceLabel, reference, initials } from "../lib/format.js";
-import { notify, audit } from "../lib/notify.js";
+import { notify, audit, securityLog } from "../lib/notify.js";
 import { paystackEnabled, initializeTopUp, verifyTransaction } from "../lib/paystack.js";
 import { sudoEnabled, createSudoCustomer, issueSudoCard, setSudoCardStatus, fundSudoCard, maskFromSudo } from "../lib/sudo.js";
 import { receiptPdf } from "../lib/pdf.js";
@@ -497,8 +497,47 @@ router.post("/notifications/:id/dismiss", asyncHandler(async (req, res) => {
 }));
 
 // ============ PROFILE ============
+const PREF_CHANNELS = ["inApp", "email", "sms", "push"];
+
+/**
+ * `notify.js` reads exactly these keys, so reject anything that is not a
+ * boolean channel flag or a map of boolean category flags. Without this a
+ * malformed body would silently disable every channel for the user.
+ */
+function sanitizeNotificationPrefs(input) {
+  if (input === null || typeof input !== "object" || Array.isArray(input)) {
+    throw badRequest("notificationPrefs must be an object");
+  }
+  const out = {};
+  for (const key of PREF_CHANNELS) {
+    if (input[key] === undefined) continue;
+    if (typeof input[key] !== "boolean") throw badRequest(`notificationPrefs.${key} must be a boolean`);
+    out[key] = input[key];
+  }
+  if (input.categories !== undefined) {
+    if (input.categories === null || typeof input.categories !== "object" || Array.isArray(input.categories)) {
+      throw badRequest("notificationPrefs.categories must be an object of booleans");
+    }
+    out.categories = {};
+    for (const [category, enabled] of Object.entries(input.categories)) {
+      if (typeof enabled !== "boolean") throw badRequest(`notificationPrefs.categories.${category} must be a boolean`);
+      out.categories[category] = enabled;
+    }
+  }
+  if (Object.keys(out).length === 0) throw badRequest("notificationPrefs must set at least one preference");
+  return out;
+}
+
 router.put("/profile", asyncHandler(async (req, res) => {
   const { fullName, phone, address, city, notificationPrefs, biometricsEnabled, budgetLimit } = req.body ?? {};
+
+  if (biometricsEnabled !== undefined && typeof biometricsEnabled !== "boolean") {
+    throw badRequest("biometricsEnabled must be a boolean");
+  }
+  const prefs = notificationPrefs === undefined || notificationPrefs === null
+    ? null
+    : sanitizeNotificationPrefs(notificationPrefs);
+
   const user = await one(
     `UPDATE users SET
        full_name = COALESCE($2, full_name),
@@ -510,12 +549,29 @@ router.put("/profile", asyncHandler(async (req, res) => {
        updated_at = now()
      WHERE id = $1 RETURNING *`,
     [req.user.id, fullName ?? null, phone ?? null, address ?? null, city ?? null,
-      notificationPrefs ? JSON.stringify(notificationPrefs) : null, biometricsEnabled ?? null]
+      prefs ? JSON.stringify({ ...(req.user.notification_prefs ?? {}), ...prefs }) : null, biometricsEnabled ?? null]
   );
   if (budgetLimit != null) {
     await q("UPDATE wallets SET budget_limit_kobo = $2 WHERE user_id = $1", [req.user.id, Math.round(Number(budgetLimit) * 100)]);
   }
-  audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "profile.updated" });
+  if (biometricsEnabled !== undefined && biometricsEnabled !== req.user.biometrics_enabled) {
+    await securityLog({
+      userId: req.user.id,
+      event: biometricsEnabled ? "biometrics_enabled" : "biometrics_disabled",
+      severity: "info",
+      ip: req.ip
+    });
+  }
+  await audit({
+    actorUserId: req.user.id,
+    actorRole: req.user.role,
+    action: "profile.updated",
+    ip: req.ip,
+    metadata: {
+      fields: [fullName && "fullName", phone && "phone", address && "address", city && "city", prefs && "notificationPrefs", budgetLimit != null && "budgetLimit"].filter(Boolean),
+      biometricsChanged: biometricsEnabled !== undefined && biometricsEnabled !== req.user.biometrics_enabled
+    }
+  });
   res.json({
     ok: true,
     user: {
@@ -523,6 +579,7 @@ router.put("/profile", asyncHandler(async (req, res) => {
       organization: user.organization_name, initials: initials(user.full_name),
       accountTier: user.account_tier, phone: user.phone, address: user.address,
       twoFactorEnabled: user.two_factor_enabled, biometricsEnabled: user.biometrics_enabled,
+      notificationPrefs: user.notification_prefs,
       emailVerified: user.email_verified, phoneVerified: user.phone_verified
     }
   });

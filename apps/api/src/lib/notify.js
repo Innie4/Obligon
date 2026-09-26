@@ -49,20 +49,36 @@ export async function notify({ userId = null, orgId = null, title, body, categor
   return notification;
 }
 
+/**
+ * Record an audit entry.
+ *
+ * Most call sites fire this without awaiting (it is bookkeeping, not the
+ * request's result). An un-awaited rejected promise would be an unhandled
+ * rejection and would take the process down, so failures are contained and
+ * logged here rather than allowed to escape.
+ */
 export async function audit({ actorUserId = null, actorRole = null, action, entityType = null, entityId = null, ip = null, metadata = {} }) {
-  await q(
-    `INSERT INTO audit_logs (actor_user_id, actor_role, action, entity_type, entity_id, ip, metadata)
-     VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-    [actorUserId, actorRole, action, entityType, entityId, ip, JSON.stringify(metadata)]
-  );
+  try {
+    await q(
+      `INSERT INTO audit_logs (actor_user_id, actor_role, action, entity_type, entity_id, ip, metadata)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [actorUserId, actorRole, action, entityType, entityId, ip, JSON.stringify(metadata)]
+    );
+  } catch (err) {
+    console.error(`[audit] failed to record "${action}":`, err?.message ?? err);
+  }
 }
 
 export async function securityLog({ userId = null, event, severity = "info", ip = null, userAgent = null, metadata = {} }) {
-  await q(
-    `INSERT INTO security_logs (user_id, event, severity, ip, user_agent, metadata)
-     VALUES ($1,$2,$3,$4,$5,$6)`,
-    [userId, event, severity, ip, userAgent, JSON.stringify(metadata)]
-  );
+  try {
+    await q(
+      `INSERT INTO security_logs (user_id, event, severity, ip, user_agent, metadata)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [userId, event, severity, ip, userAgent, JSON.stringify(metadata)]
+    );
+  } catch (err) {
+    console.error(`[securityLog] failed to record "${event}":`, err?.message ?? err);
+  }
 }
 
 export { emailTemplates, sendEmail, sendSms };

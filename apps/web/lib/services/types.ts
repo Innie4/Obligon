@@ -5,6 +5,24 @@
 
 export type UserRole = "customer" | "company" | "partner" | "mechanic" | "admin";
 
+/**
+ * Notification channel switches, mirrored from the `users.notification_prefs`
+ * JSONB column. `notify.js` on the API reads exactly these keys, so the UI must
+ * not invent its own names here.
+ */
+export interface NotificationPrefs {
+  inApp: boolean;
+  email: boolean;
+  sms: boolean;
+  push: boolean;
+  categories: Record<string, boolean>;
+}
+
+export interface CustomerProfile {
+  user: SessionUser & { notificationPrefs?: NotificationPrefs; city?: string; emailVerified?: boolean; phoneVerified?: boolean };
+  wallet: { balanceLabel: string; budgetLimitKobo: number | null };
+}
+
 export interface SessionUser {
   id: string;
   name: string;
@@ -17,6 +35,7 @@ export interface SessionUser {
   address?: string;
   twoFactorEnabled?: boolean;
   biometricsEnabled?: boolean;
+  notificationPrefs?: NotificationPrefs;
 }
 
 export interface CustomerTransaction {

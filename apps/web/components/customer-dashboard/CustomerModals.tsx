@@ -1,10 +1,10 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import type { ComponentType } from "react";
 import { AlertTriangle, Building2, Check, CreditCard, FileWarning, Fingerprint, LockKeyhole, ShieldCheck, Snowflake, Upload, X, Loader2, ArrowRight, type LucideProps } from "lucide-react";
 import { useToast } from "@/components/shared/Toast";
-import { api, mutationsApi } from "@/lib/services";
+import { api, authApi, mutationsApi } from "@/lib/services";
 
 /** Resolve the signed-in customer's card id against the live API (null in mock mode). */
 async function resolveCardId(): Promise<string | null> {
@@ -16,13 +16,21 @@ async function resolveCardId(): Promise<string | null> {
   }
 }
 
-export type CustomerModalType = "topup" | "report" | "changePin" | "biometrics" | "replaceCard" | "lostCard" | "freezeCard" | null;
+export type CustomerModalType =
+  | "topup"
+  | "report"
+  | "changePin"
+  | "changePassword"
+  | "twoFactor"
+  | "replaceCard"
+  | "lostCard"
+  | "freezeCard"
+  | null;
 
 type CustomerModalsProps = {
   modal: CustomerModalType;
   onClose: () => void;
-  biometrics: boolean;
-  onBiometricsChange: (enabled: boolean) => void;
+  onTwoFactorChange?: (enabled: boolean) => void;
   cardFrozen: boolean;
   onCardFrozenChange: (frozen: boolean) => void;
   cardBlocked: boolean;
@@ -49,8 +57,7 @@ export function ModalFrame({ children, onClose }: { children: React.ReactNode; o
 export function CustomerModals({
   modal,
   onClose,
-  biometrics,
-  onBiometricsChange,
+  onTwoFactorChange,
   cardFrozen,
   onCardFrozenChange,
   cardBlocked,
@@ -61,7 +68,8 @@ export function CustomerModals({
   if (modal === "topup") return <TopUpModal onClose={onClose} onSuccess={onTopUpSuccess} />;
   if (modal === "report") return <ReportProblemModal onClose={onClose} />;
   if (modal === "changePin") return <ChangePinModal onClose={onClose} />;
-  if (modal === "biometrics") return <BiometricsModal onClose={onClose} enabled={biometrics} onChange={onBiometricsChange} />;
+  if (modal === "changePassword") return <ChangePasswordModal onClose={onClose} />;
+  if (modal === "twoFactor") return <TwoFactorModal onClose={onClose} onChange={onTwoFactorChange} />;
   if (modal === "replaceCard") return <ReplaceCardModal onClose={onClose} blocked={cardBlocked} />;
   if (modal === "lostCard")
     return (
@@ -150,11 +158,12 @@ function ChangePinModal({ onClose }: { onClose: () => void }) {
     setSubmitting(true);
     try {
       const cardId = await resolveCardId();
-      if (cardId) {
-        await mutationsApi.cardAction(cardId, "pin", { currentPin, newPin });
-      } else {
-        await new Promise((r) => setTimeout(r, 600));
+      if (!cardId) {
+        setError("No active fuel card is linked to your account yet, so there is no PIN to change.");
+        setSubmitting(false);
+        return;
       }
+      await mutationsApi.cardAction(cardId, "pin", { currentPin, newPin });
       setSubmitting(false);
       setStep("success");
       toastSuccess("Transaction PIN changed successfully.");
@@ -176,9 +185,9 @@ function ChangePinModal({ onClose }: { onClose: () => void }) {
             Update the 4-digit authorization PIN used to approve POS station payments.
           </p>
 
-          <PinInput label="Current PIN" value={currentPin} onChange={setCurrentPin} placeholder="••••" autoFocus />
-          <PinInput label="New 4-Digit PIN" value={newPin} onChange={setNewPin} placeholder="••••" />
-          <PinInput label="Confirm New PIN" value={confirmPin} onChange={setConfirmPin} placeholder="••••" />
+          <PinInput label="Current PIN" value={currentPin} onChange={setCurrentPin} placeholder="â€¢â€¢â€¢â€¢" autoFocus />
+          <PinInput label="New 4-Digit PIN" value={newPin} onChange={setNewPin} placeholder="â€¢â€¢â€¢â€¢" />
+          <PinInput label="Confirm New PIN" value={confirmPin} onChange={setConfirmPin} placeholder="â€¢â€¢â€¢â€¢" />
 
           {error ? <p className="mt-4 rounded-lg bg-[#ffe8e8] p-3 text-sm font-bold text-[#c1121f]">{error}</p> : null}
 
@@ -209,116 +218,387 @@ function ChangePinModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-function BiometricsModal({
-  onClose,
-  enabled,
-  onChange
-}: {
-  onClose: () => void;
-  enabled: boolean;
-  onChange: (enabled: boolean) => void;
-}) {
-  const [step, setStep] = React.useState<"intro" | "scanning" | "success" | "disable">(enabled ? "disable" : "intro");
-  const { success: toastSuccess, error: toastError } = useToast();
+function ChangePasswordModal({ onClose }: { onClose: () => void }) {
+  const [currentPassword, setCurrentPassword] = React.useState("");
+  const [newPassword, setNewPassword] = React.useState("");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
+  const [error, setError] = React.useState("");
+  const [submitting, setSubmitting] = React.useState(false);
+  const [done, setDone] = React.useState(false);
+  const { success: toastSuccess } = useToast();
 
-  React.useEffect(() => {
-    if (step !== "scanning") return;
-    const timer = setTimeout(() => {
-      onChange(true);
-      setStep("success");
-      toastSuccess("Biometric authentication enabled.");
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, [step, onChange, toastSuccess]);
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!currentPassword) {
+      setError("Enter your current password.");
+      return;
+    }
+    if (newPassword.length < 8) {
+      setError("Your new password must be at least 8 characters.");
+      return;
+    }
+    if (newPassword === currentPassword) {
+      setError("Your new password must be different from your current password.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError("New password and confirmation do not match.");
+      return;
+    }
+
+    setError("");
+    setSubmitting(true);
+    try {
+      await authApi.changePassword({ currentPassword, newPassword });
+      setDone(true);
+      toastSuccess("Password changed successfully.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not change your password. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const field =
+    "mt-1.5 h-12 w-full rounded-lg border border-obligon-border px-4 text-sm text-obligon-navy outline-none focus:border-obligon-green";
 
   return (
     <ModalFrame onClose={onClose}>
-      {step === "intro" ? (
+      {done ? (
         <div className="p-6 text-center">
-          <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#eef3ff] text-obligon-blue">
-            <Fingerprint size={30} />
-          </span>
-          <h2 className="mt-5 font-display text-2xl font-extrabold text-obligon-navy">Enable Biometrics</h2>
-          <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-obligon-text">
-            Use FaceID or Fingerprint to unlock your fleet dashboard and approve transactions instantly without typing your PIN each time.
-          </p>
-          <ul className="mx-auto mt-6 max-w-sm space-y-3 text-left">
-            {["Biometric data never leaves your secure device enclave", "Fallback to PIN is always available", "Can be revoked anytime from security settings"].map((item) => (
-              <li key={item} className="flex items-start gap-3 text-sm font-bold text-obligon-navy">
-                <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
-                  <Check size={12} />
-                </span>
-                {item}
-              </li>
-            ))}
-          </ul>
-          <div className="mt-7 flex gap-3">
-            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold text-obligon-navy">
-              Not Now
-            </button>
-            <button
-              type="button"
-              onClick={() => setStep("scanning")}
-              className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white"
-            >
-              Scan &amp; Register
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {step === "scanning" ? (
-        <div className="p-6 py-12 text-center">
-          <span className="mx-auto grid size-24 animate-pulse place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
-            <Fingerprint size={48} />
-          </span>
-          <h2 className="mt-6 font-display text-2xl font-extrabold text-obligon-navy">Authenticating Sensor...</h2>
-          <p className="mt-2 text-sm text-obligon-text">Touch your fingerprint reader or face the camera to verify.</p>
-        </div>
-      ) : null}
-
-      {step === "success" ? (
-        <div className="p-6 py-12 text-center">
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
-            <ShieldCheck size={30} />
+            <Check size={30} />
           </span>
-          <h2 className="mt-5 font-display text-2xl font-extrabold text-obligon-navy">Biometrics Activated</h2>
-          <p className="mt-2 text-sm text-obligon-text">FaceID and Fingerprint authorization are now active on this device.</p>
+          <h2 className="mt-5 font-display text-2xl font-extrabold text-obligon-navy">Password Updated</h2>
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-obligon-text">
+            Your password has been changed and a confirmation email has been sent to your registered address.
+          </p>
           <button
             type="button"
             onClick={onClose}
-            className="mt-7 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white"
+            className="mt-6 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white"
           >
             Done
           </button>
         </div>
-      ) : null}
-
-      {step === "disable" ? (
-        <div className="p-6 text-center">
-          <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#fff3d8] text-[#9a6300]">
-            <Fingerprint size={30} />
-          </span>
-          <h2 className="mt-5 font-display text-2xl font-extrabold text-obligon-navy">Disable Biometrics?</h2>
-          <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-obligon-text">
-            You will need your 4-digit transaction PIN to authorize payments and access sensitive settings.
+      ) : (
+        <form onSubmit={handleSubmit} className="p-6">
+          <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Change Password</h2>
+          <p className="mt-2 text-sm leading-6 text-obligon-text">
+            Choose a strong password you do not use anywhere else. You will stay signed in on this device.
           </p>
-          <div className="mt-7 flex gap-3">
-            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold text-obligon-navy">
-              Keep Enabled
+
+          <div className="mt-6 space-y-4">
+            <label className="block">
+              <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">
+                Current Password
+              </span>
+              <input
+                type="password"
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className={field}
+                required
+              />
+            </label>
+            <label className="block">
+              <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">New Password</span>
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className={field}
+                required
+              />
+              <span className="mt-1 block text-[11px] text-obligon-text">Minimum 8 characters.</span>
+            </label>
+            <label className="block">
+              <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">
+                Confirm New Password
+              </span>
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className={field}
+                required
+              />
+            </label>
+          </div>
+
+          {error ? (
+            <p
+              className="mt-4 rounded-lg border border-[#fecaca] bg-[#fff0f0] p-3 text-sm text-[#93000a]"
+              role="alert"
+            >
+              {error}
+            </p>
+          ) : null}
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="mt-6 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white disabled:opacity-60"
+          >
+            {submitting ? "Updatingâ€¦" : "Update Password"}
+          </button>
+        </form>
+      )}
+    </ModalFrame>
+  );
+}
+
+function TwoFactorModal({
+  onClose,
+  onChange
+}: {
+  onClose: () => void;
+  onChange?: (enabled: boolean) => void;
+}) {
+  const [step, setStep] = React.useState<"choose" | "enroll" | "disable" | "enabled">("choose");
+  const [secret, setSecret] = React.useState("");
+  const [qrDataUrl, setQrDataUrl] = React.useState("");
+  const [backupCodes, setBackupCodes] = React.useState<string[]>([]);
+  const [token, setToken] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [error, setError] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const { success: toastSuccess } = useToast();
+
+  async function beginEnroll() {
+    setBusy(true);
+    setError("");
+    try {
+      const setup = await authApi.mfaSetup();
+      setSecret(setup.secret);
+      setQrDataUrl(setup.qrDataUrl);
+      setStep("enroll");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not start two-factor setup.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmEnroll(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!/^\d{6}$/.test(token)) {
+      setError("Enter the 6-digit code from your authenticator app.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const result = await authApi.mfaEnable(token);
+      if (result.backupCodes?.length) setBackupCodes(result.backupCodes);
+      setStep("enabled");
+      onChange?.(true);
+      toastSuccess("Two-factor authentication enabled.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "That code was not accepted. Try the next code.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmDisable(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!password) {
+      setError("Enter your password to disable two-factor authentication.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      await authApi.mfaDisable(password);
+      onChange?.(false);
+      toastSuccess("Two-factor authentication disabled.");
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not disable two-factor authentication.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <ModalFrame onClose={onClose}>
+      {step === "choose" ? (
+        <div className="p-6">
+          <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Two-Factor Authentication</h2>
+          <p className="mt-2 text-sm leading-6 text-obligon-text">
+            Add a time-based code from an authenticator app. Even if your password is compromised, an attacker
+            cannot sign in without your device.
+          </p>
+          <div className="mt-6 space-y-3">
+            <button
+              type="button"
+              onClick={() => void beginEnroll()}
+              disabled={busy}
+              className="h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white disabled:opacity-60"
+            >
+              {busy ? "Preparingâ€¦" : "Set Up Two-Factor Authentication"}
             </button>
             <button
               type="button"
-              onClick={() => {
-                onChange(false);
-                toastSuccess("Biometric authentication disabled.");
-                onClose();
-              }}
-              className="h-12 flex-1 rounded-lg bg-[#c1121f] font-extrabold text-white"
+              onClick={() => setStep("disable")}
+              className="h-12 w-full rounded-lg border border-obligon-border font-extrabold text-obligon-navy"
             >
-              Disable
+              Disable Two-Factor Authentication
             </button>
           </div>
+          {error ? (
+            <p
+              className="mt-4 rounded-lg border border-[#fecaca] bg-[#fff0f0] p-3 text-sm text-[#93000a]"
+              role="alert"
+            >
+              {error}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {step === "enroll" ? (
+        <form onSubmit={confirmEnroll} className="p-6">
+          <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Scan this code</h2>
+          <p className="mt-2 text-sm leading-6 text-obligon-text">
+            Open your authenticator app, add a new account and scan the QR code, then enter the 6-digit code it
+            shows.
+          </p>
+
+          <div className="mt-6 flex flex-col items-center gap-4">
+            {qrDataUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={qrDataUrl}
+                alt="Two-factor setup QR code"
+                className="size-48 rounded-lg border border-obligon-border"
+              />
+            ) : null}
+            {secret ? (
+              <p className="text-center text-[11px] text-obligon-text">
+                Cannot scan? Enter this key manually:{" "}
+                <span className="font-mono font-bold text-obligon-navy">{secret}</span>
+              </p>
+            ) : null}
+          </div>
+
+          <label className="mt-6 block">
+            <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">6-digit code</span>
+            <input
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              value={token}
+              onChange={(e) => setToken(e.target.value.replace(/\D/g, ""))}
+              className="mt-1.5 h-14 w-full rounded-lg border border-obligon-border px-4 text-center text-lg font-extrabold tracking-[0.4em] text-obligon-navy outline-none focus:border-obligon-green"
+              placeholder="000000"
+              required
+            />
+          </label>
+
+          {error ? (
+            <p
+              className="mt-4 rounded-lg border border-[#fecaca] bg-[#fff0f0] p-3 text-sm text-[#93000a]"
+              role="alert"
+            >
+              {error}
+            </p>
+          ) : null}
+
+          <button
+            type="submit"
+            disabled={busy}
+            className="mt-6 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white disabled:opacity-60"
+          >
+            {busy ? "Verifyingâ€¦" : "Verify and Enable"}
+          </button>
+        </form>
+      ) : null}
+
+      {step === "disable" ? (
+        <form onSubmit={confirmDisable} className="p-6">
+          <h2 className="font-display text-2xl font-extrabold text-obligon-navy">
+            Disable two-factor authentication?
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-obligon-text">
+            Your account will rely on your password alone. Confirm with your password to continue.
+          </p>
+          <label className="mt-6 block">
+            <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Password</span>
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mt-1.5 h-12 w-full rounded-lg border border-obligon-border px-4 text-sm text-obligon-navy outline-none focus:border-obligon-green"
+              required
+            />
+          </label>
+          {error ? (
+            <p
+              className="mt-4 rounded-lg border border-[#fecaca] bg-[#fff0f0] p-3 text-sm text-[#93000a]"
+              role="alert"
+            >
+              {error}
+            </p>
+          ) : null}
+          <div className="mt-6 flex gap-3">
+            <button
+              type="button"
+              onClick={() => setStep("choose")}
+              className="h-12 flex-1 rounded-lg border border-obligon-border font-extrabold text-obligon-navy"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={busy}
+              className="h-12 flex-1 rounded-lg bg-[#c1121f] font-extrabold text-white disabled:opacity-60"
+            >
+              {busy ? "Disablingâ€¦" : "Disable"}
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      {step === "enabled" ? (
+        <div className="p-6 text-center">
+          <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
+            <ShieldCheck size={30} />
+          </span>
+          <h2 className="mt-5 font-display text-2xl font-extrabold text-obligon-navy">
+            Two-Factor Authentication On
+          </h2>
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-obligon-text">
+            A verification code is now required every time you sign in.
+          </p>
+
+          {backupCodes.length ? (
+            <div className="mt-6 rounded-xl border border-obligon-border bg-[#f7fbf8] p-4 text-left">
+              <p className="text-xs font-extrabold text-obligon-navy">Save your backup codes</p>
+              <p className="mt-1 text-[11px] leading-4 text-obligon-text">
+                Each code works once if you lose access to your authenticator. Store them somewhere safe.
+              </p>
+              <ul className="mt-3 grid grid-cols-2 gap-2 font-mono text-xs font-bold text-obligon-navy">
+                {backupCodes.map((code) => (
+                  <li key={code}>{code}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="mt-6 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white"
+          >
+            Done
+          </button>
         </div>
       ) : null}
     </ModalFrame>
@@ -336,7 +616,7 @@ function TopUpModal({ onClose, onSuccess }: { onClose: () => void; onSuccess?: (
 
   const paymentMethods = [
     { title: "Direct Bank Transfer", body: "Instant funding via dedicated virtual NUBAN", Icon: Building2 },
-    { title: "Corporate Debit / Fuel Card", body: "Mastercard / Visa ending in •••• 4092", Icon: CreditCard },
+    { title: "Corporate Debit / Fuel Card", body: "Mastercard / Visa ending in â€¢â€¢â€¢â€¢ 4092", Icon: CreditCard },
     { title: "USSD / Quick Bank Code", body: "*737# or *894# direct checkout", Icon: ArrowRight },
   ];
 
@@ -345,7 +625,7 @@ function TopUpModal({ onClose, onSuccess }: { onClose: () => void; onSuccess?: (
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!Number.isFinite(numericAmount) || numericAmount < 1000) {
-      toastError("Please enter a valid top-up amount of at least ₦1,000.");
+      toastError("Please enter a valid top-up amount of at least â‚¦1,000.");
       return;
     }
     setSubmitting(true);
@@ -355,7 +635,7 @@ function TopUpModal({ onClose, onSuccess }: { onClose: () => void; onSuccess?: (
       setSuccessData({ reference: ref, amount: numericAmount, method });
       setSubmitting(false);
       onSuccess?.(numericAmount);
-      toastSuccess(`₦${numericAmount.toLocaleString()} top-up ${result?.simulated ? "recorded" : "initiated"}.`);
+      toastSuccess(`â‚¦${numericAmount.toLocaleString()} top-up ${result?.simulated ? "recorded" : "initiated"}.`);
     } catch (err) {
       setSubmitting(false);
       const message = err instanceof Error ? err.message : "Top-up failed. Please try again.";
@@ -373,7 +653,7 @@ function TopUpModal({ onClose, onSuccess }: { onClose: () => void; onSuccess?: (
           <h2 className="mt-5 font-display text-3xl font-extrabold text-obligon-navy">Top-Up Successful</h2>
           <p className="mt-2 text-sm text-obligon-text">
             Your wallet balance has been credited with{" "}
-            <strong className="text-obligon-green font-extrabold text-base">₦{successData.amount.toLocaleString()}</strong>.
+            <strong className="text-obligon-green font-extrabold text-base">â‚¦{successData.amount.toLocaleString()}</strong>.
           </p>
 
           <div className="mt-6 divide-y divide-[#eef3ee] rounded-xl border border-[#dbe2d8] bg-[#f7fbf8] p-4 text-left text-sm">
@@ -409,10 +689,10 @@ function TopUpModal({ onClose, onSuccess }: { onClose: () => void; onSuccess?: (
 
           <div className="mt-6">
             <label className="text-xs font-extrabold uppercase text-obligon-text block mb-2">
-              Select or Enter Amount (₦)
+              Select or Enter Amount (â‚¦)
             </label>
             <div className="flex h-14 rounded-xl border border-[#cfd8cc] bg-[#f7fbf8] focus-within:border-obligon-green focus-within:ring-2 focus-within:ring-obligon-green/20">
-              <span className="grid w-14 place-items-center font-display text-2xl font-extrabold text-obligon-navy">₦</span>
+              <span className="grid w-14 place-items-center font-display text-2xl font-extrabold text-obligon-navy">â‚¦</span>
               <input
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
@@ -433,7 +713,7 @@ function TopUpModal({ onClose, onSuccess }: { onClose: () => void; onSuccess?: (
                       : "border-[#cfd8cc] bg-white text-obligon-navy hover:bg-[#f7fbf8]"
                   }`}
                 >
-                  +₦{amt.toLocaleString()}
+                  +â‚¦{amt.toLocaleString()}
                 </button>
               ))}
             </div>
@@ -469,7 +749,7 @@ function TopUpModal({ onClose, onSuccess }: { onClose: () => void; onSuccess?: (
 
           <div className="mt-6 flex items-center justify-between rounded-xl bg-[#f7fbf8] p-4 text-sm">
             <span className="font-bold text-obligon-text">Gateway Transaction Fee</span>
-            <span className="font-extrabold text-obligon-green">₦0.00 (Zero Fee)</span>
+            <span className="font-extrabold text-obligon-green">â‚¦0.00 (Zero Fee)</span>
           </div>
 
           <div className="mt-6 flex gap-3">
@@ -487,7 +767,7 @@ function TopUpModal({ onClose, onSuccess }: { onClose: () => void; onSuccess?: (
                   Processing...
                 </>
               ) : (
-                `Pay ₦${(numericAmount || 0).toLocaleString()}`
+                `Pay â‚¦${(numericAmount || 0).toLocaleString()}`
               )}
             </button>
           </div>
@@ -766,10 +1046,10 @@ function ReplaceCardModal({ onClose, blocked }: { onClose: () => void; blocked: 
           </p>
           <div className="mx-auto mt-6 max-w-sm space-y-2 text-left">
             <div className="flex items-center gap-3 rounded-lg bg-[#f7fbf8] p-3 text-xs font-bold text-obligon-navy">
-              <span className="text-obligon-green font-black">✓</span> Card embossed and encoded
+              <span className="text-obligon-green font-black">âœ“</span> Card embossed and encoded
             </div>
             <div className="flex items-center gap-3 rounded-lg bg-[#f7fbf8] p-3 text-xs font-bold text-obligon-navy">
-              <span className="text-obligon-green font-black">✓</span> Courier handoff in progress
+              <span className="text-obligon-green font-black">âœ“</span> Courier handoff in progress
             </div>
           </div>
           <button type="button" onClick={onClose} className="mt-7 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white shadow-green">
