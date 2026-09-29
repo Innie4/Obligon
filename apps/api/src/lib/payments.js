@@ -35,6 +35,66 @@ export function activeProvider() {
   return found ?? null;
 }
 
+/**
+ * Who bears the payment gateway's fee, and how much it is.
+ *
+ * Card and bank charges cost a percentage that the processor deducts. When the
+ * platform absorbs it, that cost is invisible to the customer and comes out of
+ * Obligon's margin on every transaction. Moving it to the customer means adding
+ * the fee to the amount charged, so it is disclosed on the amount line before
+ * payment rather than appearing as a surprise on a statement.
+ *
+ * The percentage is a commercial decision and is configured per deployment
+ * rather than hardcoded, because it has to match the rate actually negotiated
+ * with the processor. Setting it wrong in either direction is a real money
+ * error: too low and the fee is under-collected, too high and the customer is
+ * overcharged. `PAYMENT_FEE_BEARER=platform` is the safe default, since charging
+ * a customer for a fee the platform has not agreed to pass on is not a default
+ * anyone should get by accident.
+ */
+export const FEE_BEARERS = { customer: "customer", platform: "platform" };
+
+/** Fee in basis points, e.g. 150 = 1.50%. */
+function feeBasisPoints() {
+  const raw = Number(env.PAYMENT_FEE_BASIS_POINTS ?? 0);
+  if (!Number.isFinite(raw) || raw < 0) return 0;
+  return Math.min(Math.round(raw), 10_000);
+}
+
+export function feeBearer() {
+  const bearer = String(env.PAYMENT_FEE_BEARER ?? "platform").toLowerCase();
+  return bearer === FEE_BEARERS.customer ? FEE_BEARERS.customer : FEE_BEARERS.platform;
+}
+
+/**
+ * Split a price into the amount owed and the fee added on top.
+ *
+ * The fee is computed in kobo and rounded up, because the processor rounds the
+ * fee in its own favour and rounding down here would leave a fraction of a kobo
+ * uncollected on every transaction. The returned total is what must be charged;
+ * the fee is what the customer was told about, and the two are always consistent
+ * because they come from the same call.
+ *
+ * @returns {{ baseKobo: number, feeKobo: number, totalKobo: number, basisPoints: number, bearer: string }}
+ */
+export function priceWithFee(baseAmountKobo) {
+  const baseKobo = Math.max(0, Math.round(Number(baseAmountKobo) || 0));
+  const bearer = feeBearer();
+  const basisPoints = bearer === FEE_BEARERS.customer ? feeBasisPoints() : 0;
+  const feeKobo = basisPoints > 0 ? Math.ceil((baseKobo * basisPoints) / 10_000) : 0;
+  return { baseKobo, feeKobo, totalKobo: baseKobo + feeKobo, basisPoints, bearer };
+}
+
+/** The fee schedule, safe to expose publicly so the UI can disclose it. */
+export function feeSchedule() {
+  const bearer = feeBearer();
+  return {
+    bearer,
+    basisPoints: bearer === FEE_BEARERS.customer ? feeBasisPoints() : 0,
+    percent: (bearer === FEE_BEARERS.customer ? feeBasisPoints() : 0) / 100
+  };
+}
+
 export function paymentProviderStatus() {
   return {
     active: activeProviderSafely(),

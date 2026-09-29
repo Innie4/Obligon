@@ -49,6 +49,14 @@ const schema = z.object({
   // "use whichever provider actually has credentials".
   PAYMENT_PROVIDER: z.enum(["paystack", "flutterwave", ""]).default(""),
   NEXT_PUBLIC_PAYMENT_PROVIDER: z.enum(["paystack", "flutterwave", ""]).default(""),
+  // Who absorbs the gateway fee. Anything other than "customer" is treated as
+  // "platform", which is the safe default: a customer is never billed for a fee
+  // nobody has decided they should pay.
+  PAYMENT_FEE_BEARER: z.enum(["customer", "platform", ""]).default(""),
+  // The processor's rate in basis points (100 = 1.00%). Kept as a string in the
+  // schema and parsed by the fee helper, because a non-numeric value must
+  // degrade to no fee rather than becoming NaN and poisoning an amount.
+  PAYMENT_FEE_BASIS_POINTS: z.string().default(""),
 
   // Email
   RESEND_API_KEY: z.string().default(""),
@@ -136,6 +144,16 @@ export function configurationWarnings() {
   if (!env.RESEND_API_KEY) warnings.push("RESEND_API_KEY is unset — no transactional email will be sent");
   if (!env.TERMII_API_KEY) warnings.push("TERMII_API_KEY is unset — SMS OTP is unavailable");
   if (!env.WEB_PUSH_VAPID_PRIVATE_KEY) warnings.push("WEB_PUSH_VAPID_PRIVATE_KEY is unset — web push notifications are disabled");
+  // A customer-bearer fee with no rate configured collects nothing while the
+  // interface may still imply the customer is paying one, so say so plainly.
+  if (
+    String(env.PAYMENT_FEE_BEARER ?? "platform").toLowerCase() === "customer" &&
+    !Number(env.PAYMENT_FEE_BASIS_POINTS)
+  ) {
+    warnings.push(
+      "PAYMENT_FEE_BEARER=customer but PAYMENT_FEE_BASIS_POINTS is 0 — the customer will be charged no gateway fee at all"
+    );
+  }
   return warnings;
 }
 

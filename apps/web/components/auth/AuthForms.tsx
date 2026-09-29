@@ -192,12 +192,12 @@ function AuthErrorDialog({ message, onClose }: { message: string | null; onClose
   if (!message) return null;
   return (
     <DialogFrame onClose={onClose} ariaLabel="Sign-in problem">
-      <div className="p-6 sm:p-8">
-        <div className="grid size-12 place-items-center rounded-full bg-[#fff0f0] text-[#c1121f]">
+      <div className="p-6 text-center sm:p-8">
+        <div className="mx-auto grid size-12 place-items-center rounded-full bg-[#fff0f0] text-[#c1121f]">
           <AlertTriangle size={24} aria-hidden="true" />
         </div>
         <h2 className="mt-4 font-display text-2xl font-extrabold text-obligon-navy">Something went wrong</h2>
-        <p className="mt-2 text-sm leading-6 text-obligon-text">{message}</p>
+        <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-obligon-text">{message}</p>
         <button
           type="button"
           onClick={onClose}

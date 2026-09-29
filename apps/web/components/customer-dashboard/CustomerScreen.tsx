@@ -36,7 +36,7 @@ import {
   type CustomerPageKey,
   type CustomerTone
 } from "@/lib/mock/customer-data";
-import { api, mutationsApi, DEFAULT_NOTIFICATION_PREFS, ApiError, type CardCheckout, type CardPlan, type CardRequest, type CustomerTransaction, type NotificationPrefs, type OpenCardRequest } from "@/lib/services";
+import { api, mutationsApi, DEFAULT_NOTIFICATION_PREFS, ApiError, type CardCheckout, type CardPlan, type CardRequest, type CardRequestProgress, type CustomerTransaction, type NotificationPrefs, type OpenCardRequest } from "@/lib/services";
 import { AsyncBoundary } from "@/components/shared/States";
 import { useAsync } from "@/components/shared/useAsync";
 import { useSession } from "@/components/shared/AuthContext";
@@ -44,7 +44,7 @@ import { useToast } from "@/components/shared/Toast";
 import { Toggle } from "@/components/shared/Toggle";
 import { currentPushState, disableWebPush, enableWebPush, pushSupported } from "@/lib/push-subscription";
 import { CustomerModals, ModalFrame, type CustomerModalType } from "./CustomerModals";
-import { CardDetailsModal, CardPlanModal, CardSubmittedModal, PendingPaymentModal } from "./CardRequestModals";
+import { CardDetailsModal, CardPlanModal, CardSubmittedModal, PendingPaymentModal, CardVerificationProgressModal } from "./CardRequestModals";
 import { ConfirmModal, PinModal } from "../shared/Dialogs";
 import { StationMap } from "../shared/StationMap";
 import { routes } from "../site/routes";
@@ -198,16 +198,24 @@ function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
   const { status, data: metrics, error, reload } = useAsync(() => api.getCustomerOverviewMetrics(), [balanceRefreshKey]);
   const firstName = user?.name?.split(" ")[0] ?? "Driver";
   const totalBalance = metricValue(metrics, "Total Account Balance", "₦0.00");
-  const mtdSpend = metricValue(metrics, "MTD Spend", "₦215,600");
-  const budgetUsage = metricValue(metrics, "Budget Usage", "43%");
-  const budgetLimit = metricHelper(metrics, "Budget Usage") ?? "₦500,000 Limit";
-  const litres = metricValue(metrics, "Litres Consumed", "1,245 L");
-  const txnCount = metricValue(metrics, "Transactions", "87");
-  const security = metricValue(metrics, "Security Status", "2 Alerts");
-  const securityHelper = metricHelper(metrics, "Security Status") ?? "1 Blocked | 0 Suspicious";
-  const lifetime = metricValue(metrics, "Lifetime Savings", "₦245,780");
-  const mtdSavings = metricHelper(metrics, "MTD Spend")?.replace("MTD Savings: ", "") ?? "₦18,450";
-  const usagePercent = Number.parseInt(budgetUsage, 10) || 43;
+  // Read from their own metrics. MTD Savings used to be scraped out of the MTD
+  // Spend helper string, which read "This month", so the card showed a sentence
+  // fragment where a currency figure belonged. Fallbacks are real zeros rather
+  // than invented figures: showing ₦18,450 that no calculation produced is worse
+  // than showing nothing.
+  const mtdSpend = metricValue(metrics, "MTD Spend", "₦0.00");
+  const mtdSpendHelper = metricHelper(metrics, "MTD Spend") ?? "";
+  const mtdSavings = metricValue(metrics, "MTD Savings", "₦0.00");
+  const mtdSavingsHelper = metricHelper(metrics, "MTD Savings") ?? "";
+  const budgetUsage = metricValue(metrics, "Budget Usage", "0%");
+  const budgetLimit = metricHelper(metrics, "Budget Usage") ?? "No budget set";
+  const litres = metricValue(metrics, "Litres Consumed", "0 L");
+  const txnCount = metricValue(metrics, "Transactions", "0");
+  const security = metricValue(metrics, "Security Status", "0 Alerts");
+  const securityHelper = metricHelper(metrics, "Security Status") ?? "0 Blocked | 0 Suspicious";
+  const lifetime = metricValue(metrics, "Lifetime Savings", "₦0.00");
+  const lifetimeHelper = metricHelper(metrics, "Lifetime Savings") ?? "";
+  const usagePercent = Math.min(100, Math.max(0, Number.parseInt(budgetUsage, 10) || 0));
 
   return (
     <Canvas>
@@ -237,22 +245,36 @@ function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
               <span className="rounded-xl border border-[#b6d894] bg-[#e8fbd7] px-4 py-3">
                 <span className="block text-xs font-extrabold uppercase text-obligon-green">MTD Savings</span>
                 <span className="mt-1 block text-2xl font-extrabold text-obligon-green">{mtdSavings}</span>
+                {mtdSavingsHelper ? (
+                  <span className="mt-0.5 block text-[11px] font-semibold text-obligon-text">{mtdSavingsHelper}</span>
+                ) : null}
               </span>
               <span className="rounded-xl bg-[#eef3ee] px-4 py-3">
                 <span className="block text-xs font-extrabold uppercase text-[#3f463d]">Lifetime Savings</span>
                 <span className="mt-1 block text-2xl font-extrabold text-obligon-navy">{lifetime}</span>
+                {lifetimeHelper ? (
+                  <span className="mt-0.5 block text-[11px] font-semibold text-obligon-text">{lifetimeHelper}</span>
+                ) : null}
               </span>
             </div>
           </Card>
           <Card className="p-6">
-            <p className="text-xs font-extrabold uppercase tracking-[0.8px] text-[#3f463d]">MTD Spend</p>
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="text-xs font-extrabold uppercase tracking-[0.8px] text-[#3f463d]">MTD Spend</p>
+              {mtdSpendHelper ? (
+                <p className="text-[11px] font-semibold text-obligon-text">{mtdSpendHelper}</p>
+              ) : null}
+            </div>
             <p className="mt-4 font-display text-[32px] font-extrabold text-[#b51f24]">{mtdSpend}</p>
             <div className="mt-6 flex justify-between text-sm">
               <span className="font-bold text-[#3f463d]">Budget Usage</span>
               <span className="font-extrabold text-obligon-navy">{budgetUsage}</span>
             </div>
             <div className="mt-2 h-2.5 rounded-full bg-[#dce5da] overflow-hidden">
-              <span className="block h-full rounded-full bg-obligon-green transition-all" style={{ width: `${Math.min(usagePercent, 100)}%` }} />
+              <span
+                className={`block h-full rounded-full transition-all ${usagePercent >= 100 ? "bg-[#b51f24]" : "bg-obligon-green"}`}
+                style={{ width: `${usagePercent}%` }}
+              />
             </div>
             <p className="mt-3 text-right text-xs font-extrabold text-[#3f463d]">{budgetLimit}</p>
           </Card>
@@ -677,6 +699,9 @@ function CardPage({
   const [detailsModalOpen, setDetailsModalOpen] = React.useState(false);
   const [submittingDetails, setSubmittingDetails] = React.useState(false);
   const [submittedModalOpen, setSubmittedModalOpen] = React.useState(false);
+  const [progressOpen, setProgressOpen] = React.useState(false);
+  const [progress, setProgress] = React.useState<CardRequestProgress | null>(null);
+  const [progressLoading, setProgressLoading] = React.useState(false);
   const [checkout, setCheckout] = useState<CardCheckout | null>(null);
   // A request already in flight. Checkout answers 409 when one exists, so this
   // is what turns that dead end into a choice: finish paying, or cancel.
@@ -715,6 +740,13 @@ function CardPage({
   // the customer to click a plan and be told they are blocked. Without this the
   // only way to discover a pending payment is to hit the 409.
   React.useEffect(() => {
+    // Returning from the processor means a payment is being confirmed right now.
+    // Reading the open request during that window reports a request as still
+    // awaiting payment when it has in fact just been paid, so the customer was
+    // met with "You have a plan awaiting payment" immediately after paying.
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("plan") ?? params.get("tx_ref")) return;
+
     let cancelled = false;
     void mutationsApi.getOpenCardRequest().then((open) => {
       if (cancelled) return;
@@ -742,6 +774,10 @@ function CardPage({
       try {
         const paid = await mutationsApi.verifyCardPayment(ref, false, transactionId);
         setCardRequest(paid.request);
+        // The request is settled now, so any "awaiting payment" prompt is stale.
+        // Clearing it here is what stops the customer being told they still owe
+        // money on the page they land on straight after paying.
+        setPendingResume(null);
         if (paid.paid) {
           setDetailsModalOpen(true);
           toastSuccess("Payment confirmed.");
@@ -827,6 +863,20 @@ function CardPage({
       toastError(err instanceof Error ? err.message : "Could not reopen the payment.");
     } finally {
       setResuming(false);
+    }
+  }
+
+  /** Open the tracker against the live record rather than a static description. */
+  async function handleViewVerificationStatus() {
+    setProgressOpen(true);
+    setProgressLoading(true);
+    try {
+      setProgress(await mutationsApi.getCardRequestProgress());
+    } catch {
+      setProgress(null);
+      toastError("We could not load your verification status. Please try again.");
+    } finally {
+      setProgressLoading(false);
     }
   }
 
@@ -974,7 +1024,7 @@ function CardPage({
                   </p>
                   <button
                     type="button"
-                    onClick={() => setSubmittedModalOpen(true)}
+                    onClick={() => void handleViewVerificationStatus()}
                     className="h-11 rounded-xl border border-obligon-border bg-white px-5 text-sm font-extrabold text-obligon-navy"
                   >
                     View verification status
@@ -1001,6 +1051,14 @@ function CardPage({
           busyPlan={busyPlan}
           onSelect={(plan) => void handleSelectPlan(plan)}
           onClose={() => setPlanModalOpen(false)}
+        />
+      ) : null}
+
+      {progressOpen ? (
+        <CardVerificationProgressModal
+          progress={progress}
+          loading={progressLoading}
+          onClose={() => setProgressOpen(false)}
         />
       ) : null}
 

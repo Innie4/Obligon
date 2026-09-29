@@ -69,6 +69,9 @@ import type {
   AppNotification,
   CardCheckout,
   OpenCardRequest,
+  CardRequestProgress,
+  PaymentConfig,
+  PaymentFeeSchedule,
   CardPlan,
   CardPlanFeature,
   CardRequest,
@@ -871,6 +874,26 @@ export const mutationsApi = {
       throw err;
     }
   },
+  /** Real progress through the card request, for the verification tracker. */
+  async getCardRequestProgress(): Promise<CardRequestProgress> {
+    if (!LIVE_MODE) {
+      await simulate({});
+      return {
+        request: LOCAL_CARD_REQUEST,
+        planName: "Bronze",
+        planAmountLabel: "₦2,500",
+        steps: [],
+        outcome: "in_progress",
+        nextAction: null,
+        progressPercent: 0,
+        completedSteps: 0,
+        totalSteps: 5,
+        currentStepIndex: 0,
+        card: null
+      };
+    }
+    return http<CardRequestProgress>("/api/customer/card-request/progress");
+  },
   async getOpenCardRequest(): Promise<OpenCardRequest> {
     if (!LIVE_MODE) {
       await simulate({});
@@ -1177,6 +1200,26 @@ export const mutationsApi = {
 
 /** Public (unauthenticated) endpoints — careers, leads, contact, plans, consent. */
 export const publicApi = {
+  /**
+   * Payment configuration, including who bears the gateway fee.
+   *
+   * Fetched rather than hardcoded so the figure the customer is shown always
+   * matches the figure the server actually charges. A hardcoded "0.00 (Zero Fee)"
+   * was shown regardless of the processor's actual charge, which either hid a
+   * real cost or promised a free one that was not free.
+   */
+  async getPaymentConfig(): Promise<PaymentConfig> {
+    if (!LIVE_MODE) {
+      await simulate({});
+      return {
+        provider: "flutterwave",
+        simulated: true,
+        publicKeys: { paystack: null, flutterwave: null },
+        fee: { bearer: "platform", basisPoints: 0, percent: 0 }
+      };
+    }
+    return http<PaymentConfig>("/api/public/payments/config");
+  },
   async getPlans(): Promise<Array<{ code: string; name: string; priceLabel: string; features: string[]; highlighted: boolean }>> {
     if (!LIVE_MODE) {
       return [

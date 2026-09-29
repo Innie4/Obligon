@@ -4,7 +4,7 @@ import * as React from "react";
 import type { ComponentType } from "react";
 import { AlertTriangle, Building2, Check, CreditCard, FileWarning, Fingerprint, LockKeyhole, ShieldCheck, Snowflake, Upload, X, Loader2, ArrowRight, type LucideProps } from "lucide-react";
 import { useToast } from "@/components/shared/Toast";
-import { api, authApi, mutationsApi } from "@/lib/services";
+import { api, authApi, mutationsApi, publicApi, type PaymentFeeSchedule } from "@/lib/services";
 
 /** Resolve the signed-in customer's card id against the live API (null in mock mode). */
 async function resolveCardId(): Promise<string | null> {
@@ -638,7 +638,26 @@ function TopUpModal({
   const [submitting, setSubmitting] = React.useState(false);
   const [pending, setPending] = React.useState<{ reference: string; amount: number; provider: string } | null>(null);
   const [successData, setSuccessData] = React.useState<{ reference: string; amount: number; method: string; balanceLabel?: string } | null>(null);
+  // The fee comes from the server so the figure shown is the figure charged. It
+  // was previously a hardcoded "0.00 (Zero Fee)" that was true in neither
+  // direction: the processor always charges something.
+  const [feeSchedule, setFeeSchedule] = React.useState<PaymentFeeSchedule | null>(null);
   const { error: toastError, success: toastSuccess } = useToast();
+
+  React.useEffect(() => {
+    let cancelled = false;
+    void publicApi
+      .getPaymentConfig()
+      .then((cfg) => {
+        if (!cancelled) setFeeSchedule(cfg.fee ?? null);
+      })
+      // A failure here must not block topping up; the server remains the
+      // authority on what is charged either way.
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const quickAmounts = [5000, 10000, 25000, 50000, 100000];
 
@@ -649,6 +668,15 @@ function TopUpModal({
   ];
 
   const numericAmount = Number(amount.replace(/[^0-9.]/g, ""));
+
+  // When the customer bears the fee it is added to the amount demanded, so the
+  // total has to be shown before they authorise rather than afterwards. Rounded
+  // up to match the server exactly: a total that differs by a naira from the
+  // charge is a dispute waiting to happen.
+  const feeCustomer = feeSchedule?.bearer === "customer";
+  const feeKobo = feeCustomer ? Math.ceil((numericAmount * 100 * (feeSchedule?.basisPoints ?? 0)) / 10_000) : 0;
+  const feeLabel = `₦${(feeKobo / 100).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const totalToPay = Math.round(numericAmount + feeKobo / 100);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -752,10 +780,10 @@ function TopUpModal({
 
           <div className="mt-6">
             <label className="text-xs font-extrabold uppercase text-obligon-text block mb-2">
-              Select or Enter Amount (â‚¦)
+              Select or Enter Amount (₦)
             </label>
             <div className="flex h-14 rounded-xl border border-[#cfd8cc] bg-[#f7fbf8] focus-within:border-obligon-green focus-within:ring-2 focus-within:ring-obligon-green/20">
-              <span className="grid w-14 place-items-center font-display text-2xl font-extrabold text-obligon-navy">â‚¦</span>
+              <span className="grid w-14 place-items-center font-display text-2xl font-extrabold text-obligon-navy">₦</span>
               <input
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
@@ -776,7 +804,7 @@ function TopUpModal({
                       : "border-[#cfd8cc] bg-white text-obligon-navy hover:bg-[#f7fbf8]"
                   }`}
                 >
-                  +â‚¦{amt.toLocaleString()}
+                  +₦{amt.toLocaleString()}
                 </button>
               ))}
             </div>
@@ -810,9 +838,28 @@ function TopUpModal({
             </div>
           </div>
 
-          <div className="mt-6 flex items-center justify-between rounded-xl bg-[#f7fbf8] p-4 text-sm">
-            <span className="font-bold text-obligon-text">Gateway Transaction Fee</span>
-            <span className="font-extrabold text-obligon-green">â‚¦0.00 (Zero Fee)</span>
+          <div className="mt-6 overflow-hidden rounded-xl bg-[#f7fbf8] text-sm">
+            <div className="flex items-center justify-between px-4 py-3">
+              <span className="font-bold text-obligon-text">Top-up amount</span>
+              <span className="font-extrabold text-obligon-navy">₦{(numericAmount || 0).toLocaleString()}</span>
+            </div>
+            <div className="flex items-center justify-between border-t border-[#e6ede4] px-4 py-3">
+              <span className="font-bold text-obligon-text">
+                Gateway Transaction Fee
+                {feeCustomer && feeSchedule && feeSchedule.percent > 0 ? (
+                  <span className="ml-1.5 font-semibold text-obligon-text/80">({feeSchedule.percent}%)</span>
+                ) : null}
+              </span>
+              <span className={`font-extrabold ${feeCustomer ? "text-obligon-navy" : "text-obligon-green"}`}>
+                {feeCustomer ? feeLabel : "₦0.00 (Absorbed by Obligon)"}
+              </span>
+            </div>
+            {feeCustomer ? (
+              <div className="flex items-center justify-between border-t border-[#e6ede4] bg-[#eef6ea] px-4 py-3">
+                <span className="font-extrabold text-obligon-navy">Total to pay</span>
+                <span className="text-lg font-extrabold text-obligon-green">₦{totalToPay.toLocaleString()}</span>
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-6 flex gap-3">
@@ -830,7 +877,7 @@ function TopUpModal({
                   Processing...
                 </>
               ) : (
-                `Pay â‚¦${(numericAmount || 0).toLocaleString()}`
+                `Pay ₦${(totalToPay || 0).toLocaleString()}`
               )}
             </button>
           </div>

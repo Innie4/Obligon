@@ -241,10 +241,12 @@ test("creditPlanPurchaseToWallet funds the wallet once and is replay-safe", asyn
   const wallet = await one("SELECT * FROM wallets WHERE user_id = $1", [user.id]);
   const plan = await one("SELECT * FROM card_plans ORDER BY amount_kobo LIMIT 1");
 
+  // charged_kobo is NOT NULL with no default on purpose: a default of zero would
+  // silently mean "nothing is owed", so every insert has to state the figure.
   const request = await one(
-    `INSERT INTO card_requests (user_id, plan_code, payment_provider, payment_reference, payment_status, status)
-     VALUES ($1,$2,'flutterwave',$3,'paid','pending_verification') RETURNING *`,
-    [user.id, plan.code, `unit-plan-${stamp}`]
+    `INSERT INTO card_requests (user_id, plan_code, payment_provider, payment_reference, payment_status, status, fee_kobo, charged_kobo)
+     VALUES ($1,$2,'flutterwave',$3,'paid','pending_verification',0,$4) RETURNING *`,
+    [user.id, plan.code, `unit-plan-${stamp}`, Number(plan.amount_kobo)]
   );
 
   const first = await creditPlanPurchaseToWallet({ cardRequest: request });

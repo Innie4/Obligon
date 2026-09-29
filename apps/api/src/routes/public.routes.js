@@ -4,7 +4,7 @@ import { asyncHandler, badRequest, notFound } from "../lib/errors.js";
 import { attachUser } from "../middleware/auth.js";
 import { naira, reference } from "../lib/format.js";
 import { notify, sendEmail } from "../lib/notify.js";
-import { paymentProviderStatus, checkoutIsSimulated, missingPaymentCredentials } from "../lib/payments.js";
+import { paymentProviderStatus, checkoutIsSimulated, missingPaymentCredentials, feeSchedule } from "../lib/payments.js";
 import { env } from "../config/env.js";
 import { uploadFile } from "../lib/storage.js";
 import multer from "multer";
@@ -30,6 +30,10 @@ router.get("/payments/config", asyncHandler(async (_req, res) => {
       paystack: env.PAYSTACK_PUBLIC_KEY || null,
       flutterwave: env.FLW_PUBLIC_KEY || null
     },
+    // Published so the amount a customer is about to be charged can be shown
+    // with the fee itemised before payment, rather than surprising them on a
+    // statement afterwards.
+    fee: feeSchedule(),
     // Names of absent credentials only, so a misconfigured deployment reports
     // itself here rather than as a bare 503 when a customer tries to pay.
     ...(missing.length ? { misconfigured: true, missing } : {})

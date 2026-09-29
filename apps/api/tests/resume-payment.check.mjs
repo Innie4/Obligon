@@ -85,9 +85,23 @@ say(
 );
 
 // The resumed session must show the same plan price, not a stale or wrong one.
+// The processor's config endpoint differs between sandbox and live, so this reads
+// from whichever environment is configured rather than assuming one.
+const LIVE = !/_TEST/.test(env.FLW_SECRET_KEY ?? "");
+const CONFIG_HOST = LIVE
+  ? "https://api.flutterwave.com/flwv3-pug/getpaidx/api/hosted_pay"
+  : "https://ravesandboxapi.flutterwave.com/flwv3-pug/getpaidx/api/hosted_pay";
+const SESSION_HOST = LIVE ? "https://checkout.flutterwave.com" : "https://checkout-v2.dev-flutterwave.com";
+console.log(`  (checking against the ${LIVE ? "live" : "sandbox"} processor)`);
+
 const sessionId = String(resume.data?.paymentUrl ?? "").split("/").pop();
 if (sessionId) {
-  const flw = await fetch(`https://ravesandboxapi.flutterwave.com/flwv3-pug/getpaidx/api/hosted_pay/${sessionId}?json=1`);
+  say(
+    String(resume.data.paymentUrl).startsWith(SESSION_HOST),
+    "the resumed link is on the configured processor host",
+    resume.data.paymentUrl.slice(0, 52)
+  );
+  const flw = await fetch(`${CONFIG_HOST}/${sessionId}?json=1`);
   const session = await flw.json();
   say(Number(session.amount) === 3500, "the resumed checkout shows the plan price", `amount=${session.amount} (expected 3500)`);
   say(session.currency === "NGN", "resumed checkout is in NGN", session.currency);

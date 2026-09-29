@@ -30,20 +30,35 @@ const warnings = configurationWarnings();
 // are reported separately because render.yaml generates them, so a dev-prefixed
 // value here is a local artefact rather than the deployed condition.
 const paymentFatal = fatal.filter((i) => /FLW_|FLUTTERWAVE|PAYSTACK|payment|processor|SUDO_|RESEND|TERMII/i.test(i));
-say(
-  paymentFatal.length === 0,
-  "no payment-related problem is fatal",
-  paymentFatal.length ? JSON.stringify(paymentFatal) : "payments misconfiguration cannot stop the API"
-);
-say(
-  warnings.some((w) => /test key/i.test(w)),
-  "the test payment key is reported as a warning",
-  warnings.find((w) => /test key/i.test(w)) ?? "(not found)"
-);
-say(
-  warnings.some((w) => /no real money moves/i.test(w)),
-  "the warning explains that no real money moves"
-);
+
+// A test processor key is a warning, not a fatal: that is the regression this
+// check guards. A live key must not produce the warning at all, so the assertion
+// is conditional on which keys are actually configured.
+const liveKeys = !/_TEST/.test(env.FLW_SECRET_KEY ?? "");
+
+say(paymentFatal.length === 0, "no payment-related problem is fatal", paymentFatal.length ? JSON.stringify(paymentFatal) : "payments misconfiguration cannot stop the API");
+if (liveKeys) {
+  say(
+    !warnings.some((w) => /test key/i.test(w)),
+    "live keys produce no test-key warning",
+    "correct: a live key is not a staging mistake"
+  );
+  say(
+    !warnings.some((w) => /no real money moves/i.test(w)),
+    "live keys carry no 'no real money moves' caveat",
+    "correct: real charges are real"
+  );
+} else {
+  say(
+    warnings.some((w) => /test key/i.test(w)),
+    "the test payment key is reported as a warning",
+    warnings.find((w) => /test key/i.test(w)) ?? "(not found)"
+  );
+  say(
+    warnings.some((w) => /no real money moves/i.test(w)),
+    "the warning explains that no real money moves"
+  );
+}
 
 // Boot for real, exactly as index.js does.
 try {

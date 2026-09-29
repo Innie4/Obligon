@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { AlertTriangle, Check, CreditCard, Loader2, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Check, CircleDashed, CircleSlash, Clock, CreditCard, Loader2, ShieldCheck, X } from "lucide-react";
 import { useToast } from "@/components/shared/Toast";
-import type { CardPlan, CardRequest } from "@/lib/services";
+import type { CardPlan, CardRequest, CardRequestProgress, ProgressStepState } from "@/lib/services";
 import { ModalFrame } from "./CustomerModals";
 
 /** Nigerian BVN: 11 digits beginning with 2. */
@@ -369,6 +369,181 @@ export function CardSubmittedModal({
         </button>
       </div>
     </ModalFrame>
+  );
+}
+
+/**
+ * Real progress through a card request.
+ *
+ * Replaces a dialog that listed the three things that happen next, which read
+ * identically whether the request was unpaid, mid-verification, rejected or
+ * already holding an active card. Each state comes from the server, so the
+ * tracker cannot disagree with the record, and a request that will not progress
+ * says so instead of spinning forever.
+ */
+export function CardVerificationProgressModal({
+  progress,
+  loading,
+  onClose
+}: {
+  progress: CardRequestProgress | null;
+  loading: boolean;
+  onClose: () => void;
+}) {
+  const steps = progress?.steps ?? [];
+  const outcome = progress?.outcome;
+
+  const headline: Record<string, string> = {
+    complete: "Your card is ready",
+    in_progress: "Verification in progress",
+    awaiting_payment: "Payment required",
+    rejected: "Verification unsuccessful",
+    abandoned: "Request closed"
+  };
+
+  const tone: Record<string, string> = {
+    complete: "bg-[#e8fbd7] text-obligon-green",
+    in_progress: "bg-obligon-lime/30 text-obligon-navy",
+    awaiting_payment: "bg-obligon-lime/30 text-obligon-navy",
+    rejected: "bg-[#ffe8e8] text-[#c1121f]",
+    abandoned: "bg-[#f1f5f0] text-obligon-text"
+  };
+
+  return (
+    <ModalFrame onClose={onClose} size="wide">
+      <div className="p-6 text-center sm:p-8">
+        <span className={`mx-auto grid size-16 place-items-center rounded-full ${tone[outcome ?? "in_progress"]}`}>
+          {outcome === "complete" ? (
+            <ShieldCheck size={30} />
+          ) : outcome === "rejected" || outcome === "abandoned" ? (
+            <X size={30} />
+          ) : (
+            <Loader2 size={28} className="animate-spin" />
+          )}
+        </span>
+
+        <h2 className="mt-5 font-display text-2xl font-extrabold text-obligon-navy">
+          {loading ? "Loading status…" : (headline[outcome ?? "in_progress"] ?? "Verification status")}
+        </h2>
+        {progress?.planName ? (
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-obligon-text">
+            {progress.planName} plan{progress.planAmountLabel ? ` · ${progress.planAmountLabel}` : ""}
+          </p>
+        ) : null}
+
+        {!loading && steps.length > 0 ? (
+          <>
+            <div className="mt-6">
+              <div className="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-[0.8px] text-obligon-text">
+                <span>Progress</span>
+                <span>
+                  {progress?.completedSteps} of {progress?.totalSteps} complete
+                </span>
+              </div>
+              <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-[#dce5da]">
+                <span
+                  className={`block h-full rounded-full transition-all ${outcome === "rejected" || outcome === "abandoned" ? "bg-[#b51f24]" : "bg-obligon-green"}`}
+                  style={{ width: `${Math.max(0, Math.min(100, progress?.progressPercent ?? 0))}%` }}
+                />
+              </div>
+            </div>
+
+            <ol className="mt-7 space-y-1 text-left">
+              {steps.map((step, index) => (
+                <li key={step.key} className="flex gap-3.5">
+                  <div className="flex flex-col items-center">
+                    <StepIcon state={step.state} />
+                    {index < steps.length - 1 ? (
+                      <span
+                        className={`my-1 w-0.5 flex-1 ${step.state === "done" ? "bg-obligon-green/40" : "bg-[#e0e7de]"}`}
+                        aria-hidden="true"
+                      />
+                    ) : null}
+                  </div>
+                  <div className={`pb-5 ${index === steps.length - 1 ? "pb-0" : ""}`}>
+                    <p
+                      className={`text-sm font-extrabold ${
+                        step.state === "failed"
+                          ? "text-[#c1121f]"
+                          : step.state === "done"
+                            ? "text-obligon-navy"
+                            : step.state === "active"
+                              ? "text-obligon-green"
+                              : "text-obligon-text"
+                      }`}
+                    >
+                      {step.label}
+                      {step.state === "active" ? <span className="sr-only"> (in progress)</span> : null}
+                    </p>
+                    <p className="mt-0.5 text-xs leading-5 text-obligon-text">{step.description}</p>
+                    {step.eta ? (
+                      <p className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-obligon-lime/30 px-2.5 py-1 text-[11px] font-extrabold text-obligon-navy">
+                        <Clock size={12} />
+                        {step.eta}
+                      </p>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ol>
+
+            {progress?.nextAction ? (
+              <p className="mt-6 rounded-xl bg-[#f7fbf8] px-4 py-3 text-sm font-bold text-obligon-navy">{progress.nextAction}</p>
+            ) : null}
+
+            {progress?.card ? (
+              <div className="mt-5 rounded-2xl border border-obligon-navy/10 bg-[#f7f9f8] p-5 text-left">
+                <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[1.1px] text-obligon-green">
+                  <CreditCard size={14} /> Your card
+                </p>
+                <p className="mt-2 font-mono text-sm font-extrabold text-obligon-navy">{progress.card.maskedPan}</p>
+                <p className="mt-1 text-xs text-obligon-text">
+                  {progress.card.label} · expires {progress.card.expiry} · {progress.card.status}
+                </p>
+              </div>
+            ) : null}
+          </>
+        ) : null}
+
+        <button type="button" onClick={onClose} className="mt-7 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white">
+          Close
+        </button>
+      </div>
+    </ModalFrame>
+  );
+}
+
+/** One step's marker: a tick once done, a spinner while active, and so on. */
+function StepIcon({ state }: { state: ProgressStepState }) {
+  if (state === "done") {
+    return (
+      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-obligon-green text-white">
+        <Check size={15} strokeWidth={3} aria-hidden="true" />
+        <span className="sr-only">Complete</span>
+      </span>
+    );
+  }
+  if (state === "active") {
+    return (
+      <span className="grid size-7 shrink-0 place-items-center rounded-full border-2 border-obligon-green bg-white text-obligon-green">
+        <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+        <span className="sr-only">In progress</span>
+      </span>
+    );
+  }
+  if (state === "failed") {
+    return (
+      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#c1121f] text-white">
+        <CircleSlash size={15} aria-hidden="true" />
+        <span className="sr-only">Not completed</span>
+      </span>
+    );
+  }
+  return (
+    <span className="grid size-7 shrink-0 place-items-center rounded-full border-2 border-[#d0d8cf] bg-white text-[#9aa79b]">
+      <CircleDashed size={14} aria-hidden="true" />
+      <span className="sr-only">Not started</span>
+    </span>
   );
 }
 

@@ -5,23 +5,31 @@
  * Flutterwave renders `amount` as Naira, so a 250000 kobo plan appeared as
  * "NGN 250,000" instead of "NGN 2,500".
  *
- * This asserts the fix against the real sandbox API: read back what Flutterwave
- * recorded for the session and confirm the figure it will render matches the
- * plan the customer clicked.
+ * This asserts the fix against whichever environment is configured: the sandbox
+ * and live processors are separate hosts with separate config endpoints, so
+ * hardcoding either one makes the check wrong the moment the keys are swapped.
  */
-import { q, one } from "../db.js";
+import { q } from "../db.js";
 import { startCheckout, activeProvider } from "../lib/payments.js";
 import { toProviderAmount } from "../lib/flutterwave.js";
 import { naira } from "../lib/format.js";
 
+const LIVE = !/_TEST/.test(process.env.FLW_SECRET_KEY ?? "");
+const HOST = LIVE
+  ? "https://api.flutterwave.com/flwv3-pug/getpaidx/api/hosted_pay"
+  : "https://ravesandboxapi.flutterwave.com/flwv3-pug/getpaidx/api/hosted_pay";
+const SESSION_HOST = LIVE ? "https://checkout.flutterwave.com" : "https://checkout-v2.dev-flutterwave.com";
+
+console.log(`provider: ${activeProvider()} (${LIVE ? "LIVE" : "sandbox"})`);
+console.log(`reading sessions from ${HOST}\n`);
+
 const results = [];
 const say = (ok, name, detail = "") => {
   results.push(ok);
-  console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? ` -> ${detail}` : ""}`); 
+  console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? ` -> ${detail}` : ""}`);
 };
 
 const plans = await q("SELECT code, name, amount_kobo FROM card_plans WHERE active = TRUE ORDER BY sort_order, amount_kobo");
-console.log(`provider: ${activeProvider()}\n`);
 
 for (const plan of plans) {
   const expectedKobo = Number(plan.amount_kobo);
@@ -38,9 +46,14 @@ for (const plan of plans) {
   });
 
   // Read back what Flutterwave recorded for this session, which is the number
-  // its checkout page renders.
+  // its checkout page renders. The host differs between sandbox and live.
+  say(
+    String(checkout.authorization_url).startsWith(SESSION_HOST),
+    `${plan.name}: session is on the ${LIVE ? "live" : "sandbox"} host`,
+    checkout.authorization_url?.slice(0, 52)
+  );
   const id = checkout.authorization_url.split("/").pop();
-  const res = await fetch(`https://ravesandboxapi.flutterwave.com/flwv3-pug/getpaidx/api/hosted_pay/${id}?json=1`);
+  const res = await fetch(`${HOST}/${id}?json=1`);
   const session = await res.json();
 
   const rendered = Number(session.amount);

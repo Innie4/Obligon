@@ -4,9 +4,10 @@ import { asyncHandler, badRequest, notFound, forbidden, conflict, serviceUnavail
 import { requireAuth } from "../middleware/auth.js";
 import { hashPin, verifyPin, randomToken } from "../lib/security.js";
 import { naira, fmtDate, fmtDateTime, relativeTime, dayGroup, maskPan, maskAccount, distanceLabel, reference, initials } from "../lib/format.js";
+import { customerSavings, monthStart } from "../lib/savings.js";
 import { notify, audit, securityLog } from "../lib/notify.js";
 import { resolveWallet } from "../lib/wallets.js";
-import { startCheckout, verifyCheckout, activeProvider, checkoutIsSimulated } from "../lib/payments.js";
+import { startCheckout, verifyCheckout, activeProvider, checkoutIsSimulated, priceWithFee } from "../lib/payments.js";
 import { sudoEnabled, createSudoCustomer, issueSudoCard, setSudoCardStatus, fundSudoCard, maskFromSudo } from "../lib/sudo.js";
 import { receiptPdf } from "../lib/pdf.js";
 import { uploadFile, signedUrl } from "../lib/storage.js";
@@ -31,29 +32,49 @@ function statusTone(status) {
 router.get("/overview", asyncHandler(async (req, res) => {
   const userId = req.user.id;
   const wallet = await getWallet(userId);
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const monthStartDate = monthStart();
   const agg = await one(
     `SELECT COALESCE(SUM(amount_kobo),0) AS mtd, COUNT(*)::int AS count,
             COALESCE(SUM(litres),0)::float AS litres
      FROM transactions WHERE customer_user_id = $1 AND status = 'success' AND created_at >= $2`,
-    [userId, monthStart]
-  );
-  const lifetime = await one(
-    `SELECT COALESCE(SUM(litres * 1500),0)::float AS saved FROM transactions WHERE customer_user_id = $1 AND status = 'success'`,
-    [userId]
+    [userId, monthStartDate]
   );
   const alerts = await one(
     `SELECT COUNT(*)::int AS count FROM transactions WHERE customer_user_id = $1 AND status IN ('failed','disputed')`,
     [userId]
   );
+
+  // Savings are measured against the median listed price for the same fuel,
+  // never assumed. Previously this was `litres * 1500` — a flat 15 naira per
+  // litre unrelated to what was paid — and there was no month-to-date figure at
+  // all, so the dashboard's "MTD Savings" was showing a sentence fragment.
+  const mtdSavings = await customerSavings({ userId, since: monthStartDate });
+  const lifetimeSavings = await customerSavings({ userId, since: null });
+  // A fuel type with no trustworthy benchmark is left out rather than counted at
+  // an invented price, so the helper says so rather than implying full coverage.
+  const savingsCoverage = lifetimeSavings.pricedCount > 0
+    ? `Based on ${lifetimeSavings.pricedCount} transaction${lifetimeSavings.pricedCount === 1 ? "" : "s"}`
+    : "No priced transactions yet";
+
   const metrics = [
     { label: "Total Account Balance", value: naira(wallet.balance_kobo) },
-    { label: "MTD Spend", value: naira(agg.mtd), helper: "This month", tone: "red" },
-    { label: "Budget Usage", value: wallet.budget_limit_kobo > 0 ? `${Math.round((agg.mtd / wallet.budget_limit_kobo) * 100)}%` : "—", helper: wallet.budget_limit_kobo > 0 ? `${naira(wallet.budget_limit_kobo)} Limit` : "No budget set", tone: "green" },
+    {
+      label: "MTD Spend",
+      value: naira(agg.mtd),
+      helper: `${Math.round(agg.litres).toLocaleString()} L · ${agg.count} transaction${agg.count === 1 ? "" : "s"} this month`,
+      tone: "red"
+    },
+    {
+      label: "MTD Savings",
+      value: naira(mtdSavings.savedKobo),
+      helper: "vs median price at the time",
+      tone: "green"
+    },
+    { label: "Budget Usage", value: wallet.budget_limit_kobo > 0 ? `${Math.round((agg.mtd / wallet.budget_limit_kobo) * 100)}%` : "-", helper: wallet.budget_limit_kobo > 0 ? `${naira(wallet.budget_limit_kobo)} Limit` : "No budget set", tone: "green" },
     { label: "Litres Consumed", value: `${Math.round(agg.litres).toLocaleString()} L`, tone: "green" },
     { label: "Transactions", value: String(agg.count), tone: "blue" },
     { label: "Security Status", value: `${alerts.count} Alerts`, helper: `${alerts.count} Blocked | 0 Suspicious`, tone: alerts.count > 0 ? "red" : "green" },
-    { label: "Lifetime Savings", value: naira(lifetime.saved), tone: "green" }
+    { label: "Lifetime Savings", value: naira(lifetimeSavings.savedKobo), helper: savingsCoverage, tone: "green" }
   ];
   const recent = await q(
     `SELECT t.*, s.name AS station_name, v.plate AS vehicle_plate FROM transactions t
@@ -191,16 +212,20 @@ router.post("/wallet/topup", asyncHandler(async (req, res) => {
 
   const wallet = await getWallet(req.user.id, req.user.orgId ?? null);
   const ref = reference("TRX");
+  // The customer funds the gateway fee when PAYMENT_FEE_BEARER=customer, so the
+  // fee is added to the amount demanded and itemised for them before payment.
+  // The wallet is still credited the base amount only: the fee buys nothing.
+  const price = priceWithFee(amountKobo);
   const topup = await one(
-    `INSERT INTO top_ups (user_id, reference, amount_kobo, method, status, provider, wallet_id)
-     VALUES ($1,$2,$3,$4,'pending',$5,$6) RETURNING *`,
-    [req.user.id, ref, amountKobo, method ?? "card", provider, wallet.id]
+    `INSERT INTO top_ups (user_id, reference, amount_kobo, fee_kobo, charged_kobo, method, status, provider, wallet_id)
+     VALUES ($1,$2,$3,$4,$5,$6,'pending',$7,$8) RETURNING *`,
+    [req.user.id, ref, price.baseKobo, price.feeKobo, price.totalKobo, method ?? "card", provider, wallet.id]
   );
 
   const init = await startCheckout({
     provider,
     txRef: ref,
-    amountKobo,
+    amountKobo: price.totalKobo,
     email: req.user.email,
     name: req.user.full_name || undefined,
     phone: req.user.phone ?? undefined,
@@ -219,7 +244,7 @@ router.post("/wallet/topup", asyncHandler(async (req, res) => {
     action: "wallet.topup_initiated",
     entityId: topup.id,
     ip: req.ip,
-    metadata: { amountKobo, method, provider, simulated: init.simulated }
+    metadata: { amountKobo, feeKobo: price.feeKobo, chargedKobo: price.totalKobo, feeBearer: price.bearer, method, provider, simulated: init.simulated }
   });
   res.json({
     ok: true,
@@ -227,6 +252,15 @@ router.post("/wallet/topup", asyncHandler(async (req, res) => {
     provider,
     paymentUrl: init.authorization_url ?? null,
     simulated: init.simulated,
+    // Itemised so the customer can see the fee before authorising, not discover
+    // it on a statement afterwards.
+    amountKobo: price.baseKobo,
+    feeKobo: price.feeKobo,
+    totalKobo: price.totalKobo,
+    amountLabel: naira(price.baseKobo),
+    feeLabel: naira(price.feeKobo),
+    totalLabel: naira(price.totalKobo),
+    feeBearer: price.bearer,
     message: init.simulated
       ? "Payment simulation is active because no payment processor is configured."
       : "Complete your payment to credit your wallet."
@@ -249,7 +283,9 @@ router.post("/wallet/topup/confirm", asyncHandler(async (req, res) => {
       provider: topup.provider,
       reference,
       transactionId: req.body?.transactionId ?? topup.provider_transaction_id ?? null,
-      expectedAmountKobo: topup.amount_kobo,
+      // What the customer was actually asked to pay, base plus any fee. Comparing
+      // against the base alone would treat a correctly-paid fee as an underpayment.
+      expectedAmountKobo: Number(topup.charged_kobo),
       simulated: Boolean(req.body?.simulated)
     });
   } catch (err) {
@@ -440,19 +476,23 @@ router.post("/card-request/checkout", asyncHandler(async (req, res) => {
   const provider = activeProvider();
   if (!provider) throw serviceUnavailable("No payment provider is configured");
 
+  // The plan price is what the customer receives; the gateway fee is added on top
+  // when the customer bears it. Both are recorded so verification and any
+  // overpayment refund measure against the right figures.
+  const price = priceWithFee(Number(plan.amount_kobo));
   const request = await one(
-    `INSERT INTO card_requests (user_id, organization_id, label, plan_code, payment_reference, payment_status, status, verification_eta, payment_provider)
-     VALUES ($1, $2, $3, $4, $5, 'unpaid', 'awaiting_payment', $6, $7)
+    `INSERT INTO card_requests (user_id, organization_id, label, plan_code, payment_reference, payment_status, status, verification_eta, payment_provider, fee_kobo, charged_kobo)
+     VALUES ($1, $2, $3, $4, $5, 'unpaid', 'awaiting_payment', $6, $7, $8, $9)
      ON CONFLICT DO NOTHING
      RETURNING id, label, status, plan_code, payment_reference, payment_status, verification_status, created_at`,
-    [req.user.id, req.user.orgId ?? null, `${plan.name} Fuel Card`, plan.code, ref, VERIFICATION_ETA, provider]
+    [req.user.id, req.user.orgId ?? null, `${plan.name} Fuel Card`, plan.code, ref, VERIFICATION_ETA, provider, price.feeKobo, price.totalKobo]
   );
   if (!request) throw conflict("A card request is already in progress for this account");
 
   const init = await startCheckout({
     provider,
     txRef: ref,
-    amountKobo: plan.amount_kobo,
+    amountKobo: price.totalKobo,
     email: req.user.email,
     name: req.user.full_name || undefined,
     phone: req.user.phone ?? undefined,
@@ -468,7 +508,7 @@ router.post("/card-request/checkout", asyncHandler(async (req, res) => {
     entityType: "card_request",
     entityId: request.id,
     ip: req.ip,
-    metadata: { planCode: plan.code, amountKobo: plan.amount_kobo, simulated: init.simulated }
+    metadata: { planCode: plan.code, amountKobo: price.baseKobo, feeKobo: price.feeKobo, chargedKobo: price.totalKobo, feeBearer: price.bearer, simulated: init.simulated }
   });
 
   res.status(201).json({
@@ -478,9 +518,159 @@ router.post("/card-request/checkout", asyncHandler(async (req, res) => {
     provider,
     paymentUrl: init.authorization_url ?? null,
     simulated: init.simulated,
+    amountKobo: price.baseKobo,
+    feeKobo: price.feeKobo,
+    totalKobo: price.totalKobo,
+    amountLabel: naira(price.baseKobo),
+    feeLabel: naira(price.feeKobo),
+    totalLabel: naira(price.totalKobo),
+    feeBearer: price.bearer,
     message: init.simulated
       ? "Payment simulation is active because no payment processor is configured."
       : "Complete your payment to continue with verification."
+  });
+}));
+
+/**
+ * Real progress for a card request.
+ *
+ * "View verification status" used to open a dialog listing the three things that
+ * happen next, which is a description of the process rather than the customer's
+ * actual position in it: every step looked identical whether the request was
+ * unpaid, mid-verification, rejected, or already holding an active card.
+ *
+ * Each step's state is derived here, on the server, from the records that exist,
+ * so the tracker cannot disagree with the data. A step is only "done" once the
+ * thing it describes has actually happened, and a request that ends short
+ * (cancelled, withdrawn, rejected) is reported as such rather than being left
+ * showing a spinner that will never resolve.
+ */
+router.get("/card-request/progress", asyncHandler(async (req, res) => {
+  const request = await one(
+    `SELECT r.*, p.name AS plan_name, p.amount_kobo AS plan_amount_kobo
+     FROM card_requests r LEFT JOIN card_plans p ON p.code = r.plan_code
+     WHERE r.user_id = $1 ORDER BY r.created_at DESC LIMIT 1`,
+    [req.user.id]
+  );
+  if (!request) throw notFound("You have no card request yet");
+
+  const card = await one(
+    `SELECT id, status, masked_pan, expiry, label, created_at
+     FROM cards
+     WHERE owner_user_id = $1 AND status NOT IN ('replaced','terminated')
+     ORDER BY created_at DESC LIMIT 1`,
+    [req.user.id]
+  );
+
+  const done = "done";
+  const active = "active";
+  const waiting = "waiting";
+  const failed = "failed";
+
+  // A request that will never progress past a point must say so at that point,
+  // otherwise the tracker promises work that is not going to happen.
+  const abandoned =
+    ["cancelled", "withdrawn", "refunded"].includes(request.status) ||
+    request.payment_status === "refunded";
+  const rejected = request.verification_status === "rejected";
+
+  const steps = [
+    {
+      key: "plan",
+      label: "Plan selected",
+      description: request.plan_name ? `${request.plan_name} plan` : "Plan chosen",
+      state: done,
+      at: request.created_at
+    },
+    {
+      key: "payment",
+      label: "Plan paid",
+      description:
+        request.payment_status === "paid"
+          ? `Paid${request.paid_at ? ` on ${fmtDate(request.paid_at)}` : ""}`
+          : abandoned
+            ? "Not completed"
+            : "Awaiting payment",
+      state:
+        request.payment_status === "paid" ? done : abandoned ? failed : request.payment_status === "failed" ? failed : active,
+      at: request.paid_at ?? null
+    },
+    {
+      key: "details",
+      label: "Identity details submitted",
+      description: request.full_name
+        ? `${request.full_name}${request.bvn ? ` · BVN ••••${String(request.bvn).slice(-4)}` : ""}`
+        : "Name and BVN not provided yet",
+      state: request.full_name
+        ? done
+        : abandoned || request.payment_status !== "paid"
+          ? waiting
+          : active,
+      at: null
+    },
+    {
+      key: "verification",
+      label: "Verification",
+      description: {
+        not_started: request.payment_status === "paid" ? "Waiting for your details" : "Starts after payment and details",
+        pending: "We are checking your name and BVN against national records",
+        verified: "Verified",
+        rejected: "Could not be verified"
+      }[request.verification_status] ?? "Unknown",
+      state: rejected
+        ? failed
+        : request.verification_status === "verified"
+          ? done
+          : request.verification_status === "pending"
+            ? active
+            : waiting,
+      at: null,
+      // 1-3 business days is a commitment, so it is shown only while the clock
+      // is actually running.
+      eta: request.verification_status === "pending" ? request.verification_eta : null
+    },
+    {
+      key: "card",
+      label: "Card issued",
+      description: card
+        ? `${card.label} · ${card.masked_pan} · ${card.status}`
+        : "Produced and activated once verification passes",
+      state: card ? done : rejected || abandoned ? failed : waiting,
+      at: card?.created_at ?? null
+    }
+  ];
+
+  const terminalStates = [done, failed];
+  const firstIncomplete = steps.findIndex((s) => !terminalStates.includes(s.state));
+  const completeCount = steps.filter((s) => s.state === done).length;
+
+  let outcome = "in_progress";
+  if (rejected) outcome = "rejected";
+  else if (abandoned) outcome = "abandoned";
+  else if (card) outcome = "complete";
+  else if (request.verification_status === "not_started" && request.payment_status !== "paid") outcome = "awaiting_payment";
+
+  res.json({
+    request: serializeCardRequest(request),
+    planName: request.plan_name ?? null,
+    planAmountLabel: request.plan_amount_kobo != null ? naira(request.plan_amount_kobo) : null,
+    steps,
+    outcome,
+    // The next thing the customer is expected to do, or null when nothing is
+    // waiting on them.
+    nextAction:
+      outcome === "awaiting_payment"
+        ? "Complete your plan payment to continue"
+        : outcome === "in_progress" && request.payment_status === "paid" && !request.full_name
+          ? "Submit your name and BVN to begin verification"
+          : null,
+    progressPercent: Math.round((completeCount / steps.length) * 100),
+    completedSteps: completeCount,
+    totalSteps: steps.length,
+    currentStepIndex: firstIncomplete === -1 ? steps.length - 1 : firstIncomplete,
+    card: card
+      ? { label: card.label, maskedPan: card.masked_pan, expiry: card.expiry, status: card.status, issuedAt: card.created_at }
+      : null
   });
 }));
 
@@ -559,7 +749,11 @@ router.post("/card-request/resume", asyncHandler(async (req, res) => {
   const init = await startCheckout({
     provider,
     txRef: request.payment_reference,
-    amountKobo: Number(plan.amount_kobo),
+    // The recorded charge, not a freshly computed one. Recomputing the fee here
+    // would silently change what this payment is for if the fee schedule changed
+    // between the original checkout and the retry, and the verification that
+    // follows compares against this exact figure.
+    amountKobo: Number(request.charged_kobo),
     email: req.user.email,
     name: req.user.full_name || undefined,
     phone: req.user.phone ?? undefined,
@@ -754,13 +948,20 @@ router.post("/card-request/verify-payment", asyncHandler(async (req, res) => {
     ? await one("SELECT amount_kobo FROM card_plans WHERE code = $1", [request.plan_code])
     : null;
 
+  // What the customer was asked to pay: the recorded charge, which already
+  // includes any fee they bore. Falling back to the plan price covers requests
+  // created before the fee columns existed.
+  const chargedKobo = request.charged_kobo != null
+    ? Number(request.charged_kobo)
+    : (plan ? Number(plan.amount_kobo) : null);
+
   let verification;
   try {
     verification = await verifyCheckout({
       provider: request.payment_provider,
       reference: ref,
       transactionId: req.body?.transactionId ?? null,
-      expectedAmountKobo: plan?.amount_kobo ?? null,
+      expectedAmountKobo: chargedKobo,
       simulated: Boolean(req.body?.simulated)
     });
   } catch (err) {
@@ -785,11 +986,14 @@ router.post("/card-request/verify-payment", asyncHandler(async (req, res) => {
   );
   const updated = paid ?? (await one("SELECT * FROM card_requests WHERE id = $1", [request.id]));
 
-  // If the customer somehow paid more than the plan is worth, the difference is
-  // returned to them automatically rather than being kept or, worse, silently
-  // absorbed into the wallet.
+  // If the customer somehow paid more than they were asked for, the difference is
+  // returned automatically rather than kept or, worse, absorbed into the wallet.
+  //
+  // Measured against the charged total, not the plan price. Using the plan price
+  // would treat the fee the customer legitimately paid as an overpayment and
+  // refund money that was correctly collected.
   let excessRefundKobo = 0;
-  const dueKobo = plan ? Number(plan.amount_kobo) : null;
+  const dueKobo = chargedKobo;
   const paidKobo = Number(verification.amountKobo ?? 0);
   if (dueKobo != null && paidKobo > dueKobo) {
     excessRefundKobo = paidKobo - dueKobo;
@@ -933,8 +1137,12 @@ router.post("/card-request", asyncHandler(async (req, res) => {
   const targetUserId = req.body?.userId ?? req.user.id;
   const label = typeof req.body?.label === "string" && req.body.label.trim() ? req.body.label.trim().slice(0, 100) : "Fuel Card";
   const request = await one(
-    `INSERT INTO card_requests (user_id, organization_id, label, status)
-     VALUES ($1, $2, $3, 'pending') ON CONFLICT DO NOTHING RETURNING id, label, status, created_at`,
+    // Staff-created requests are not paid through checkout, so there is nothing
+    // to charge. charged_kobo is NOT NULL with no default precisely so this case
+    // has to be stated rather than assumed, and zero is the truthful value: an
+    // admin or company raising a request on someone's behalf is not billing them.
+    `INSERT INTO card_requests (user_id, organization_id, label, status, fee_kobo, charged_kobo)
+     VALUES ($1, $2, $3, 'pending', 0, 0) ON CONFLICT DO NOTHING RETURNING id, label, status, created_at`,
     [targetUserId, req.user.orgId ?? null, label]
   );
   if (!request) throw conflict("A card request is already pending or approved for this account");

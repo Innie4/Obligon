@@ -85,6 +85,15 @@ services:
       # /api/webhooks/flutterwave rejects every event with 401.
       - key: FLW_SECRET_HASH
         sync: false
+      # Gateway fee policy. `platform` absorbs the processor's percentage out of
+      # Obligon's margin; `customer` adds it to the amount charged and itemises
+      # it before payment. The basis points MUST match the rate actually
+      # negotiated with the processor, since too high overcharges the customer
+      # and too low under-collects on every transaction.
+      - key: PAYMENT_FEE_BEARER
+        value: platform
+      - key: PAYMENT_FEE_BASIS_POINTS
+        value: "0"
       - key: SUDO_BASE_URL
         value: https://api.sandbox.sudo.africa/v1
       - key: SUDO_SECRET_API_KEY
