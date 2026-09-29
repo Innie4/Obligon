@@ -99,6 +99,14 @@ services:
       # server and rejected customers at the point of payment.
       - key: MIN_TOPUP_NAIRA
         value: "100"
+      # Which methods the hosted checkout offers. Without this the page falls back
+      # to the account default, which showed PayPal alone for an NGN charge that
+      # cannot be paid that way. Card and bank transfer are how wallets are funded.
+      - key: FLW_PAYMENT_OPTIONS
+        value: card, banktransfer, ussd, account
+      # A bank transfer is not instant; too short an expiry loses the payment.
+      - key: FLW_BANK_TRANSFER_EXPIRY_HOURS
+        value: "24"
       - key: SUDO_BASE_URL
         value: https://api.sandbox.sudo.africa/v1
       - key: SUDO_SECRET_API_KEY

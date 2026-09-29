@@ -64,6 +64,14 @@ const schema = z.object({
   // independently at 500 and 1,000, so a customer could be shown a Pay button the
   // API would then reject.
   MIN_TOPUP_NAIRA: z.string().default("100"),
+  // Which payment methods the hosted checkout offers, as a Flutterwave
+  // comma-separated list. Overrides the per-currency default. Left unset, the
+  // page fell back to the account default and offered PayPal alone for an NGN
+  // charge, which cannot be paid that way.
+  FLW_PAYMENT_OPTIONS: z.string().default(""),
+  // How long a generated bank-transfer virtual account stays payable, in hours.
+  // A transfer is not instant, so a short expiry loses payments.
+  FLW_BANK_TRANSFER_EXPIRY_HOURS: z.string().default("24"),
 
   // Email
   RESEND_API_KEY: z.string().default(""),

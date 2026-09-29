@@ -159,6 +159,52 @@ async function flutterwaveFetch(path, { method = "GET", body } = {}) {
  *
  * @returns {{ authorization_url: string, reference: string, providerTransactionId: string|null, simulated: boolean }}
  */
+/**
+ * Payment methods per currency, as Flutterwave supports them.
+ *
+ * Which methods the hosted page offers is the intersection of what the merchant
+ * account has enabled and what the currency supports, so the set has to be
+ * requested explicitly. Left unset, the page fell back to the account default and
+ * offered PayPal alone for an NGN charge, which cannot be paid that way.
+ *
+ * Card and bank transfer are the primary ways a wallet is funded, so both are
+ * listed first; `account` is Nigerian direct debit, and USSD is the fallback for
+ * customers without a card or a functioning app.
+ */
+const PAYMENT_METHODS_BY_CURRENCY = {
+  NGN: ["card", "banktransfer", "ussd", "account"],
+  USD: ["card", "account"],
+  GBP: ["card", "account"],
+  EUR: ["card", "account"],
+  GHS: ["card", "mobilemoneyghana"],
+  KES: ["card", "mpesa"],
+  ZAR: ["card", "account", "1voucher"]
+};
+
+/** The default methods for a currency, or Flutterwave's own default if unknown. */
+export function paymentOptionsFor(currency) {
+  const key = String(currency ?? "NGN").toUpperCase();
+  const configured = env.FLW_PAYMENT_OPTIONS?.trim();
+  if (configured) return configured;
+  const methods = PAYMENT_METHODS_BY_CURRENCY[key];
+  // An unknown currency falls back to card and transfer rather than to whatever
+  // the account defaults to, which is what produced PayPal-only.
+  return (methods ?? ["card", "banktransfer"]).join(", ");
+}
+
+/**
+ * How long a generated bank-transfer account stays payable, in seconds.
+ *
+ * A transfer is not instant, so a short expiry means the customer transfers
+ * after it lapses and the payment is lost. Clamped to the 30-day ceiling
+ * Flutterwave accepts.
+ */
+function bankTransferExpirySeconds() {
+  const raw = Number(env.FLW_BANK_TRANSFER_EXPIRY_HOURS);
+  const hours = Number.isFinite(raw) && raw > 0 ? raw : 24;
+  return Math.min(Math.round(hours * 3600), 30 * 24 * 3600);
+}
+
 export async function initializeCheckout({
   txRef,
   amountKobo,
@@ -191,6 +237,14 @@ export async function initializeCheckout({
     redirect_url: redirectUrl,
     customer: { email, name, phonenumber: phone || undefined },
     customizations: { title: title || "Obligon LTD Payment" },
+    // Restrict the hosted page to the methods this product actually funds
+    // wallets with. Without this the page falls back to whatever the account
+    // has enabled, which surfaced PayPal as the only option for an NGN charge
+    // that can never be paid that way. PayPal is not an NGN method at all.
+    payment_options: paymentOptionsFor(currency),
+    // A bank transfer is not instant, so the virtual account has to outlive a
+    // realistic transfer. Expiry is in seconds.
+    bank_transfer_options: { expires: bankTransferExpirySeconds() },
     ...(meta ? { meta } : {}),
     ...(sessionMinutes ? { configurations: { session_duration: sessionMinutes } } : {})
   };
