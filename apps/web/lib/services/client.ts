@@ -1215,7 +1215,8 @@ export const publicApi = {
         provider: "flutterwave",
         simulated: true,
         publicKeys: { paystack: null, flutterwave: null },
-        fee: { bearer: "platform", basisPoints: 0, percent: 0 }
+        fee: { bearer: "platform", basisPoints: 0, percent: 0 },
+        minimumTopupKobo: 10_000
       };
     }
     return http<PaymentConfig>("/api/public/payments/config");

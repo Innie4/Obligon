@@ -139,6 +139,13 @@ export interface PaymentConfig {
   simulated: boolean;
   publicKeys: { paystack: string | null; flutterwave: string | null };
   fee: PaymentFeeSchedule;
+  /**
+   * Smallest top-up the API will accept, in kobo.
+   *
+   * Read from the server rather than restated in the client: the two copies used
+   * to disagree, so a customer could be shown a Pay button the API rejected.
+   */
+  minimumTopupKobo: number;
   misconfigured?: boolean;
   missing?: string[];
 }

@@ -4,7 +4,7 @@ import * as React from "react";
 import type { ComponentType } from "react";
 import { AlertTriangle, Building2, Check, CreditCard, FileWarning, Fingerprint, LockKeyhole, ShieldCheck, Snowflake, Upload, X, Loader2, ArrowRight, type LucideProps } from "lucide-react";
 import { useToast } from "@/components/shared/Toast";
-import { api, authApi, mutationsApi, publicApi, type PaymentFeeSchedule } from "@/lib/services";
+import { api, authApi, mutationsApi, publicApi, type PaymentConfig, type PaymentFeeSchedule } from "@/lib/services";
 
 /** Resolve the signed-in customer's card id against the live API (null in mock mode). */
 async function resolveCardId(): Promise<string | null> {
@@ -642,6 +642,7 @@ function TopUpModal({
   // was previously a hardcoded "0.00 (Zero Fee)" that was true in neither
   // direction: the processor always charges something.
   const [feeSchedule, setFeeSchedule] = React.useState<PaymentFeeSchedule | null>(null);
+  const [feeConfig, setFeeConfig] = React.useState<PaymentConfig | null>(null);
   const { error: toastError, success: toastSuccess } = useToast();
 
   React.useEffect(() => {
@@ -649,7 +650,9 @@ function TopUpModal({
     void publicApi
       .getPaymentConfig()
       .then((cfg) => {
-        if (!cancelled) setFeeSchedule(cfg.fee ?? null);
+        if (cancelled) return;
+        setFeeSchedule(cfg.fee ?? null);
+        setFeeConfig(cfg);
       })
       // A failure here must not block topping up; the server remains the
       // authority on what is charged either way.
@@ -659,6 +662,10 @@ function TopUpModal({
     };
   }, []);
 
+  // The minimum comes from the server rather than being restated here. The two
+  // copies used to disagree (₦500 enforced, ₦1,000 offered), so a customer could
+  // be shown a Pay button the API then rejected.
+  const minimumNaira = Math.max(1, Math.round((feeConfig?.minimumTopupKobo ?? 10_000) / 100));
   const quickAmounts = [5000, 10000, 25000, 50000, 100000];
 
   const paymentMethods = [
@@ -677,11 +684,12 @@ function TopUpModal({
   const feeKobo = feeCustomer ? Math.ceil((numericAmount * 100 * (feeSchedule?.basisPoints ?? 0)) / 10_000) : 0;
   const feeLabel = `₦${(feeKobo / 100).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const totalToPay = Math.round(numericAmount + feeKobo / 100);
+  const belowMinimum = !Number.isFinite(numericAmount) || numericAmount < minimumNaira;
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!Number.isFinite(numericAmount) || numericAmount < 1000) {
-      toastError("Please enter a valid top-up amount of at least \u20a61,000.");
+    if (belowMinimum) {
+      toastError(`Please enter a valid top-up amount of at least \u20a6${minimumNaira.toLocaleString("en-NG")}.`);
       return;
     }
     setSubmitting(true);
@@ -779,19 +787,36 @@ function TopUpModal({
           <p className="mt-1 text-sm text-obligon-text">Select an amount and payment method to instantly fund your account.</p>
 
           <div className="mt-6">
-            <label className="text-xs font-extrabold uppercase text-obligon-text block mb-2">
-              Select or Enter Amount (₦)
-            </label>
-            <div className="flex h-14 rounded-xl border border-[#cfd8cc] bg-[#f7fbf8] focus-within:border-obligon-green focus-within:ring-2 focus-within:ring-obligon-green/20">
+            <div className="mb-2 flex items-baseline justify-between gap-2">
+              <label className="text-xs font-extrabold uppercase text-obligon-text">
+                Select or Enter Amount (₦)
+              </label>
+              {/* Stated up front so a customer is not left guessing why the
+                  button is disabled. */}
+              <span className="text-[11px] font-bold text-obligon-text">
+                Minimum ₦{minimumNaira.toLocaleString("en-NG")}
+              </span>
+            </div>
+            <div
+              className={`flex h-14 rounded-xl border bg-[#f7fbf8] focus-within:border-obligon-green focus-within:ring-2 focus-within:ring-obligon-green/20 ${
+                amount.length > 0 && belowMinimum ? "border-[#e0a3a3]" : "border-[#cfd8cc]"
+              }`}
+            >
               <span className="grid w-14 place-items-center font-display text-2xl font-extrabold text-obligon-navy">₦</span>
               <input
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                inputMode="numeric"
+                onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
+                inputMode="decimal"
                 placeholder="25,000"
+                aria-describedby="topup-minimum-hint"
                 className="w-full bg-transparent pr-4 font-display text-2xl font-extrabold text-obligon-navy outline-none"
               />
             </div>
+            {amount.length > 0 && belowMinimum ? (
+              <p id="topup-minimum-hint" className="mt-2 text-xs font-bold text-[#c1121f]">
+                Enter at least ₦{minimumNaira.toLocaleString("en-NG")}.
+              </p>
+            ) : null}
             <div className="mt-3 flex flex-wrap gap-2">
               {quickAmounts.map((amt) => (
                 <button
@@ -867,7 +892,7 @@ function TopUpModal({
               Cancel
             </button>
             <button
-              disabled={submitting || !numericAmount || numericAmount < 1000}
+              disabled={submitting || belowMinimum}
               type="submit"
               className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white shadow-green flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >

@@ -95,6 +95,20 @@ export function feeSchedule() {
   };
 }
 
+/**
+ * Smallest top-up accepted, in kobo.
+ *
+ * Resolved once here and published through the public payments config so the
+ * browser validates against the same figure the server enforces. A malformed or
+ * negative value falls back to 100 naira rather than producing a minimum of zero,
+ * which would let a zero-value checkout reach the processor.
+ */
+export function minimumTopupKobo() {
+  const raw = Number(env.MIN_TOPUP_NAIRA);
+  if (!Number.isFinite(raw) || raw <= 0) return 10_000;
+  return Math.max(1, Math.round(raw)) * 100;
+}
+
 export function paymentProviderStatus() {
   return {
     active: activeProviderSafely(),

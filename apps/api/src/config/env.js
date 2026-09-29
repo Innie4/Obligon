@@ -57,6 +57,13 @@ const schema = z.object({
   // schema and parsed by the fee helper, because a non-numeric value must
   // degrade to no fee rather than becoming NaN and poisoning an amount.
   PAYMENT_FEE_BASIS_POINTS: z.string().default(""),
+  // Smallest top-up the platform accepts, in naira.
+  //
+  // This is published through the public payments config so the browser uses the
+  // same figure the server enforces. The two were previously hardcoded
+  // independently at 500 and 1,000, so a customer could be shown a Pay button the
+  // API would then reject.
+  MIN_TOPUP_NAIRA: z.string().default("100"),
 
   // Email
   RESEND_API_KEY: z.string().default(""),

@@ -7,7 +7,7 @@ import { naira, fmtDate, fmtDateTime, relativeTime, dayGroup, maskPan, maskAccou
 import { customerSavings, monthStart } from "../lib/savings.js";
 import { notify, audit, securityLog } from "../lib/notify.js";
 import { resolveWallet } from "../lib/wallets.js";
-import { startCheckout, verifyCheckout, activeProvider, checkoutIsSimulated, priceWithFee } from "../lib/payments.js";
+import { startCheckout, verifyCheckout, activeProvider, checkoutIsSimulated, priceWithFee, minimumTopupKobo } from "../lib/payments.js";
 import { sudoEnabled, createSudoCustomer, issueSudoCard, setSudoCardStatus, fundSudoCard, maskFromSudo } from "../lib/sudo.js";
 import { receiptPdf } from "../lib/pdf.js";
 import { uploadFile, signedUrl } from "../lib/storage.js";
@@ -204,7 +204,10 @@ router.get("/wallet", asyncHandler(async (req, res) => {
 router.post("/wallet/topup", asyncHandler(async (req, res) => {
   const { amount, method } = req.body ?? {};
   const amountKobo = Math.round(Number(amount) * 100);
-  if (!amountKobo || amountKobo < 50000) throw badRequest("Minimum top-up is ₦500");
+  const minimum = minimumTopupKobo();
+  if (!Number.isFinite(Number(amount)) || !amountKobo || amountKobo < minimum) {
+    throw badRequest(`Minimum top-up is ${naira(minimum)}`);
+  }
   if (amountKobo > 500000000) throw badRequest("Maximum top-up is ₦5,000,000 per transaction");
 
   const provider = activeProvider();
