@@ -17,6 +17,7 @@
     "check:price": "node --env-file-if-exists=../../.env src/scripts/price-check.mjs",
     "check:live": "node --env-file-if-exists=../../.env src/scripts/live-key-check.mjs",
     "check:min": "node --env-file-if-exists=../../.env tests/minimum-topup.check.mjs",
+    "check:errors": "node src/scripts/check-error-visibility.mjs",
     "check:wallet": "node tests/wallet-payments.check.mjs",
     "check:card": "node tests/card-request-flow.check.mjs",
     "check:resume": "node --env-file-if-exists=../../.env tests/resume-payment.check.mjs",

@@ -291,10 +291,13 @@ export interface ApiClient {
 export class ApiError extends Error {
   status: number;
   details?: Record<string, string[]>;
-  constructor(status: number, message: string, details?: Record<string, string[]>) {
+  /** True when the server deliberately sent its real reason rather than a generic apology. */
+  exposable: boolean;
+  constructor(status: number, message: string, details?: Record<string, string[]>, exposable = false) {
     super(message);
     this.status = status;
     this.details = details;
+    this.exposable = exposable;
   }
 }
 
@@ -352,7 +355,12 @@ async function http<T>(path: string, init: RequestInit = {}, retried = false, al
 
   if (!res.ok) {
     const message = (isJson && body?.error?.message) || `Request failed (${res.status})`;
-    throw new ApiError(res.status, message, isJson ? body?.error?.details : undefined);
+    throw new ApiError(
+      res.status,
+      message,
+      isJson ? body?.error?.details : undefined,
+      isJson && body?.error?.exposable === true
+    );
   }
   return body as T;
 }
@@ -861,10 +869,12 @@ export const mutationsApi = {
         body: JSON.stringify({ planCode })
       });
     } catch (err) {
-      // A 503 here almost always means the deployment has no payment processor
-      // configured. "Service Unavailable" tells a customer nothing useful, so
-      // say what actually happened while keeping the server's detail for logs.
+      // A 503 here is nearly always a payment configuration or provider problem,
+      // not a temporary blip. "Service Unavailable" tells a customer nothing
+      // useful, so say what actually happened — unless the server masked the
+      // reason, in which case keep the generic wording and do not invent a cause.
       if (err instanceof ApiError && err.status === 503) {
+        if (err.exposable) throw err;
         throw new ApiError(
           503,
           "Card purchases are temporarily unavailable. Please try again shortly or contact support on 0700 000 0000.",

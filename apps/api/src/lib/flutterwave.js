@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { env } from "../config/env.js";
-import { badRequest, notFound, serviceUnavailable } from "./errors.js";
+import { badRequest, misconfigured, notFound } from "./errors.js";
 import { providerFetch } from "./http.js";
 
 /**
@@ -95,6 +95,27 @@ export function paidAmountFrom(data) {
   return Number(raw) || 0;
 }
 
+/**
+ * Reduce a provider message to something safe to return to a customer.
+ *
+ * Flutterwave's own error text is business-level and is exactly what identifies
+ * the problem — "Account not live", "Invalid API key", "amount too small". It was
+ * being masked into "Something went wrong on our side", so a checkout that could
+ * never work looked identical to a transient fault. Anything key-shaped is
+ * stripped first, because a provider will occasionally echo part of a credential
+ * back and that must not reach a browser.
+ */
+export function safeProviderMessage(message) {
+  return String(message ?? "")
+    // FLWPUBK-…, FLWSECK-…, bearer tokens, and long opaque secrets.
+    .replace(/FLW(?:PUBK|SECK)[\w-]*/gi, "[redacted]")
+    .replace(/Bearer\s+\S+/gi, "[redacted]")
+    .replace(/\b[a-f0-9]{32,}\b/gi, "[redacted]")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 200);
+}
+
 async function flutterwaveFetch(path, { method = "GET", body } = {}) {
   const res = await providerFetch(`${BASE}${path}`, {
     method,
@@ -119,7 +140,16 @@ async function flutterwaveFetch(path, { method = "GET", body } = {}) {
       err.transactionMissing = true;
       throw err;
     }
-    throw serviceUnavailable(message);
+
+    // Flagged exposable so the provider's own reason reaches the caller. A
+    // rejected checkout is a configuration or commercial problem — an account
+    // not enabled for live payments, a revoked key — and none of those are fixed
+    // by the customer trying again, so hiding them only delays the diagnosis.
+    // The full error is still logged server-side either way.
+    const err = misconfigured(`Payment could not be started: ${safeProviderMessage(message)}`);
+    err.providerStatus = res.status ?? null;
+    err.providerMessage = message;
+    throw err;
   }
   return data.data ?? data;
 }
@@ -143,7 +173,7 @@ export async function initializeCheckout({
   split = null
 }) {
   if (!enabled()) {
-    if (!simulatedCheckoutEnabled()) throw serviceUnavailable("Flutterwave is not configured");
+    if (!simulatedCheckoutEnabled()) throw misconfigured("Flutterwave is not configured. The deployment is missing its payment credentials.");
     return {
       authorization_url: redirectUrl,
       reference: txRef,
@@ -175,7 +205,17 @@ export async function initializeCheckout({
 
   const data = await flutterwaveFetch("/payments", { method: "POST", body });
 
-  if (!data?.link) throw serviceUnavailable("Flutterwave did not return a checkout link");
+  // A 2xx with no link is unusual and means the provider accepted the request
+  // without creating a session. Reported with the response so it is diagnosable,
+  // because otherwise the customer simply sees an unexplained 503.
+  if (!data?.link) {
+    const detail = safeProviderMessage(data?.message ?? JSON.stringify(data ?? {}).slice(0, 160));
+    const err = misconfigured(
+      `Payment could not be started: Flutterwave accepted the request but returned no checkout link${detail ? ` (${detail})` : ""}.`
+    );
+    err.providerStatus = 200;
+    throw err;
+  }
   return {
     authorization_url: data.link,
     reference: txRef,
@@ -192,7 +232,7 @@ export async function initializeCheckout({
  */
 export async function verifyCheckout({ transactionId, reference, expectedAmountKobo, expectedCurrency = "NGN", simulated = false }) {
   if (simulated) {
-    if (!simulatedCheckoutEnabled()) throw serviceUnavailable("Flutterwave is not configured");
+    if (!simulatedCheckoutEnabled()) throw misconfigured("Flutterwave is not configured. The deployment is missing its payment credentials.");
     return {
       status: "successful",
       paid: true,
@@ -203,7 +243,7 @@ export async function verifyCheckout({ transactionId, reference, expectedAmountK
     };
   }
 
-  if (!enabled()) throw serviceUnavailable("Flutterwave is not configured");
+  if (!enabled()) throw misconfigured("Flutterwave is not configured. The deployment is missing its payment credentials.");
 
   // Prefer the numeric transaction id; fall back to the merchant reference.
   const data = transactionId
@@ -297,7 +337,7 @@ export function parseWebhookEvent(payload) {
  */
 export async function refundTransaction({ transactionId, amountKobo = null, reason = null, simulated = false }) {
   if (!enabled()) {
-    if (!simulatedCheckoutEnabled()) throw serviceUnavailable("Flutterwave is not configured");
+    if (!simulatedCheckoutEnabled()) throw misconfigured("Flutterwave is not configured. The deployment is missing its payment credentials.");
     return { id: null, status: "pending", refundedKobo: amountKobo ?? 0, simulated: true };
   }
   if (!transactionId) throw badRequest("A transaction id is required to issue a refund");
@@ -338,7 +378,7 @@ export async function createCollectionSubaccount({
   countryCode = "NG",
   splitRatioBp = 0
 }) {
-  if (!enabled()) throw serviceUnavailable("Flutterwave is not configured");
+  if (!enabled()) throw misconfigured("Flutterwave is not configured. The deployment is missing its payment credentials.");
   const data = await flutterwaveFetch("/subaccounts", {
     method: "POST",
     body: {

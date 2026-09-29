@@ -1,5 +1,5 @@
 import { env } from "../config/env.js";
-import { serviceUnavailable } from "./errors.js";
+import { misconfigured, serviceUnavailable } from "./errors.js";
 import * as paystack from "./paystack.js";
 import * as flutterwave from "./flutterwave.js";
 
@@ -25,8 +25,14 @@ function configured(name) {
 export function activeProvider() {
   if (env.PAYMENT_PROVIDER) {
     if (!configured(env.PAYMENT_PROVIDER)) {
-      throw serviceUnavailable(
-        `PAYMENT_PROVIDER is set to ${env.PAYMENT_PROVIDER} but that provider is not configured`
+      // Exposable: this is the first call a checkout route makes, so its error is
+      // the most likely one a customer ever sees, and it was being masked into a
+      // generic apology. It names the provider that is misconfigured and what is
+      // missing, so it can be acted on without reading the server log.
+      throw misconfigured(
+        `PAYMENT_PROVIDER is set to ${env.PAYMENT_PROVIDER} but that provider is not configured. ` +
+          `Set ${env.PAYMENT_PROVIDER === "flutterwave" ? "FLW_PUBLIC_KEY and FLW_SECRET_KEY" : "PAYSTACK_PUBLIC_KEY and PAYSTACK_SECRET_KEY"} ` +
+          "in the deployment environment, or unset PAYMENT_PROVIDER to auto-detect."
       );
     }
     return env.PAYMENT_PROVIDER;

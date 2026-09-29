@@ -72,6 +72,10 @@ export function createApp() {
     res.status(status).json({
       error: {
         message: safeToShow ? err.message : "Something went wrong on our side. Please try again.",
+        // Tells the client the message is the real, deliberate one rather than a
+        // generic apology, so it does not overwrite it with friendly wording and
+        // hide the reason a payment could not be started.
+        ...(err.expose === true ? { exposable: true } : {}),
         ...(err.details ? { details: err.details } : {})
       }
     });
