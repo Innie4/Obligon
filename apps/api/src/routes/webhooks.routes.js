@@ -157,18 +157,25 @@ router.post("/flutterwave", webhookLimiter, async (req, res) => {
     if (topup && topup.status === "pending") {
       // Trust the webhook to route, but never the amount: re-verify the charge
       // with Flutterwave before crediting anything.
+      //
+      // charged_kobo, not amount_kobo: the customer was charged the base plus any
+      // fee they bear, so comparing against the base alone rejected a correctly
+      // paid transfer. That is why a settled bank transfer could be confirmed by
+      // the provider and still never reach the wallet.
       const check = await verifyCheckout({
         provider: topup.provider,
         reference: parsed.reference,
         transactionId: parsed.transactionId,
-        expectedAmountKobo: topup.amount_kobo,
+        expectedAmountKobo: Number(topup.charged_kobo ?? topup.amount_kobo),
         simulated: false
       });
       if (check.paid) {
         await completeTopUp(topup);
-      } else {
-        await q("UPDATE top_ups SET status = 'failed' WHERE id = $1", [topup.id]);
       }
+      // Otherwise the row is deliberately left pending. A bank transfer can
+      // arrive before the provider will confirm it, and marking it failed here
+      // meant the eventual settlement had nothing left to complete. The
+      // reconciler owns the give-up decision, on a real attempt count.
     }
 
     // Fuel-card plan purchase
@@ -180,11 +187,16 @@ router.post("/flutterwave", webhookLimiter, async (req, res) => {
       const plan = cardRequest.plan_code
         ? await one("SELECT amount_kobo FROM card_plans WHERE code = $1", [cardRequest.plan_code])
         : null;
+      // charged_kobo for the same reason as the top-up above: the recorded charge
+      // is what the customer actually paid, and a plan price is not that.
       const check = await verifyCheckout({
         provider: cardRequest.payment_provider,
         reference: parsed.reference,
         transactionId: parsed.transactionId,
-        expectedAmountKobo: plan?.amount_kobo ?? null,
+        expectedAmountKobo:
+          cardRequest.charged_kobo != null
+            ? Number(cardRequest.charged_kobo)
+            : plan?.amount_kobo ?? null,
         simulated: false
       });
       if (check.paid) {
@@ -227,9 +239,10 @@ router.post("/flutterwave", webhookLimiter, async (req, res) => {
             link: "/customer/card"
           });
         }
-      } else {
-        await q("UPDATE card_requests SET payment_status = 'failed', updated_at = now() WHERE id = $1", [cardRequest.id]);
       }
+      // As with the top-up, an unconfirmed charge is left alone. A bank transfer
+      // can reach the webhook before the provider will verify it, and a row
+      // marked failed here could never be completed by the later settlement.
     }
 
     await audit({

@@ -314,8 +314,11 @@ export async function verifyCheckout({ transactionId, reference, expectedAmountK
   // payments or, far worse, accept a fraction of the price as full payment.
   const unit = paid ? detectAmountUnit(providerAmount, expectedAmountKobo) : null;
   if (paid && expectedAmountKobo != null && unit === null) {
+    // Both figures in naira, the unit a human reads. Stating the expected amount
+    // in kobo is what made a correct N101 payment look like a "10000 kobo"
+    // mismatch, which is exactly the shape of the bug being reported here.
     throw badRequest(
-      `Payment amount ${providerAmount} does not match the ${expectedAmountKobo} kobo expected`
+      `Payment of ${providerAmount} ${currency} does not match the ${expectedAmountKobo / 100} expected`
     );
   }
   const amountKobo = paid && unit ? toKobo(providerAmount, unit) : Math.round(providerAmount);

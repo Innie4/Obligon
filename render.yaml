@@ -91,9 +91,9 @@ services:
       # negotiated with the processor, since too high overcharges the customer
       # and too low under-collects on every transaction.
       - key: PAYMENT_FEE_BEARER
-        value: platform
+        value: customer
       - key: PAYMENT_FEE_BASIS_POINTS
-        value: "0"
+        value: "100"
       # Smallest top-up accepted, in naira. Published to the browser so the two
       # cannot drift; a client-side copy once enforced a stricter limit than the
       # server and rejected customers at the point of payment.

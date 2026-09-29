@@ -39,6 +39,7 @@ import {
 import { api, mutationsApi, DEFAULT_NOTIFICATION_PREFS, ApiError, type CardCheckout, type CardPlan, type CardRequest, type CardRequestProgress, type CustomerTransaction, type NotificationPrefs, type OpenCardRequest } from "@/lib/services";
 import { AsyncBoundary } from "@/components/shared/States";
 import { useAsync } from "@/components/shared/useAsync";
+import { usePolling } from "@/components/shared/usePolling";
 import { useSession } from "@/components/shared/AuthContext";
 import { useToast } from "@/components/shared/Toast";
 import { Toggle } from "@/components/shared/Toggle";
@@ -48,6 +49,12 @@ import { CardDetailsModal, CardPlanModal, CardSubmittedModal, PendingPaymentModa
 import { ConfirmModal, PinModal } from "../shared/Dialogs";
 import { StationMap } from "../shared/StationMap";
 import { routes } from "../site/routes";
+
+// Short enough that a customer watching a bank transfer does not conclude it
+// failed, long enough that the API and the render free tier are not the reason
+// it is slow. "A couple of seconds" was the ask; this is the value that
+// satisfies it without a request per second per open tab.
+const BALANCE_POLL_MS = 4000;
 
 const toneClasses: Record<CustomerTone, string> = {
   green: "bg-[#e8fbd7] text-obligon-green",
@@ -195,7 +202,14 @@ function greetingHour() {
 function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
   const { user } = useSession();
   const router = useRouter();
-  const { status, data: metrics, error, reload } = useAsync(() => api.getCustomerOverviewMetrics(), [balanceRefreshKey]);
+  const { status, data: metrics, error, reload, refresh } = useAsync(
+    () => api.getCustomerOverviewMetrics(),
+    [balanceRefreshKey]
+  );
+  // A fuel purchase in another tab, or a bank transfer that has just settled,
+  // changes the balance without touching this page. Polling is what stops the
+  // customer concluding their money went missing.
+  usePolling(refresh, { intervalMs: BALANCE_POLL_MS });
   const firstName = user?.name?.split(" ")[0] ?? "Driver";
   const totalBalance = metricValue(metrics, "Total Account Balance", "₦0.00");
   // Read from their own metrics. MTD Savings used to be scraped out of the MTD
@@ -1162,9 +1176,25 @@ function WalletPage({
   balanceRefreshKey: number;
 }) {
   const router = useRouter();
-  const { status: topUpsStatus, data: desktopTopUps, error: topUpsError, reload: reloadTopUps } = useAsync(() => api.getCustomerDesktopTopUps());
+  const {
+    status: topUpsStatus,
+    data: desktopTopUps,
+    error: topUpsError,
+    reload: reloadTopUps,
+    refresh: refreshTopUps
+  } = useAsync(() => api.getCustomerDesktopTopUps(), [balanceRefreshKey]);
   const { data: topUpHistory } = useAsync(() => api.getCustomerTopUpHistory());
-  const { data: overviewMetrics } = useAsync(() => api.getCustomerOverviewMetrics(), [balanceRefreshKey]);
+  const { data: overviewMetrics, refresh: refreshBalance } = useAsync(
+    () => api.getCustomerOverviewMetrics(),
+    [balanceRefreshKey]
+  );
+  // Both the balance and the ledger move when money arrives, so both are
+  // refreshed together. Polling only the balance would leave the amount correct
+  // and the transaction list behind it, which is its own kind of wrong.
+  usePolling(() => {
+    refreshBalance();
+    refreshTopUps();
+  }, { intervalMs: BALANCE_POLL_MS });
   const totalBalance = metricValue(overviewMetrics, "Total Account Balance", "₦0.00");
   // The real budget limit, or nothing. Showing a badge only when there is an
   // actual limit avoids implying a facility that was never set.

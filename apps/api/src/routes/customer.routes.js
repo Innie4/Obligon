@@ -194,8 +194,13 @@ router.get("/wallet", asyncHandler(async (req, res) => {
     topUps: ledger.filter((l) => l.direction === "credit").map((l) => [
       l.description || "Wallet Top-Up", fmtDate(l.created_at), `+ ${naira(l.amount_kobo)}`
     ]),
-    desktopTopUps: ledger.filter((l) => l.direction === "credit").map((l) => [
-      fmtDate(l.created_at), l.reference ?? reference("TRX"), l.description || "Bank Transfer", `+${naira(l.amount_kobo)}`
+    // Every direction, not just credits. A debit has to be visible immediately or
+    // the balance looks like it grew on its own.
+    desktopTopUps: ledger.map((l) => [
+      fmtDate(l.created_at),
+      l.reference ?? reference("TRX"),
+      l.description || (l.direction === "credit" ? "Top-up" : "Fuel purchase"),
+      `${l.direction === "credit" ? "+" : "-"}${naira(l.amount_kobo)}`
     ]),
     ledger: ledger.map((l) => ({ ...l, amountLabel: `${l.direction === "credit" ? "+" : "-"}${naira(l.amount_kobo)}`, balanceLabel: naira(l.balance_after_kobo), time: fmtDateTime(l.created_at) }))
   });
@@ -325,7 +330,9 @@ export async function completeTopUp(topup) {
     if (!marked.length) return;
     completed = true;
   });
-  if (!completed) return;
+  // Reports whether this caller was the one that moved the row, so a webhook and a
+  // reconciliation pass cannot both claim the same credit.
+  if (!completed) return false;
 
   // Company accounts settle into the organization wallet, so the wallet this
   // top-up was raised against must be used rather than "any wallet for this
@@ -343,7 +350,10 @@ export async function completeTopUp(topup) {
     walletId: wallet.id,
     amountKobo: topup.amount_kobo,
     idempotencyKey: `topup:${topup.id}`,
-    description: `Top-up via ${topup.method}`,
+    // provider rather than method: a top-up can be settled by a bank transfer or
+    // USSD after being started as a card, so the method recorded at checkout time
+    // is not what was actually used.
+    description: `Top-up via ${topup.provider ?? "payment provider"}`,
     ledgerReference: topup.reference
   });
 
@@ -355,6 +365,7 @@ export async function completeTopUp(topup) {
   );
 
   await notify({ userId: topup.user_id, title: "Transaction Alert", body: `Success: ${naira(topup.amount_kobo)} added to your wallet.`, category: "transactions", link: "/customer/wallet" });
+  return true;
 }
 
 // ============ PAYMENT METHODS ============
