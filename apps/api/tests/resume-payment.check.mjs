@@ -103,7 +103,30 @@ if (sessionId) {
   );
   const flw = await fetch(`${CONFIG_HOST}/${sessionId}?json=1`);
   const session = await flw.json();
-  say(Number(session.amount) === 3500, "the resumed checkout shows the plan price", `amount=${session.amount} (expected 3500)`);
+  // The resumed session must charge the amount recorded on the request, which is
+  // the plan price plus any gateway fee the customer bears. Asserting the bare
+  // plan price would be wrong whenever a fee applies, and it would also hide a
+  // real regression: recomputing the fee at resume time rather than using the
+  // recorded figure, which would silently change what the payment is for.
+  // A card request stores only the charged amount; the price itself lives on the
+  // plan, joined here so the test can show base + fee = charged.
+  const recorded = await one(
+    `SELECT r.charged_kobo, r.fee_kobo, p.amount_kobo AS plan_price
+     FROM card_requests r LEFT JOIN card_plans p ON p.code = r.plan_code
+     WHERE r.payment_reference = $1`,
+    [reference]
+  );
+  const expectedKobo = Number(recorded.charged_kobo);
+  say(
+    Number(session.amount) * 100 === expectedKobo,
+    "the resumed checkout charges the recorded amount, not a recomputed fee",
+    `NGN ${session.amount} (charged_kobo=${expectedKobo}, plan=${recorded.plan_price}, fee=${recorded.fee_kobo})`
+  );
+  say(
+    Number(recorded.charged_kobo) === Number(recorded.plan_price) + Number(recorded.fee_kobo),
+    "the recorded charge is the plan price plus the fee",
+    `${recorded.plan_price} + ${recorded.fee_kobo} = ${recorded.charged_kobo}`
+  );
   say(session.currency === "NGN", "resumed checkout is in NGN", session.currency);
   say(String(session.tx_ref) === reference, "the resumed session carries the original reference", String(session.tx_ref));
 } else {

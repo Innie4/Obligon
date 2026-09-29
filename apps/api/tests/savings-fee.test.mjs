@@ -146,11 +146,52 @@ say(at150.feeKobo === 7_500, "1.50% of 5,000 is 75.00", naira(at150.feeKobo));
 say(at150.totalKobo === 507_500, "the total is price plus fee", naira(at150.totalKobo));
 say(at150.baseKobo === 500_000, "the base price is preserved for the wallet credit", naira(at150.baseKobo));
 
-// rounding must favour collection, never leak value
+// Every charged total must be a whole naira, or Flutterwave refuses the checkout.
+env.PAYMENT_FEE_BASIS_POINTS = "1000";
+for (const base of [10_000, 10_100, 10_150, 10_199, 12_345, 1_000]) {
+  const p = priceWithFee(base);
+  say(
+    p.totalKobo % 100 === 0,
+    `a N${(base / 100).toLocaleString("en-NG")} base at 10% charges a whole naira`,
+    `${p.totalKobo} kobo`
+  );
+  say(
+    p.feeKobo === p.totalKobo - p.baseKobo,
+    `the fee and base always add up to the total for N${(base / 100).toLocaleString("en-NG")}`,
+    `${p.baseKobo} + ${p.feeKobo} = ${p.totalKobo}`
+  );
+  say(p.feeKobo >= 0, "the fee is never negative", `${p.feeKobo}`);
+}
+// The specific case that was unpayable: N101 at 10% used to produce N111.10.
+const unpayable = priceWithFee(10_100);
+say(unpayable.totalKobo === 11_200, "N101 at 10% charges a whole N112.00", naira(unpayable.totalKobo));
+say(unpayable.feeKobo === 1_100, "the rounding is disclosed in the fee, not hidden", naira(unpayable.feeKobo));
+
+// An implausible rate must be flagged rather than silently applied.
+say(feeSchedule().suspicious === true, "a 10% rate is flagged as suspicious", JSON.stringify(feeSchedule()));
+env.PAYMENT_FEE_BASIS_POINTS = "150";
+say(feeSchedule().suspicious === false, "a 1.5% rate is not flagged");
+env.PAYMENT_FEE_BASIS_POINTS = "500";
+say(feeSchedule().suspicious === false, "exactly 5% is at the boundary, not over it");
+
+// The fee must never under-collect. Because the total is rounded up to a whole
+// naira so Flutterwave will accept it, the fee can exceed the exact proportional
+// amount by less than one naira; it is disclosed rather than hidden.
 env.PAYMENT_FEE_BASIS_POINTS = "100";
-const odd = priceWithFee(250_050);
-say(Number.isInteger(odd.feeKobo), "the fee is a whole number of kobo", odd.feeKobo);
-say(odd.feeKobo === Math.ceil(250_050 / 100), "the fee rounds up so no fraction is left uncollected", `${odd.feeKobo} vs exact ${250_050 / 100}`);
+const exactFee = (250_050 * 100) / 10_000;
+const rounded = priceWithFee(250_050);
+say(rounded.feeKobo >= Math.ceil(exactFee), "the fee is never less than the exact proportion", `${rounded.feeKobo} >= ${Math.ceil(exactFee)}`);
+say(
+  rounded.feeKobo < Math.ceil(exactFee) + 100,
+  "rounding to a whole naira adds less than one naira",
+  `${rounded.feeKobo} vs exact ${exactFee}`
+);
+say(rounded.totalKobo % 100 === 0, "the total is a whole naira", `${rounded.totalKobo} kobo`);
+say(
+  rounded.roundingKobo === rounded.totalKobo - 250_050 - Math.ceil(exactFee),
+  "the rounding is reported so it can be disclosed",
+  `roundingKobo=${rounded.roundingKobo}`
+);
 
 // edge cases
 say(priceWithFee(0).totalKobo === 0, "a zero amount produces a zero total");

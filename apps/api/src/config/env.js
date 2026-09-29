@@ -161,6 +161,17 @@ export function configurationWarnings() {
       "PAYMENT_FEE_BEARER=customer but PAYMENT_FEE_BASIS_POINTS is 0 — the customer will be charged no gateway fee at all"
     );
   }
+  // Overcharging every customer is the worst outcome available here, so an
+  // implausible rate is called out separately from ordinary warnings. Real card
+  // fees are a low single-digit percentage; anything much above that is far more
+  // likely a units mistake than a price.
+  const feeBp = Number(env.PAYMENT_FEE_BASIS_POINTS);
+  if (String(env.PAYMENT_FEE_BEARER ?? "platform").toLowerCase() === "customer" && feeBp > 500) {
+    warnings.push(
+      `PAYMENT_FEE_BASIS_POINTS is ${feeBp} = ${(feeBp / 100).toFixed(2)}% per transaction, which is far above a real card fee. ` +
+        "Confirm this is the intended rate and not the percentage typed where basis points were expected: every customer pays this on every top-up."
+    );
+  }
   return warnings;
 }
 

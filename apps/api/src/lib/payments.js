@@ -54,6 +54,19 @@ export function activeProvider() {
  */
 export const FEE_BEARERS = { customer: "customer", platform: "platform" };
 
+/**
+ * Above this, the rate is treated as a configuration mistake rather than a price.
+ *
+ * Card and bank charges in Nigeria cost a low single-digit percentage; 10% is
+ * roughly seven times the real card rate and is the shape a units slip takes
+ * (typing the percentage instead of the basis points). It is not blocked outright,
+ * because a merchant may genuinely price something that way, but it is refused as
+ * "silently acceptable": the rate is published as suspicious, warned about at
+ * boot, and named in the boot log. Overcharging a customer is the worst outcome
+ * available here, so it must be impossible to miss.
+ */
+const IMPLAUSIBLE_FEE_BASIS_POINTS = 500;
+
 /** Fee in basis points, e.g. 150 = 1.50%. */
 function feeBasisPoints() {
   const raw = Number(env.PAYMENT_FEE_BASIS_POINTS ?? 0);
@@ -71,27 +84,41 @@ export function feeBearer() {
  *
  * The fee is computed in kobo and rounded up, because the processor rounds the
  * fee in its own favour and rounding down here would leave a fraction of a kobo
- * uncollected on every transaction. The returned total is what must be charged;
- * the fee is what the customer was told about, and the two are always consistent
- * because they come from the same call.
+ * uncollected on every transaction.
  *
- * @returns {{ baseKobo: number, feeKobo: number, totalKobo: number, basisPoints: number, bearer: string }}
+ * The total is then rounded up to a whole naira, because Flutterwave charges in
+ * the currency's major unit and rejects a total that is not one. Without this, a
+ * base of N101 at 10% produced N111.10 and the checkout was refused outright,
+ * so any amount that did not happen to divide evenly was simply unpayable. The
+ * sub-naira remainder is folded into the fee rather than dropped, so the two
+ * figures the customer is shown always add up to the amount charged.
+ *
+ * @returns {{ baseKobo: number, feeKobo: number, totalKobo: number, basisPoints: number, bearer: string, roundingKobo: number }}
  */
 export function priceWithFee(baseAmountKobo) {
   const baseKobo = Math.max(0, Math.round(Number(baseAmountKobo) || 0));
   const bearer = feeBearer();
   const basisPoints = bearer === FEE_BEARERS.customer ? feeBasisPoints() : 0;
-  const feeKobo = basisPoints > 0 ? Math.ceil((baseKobo * basisPoints) / 10_000) : 0;
-  return { baseKobo, feeKobo, totalKobo: baseKobo + feeKobo, basisPoints, bearer };
+  const rawFeeKobo = basisPoints > 0 ? Math.ceil((baseKobo * basisPoints) / 10_000) : 0;
+  const exactTotalKobo = baseKobo + rawFeeKobo;
+  // Flutterwave's major unit: a whole number of naira.
+  const totalKobo = exactTotalKobo % 100 === 0 ? exactTotalKobo : Math.ceil(exactTotalKobo / 100) * 100;
+  const feeKobo = totalKobo - baseKobo;
+  return { baseKobo, feeKobo, totalKobo, basisPoints, bearer, roundingKobo: totalKobo - exactTotalKobo };
 }
 
 /** The fee schedule, safe to expose publicly so the UI can disclose it. */
 export function feeSchedule() {
   const bearer = feeBearer();
+  const basisPoints = bearer === FEE_BEARERS.customer ? feeBasisPoints() : 0;
   return {
     bearer,
-    basisPoints: bearer === FEE_BEARERS.customer ? feeBasisPoints() : 0,
-    percent: (bearer === FEE_BEARERS.customer ? feeBasisPoints() : 0) / 100
+    basisPoints,
+    percent: basisPoints / 100,
+    // Flagged rather than hidden, so an implausible rate surfaces in the config
+    // the client already fetches instead of quietly overcharging everyone.
+    suspicious: basisPoints > IMPLAUSIBLE_FEE_BASIS_POINTS,
+    plausibleMaxBasisPoints: IMPLAUSIBLE_FEE_BASIS_POINTS
   };
 }
 

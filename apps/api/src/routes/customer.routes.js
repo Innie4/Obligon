@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { q, one, tx } from "../db.js";
-import { asyncHandler, badRequest, notFound, forbidden, conflict, serviceUnavailable } from "../lib/errors.js";
+import { asyncHandler, badRequest, notFound, forbidden, conflict, serviceUnavailable, misconfigured } from "../lib/errors.js";
 import { requireAuth } from "../middleware/auth.js";
 import { hashPin, verifyPin, randomToken } from "../lib/security.js";
 import { naira, fmtDate, fmtDateTime, relativeTime, dayGroup, maskPan, maskAccount, distanceLabel, reference, initials } from "../lib/format.js";
@@ -211,7 +211,7 @@ router.post("/wallet/topup", asyncHandler(async (req, res) => {
   if (amountKobo > 500000000) throw badRequest("Maximum top-up is ₦5,000,000 per transaction");
 
   const provider = activeProvider();
-  if (!provider) throw serviceUnavailable("No payment provider is configured");
+  if (!provider) throw misconfigured("No payment provider is configured. The deployment is missing its payment credentials.");
 
   const wallet = await getWallet(req.user.id, req.user.orgId ?? null);
   const ref = reference("TRX");
@@ -477,7 +477,7 @@ router.post("/card-request/checkout", asyncHandler(async (req, res) => {
 
   const ref = reference("PLAN");
   const provider = activeProvider();
-  if (!provider) throw serviceUnavailable("No payment provider is configured");
+  if (!provider) throw misconfigured("No payment provider is configured. The deployment is missing its payment credentials.");
 
   // The plan price is what the customer receives; the gateway fee is added on top
   // when the customer bears it. Both are recorded so verification and any
@@ -747,7 +747,7 @@ router.post("/card-request/resume", asyncHandler(async (req, res) => {
   if (!plan) throw badRequest("That plan is no longer available");
 
   const provider = activeProvider();
-  if (!provider) throw serviceUnavailable("No payment provider is configured");
+  if (!provider) throw misconfigured("No payment provider is configured. The deployment is missing its payment credentials.");
 
   const init = await startCheckout({
     provider,

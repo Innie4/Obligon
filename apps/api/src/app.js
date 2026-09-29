@@ -64,9 +64,14 @@ export function createApp() {
   app.use((err, _req, res, _next) => {
     const status = err.status ?? 500;
     if (status >= 500) console.error("[api:error]", err);
+    // An unexpected 5xx must not describe itself to a customer. A deliberate
+    // "not configured" 503 is flagged `expose` and its message is written to be
+    // safe, so the real reason reaches the caller instead of being masked into
+    // the same generic apology a database fault produces.
+    const safeToShow = status < 500 || err.expose === true;
     res.status(status).json({
       error: {
-        message: status >= 500 && env.NODE_ENV === "production" ? "Something went wrong on our side. Please try again." : err.message,
+        message: safeToShow ? err.message : "Something went wrong on our side. Please try again.",
         ...(err.details ? { details: err.details } : {})
       }
     });
