@@ -812,33 +812,38 @@ router.post("/card-request/withdraw", asyncHandler(async (req, res) => {
     throw conflict("This card request can no longer be withdrawn");
   }
 
-  // Claw the opening balance back before refunding, so the customer is not
-  // refunded money they have already spent as fuel credit.
+  // Reclaim any opening balance this request previously put in the wallet, so the
+  // customer is not refunded money they have since spent as fuel credit.
+  //
+  // A plan purchase no longer credits the wallet, so this only fires for requests
+  // raised before that changed and for which a credit row still exists. It is
+  // kept as a safety net: silently skipping a real credit would refund money the
+  // customer has already consumed.
   let clawbackKobo = 0;
-  if (request.wallet_credited_at) {
-    const credit = await one("SELECT * FROM plan_wallet_credits WHERE card_request_id = $1", [request.id]);
-    if (credit) {
-      const { debitWalletOnce } = await import("../lib/money.js");
-      const result = await debitWalletOnce({
-        walletId: credit.wallet_id,
-        amountKobo: Number(credit.amount_kobo),
-        idempotencyKey: `plan-clawback:${request.id}`,
-        description: "Reversal of plan opening balance on withdrawal"
-      });
-      if (result.debited) clawbackKobo = Number(credit.amount_kobo);
-      else {
-        // Funds already spent: refuse rather than refund money we cannot reclaim.
-        throw conflict(
-          "Your plan balance has already been spent, so this plan cannot be withdrawn automatically. Please contact support."
-        );
-      }
+  const historicCredit = await one("SELECT * FROM plan_wallet_credits WHERE card_request_id = $1", [request.id]);
+  if (historicCredit) {
+    const { debitWalletOnce } = await import("../lib/money.js");
+    const result = await debitWalletOnce({
+      walletId: historicCredit.wallet_id,
+      amountKobo: Number(historicCredit.amount_kobo),
+      idempotencyKey: `plan-clawback:${request.id}`,
+      description: "Reversal of plan opening balance on withdrawal"
+    });
+    if (result.debited) clawbackKobo = Number(historicCredit.amount_kobo);
+    else {
+      // Funds already spent: refuse rather than refund money we cannot reclaim.
+      throw conflict(
+        "Your plan balance has already been spent, so this plan cannot be withdrawn automatically. Please contact support."
+      );
     }
   }
 
-  const plan = request.plan_code
-    ? await one("SELECT name, amount_kobo FROM card_plans WHERE code = $1", [request.plan_code])
-    : null;
-  const amountKobo = plan ? Number(plan.amount_kobo) : 0;
+  // Refund exactly what was collected, which is the plan price plus any gateway
+  // fee the customer paid. Refunding only the plan price would leave the fee
+  // stranded with the processor.
+  const amountKobo = request.charged_kobo != null
+    ? Number(request.charged_kobo)
+    : (request.plan_code ? Number((await one("SELECT amount_kobo FROM card_plans WHERE code = $1", [request.plan_code]))?.amount_kobo ?? 0) : 0);
 
   const { issueRefund } = await import("../lib/money.js");
   const result = await issueRefund({
@@ -866,7 +871,7 @@ router.post("/card-request/withdraw", asyncHandler(async (req, res) => {
   await notify({
     userId: req.user.id,
     title: "Plan withdrawn",
-    body: `Your ${plan?.name ?? "plan"} purchase has been withdrawn and ${amountKobo ? naira(amountKobo) : "the amount"} will be refunded to your payment method.`,
+    body: `Your ${request.plan_code ?? "plan"} purchase has been withdrawn and ${amountKobo ? naira(amountKobo) : "the amount"} will be refunded to your payment method.`,
     category: "transactions",
     link: "/customer/card"
   });
@@ -1036,15 +1041,11 @@ router.post("/card-request/verify-payment", asyncHandler(async (req, res) => {
     }
   }
 
-  // Money is in, so the plan's opening fuel balance is owed straight away. This
-  // is keyed on the card request, so a webhook and a reconciliation pass landing
-  // together still credit only once.
-  let walletCredited = false;
-  if (paid) {
-    const { creditPlanPurchaseToWallet } = await import("../lib/money.js");
-    const credit = await creditPlanPurchaseToWallet({ cardRequest: paid });
-    walletCredited = credit.credited;
-  }
+  // The plan fee buys a card subscription, not fuel. It is deliberately not
+  // credited to the wallet: doing so made "Total Account Balance" read as the
+  // card price, which is money the customer has already spent on the card rather
+  // than a spendable fuel balance. The wallet is funded by top-ups and by
+  // company allocations only.
 
   await audit({
     actorUserId: req.user.id,
@@ -1058,7 +1059,6 @@ router.post("/card-request/verify-payment", asyncHandler(async (req, res) => {
       planCode: request.plan_code,
       provider: verification.provider,
       simulated: verification.simulated,
-      walletCredited,
       excessRefundKobo
     }
   });
@@ -1070,7 +1070,7 @@ router.post("/card-request/verify-payment", asyncHandler(async (req, res) => {
     link: "/customer/card"
   });
 
-  res.json({ ok: true, paid: true, walletCredited, excessRefundKobo, request: serializeCardRequest(updated) });
+  res.json({ ok: true, paid: true, excessRefundKobo, request: serializeCardRequest(updated) });
 }));
 
 /** Step 3 - identity details, submitted for verification. */

@@ -194,14 +194,15 @@ router.post("/flutterwave", webhookLimiter, async (req, res) => {
           [cardRequest.id]
         );
         if (updated) {
-          // The webhook can land before, after, or at the same time as the
-          // browser redirect and the reconciliation pass. All three funnel
-          // through the same keyed credit, so the wallet is funded once.
-          const { creditPlanPurchaseToWallet } = await import("../lib/money.js");
-          await creditPlanPurchaseToWallet({ cardRequest: updated, providerTransactionId: parsed.transactionId });
-
-          // Any money beyond the plan fee is returned rather than kept.
-          const dueKobo = plan?.amount_kobo != null ? Number(plan.amount_kobo) : null;
+          // The plan fee pays for a card subscription, not fuel, so it is not
+          // credited to the wallet. The wallet is funded by top-ups only.
+          //
+          // An overpayment is measured against the recorded charge, not the plan
+          // price: the price excludes any gateway fee the customer legitimately
+          // paid, and treating that as an overpayment would refund it.
+          const dueKobo = updated.charged_kobo != null
+            ? Number(updated.charged_kobo)
+            : (plan?.amount_kobo != null ? Number(plan.amount_kobo) : null);
           if (dueKobo != null && Number(parsed.amountKobo) > dueKobo) {
             const excessKobo = Number(parsed.amountKobo) - dueKobo;
             const { issueRefund } = await import("../lib/money.js");

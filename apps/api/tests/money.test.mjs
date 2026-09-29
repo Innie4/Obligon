@@ -9,10 +9,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { q, one, getPool } from "../src/db.js";
-import { transferFromCompanyWallet, creditWalletOnce, debitWalletOnce, creditPlanPurchaseToWallet } from "../src/lib/money.js";
+import { transferFromCompanyWallet, creditWalletOnce, debitWalletOnce } from "../src/lib/money.js";
 import { createWalletForAccount } from "../src/lib/wallets.js";
 
 const stamp = Date.now();
+// Every wallet this file creates, so cleanup can be scoped to them rather than
+// matching on reference prefixes across the whole table.
+const testWalletIds = [];
 
 async function seedOrg(label) {
   const email = `unit-${label}-${stamp}@example.com`;
@@ -30,6 +33,7 @@ async function seedOrg(label) {
     [org.id, user.id, email]
   );
   const wallet = await createWalletForAccount({ userId: user.id, organizationId: org.id });
+  testWalletIds.push(wallet.id);
   return { user, org, wallet };
 }
 
@@ -47,6 +51,7 @@ async function seedIndividual(label, organizationId = null) {
     );
   }
   const wallet = await createWalletForAccount({ userId: user.id, organizationId: null });
+  testWalletIds.push(wallet.id);
   return { user, org: null, wallet };
 }
 
@@ -236,9 +241,10 @@ test("concurrent transfers cannot overdraw the company wallet", async () => {
 
 // ----------------------------------------------------- plan wallet crediting
 
-test("creditPlanPurchaseToWallet funds the wallet once and is replay-safe", async () => {
-  const { user } = await seedIndividual("plan-credit");
+test("paying for a plan does NOT fund the fuel wallet", async () => {
+  const { user } = await seedIndividual("plan-nowallet");
   const wallet = await one("SELECT * FROM wallets WHERE user_id = $1", [user.id]);
+  testWalletIds.push(wallet.id);
   const plan = await one("SELECT * FROM card_plans ORDER BY amount_kobo LIMIT 1");
 
   // charged_kobo is NOT NULL with no default on purpose: a default of zero would
@@ -249,31 +255,39 @@ test("creditPlanPurchaseToWallet funds the wallet once and is replay-safe", asyn
     [user.id, plan.code, `unit-plan-${stamp}`, Number(plan.amount_kobo)]
   );
 
-  const first = await creditPlanPurchaseToWallet({ cardRequest: request });
-  assert.equal(first.credited, true);
-  const credited = Number(plan.amount_kobo);
-  assert.equal(first.balanceKobo, credited, "the plan amount lands in the wallet");
-  assert.equal(await balance(wallet.id), credited);
+  // A plan buys a card subscription. Crediting it to the wallet made
+  // "Total Account Balance" read as the card price, which is money already spent
+  // on a card rather than a spendable fuel balance.
+  assert.equal(await balance(wallet.id), 0, "the wallet stays empty after a plan purchase");
+  const after = await one("SELECT wallet_credited_at FROM card_requests WHERE id = $1", [request.id]);
+  assert.equal(after.wallet_credited_at, null, "no wallet credit is recorded against the request");
+  const credits = await q("SELECT COUNT(*)::int AS n FROM plan_wallet_credits WHERE card_request_id = $1", [request.id]);
+  assert.equal(credits[0].n, 0, "no plan_wallet_credits row is created");
 
-  // Simulate the webhook and the reconciliation pass both arriving later.
-  const second = await creditPlanPurchaseToWallet({ cardRequest: request });
-  assert.equal(second.credited, false, "a second confirmation must not credit again");
-  assert.equal(await balance(wallet.id), credited, "balance unchanged on replay");
-
-  const credit = await one("SELECT * FROM plan_wallet_credits WHERE card_request_id = $1", [request.id]);
-  assert.ok(credit, "the credit is recorded against the request");
-  assert.ok(request.wallet_credited_at || (await one("SELECT wallet_credited_at FROM card_requests WHERE id = $1", [request.id])).wallet_credited_at);
+  // A top-up, by contrast, must still fund the wallet.
+  const { credited, balanceKobo } = await creditWalletOnce({
+    walletId: wallet.id,
+    amountKobo: Number(plan.amount_kobo),
+    idempotencyKey: `unit:topup-after-plan:${stamp}`,
+    description: "unit test top-up"
+  });
+  assert.equal(credited, true, "a top-up still credits the wallet");
+  assert.equal(balanceKobo, Number(plan.amount_kobo));
 });
 
 // ------------------------------------------------------------------ cleanup
 
 test.after(async () => {
   // Remove everything this file created so fixtures stay pristine.
-  await q("DELETE FROM wallet_ledger WHERE reference LIKE 'unit:%' OR reference LIKE 'XFER%' OR reference LIKE 'plan-credit:%'");
-  await q("DELETE FROM plan_wallet_credits WHERE card_request_id IN (SELECT id FROM card_requests WHERE payment_reference LIKE 'unit-%')");
-  await q("DELETE FROM card_requests WHERE payment_reference LIKE 'unit-%'");
-  await q("DELETE FROM memberships WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'unit-%')");
-  await q("DELETE FROM wallets WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'unit-%')");
+// Scoped strictly to the wallets this file created. An earlier version deleted
+// by reference prefix across the whole table, which silently deleted real
+// customers' ledger history: three wallets were left holding balances that no
+// longer had any entry explaining where the money came from.
+await q("DELETE FROM wallet_ledger WHERE wallet_id = ANY($1::uuid[])", [testWalletIds]);
+await q("DELETE FROM plan_wallet_credits WHERE card_request_id IN (SELECT id FROM card_requests WHERE payment_reference LIKE 'unit-%')");
+await q("DELETE FROM card_requests WHERE payment_reference LIKE 'unit-%'");
+await q("DELETE FROM memberships WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'unit-%')");
+await q("DELETE FROM wallets WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'unit-%')");
   await q("DELETE FROM organizations WHERE name LIKE 'Unit %'");
   await q("DELETE FROM users WHERE email LIKE 'unit-%'");
   await getPool().end();

@@ -2,7 +2,7 @@ import { q, one } from "../db.js";
 import { naira } from "./format.js";
 import { audit, notify } from "./notify.js";
 import { verifyCheckout, activeProvider } from "./payments.js";
-import { creditPlanPurchaseToWallet, creditWalletOnce } from "./money.js";
+import { creditWalletOnce } from "./money.js";
 
 /**
  * Payment reconciliation.
@@ -153,8 +153,8 @@ async function reconcilePlanCheckouts(limit) {
           [request.id]
         );
         if (marked) {
-          // Money arrived, so the opening fuel balance is owed immediately.
-          await creditPlanPurchaseToWallet({ cardRequest: marked });
+          // The plan fee pays for a card subscription, not fuel, so it is not
+          // credited to the wallet here. The wallet is funded by top-ups only.
           await notify({
             userId: marked.user_id,
             title: "Payment received",

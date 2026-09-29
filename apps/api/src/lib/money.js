@@ -182,66 +182,6 @@ export async function transferFromCompanyWallet({
 }
 
 /**
- * Credit a customer's wallet for a card-plan purchase.
- *
- * Business rule: the plan fee is the subscription plus the opening fuel balance,
- * so it is credited once the payment is confirmed. Crediting is keyed on the card
- * request, so a webhook and a reconciliation pass cannot both credit it.
- */
-export async function creditPlanPurchaseToWallet({ cardRequest, providerTransactionId = null }) {
-  const plan = cardRequest.plan_code
-    ? await one("SELECT name, amount_kobo FROM card_plans WHERE code = $1", [cardRequest.plan_code])
-    : null;
-  if (!plan) throw notFound("The plan for this request is no longer available");
-
-  const wallet = await one(
-    "SELECT * FROM wallets WHERE user_id = $1 AND organization_id IS NULL ORDER BY created_at LIMIT 1",
-    [cardRequest.user_id]
-  );
-  if (!wallet) throw notFound("No wallet is linked to this account");
-
-  // Claim the credit for this request; the UNIQUE constraint makes a second
-  // attempt a no-op even under concurrency.
-  const claim = await one(
-    `INSERT INTO plan_wallet_credits (card_request_id, wallet_id, amount_kobo)
-     VALUES ($1,$2,$3) ON CONFLICT (card_request_id) DO NOTHING RETURNING id`,
-    [cardRequest.id, wallet.id, plan.amount_kobo]
-  );
-  if (!claim) {
-    const existing = await one(
-      "SELECT balance_after_kobo FROM wallet_ledger WHERE reference = $1",
-      [`plan-credit:${cardRequest.id}`]
-    );
-    return { credited: false, amountKobo: plan.amount_kobo, balanceKobo: existing ? Number(existing.balance_after_kobo) : null };
-  }
-
-  const { balanceKobo } = await creditWalletOnce({
-    walletId: wallet.id,
-    amountKobo: plan.amount_kobo,
-    idempotencyKey: `plan-credit:${cardRequest.id}`,
-    description: `${plan.name} plan opening fuel balance`,
-    ledgerReference: cardRequest.payment_reference
-  });
-  await q("UPDATE card_requests SET wallet_credited_at = now() WHERE id = $1", [cardRequest.id]);
-  await audit({
-    actorUserId: cardRequest.user_id,
-    action: "wallet.plan_credited",
-    entityType: "card_request",
-    entityId: cardRequest.id,
-    metadata: { planCode: cardRequest.plan_code, amountKobo: plan.amount_kobo, providerTransactionId }
-  });
-  await notify({
-    userId: cardRequest.user_id,
-    title: "Fuel wallet funded",
-    body: `${naira(plan.amount_kobo)} from your ${plan.name} plan has been added to your fuel wallet.`,
-    category: "transactions",
-    link: "/customer/wallet"
-  });
-
-  return { credited: true, amountKobo: plan.amount_kobo, balanceKobo };
-}
-
-/**
  * Issue a refund, recording it first so a retry can never double-refund.
  *
  * The unique index on (provider, provider_ref) for full refunds means a second

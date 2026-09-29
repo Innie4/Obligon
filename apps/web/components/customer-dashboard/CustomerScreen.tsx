@@ -1166,46 +1166,73 @@ function WalletPage({
   const { data: topUpHistory } = useAsync(() => api.getCustomerTopUpHistory());
   const { data: overviewMetrics } = useAsync(() => api.getCustomerOverviewMetrics(), [balanceRefreshKey]);
   const totalBalance = metricValue(overviewMetrics, "Total Account Balance", "₦0.00");
+  // The real budget limit, or nothing. Showing a badge only when there is an
+  // actual limit avoids implying a facility that was never set.
+  const budgetLimit = metricHelper(overviewMetrics, "Budget Usage") ?? "";
+  const budgetLabel = /Limit/i.test(budgetLimit) ? budgetLimit.replace(/\s*Limit\s*$/i, " budget") : "";
+  const hasHistory = Boolean(desktopTopUps && desktopTopUps.length > 0);
 
   return (
-    <AsyncBoundary
-      status={topUpsStatus}
-      error={topUpsError?.message ?? null}
-      isEmpty={!desktopTopUps || desktopTopUps.length === 0}
-      onRetry={reloadTopUps}
-      loadingLabel="Loading wallet…"
-      empty={{ title: "No top-up history", message: "Your wallet transactions will appear here." }}
-    >
-      <Canvas>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Wallet Management</h1>
-            <p className="mt-1 text-obligon-text">Fund and manage your corporate prepaid balance.</p>
-          </div>
-          <button
-            onClick={() => onModal("topup")}
-            className="h-12 rounded-xl bg-obligon-green px-6 font-extrabold text-white shadow-green hover:bg-obligon-green/90 transition"
-            type="button"
-          >
-            + Add Funds to Wallet
-          </button>
+    <Canvas>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Wallet Management</h1>
+          <p className="mt-1 text-obligon-text">Fund your prepaid fuel balance and manage your spending.</p>
         </div>
+        <button
+          onClick={() => onModal("topup")}
+          className="h-12 rounded-xl bg-obligon-green px-6 font-extrabold text-white shadow-green hover:bg-obligon-green/90 transition"
+          type="button"
+        >
+          + Add Funds to Wallet
+        </button>
+      </div>
 
-        <Card className="mt-8 p-8">
-          <div className="flex justify-between items-center">
-            <p className="text-xs font-extrabold uppercase text-obligon-text">Available Fleet Balance</p>
-            <span className="rounded-full bg-[#e8fbd7] px-3 py-1 text-xs font-extrabold text-obligon-green">
-              Auto-Recharge Active
+      <Card className="mt-8 p-8">
+        <div className="flex justify-between items-center">
+          <p className="text-xs font-extrabold uppercase text-obligon-text">Available Fuel Balance</p>
+          {/* The real budget, not a claim about auto-recharging. The previous
+              copy asserted an auto-recharge threshold that no code implemented,
+              so a customer with an empty wallet was told it would be topped up
+              automatically and never was. */}
+          {budgetLabel ? (
+            <span className="rounded-full bg-obligon-lime/30 px-3 py-1 text-xs font-extrabold text-obligon-navy">
+              {budgetLabel}
             </span>
-          </div>
-          <p className="mt-3 font-display text-5xl font-extrabold text-obligon-navy">
-            {totalBalance}
-          </p>
-          <p className="mt-3 text-sm font-bold text-obligon-green">
-            Auto-recharges ₦50,000 when balance falls below ₦10,000
-          </p>
-        </Card>
+          ) : null}
+        </div>
+        <p className="mt-3 font-display text-5xl font-extrabold text-obligon-navy">
+          {totalBalance}
+        </p>
+        <p className="mt-3 text-sm font-bold text-obligon-green">
+          {hasHistory ? "Fund your wallet to keep paying for fuel anywhere on the network." : "Add funds to start paying for fuel."}
+        </p>
+      </Card>
 
+      {/* Only the history is gated. Previously the whole page, including the
+          balance and the add-funds button, was replaced by an empty state, so a
+          customer with nothing in their wallet — exactly the person who needs to
+          add funds — could not reach the action at all. */}
+      <AsyncBoundary
+        status={topUpsStatus}
+        error={topUpsError?.message ?? null}
+        isEmpty={!hasHistory}
+        onRetry={reloadTopUps}
+        loadingLabel="Loading wallet history…"
+        empty={{
+          title: "No top-up history yet",
+          message: "Once you add funds, your funding records will appear here.",
+          action: (
+            <button
+              onClick={() => onModal("topup")}
+              className="h-12 rounded-xl bg-obligon-green px-6 font-extrabold text-white"
+              type="button"
+            >
+              + Add Funds to Wallet
+            </button>
+          )
+        }}
+      >
         <Card className="mt-8 overflow-hidden">
           <div className="flex items-center justify-between px-6 py-5 border-b border-[#eef3ee]">
             <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Recent Funding Records</h2>
@@ -1243,8 +1270,8 @@ function WalletPage({
             ))}
           </div>
         </Card>
-      </Canvas>
-    </AsyncBoundary>
+      </AsyncBoundary>
+    </Canvas>
   );
 }
 

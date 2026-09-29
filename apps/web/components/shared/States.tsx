@@ -87,7 +87,7 @@ export function AsyncBoundary({
   status: AsyncStatus;
   error?: string | null;
   isEmpty?: boolean;
-  empty?: { title?: string; message?: string; icon?: React.ComponentType<LucideProps> };
+  empty?: { title?: string; message?: string; icon?: React.ComponentType<LucideProps>; action?: React.ReactNode };
   loadingLabel?: string;
   onRetry?: () => void;
   children: React.ReactNode;
