@@ -16,6 +16,7 @@ import {
   topUpHistory,
   desktopTopUps,
   overviewMetrics as customerOverviewMetrics,
+  spendProjection as mockSpendProjection,
   type CustomerMetric
 } from "@/lib/mock/customer-data";
 import {
@@ -77,6 +78,8 @@ import type {
   CardRequest,
   CheckoutResult,
   CustomerProfile,
+  CustomerActivityItem,
+  CustomerSpendProjection,
   CustomerTransaction,
   MobileTransactionGroup,
   NotificationPrefs,
@@ -235,10 +238,12 @@ export interface ApiClient {
   getVehicles(): Promise<Vehicle[]>;
   getNotifications(): Promise<AppNotification[]>;
   getCustomerVehiclePerformance(): Promise<string[][]>;
-  getCustomerRecentActivity(): Promise<CustomerTransaction[]>;
+  getCustomerRecentActivity(): Promise<CustomerActivityItem[]>;
   getCustomerTopUpHistory(): Promise<string[][]>;
   getCustomerDesktopTopUps(): Promise<string[][]>;
   getCustomerOverviewMetrics(): Promise<CustomerMetric[]>;
+  /** What the customer expects to spend this month, and whether they have said. */
+  getCustomerSpendProjection(): Promise<CustomerSpendProjection>;
 
   // Company domain
   getCompanyVehicles(): Promise<Row[]>;
@@ -396,9 +401,13 @@ class LiveApiClient implements ApiClient {
     const data = await http<{ metrics: CustomerMetric[] }>("/api/customer/overview");
     return data.metrics;
   }
-  async getCustomerRecentActivity(): Promise<CustomerTransaction[]> {
-    const data = await http<{ recentActivity: CustomerTransaction[] }>("/api/customer/overview");
+  async getCustomerRecentActivity(): Promise<CustomerActivityItem[]> {
+    const data = await http<{ recentActivity: CustomerActivityItem[] }>("/api/customer/overview");
     return data.recentActivity;
+  }
+  async getCustomerSpendProjection(): Promise<CustomerSpendProjection> {
+    const data = await http<{ projection: CustomerSpendProjection }>("/api/customer/spend-projection");
+    return data.projection;
   }
   async getCustomerTransactions(): Promise<CustomerTransaction[]> {
     const data = await http<{ transactions: CustomerTransaction[] }>("/api/customer/transactions");
@@ -636,10 +645,13 @@ class MockApiClient implements ApiClient {
   }
   async getNotifications(): Promise<AppNotification[]> { return notifications; }
   async getCustomerVehiclePerformance(): Promise<string[][]> { return vehicles; }
-  async getCustomerRecentActivity(): Promise<CustomerTransaction[]> { return recentActivity; }
+  async getCustomerRecentActivity(): Promise<CustomerActivityItem[]> { return recentActivity; }
   async getCustomerTopUpHistory(): Promise<string[][]> { return topUpHistory; }
   async getCustomerDesktopTopUps(): Promise<string[][]> { return desktopTopUps; }
   async getCustomerOverviewMetrics(): Promise<CustomerMetric[]> { return customerOverviewMetrics; }
+  async getCustomerSpendProjection(): Promise<CustomerSpendProjection> {
+    return { ...mockSpendProjection, updatedAt: null };
+  }
 
   async getCompanyVehicles(): Promise<Row[]> { return vehicleRows; }
   async getCompanyTransactions(): Promise<Row[]> { return transactionRows; }
@@ -997,6 +1009,20 @@ export const mutationsApi = {
   async updateProfile(payload: Record<string, unknown>) {
     if (!LIVE_MODE) { await simulate({}, 700); return { ok: true, simulated: true }; }
     return http<{ ok: boolean; user: SessionUser }>("/api/customer/profile", { method: "PUT", body: JSON.stringify(payload) });
+  },
+  /**
+   * Set or revise this month's projected spend, in naira. The server keys it to
+   * the current calendar month and upserts, so the same call both answers the
+   * start-of-month prompt and adjusts an existing figure upwards or downwards.
+   */
+  async setSpendProjection(projectedSpend: number) {
+    if (!LIVE_MODE) {
+      await simulate({}, 500);
+      return { ok: true, simulated: true, projection: { month: mockSpendProjection.month, projectedKobo: Math.round(projectedSpend * 100), projectedLabel: `₦${projectedSpend.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, needsProjection: false, updatedAt: null } };
+    }
+    return http<{ ok: boolean; projection: CustomerSpendProjection }>("/api/customer/spend-projection", {
+      method: "PUT", body: JSON.stringify({ projectedSpend })
+    });
   },
   async markNotificationRead(id: string) {
     if (!LIVE_MODE) { await simulate({}); return { ok: true }; }

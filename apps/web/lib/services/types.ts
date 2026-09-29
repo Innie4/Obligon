@@ -202,6 +202,53 @@ export interface CustomerTransaction {
   status?: string;
 }
 
+/**
+ * One entry in the dashboard's recent-activity feed.
+ *
+ * Deliberately not `CustomerTransaction`. The feed merges two kinds of event —
+ * a fuel transaction and an account notification — and a notification has no
+ * station, no litres and no amount. Reusing the transaction shape would have
+ * forced a fabricated "₦0.00" beside "Card issued", which is worse than showing
+ * nothing there.
+ */
+export interface CustomerActivityItem {
+  id: string;
+  kind: "transaction" | "notification";
+  title: string;
+  subtitle?: string;
+  /** Null for a notification, which is not a monetary event. */
+  amount: string | null;
+  time?: string;
+  reference?: string | null;
+  status?: string | null;
+  link: string;
+}
+
+/**
+ * What the customer expects to spend this calendar month, which the MTD Spend
+ * card measures their actual spend against.
+ *
+ * `needsProjection` is true for a brand-new account and true again on the first
+ * of each month: in both cases there is no answer for the month in progress.
+ */
+export interface CustomerSpendProjection {
+  /**
+   * The month this is about, `YYYY-MM`. Always present, whether or not a figure
+   * has been set: it is the key a client uses to remember it has already asked
+   * this month, so returning null for an unset month would make "already asked"
+   * indistinguishable from "not yet asked".
+   */
+  month: string | null;
+  projectedKobo: number | null;
+  projectedLabel: string | null;
+  needsProjection: boolean;
+  mtdKobo: number;
+  usagePercent: number | null;
+  remainingKobo: number | null;
+  remainingLabel: string | null;
+  updatedAt?: string | null;
+}
+
 export interface Station {
   name: string;
   distance: string;

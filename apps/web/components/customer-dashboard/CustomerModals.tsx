@@ -4,7 +4,7 @@ import * as React from "react";
 import type { ComponentType } from "react";
 import { AlertTriangle, Building2, Check, CreditCard, FileWarning, Fingerprint, LockKeyhole, ShieldCheck, Snowflake, Upload, X, Loader2, ArrowRight, type LucideProps } from "lucide-react";
 import { useToast } from "@/components/shared/Toast";
-import { api, authApi, mutationsApi, publicApi, type PaymentConfig, type PaymentFeeSchedule } from "@/lib/services";
+import { api, authApi, mutationsApi, publicApi, type CustomerSpendProjection, type PaymentConfig, type PaymentFeeSchedule } from "@/lib/services";
 
 /** Resolve the signed-in customer's card id against the live API (null in mock mode). */
 async function resolveCardId(): Promise<string | null> {
@@ -18,6 +18,7 @@ async function resolveCardId(): Promise<string | null> {
 
 export type CustomerModalType =
   | "topup"
+  | "spendProjection"
   | "report"
   | "changePin"
   | "changePassword"
@@ -39,6 +40,14 @@ type CustomerModalsProps = {
   cardBlocked: boolean;
   onCardBlockedChange: (blocked: boolean) => void;
   onTopUpSuccess?: (amount: number) => void;
+  /**
+   * The customer's projection for this month. Passed in rather than fetched
+   * again so the prompt that opens on a new account and the edit opened from the
+   * MTD Spend card show the same figures, even if one was already in flight.
+   */
+  spendProjection?: CustomerSpendProjection | null;
+  /** Called after a projection is saved, so the MTD Spend card can redraw. */
+  onSpendProjectionSaved?: () => void;
   /** Which processor the API selected, surfaced for copy in the top-up modal. */
   paymentProvider?: string;
 };
@@ -81,10 +90,21 @@ export function CustomerModals({
   cardBlocked,
   onCardBlockedChange,
   onTopUpSuccess,
+  spendProjection,
+  onSpendProjectionSaved,
   paymentProvider
 }: CustomerModalsProps) {
   if (!modal) return null;
   if (modal === "topup") return <TopUpModal onClose={onClose} onSuccess={onTopUpSuccess} defaultProvider={paymentProvider} />;
+  if (modal === "spendProjection") {
+    return (
+      <SpendProjectionModal
+        onClose={onClose}
+        projection={spendProjection ?? null}
+        onSaved={onSpendProjectionSaved}
+      />
+    );
+  }
   if (modal === "report") return <ReportProblemModal onClose={onClose} />;
   if (modal === "changePin") return <ChangePinModal onClose={onClose} />;
   if (modal === "changePassword") return <ChangePasswordModal onClose={onClose} />;
@@ -141,6 +161,175 @@ function PinInput({
         className="mt-2 h-14 w-full rounded-lg border border-[#cfd8cc] bg-[#f7fbf8] text-center font-mono text-2xl tracking-[10px] outline-none focus:border-obligon-green"
       />
     </label>
+  );
+}
+
+/** Figures offered as one-tap starting points, in naira. */
+const PROJECTION_PRESETS = [10_000, 25_000, 50_000, 100_000, 250_000];
+
+function formatNaira(amount: number) {
+  return `₦${amount.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+/**
+ * Set or revise the customer's projected spend for this month.
+ *
+ * Opens two ways, from the same component: unprompted on a new account or on the
+ * first of a new month, where there is no answer for the month in progress, and
+ * on demand by clicking the MTD Spend card. The second case is a revision, not a
+ * correction, so the field is pre-filled with what is already stored and the copy
+ * says it can go up as well as down.
+ */
+function SpendProjectionModal({
+  onClose,
+  projection,
+  onSaved
+}: {
+  onClose: () => void;
+  projection: CustomerSpendProjection | null;
+  onSaved?: () => void;
+}) {
+  const isRevision = Boolean(projection?.projectedKobo);
+  // Pre-filled from the stored figure, not from a hardcoded default, so opening
+  // the card to check the current plan and changing your mind does not silently
+  // replace it with a round number.
+  const [amount, setAmount] = React.useState(
+    projection?.projectedKobo != null ? String(Math.round(projection.projectedKobo / 100)) : ""
+  );
+  const [error, setError] = React.useState("");
+  const [submitting, setSubmitting] = React.useState(false);
+  const { success: toastSuccess, error: toastError } = useToast();
+
+  // Digits and one decimal point only. Left as typed rather than coerced on every
+  // keystroke, so a half-entered "5." is not rewritten out from under the cursor.
+  const onAmountChange = (value: string) => {
+    setAmount(value.replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1"));
+    if (error) setError("");
+  };
+
+  const numericAmount = Number(amount);
+  const valid = Number.isFinite(numericAmount) && numericAmount > 0;
+  const spendSoFar = projection?.mtdKobo ?? 0;
+  const resultingUsage = valid ? Math.round((spendSoFar / Math.round(numericAmount * 100)) * 100) : null;
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!valid) {
+      setError("Enter the amount you expect to spend this month.");
+      return;
+    }
+    setSubmitting(true);
+    setError("");
+    try {
+      await mutationsApi.setSpendProjection(numericAmount);
+      toastSuccess("Projected spend saved");
+      onSaved?.();
+      onClose();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not save your projection";
+      setError(message);
+      toastError(message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <ModalFrame onClose={onClose}>
+      <form onSubmit={submit} className="p-6">
+        <h2 className="font-display text-2xl font-extrabold text-obligon-navy">
+          {isRevision ? "Change your projected spend" : "Set your projected spend"}
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-obligon-text">
+          {isRevision
+            ? "How much do you expect to spend on fuel this month? Raise or lower it whenever your plans change — your MTD Spend card measures against this."
+            : "How much do you expect to spend on fuel this month? Your MTD Spend card will track your actual spending against it, so you always know where you stand."}
+        </p>
+
+        <label className="mt-6 block">
+          <span className="text-xs font-extrabold uppercase text-obligon-text">Expected spend (₦)</span>
+          <input
+            type="text"
+            inputMode="decimal"
+            autoFocus
+            aria-invalid={amount.length > 0 && !valid}
+            value={amount}
+            onChange={(event) => onAmountChange(event.target.value)}
+            placeholder="50000"
+            className="mt-2 h-14 w-full rounded-lg border border-[#cfd8cc] bg-[#f7fbf8] px-4 font-display text-2xl font-extrabold text-obligon-navy outline-none focus:border-obligon-green"
+          />
+        </label>
+
+        {/* Said as soon as there is something typed to judge, rather than only
+            after a failed submit, so the field is explained before it is
+            rejected. */}
+        {amount.length > 0 && !valid ? (
+          <p className="mt-2 text-sm font-semibold text-[#93000a]">
+            Enter an amount greater than zero, in naira.
+          </p>
+        ) : null}
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {PROJECTION_PRESETS.map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              onClick={() => setAmount(String(preset))}
+              className="rounded-full border border-obligon-border px-3 py-1.5 text-xs font-extrabold text-obligon-navy hover:bg-[#eef3ee] transition"
+            >
+              {formatNaira(preset).replace(/\.00$/, "")}
+            </button>
+          ))}
+        </div>
+
+        {spendSoFar > 0 ? (
+          <div className="mt-5 rounded-xl border border-obligon-border bg-[#f7fbf8] p-4 text-sm">
+            <div className="flex justify-between">
+              <span className="font-bold text-obligon-text">Spent so far this month</span>
+              <span className="font-extrabold text-obligon-navy">{formatNaira(spendSoFar / 100)}</span>
+            </div>
+            {resultingUsage != null ? (
+              <div className="mt-2 flex justify-between">
+                <span className="font-bold text-obligon-text">
+                  {resultingUsage >= 100 ? "Over projection by" : "That leaves you at"}
+                </span>
+                <span className="font-extrabold text-obligon-navy">
+                  {resultingUsage >= 100
+                    ? formatNaira(Math.max(0, (spendSoFar - numericAmount * 100) / 100))
+                    : `${resultingUsage}% used`}
+                </span>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {error ? (
+          <p className="mt-4 rounded-lg border border-[#fecaca] bg-[#fff0f0] p-3 text-sm text-[#93000a]" role="alert">
+            {error}
+          </p>
+        ) : null}
+
+        <div className="mt-6 flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-12 flex-1 rounded-lg border border-obligon-border font-extrabold text-obligon-navy"
+          >
+            {isRevision ? "Cancel" : "Not now"}
+          </button>
+          <button
+            type="submit"
+            // Not disabled when the amount is unusable: a greyed-out Save with
+            // no explanation of what is wrong with the field is a dead end. The
+            // message below the field says it instead.
+            disabled={submitting}
+            className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white disabled:opacity-60"
+          >
+            {submitting ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </form>
+    </ModalFrame>
   );
 }
 

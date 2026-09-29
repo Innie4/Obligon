@@ -1,4 +1,5 @@
-import type { SessionUser } from "@/lib/services/types";
+// `CustomerTransaction` is declared locally below, so it is not imported here.
+import type { CustomerActivityItem, SessionUser } from "@/lib/services/types";
 
 export const sessionUser: SessionUser = {
   id: "usr_demo_001",
@@ -76,13 +77,27 @@ export const pageTitles: Record<CustomerPageKey, string> = {
 
 export const overviewMetrics: CustomerMetric[] = [
   { label: "Total Account Balance", value: "₦485,000" },
-  { label: "MTD Spend", value: "₦215,600", helper: "MTD Savings: ₦18,450", tone: "red" },
-  { label: "Budget Usage", value: "43%", helper: "₦500,000 Limit", tone: "green" },
+  { label: "MTD Spend", value: "₦215,600", helper: "1,245 L · 87 transactions this month", tone: "red" },
+  { label: "Budget Usage", value: "43%", helper: "₦500,000.00 projected", tone: "green" },
+  { label: "Projected Spend", value: "₦500,000.00", helper: "Tap to change", tone: "blue" },
   { label: "Litres Consumed", value: "1,245 L", tone: "green" },
   { label: "Transactions", value: "87", tone: "blue" },
   { label: "Security Status", value: "2 Alerts", helper: "1 Blocked | 0 Suspicious", tone: "red" },
-  { label: "Lifetime Savings", value: "₦245,780", tone: "green" }
+  { label: "MTD Savings", value: "₦18,450.00", helper: "vs median price at the time", tone: "green" },
+  { label: "Lifetime Savings", value: "₦245,780.00", helper: "Based on 1,102 transactions", tone: "green" }
 ];
+
+/** Mirrors the shape `/api/customer/spend-projection` returns. */
+export const spendProjection = {
+  month: "2026-09",
+  projectedKobo: 50_000_000,
+  projectedLabel: "₦500,000.00",
+  needsProjection: false,
+  mtdKobo: 21_560_000,
+  usagePercent: 43,
+  remainingKobo: 28_440_000,
+  remainingLabel: "₦284,400.00"
+};
 
 export const vehicles = [
   ["FV-001", "₦185,000", "180L", "92%"],
@@ -90,10 +105,14 @@ export const vehicles = [
   ["FV-003", "₦211,000", "220L", "76%"]
 ];
 
-export const recentActivity: CustomerTransaction[] = [
-  { station: "Station A", meta: "FV-001 • 45L", amount: "₦46,125", time: "Today, 14:23" },
-  { station: "Station B", meta: "FV-003 • 60L", amount: "₦61,500", time: "Yesterday, 09:15" },
-  { station: "Station A", meta: "FV-002 • 40L", amount: "₦41,000", time: "Oct 24, 11:30" }
+// Mirrors the merged `/api/customer/overview` feed: transactions and account
+// notifications in one timeline, newest first. A notification carries no amount,
+// because it is not a monetary event.
+export const recentActivity: CustomerActivityItem[] = [
+  { id: "act_1", kind: "transaction", title: "Station A", subtitle: "FV-001 • 45L", amount: "₦46,125", time: "Today, 14:23", reference: "TRX-DEMO1", status: "success", link: "/customer/transactions" },
+  { id: "act_2", kind: "notification", title: "Top-up credited", subtitle: "Success: ₦50,000.00 added to your wallet.", amount: null, time: "Today, 09:02", reference: null, status: null, link: "/customer/wallet" },
+  { id: "act_3", kind: "transaction", title: "Station B", subtitle: "FV-003 • 60L", amount: "₦61,500", time: "Yesterday, 09:15", reference: "TRX-DEMO2", status: "success", link: "/customer/transactions" },
+  { id: "act_4", kind: "notification", title: "Card issued", subtitle: "Your virtual card is active and ready to use.", amount: null, time: "Oct 24, 16:20", reference: null, status: null, link: "/customer/card" }
 ];
 
 export const transactionHistory: CustomerTransaction[] = [

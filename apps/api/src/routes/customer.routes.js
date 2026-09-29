@@ -5,6 +5,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { hashPin, verifyPin, randomToken } from "../lib/security.js";
 import { naira, fmtDate, fmtDateTime, relativeTime, dayGroup, maskPan, maskAccount, distanceLabel, reference, initials } from "../lib/format.js";
 import { customerSavings, monthStart } from "../lib/savings.js";
+import { readSpendProjection, setSpendProjection } from "../lib/spend.js";
 import { notify, audit, securityLog } from "../lib/notify.js";
 import { resolveWallet } from "../lib/wallets.js";
 import { startCheckout, verifyCheckout, activeProvider, checkoutIsSimulated, priceWithFee, minimumTopupKobo } from "../lib/payments.js";
@@ -27,6 +28,43 @@ async function getWallet(userId, organizationId = null) {
 function statusTone(status) {
   return { success: "green", pending: "amber", failed: "red", disputed: "red", refunded: "blue", active: "green", frozen: "amber", blocked: "red", lost: "red", replaced: "muted", terminated: "muted" }[status] ?? "muted";
 }
+
+// ============ PROJECTED MONTHLY SPEND ============
+// A projection is per calendar month and set by the customer, so it is read and
+// written here rather than being folded into the wallet's standing budget limit.
+// The MTD Spend card needs it, and the prompt that nags at the start of a month
+// needs to know whether this month already has an answer.
+router.get("/spend-projection", asyncHandler(async (req, res) => {
+  const monthStartDate = monthStart();
+  const agg = await one(
+    `SELECT COALESCE(SUM(amount_kobo),0) AS mtd
+     FROM transactions WHERE customer_user_id = $1 AND status = 'success' AND created_at >= $2`,
+    [req.user.id, monthStartDate]
+  );
+  res.json({ projection: await readSpendProjection(req.user.id, Number(agg.mtd)) });
+}));
+
+router.put("/spend-projection", asyncHandler(async (req, res) => {
+  const { projectedSpend } = req.body ?? {};
+  if (projectedSpend == null || projectedSpend === "") {
+    throw badRequest("Enter the spend you expect for this month");
+  }
+  let saved;
+  try {
+    saved = await setSpendProjection(req.user.id, projectedSpend);
+  } catch (err) {
+    // The library refuses nonsense values; the client is told which ones rather
+    // than receiving a bare 500 for typing "abc".
+    throw badRequest(err.message);
+  }
+  await audit({
+    actorUserId: req.user.id,
+    actorRole: req.user.role,
+    action: "spend_projection.set",
+    metadata: { month: saved.month, projectedKobo: saved.projectedKobo }
+  });
+  res.json({ ok: true, projection: saved });
+}));
 
 // ============ OVERVIEW ============
 router.get("/overview", asyncHandler(async (req, res) => {
@@ -56,6 +94,18 @@ router.get("/overview", asyncHandler(async (req, res) => {
     ? `Based on ${lifetimeSavings.pricedCount} transaction${lifetimeSavings.pricedCount === 1 ? "" : "s"}`
     : "No priced transactions yet";
 
+  // The MTD Spend card is measured against this month's projection, falling back
+  // to the wallet's standing limit only when no projection exists. A customer
+  // with neither is told so instead of being shown a bar that cannot move.
+  const projection = await readSpendProjection(userId, Number(agg.mtd));
+  const targetKobo = projection.projectedKobo ?? (wallet.budget_limit_kobo > 0 ? Number(wallet.budget_limit_kobo) : null);
+  const usagePercent = targetKobo ? Math.round((Number(agg.mtd) / targetKobo) * 100) : null;
+  const budgetHelper = projection.projectedKobo != null
+    ? `${projection.projectedLabel} projected`
+    : wallet.budget_limit_kobo > 0
+      ? `${naira(wallet.budget_limit_kobo)} Limit`
+      : "Not set";
+
   const metrics = [
     { label: "Total Account Balance", value: naira(wallet.balance_kobo) },
     {
@@ -70,27 +120,78 @@ router.get("/overview", asyncHandler(async (req, res) => {
       helper: "vs median price at the time",
       tone: "green"
     },
-    { label: "Budget Usage", value: wallet.budget_limit_kobo > 0 ? `${Math.round((agg.mtd / wallet.budget_limit_kobo) * 100)}%` : "-", helper: wallet.budget_limit_kobo > 0 ? `${naira(wallet.budget_limit_kobo)} Limit` : "No budget set", tone: "green" },
+    {
+      label: "Budget Usage",
+      value: usagePercent == null ? "-" : `${usagePercent}%`,
+      helper: budgetHelper,
+      tone: usagePercent != null && usagePercent >= 100 ? "red" : "green"
+    },
+    { label: "Projected Spend", value: projection.projectedLabel ?? "Not set", helper: projection.projectedKobo == null ? "Tap to set this month" : "Tap to change", tone: "blue" },
     { label: "Litres Consumed", value: `${Math.round(agg.litres).toLocaleString()} L`, tone: "green" },
     { label: "Transactions", value: String(agg.count), tone: "blue" },
     { label: "Security Status", value: `${alerts.count} Alerts`, helper: `${alerts.count} Blocked | 0 Suspicious`, tone: alerts.count > 0 ? "red" : "green" },
     { label: "Lifetime Savings", value: naira(lifetimeSavings.savedKobo), helper: savingsCoverage, tone: "green" }
   ];
-  const recent = await q(
-    `SELECT t.*, s.name AS station_name, v.plate AS vehicle_plate FROM transactions t
-     LEFT JOIN stations s ON s.id = t.station_id LEFT JOIN vehicles v ON v.id = t.vehicle_id
-     WHERE t.customer_user_id = $1 ORDER BY t.created_at DESC LIMIT 5`,
-    [userId]
-  );
-  const recentActivity = recent.map((t) => ({
-    station: t.station_name ?? "Obligon Network",
-    meta: `${t.vehicle_plate ?? "Wallet"} • ${Math.round(t.litres)}L`,
-    amount: naira(t.amount_kobo),
-    time: relativeTime(t.created_at),
-    reference: t.reference,
-    status: t.status
-  }));
-  res.json({ metrics, recentActivity });
+
+  // The activity feed is the customer's record of what has happened to their
+  // account, so it merges both kinds of event. It used to read only from
+  // `transactions`, which meant a customer who had topped up, paid for a card
+  // plan or had a dispute resolved saw an empty "No recent activity" panel
+  // telling them nothing had happened, while their notifications page listed
+  // several events.
+  const [recent, events] = await Promise.all([
+    q(
+      `SELECT t.id, t.reference, t.amount_kobo, t.litres, t.status, t.created_at,
+              s.name AS station_name, v.plate AS vehicle_plate
+       FROM transactions t
+       LEFT JOIN stations s ON s.id = t.station_id LEFT JOIN vehicles v ON v.id = t.vehicle_id
+       WHERE t.customer_user_id = $1 ORDER BY t.created_at DESC LIMIT 6`,
+      [userId]
+    ),
+    q(
+      `SELECT id, title, body, link, created_at FROM notifications
+       WHERE user_id = $1 AND dismissed_at IS NULL
+       ORDER BY created_at DESC LIMIT 6`,
+      [userId]
+    )
+  ]);
+
+  const recentActivity = [
+    ...recent.map((t) => ({
+      id: t.id,
+      kind: "transaction",
+      title: t.station_name ?? "Obligon Network",
+      subtitle: `${t.vehicle_plate ?? "Wallet"} • ${Math.round(Number(t.litres))}L`,
+      amount: naira(t.amount_kobo),
+      time: relativeTime(t.created_at),
+      reference: t.reference,
+      status: t.status,
+      link: "/customer/transactions",
+      // Carried for the merge order only, then dropped. Sorting on the formatted
+      // "2 hours ago" string would not order anything: it is not a date.
+      sortAt: new Date(t.created_at).getTime()
+    })),
+    ...events.map((e) => ({
+      id: e.id,
+      kind: "notification",
+      // `amount` is null rather than a fabricated figure. A notification about a
+      // top-up already states the amount in its body, and printing a currency
+      // figure beside "Card issued" would be inventing a number.
+      title: e.title,
+      subtitle: e.body,
+      amount: null,
+      time: relativeTime(e.created_at),
+      reference: null,
+      status: null,
+      link: e.link ?? "/customer/notifications",
+      sortAt: new Date(e.created_at).getTime()
+    }))
+  ]
+    .sort((a, b) => b.sortAt - a.sortAt)
+    .slice(0, 6)
+    .map(({ sortAt, ...item }) => item);
+
+  res.json({ metrics, recentActivity, projection });
 }));
 
 // ============ TRANSACTIONS ============

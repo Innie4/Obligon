@@ -20,6 +20,7 @@ import {
   LockKeyhole,
   MapPinned,
   MessageCircle,
+  Pencil,
   Receipt,
   ShieldCheck,
   Snowflake,
@@ -150,7 +151,11 @@ function VehicleTable() {
 
 function ActivityList({ desktop = false }: { desktop?: boolean }) {
   const router = useRouter();
-  const { status, data: recentActivity, error, reload } = useAsync(() => api.getCustomerRecentActivity());
+  const { status, data: recentActivity, error, reload, refresh } = useAsync(() => api.getCustomerRecentActivity());
+  // The feed carries fuel transactions and account notifications, and either can
+  // change without this page being touched: a transfer landing credits a wallet
+  // and raises a notification at the same moment.
+  usePolling(refresh, { intervalMs: BALANCE_POLL_MS });
   return (
     <AsyncBoundary
       status={status}
@@ -158,7 +163,10 @@ function ActivityList({ desktop = false }: { desktop?: boolean }) {
       isEmpty={!recentActivity || recentActivity.length === 0}
       onRetry={reload}
       loadingLabel="Loading activity…"
-      empty={{ title: "No recent activity", message: "Your recent transactions will appear here." }}
+      empty={{
+        title: "No recent activity",
+        message: "Your transactions and account alerts will appear here."
+      }}
     >
       <Card className="overflow-hidden">
         <div className="flex items-center justify-between px-6 py-6 border-b border-[#eef3ee]">
@@ -169,13 +177,30 @@ function ActivityList({ desktop = false }: { desktop?: boolean }) {
         </div>
         <div className="divide-y divide-[#eef3ee]">
           {(recentActivity ?? []).map((item) => (
-            <div key={`${item.station}-${item.amount}`} onClick={() => router.push("/customer/transactions")} className="flex items-center gap-4 px-6 py-4 hover:bg-[#f7fbf8] transition cursor-pointer">
-              <MiniIcon tone="muted"><Fuel size={18} /></MiniIcon>
+            <div
+              key={item.id}
+              onClick={() => router.push(item.link || "/customer/transactions")}
+              className="flex items-center gap-4 px-6 py-4 hover:bg-[#f7fbf8] transition cursor-pointer"
+            >
+              <MiniIcon tone={item.kind === "notification" ? "blue" : "muted"}>
+                {item.kind === "notification" ? <Bell size={18} /> : <Fuel size={18} />}
+              </MiniIcon>
               <div className="min-w-0 flex-1">
-                <p className="font-extrabold text-obligon-navy">{item.station}</p>
-                <p className="text-sm text-obligon-text">{desktop ? item.time : item.meta}</p>
+                <p className="font-extrabold text-obligon-navy">{item.title}</p>
+                <p className="truncate text-sm text-obligon-text">{desktop ? item.time : item.subtitle}</p>
+                {/* The timestamp was replacing the description on the desktop feed,
+                    which is how a notification's body — the only part that says
+                    what happened — never appeared anywhere. Both are shown, and
+                    the description is kept when there is one. */}
+                {desktop && item.subtitle ? (
+                  <p className="truncate text-sm text-obligon-text">{item.subtitle}</p>
+                ) : null}
               </div>
-              <p className="font-extrabold text-obligon-green">{item.amount}</p>
+              {/* No amount for a notification: it is not a monetary event, and a
+                  currency figure here would be invented. */}
+              {item.amount ? (
+                <p className="shrink-0 font-extrabold text-obligon-green">{item.amount}</p>
+              ) : null}
             </div>
           ))}
         </div>
@@ -199,7 +224,13 @@ function greetingHour() {
   return "Good evening";
 }
 
-function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
+function OverviewPage({
+  balanceRefreshKey,
+  onEditProjection
+}: {
+  balanceRefreshKey: number;
+  onEditProjection: () => void;
+}) {
   const { user } = useSession();
   const router = useRouter();
   const { status, data: metrics, error, reload, refresh } = useAsync(
@@ -212,24 +243,25 @@ function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
   usePolling(refresh, { intervalMs: BALANCE_POLL_MS });
   const firstName = user?.name?.split(" ")[0] ?? "Driver";
   const totalBalance = metricValue(metrics, "Total Account Balance", "₦0.00");
-  // Read from their own metrics. MTD Savings used to be scraped out of the MTD
-  // Spend helper string, which read "This month", so the card showed a sentence
-  // fragment where a currency figure belonged. Fallbacks are real zeros rather
-  // than invented figures: showing ₦18,450 that no calculation produced is worse
-  // than showing nothing.
   const mtdSpend = metricValue(metrics, "MTD Spend", "₦0.00");
   const mtdSpendHelper = metricHelper(metrics, "MTD Spend") ?? "";
-  const mtdSavings = metricValue(metrics, "MTD Savings", "₦0.00");
-  const mtdSavingsHelper = metricHelper(metrics, "MTD Savings") ?? "";
-  const budgetUsage = metricValue(metrics, "Budget Usage", "0%");
-  const budgetLimit = metricHelper(metrics, "Budget Usage") ?? "No budget set";
+  // The projection is what the MTD Spend card is measured against, and it is
+  // also how the customer changes it: the whole card is the control. Showing the
+  // figure and the edit in one place is why the prompt at the start of a month
+  // does not need to explain where to go afterwards.
+  const projectedSpend = metricValue(metrics, "Projected Spend", "Not set");
+  const projectedHelper = metricHelper(metrics, "Projected Spend") ?? "Tap to set this month";
+  const budgetUsage = metricValue(metrics, "Budget Usage", "-");
+  const budgetLimit = metricHelper(metrics, "Budget Usage") ?? "Not set";
   const litres = metricValue(metrics, "Litres Consumed", "0 L");
   const txnCount = metricValue(metrics, "Transactions", "0");
   const security = metricValue(metrics, "Security Status", "0 Alerts");
   const securityHelper = metricHelper(metrics, "Security Status") ?? "0 Blocked | 0 Suspicious";
-  const lifetime = metricValue(metrics, "Lifetime Savings", "₦0.00");
-  const lifetimeHelper = metricHelper(metrics, "Lifetime Savings") ?? "";
+  // The bar caps at 100% because that is all the width can show, but the number
+  // beside it stays the real one: clamping a 140% figure to 100% would hide the
+  // only part of this card the customer actually needs to read.
   const usagePercent = Math.min(100, Math.max(0, Number.parseInt(budgetUsage, 10) || 0));
+  const hasProjection = projectedSpend !== "Not set";
 
   return (
     <Canvas>
@@ -255,42 +287,50 @@ function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
             <p className="mt-4 font-display text-[40px] font-extrabold leading-none text-obligon-navy lg:text-[56px]">
               {totalBalance}
             </p>
-            <div className="mt-8 flex flex-wrap gap-4">
-              <span className="rounded-xl border border-[#b6d894] bg-[#e8fbd7] px-4 py-3">
-                <span className="block text-xs font-extrabold uppercase text-obligon-green">MTD Savings</span>
-                <span className="mt-1 block text-2xl font-extrabold text-obligon-green">{mtdSavings}</span>
-                {mtdSavingsHelper ? (
-                  <span className="mt-0.5 block text-[11px] font-semibold text-obligon-text">{mtdSavingsHelper}</span>
-                ) : null}
-              </span>
-              <span className="rounded-xl bg-[#eef3ee] px-4 py-3">
-                <span className="block text-xs font-extrabold uppercase text-[#3f463d]">Lifetime Savings</span>
-                <span className="mt-1 block text-2xl font-extrabold text-obligon-navy">{lifetime}</span>
-                {lifetimeHelper ? (
-                  <span className="mt-0.5 block text-[11px] font-semibold text-obligon-text">{lifetimeHelper}</span>
-                ) : null}
-              </span>
-            </div>
           </Card>
-          <Card className="p-6">
-            <div className="flex items-baseline justify-between gap-3">
-              <p className="text-xs font-extrabold uppercase tracking-[0.8px] text-[#3f463d]">MTD Spend</p>
-              {mtdSpendHelper ? (
-                <p className="text-[11px] font-semibold text-obligon-text">{mtdSpendHelper}</p>
-              ) : null}
-            </div>
-            <p className="mt-4 font-display text-[32px] font-extrabold text-[#b51f24]">{mtdSpend}</p>
-            <div className="mt-6 flex justify-between text-sm">
-              <span className="font-bold text-[#3f463d]">Budget Usage</span>
-              <span className="font-extrabold text-obligon-navy">{budgetUsage}</span>
-            </div>
-            <div className="mt-2 h-2.5 rounded-full bg-[#dce5da] overflow-hidden">
-              <span
-                className={`block h-full rounded-full transition-all ${usagePercent >= 100 ? "bg-[#b51f24]" : "bg-obligon-green"}`}
-                style={{ width: `${usagePercent}%` }}
-              />
-            </div>
-            <p className="mt-3 text-right text-xs font-extrabold text-[#3f463d]">{budgetLimit}</p>
+          {/* The whole card is the control for this month's projection. It was a
+              read-only figure before, so the MTD Spend bar was driven by a limit
+              set in a page the customer was never sent to, and read "-"
+              forever. Clicking the card is the affordance, and the label says so
+              rather than leaving it to be discovered. */}
+          <Card className="p-6 text-left">
+            <button
+              type="button"
+              onClick={onEditProjection}
+              className="block w-full rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-obligon-green"
+              aria-label="Set or change your projected spend for this month"
+            >
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="text-xs font-extrabold uppercase tracking-[0.8px] text-[#3f463d]">MTD Spend</p>
+                {mtdSpendHelper ? (
+                  <p className="text-[11px] font-semibold text-obligon-text">{mtdSpendHelper}</p>
+                ) : null}
+              </div>
+              <p className="mt-4 font-display text-[32px] font-extrabold text-[#b51f24]">{mtdSpend}</p>
+              <div className="mt-6 flex justify-between text-sm">
+                <span className="font-bold text-[#3f463d]">Budget Usage</span>
+                <span className="font-extrabold text-obligon-navy">{budgetUsage}</span>
+              </div>
+              <div className="mt-2 h-2.5 rounded-full bg-[#dce5da] overflow-hidden">
+                <span
+                  className={`block h-full rounded-full transition-all ${usagePercent >= 100 ? "bg-[#b51f24]" : "bg-obligon-green"}`}
+                  style={{ width: `${usagePercent}%` }}
+                />
+              </div>
+              <div className="mt-3 flex items-center justify-between gap-2">
+                <p className="text-right text-xs font-extrabold text-[#3f463d]">{budgetLimit}</p>
+                <p className="flex items-center gap-1 text-xs font-extrabold text-obligon-green">
+                  <Pencil size={13} aria-hidden />
+                  {projectedHelper}
+                </p>
+              </div>
+              <p className="mt-2 border-t border-[#eef3ee] pt-3 text-xs font-bold text-obligon-text">
+                Projected this month:{" "}
+                <span className={hasProjection ? "font-extrabold text-obligon-navy" : "text-obligon-green"}>
+                  {projectedSpend}
+                </span>
+              </p>
+            </button>
           </Card>
         </div>
 
@@ -2022,6 +2062,27 @@ export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
   const [cardStatus, setCardStatus] = React.useState<string | null>(null);
   const [cardRefreshKey, setCardRefreshKey] = React.useState(0);
   const [balanceRefreshKey, setBalanceRefreshKey] = React.useState(0);
+  // The projection lives here rather than in the overview page because the
+  // prompt has to be able to open from any customer page: a new account lands on
+  // the overview, but someone who signs in straight to their wallet should be
+  // asked there too.
+  const { data: projection, refresh: refreshProjection } = useAsync(
+    () => api.getCustomerSpendProjection()
+  );
+  // Which month the prompt has already been raised for this session. Without it
+  // the modal reopens on every navigation, because a customer who chose "Not
+  // now" would be asked again the moment they closed it. Setting a projection
+  // clears the need entirely, since the server then reports one exists.
+  const [promptedForMonth, setPromptedForMonth] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!projection?.needsProjection) return;
+    // Never displace something the customer opened deliberately.
+    if (modal) return;
+    if (promptedForMonth === projection.month) return;
+    setPromptedForMonth(projection.month);
+    setModal("spendProjection");
+  }, [projection, modal, promptedForMonth]);
 
   const handleTopUpSuccess = () => {
     setBalanceRefreshKey((key) => key + 1);
@@ -2031,8 +2092,20 @@ export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
     setCardRefreshKey((key) => key + 1);
   };
 
+  const handleSpendProjectionSaved = () => {
+    // The MTD Spend card reads its bar from the overview response, so the card
+    // and the saved figure have to be refreshed together or the bar would still
+    // show the old projection until the next page load.
+    setBalanceRefreshKey((key) => key + 1);
+    void refreshProjection();
+  };
+
+  const openSpendProjection = React.useCallback(() => {
+    setModal("spendProjection");
+  }, []);
+
   const pages: Record<CustomerPageKey, React.ReactNode> = {
-    overview: <OverviewPage balanceRefreshKey={balanceRefreshKey} />,
+    overview: <OverviewPage balanceRefreshKey={balanceRefreshKey} onEditProjection={openSpendProjection} />,
     transactions: <TransactionsPage />,
     card: <CardPage onModal={setModal} refreshKey={cardRefreshKey} onCardChange={(card) => setCardStatus(card?.status ?? null)} />,
     wallet: <WalletPage onModal={setModal} balanceRefreshKey={balanceRefreshKey} />,
@@ -2056,6 +2129,8 @@ export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
         cardBlocked={cardStatus === "blocked"}
         onCardBlockedChange={handleCardStatusChange}
         onTopUpSuccess={handleTopUpSuccess}
+        spendProjection={projection}
+        onSpendProjectionSaved={handleSpendProjectionSaved}
       />
     </>
   );

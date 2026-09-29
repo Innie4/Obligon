@@ -1,5 +1,4 @@
 import { q, one } from "../db.js";
-import { naira } from "./format.js";
 import { audit, notify } from "./notify.js";
 import { verifyCheckout, activeProvider } from "./payments.js";
 
@@ -67,18 +66,13 @@ async function reconcileTopUps(limit) {
         // meant two code paths for the same money movement, and a bank transfer
         // only worked if the webhook happened to arrive first.
         const { completeTopUp } = await import("../routes/customer.routes.js");
-        // completeTopUp is idempotent and reports whether it was the one that
-        // moved the row, so a webhook that already credited it is not counted.
-        const moved = await completeTopUp(topup);
-        if (moved) {
+        // completeTopUp is idempotent, reports whether it was the caller that
+        // moved the row, and is itself what tells the customer the money landed.
+        // This pass used to send a second notification of its own, so one settled
+        // top-up produced "Transaction Alert" and "Top-up credited" together —
+        // two entries in the feed for a single event.
+        if (await completeTopUp(topup)) {
           stats.completed += 1;
-          await notify({
-            userId: topup.user_id,
-            title: "Top-up credited",
-            body: `We confirmed your payment of ${naira(Number(topup.amount_kobo))} and credited your fuel wallet.`,
-            category: "transactions",
-            link: "/customer/wallet"
-          });
         }
       } else {
         const attempts = Number(topup.reconcile_attempts ?? 0) + 1;
