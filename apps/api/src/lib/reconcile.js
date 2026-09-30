@@ -71,7 +71,7 @@ async function reconcileTopUps(limit) {
         // This pass used to send a second notification of its own, so one settled
         // top-up produced "Transaction Alert" and "Top-up credited" together —
         // two entries in the feed for a single event.
-        if (await completeTopUp(topup)) {
+        if (await completeTopUp(topup, { providerTransactionId: verification.providerTransactionId ?? null })) {
           stats.completed += 1;
         }
       } else {

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Obligon">
+  <!--
+    The Obligon mark, taken from the wordmark in assets/figma/obligon-logo.png.
+    Colours sampled from that file: #00207D for the blue, #9DD31C for the lime.
+
+    The wordmark itself cannot be a favicon. At 16px "Obligon" is an illegible
+    smudge, and the source PNG is a 384x256 canvas whose visible wordmark occupies
+    only 209x47 of it, so scaling that to a square tab crops to nothing. The ring
+    is the part of the logo that survives at 16px, and it is redrawn here as
+    vector so it stays crisp rather than being scaled down from a large raster.
+
+    The ring is centre (38,32) radius 18, stroked 7. The two arcs are the same
+    circle split where the wordmark splits: blue runs clockwise from about ten
+    o'clock, through the top and right, to half past four; lime takes the rest, and
+    the gap between them is the thin light seam visible in the original.
+  -->
+  <rect width="64" height="64" rx="14" fill="#ffffff" />
+  <g fill="#9DD31C">
+    <!-- The three speed lines to the left of the ring, longest in the middle. The
+         middle one stops just short of the ring so the two shapes stay distinct
+         at 16px rather than merging into a blob. -->
+    <rect x="9" y="26" width="10" height="3" rx="1.5" />
+    <rect x="5" y="30.5" width="12" height="3" rx="1.5" />
+    <rect x="9" y="35" width="10" height="3" rx="1.5" />
+  </g>
+  <path
+    d="M20.27 28.87 A18 18 0 1 1 50.73 44.73"
+    fill="none"
+    stroke="#00207D"
+    stroke-width="7"
+    stroke-linecap="round"
+  />
+  <path
+    d="M50.73 44.73 A18 18 0 0 1 20.27 28.87"
+    fill="none"
+    stroke="#9DD31C"
+    stroke-width="7"
+    stroke-linecap="round"
+  />
+</svg>

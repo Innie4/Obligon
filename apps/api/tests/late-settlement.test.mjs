@@ -48,7 +48,7 @@ test("a settled payment completes through the single owner of the transition", (
   // credited. Reconciling must call it rather than repeat the credit, otherwise
   // the two paths can diverge and a webhook plus a poll can double-count.
   assert.match(reconcile, /import\("\.\.\/routes\/customer\.routes\.js"\)/);
-  assert.match(reconcile, /await completeTopUp\(topup\)/);
+  assert.match(reconcile, /await completeTopUp\(topup/);
   assert.doesNotMatch(
     reconcile,
     /UPDATE top_ups SET status = 'success'/,

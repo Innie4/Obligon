@@ -6,16 +6,33 @@ import { sendPush } from "./push.js";
 import { env } from "../config/env.js";
 
 /**
- * Central notification dispatcher: creates the in-app record, pushes it over
+ * Central notification dispatcher: creates the in-in-app record, pushes it over
  * SSE, and fans out to email/SMS/push honoring the user's stored preferences.
+ *
+ * `eventKey` names the thing that happened — "this top-up was credited" — rather
+ * than the message about it. The unique index on notifications.event_key then
+ * makes one notification per event a property of the schema, not a convention
+ * every call site has to remember: a settled payment is confirmed by the webhook,
+ * by the reconciliation pass and by the browser returning from checkout, and all
+ * three run for the same payment. Without it the dashboard's activity feed showed
+ * one ₦100 top-up three times against a ₦200 balance, which reads as a wrong
+ * balance rather than as a repeated message.
+ *
+ * Returns null when the event was already notified, which is not an error.
  */
-export async function notify({ userId = null, orgId = null, title, body, category = "general", actionRequired = false, link = null, emailOverride = null }) {
+export async function notify({ userId = null, orgId = null, title, body, category = "general", actionRequired = false, link = null, emailOverride = null, eventKey = null }) {
   const rows = await q(
-    `INSERT INTO notifications (user_id, organization_id, title, body, category, action_required, link)
-     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-    [userId, orgId, title, body, category, actionRequired, link]
+    `INSERT INTO notifications (user_id, organization_id, title, body, category, action_required, link, event_key)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+     ON CONFLICT (event_key) WHERE event_key IS NOT NULL DO NOTHING
+     RETURNING *`,
+    [userId, orgId, title, body, category, actionRequired, link, eventKey]
   );
   const notification = rows[0];
+  // Nothing inserted means this event has already been told once. Returning here
+  // also stops the email, SMS and push fan-out, so a repeat is not merely hidden
+  // from the feed — the customer is not sent the same SMS three times either.
+  if (!notification) return null;
 
   // Real-time fan-out
   if (userId) emitToUser(userId, "notification", notification);

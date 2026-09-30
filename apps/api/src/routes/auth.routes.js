@@ -18,6 +18,92 @@ const router = Router();
 
 const ROLES = ["customer", "company", "partner", "mechanic", "admin"];
 
+/** How long a verification code is good for. */
+const CODE_TTL_MINUTES = 10;
+
+/**
+ * Wrong guesses allowed against one code before it is burned.
+ *
+ * A six-digit code is a million possibilities, so without a cap the confirm
+ * endpoint is a lookup oracle rather than a check. Five is enough for a real
+ * mistype and small enough that exhausting the key space is not an option. The
+ * counter is on the row, so it survives a restart and a resend starts fresh.
+ * Kept in step with the CHECK in migration 017.
+ */
+const MAX_CODE_ATTEMPTS = 5;
+
+/** Issue a verification code for one purpose and send it on the right channel. */
+async function issueVerificationCode({ userId, purpose, channel, to, message, emailTemplate }) {
+  const code = randomCode();
+  // Supersede any code still outstanding for this purpose, so an old one cannot
+  // be used after a resend and the newest is unambiguously the live one.
+  await q(
+    `UPDATE verification_codes SET consumed_at = now()
+     WHERE user_id = $1 AND purpose = $2 AND consumed_at IS NULL`,
+    [userId, purpose]
+  );
+  await q(
+    `INSERT INTO verification_codes (user_id, purpose, code_hash, channel, expires_at)
+     VALUES ($1,$2,$3,$4, now() + ($5 || ' minutes')::interval)`,
+    [userId, purpose, hashToken(code), channel, String(CODE_TTL_MINUTES)]
+  );
+  if (channel === "email") {
+    const tpl = emailTemplates.verifyCode(code, purpose);
+    void sendEmail({ to, ...tpl });
+  } else {
+    void sendSms({ to, message: message ?? `Obligon verification code: ${code}` });
+  }
+  return code;
+}
+
+/**
+ * Check a submitted code against the live one for a purpose.
+ *
+ * The attempt is counted whether or not it matched, and a code that has used up
+ * its allowance is consumed so it cannot be guessed at further — telling the
+ * caller to resend is more use than leaving a spent code in play.
+ */
+async function consumeVerificationCode({ userId, purpose, code }) {
+  const record = await one(
+    `SELECT * FROM verification_codes
+     WHERE user_id = $1 AND purpose = $2 AND consumed_at IS NULL AND expires_at > now()
+     ORDER BY created_at DESC LIMIT 1`,
+    [userId, purpose]
+  );
+  if (!record) return { ok: false, reason: "expired" };
+
+  const spent = await one(
+    `UPDATE verification_codes SET attempts = attempts + 1
+     WHERE id = $1 AND consumed_at IS NULL RETURNING attempts`,
+    [record.id]
+  );
+  if (!spent) return { ok: false, reason: "expired" };
+
+  if (spent.attempts > MAX_CODE_ATTEMPTS) {
+    await q("UPDATE verification_codes SET consumed_at = now() WHERE id = $1", [record.id]);
+    return { ok: false, reason: "tooManyAttempts" };
+  }
+  // Constant-time comparison of the stored hash. A six-digit code is a small
+  // space, so a comparison that leaks how many leading characters matched is a
+  // real if modest advantage to whoever is guessing.
+  const expected = Buffer.from(record.code_hash, "hex");
+  const actual = Buffer.from(hashToken(String(code ?? "")), "hex");
+  if (expected.length !== actual.length || !crypto.timingSafeEqual(expected, actual)) {
+    const left = MAX_CODE_ATTEMPTS - spent.attempts;
+    return {
+      ok: false,
+      reason: "mismatch",
+      message:
+        left > 0
+          ? `That code is not correct. ${left} attempt${left === 1 ? "" : "s"} left.`
+          : "That code is not correct."
+    };
+  }
+
+  await q("UPDATE verification_codes SET consumed_at = now() WHERE id = $1", [record.id]);
+  return { ok: true };
+}
+
 async function loadOrgForUser(user) {
   if (!["company", "partner", "mechanic"].includes(user.role)) return null;
   return one(
@@ -169,6 +255,11 @@ router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
   if (!email || !password) throw badRequest("Email and password are required");
   if (password.length < 8) throw badRequest("Password must be at least 8 characters");
   if (!ROLES.includes(role) || role === "admin") throw badRequest("Please choose a valid account type");
+  // A phone number is required, not optional. Signup verifies both the email and
+  // the phone number the account was registered with, and a registration that
+  // captured no phone could only ever verify one of the two — leaving the
+  // customer permanently half-identified from their own point of view.
+  if (!phone) throw badRequest("A phone number is required so we can verify your account");
   const existing = await one("SELECT id FROM users WHERE lower(email) = lower($1)", [email]);
   if (existing) throw conflict("An account with this email already exists");
 
@@ -240,15 +331,33 @@ router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
     return { user, org };
   });
 
-  // Email verification code
-  const code = randomCode();
-  await q(
-    `INSERT INTO verification_codes (user_id, purpose, code_hash, channel, expires_at)
-     VALUES ($1,'email_verify',$2,'email', now() + interval '10 minutes')`,
-    [created.user.id, hashToken(code)]
-  );
-  const tpl = emailTemplates.verifyCode(code, "email_verify");
-  void sendEmail({ to: email, ...tpl });
+  // Verification codes go out for both channels the account was registered with.
+  // The wallet above already exists by this point, so a customer who never
+  // finishes verifying still has somewhere to be funded; the codes establish
+  // that they are reachable on the address and number they gave us, which is what
+  // makes the wallet meaningful. Neither send is awaited: a slow or failing
+  // mail or SMS gateway must not fail a registration that has already committed,
+  // and the customer can always ask for a new code once signed in.
+  const verificationSent = { email: true, phone: true };
+  await issueVerificationCode({
+    userId: created.user.id,
+    purpose: "email_verify",
+    channel: "email",
+    to: created.user.email
+  });
+  try {
+    await issueVerificationCode({
+      userId: created.user.id,
+      purpose: "phone_verify",
+      channel: "sms",
+      to: phone
+    });
+  } catch {
+    // Recorded as not sent rather than failing the signup. The customer is told
+    // which channel still needs doing instead of being left with a false "check
+    // your messages" and no way to tell which one arrived.
+    verificationSent.phone = false;
+  }
 
   const tokens = await issueSession(req, created.user, false);
   await notify({
@@ -257,7 +366,13 @@ router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
   });
   await audit({ actorUserId: created.user.id, actorRole: role, action: "auth.signup", ip: req.ip });
 
-  res.status(201).json({ user: sessionPayload(created.user, created.org), ...tokens, verificationSent: true });
+  res.status(201).json({
+    user: sessionPayload(created.user, created.org),
+    ...tokens,
+    verificationSent,
+    verificationRequired: ["email", "phone"],
+    expiresInMinutes: CODE_TTL_MINUTES
+  });
 }));
 
 // ---------- POST /api/auth/refresh ----------
@@ -361,55 +476,58 @@ router.post("/reset-password", authLimiter, asyncHandler(async (req, res) => {
 }));
 
 // ---------- POST /api/auth/verify-email (send code) ----------
-router.post("/verify-email/send", requireAuth, asyncHandler(async (req, res) => {
-  const code = randomCode();
-  await q(
-    `INSERT INTO verification_codes (user_id, purpose, code_hash, channel, expires_at)
-     VALUES ($1,'email_verify',$2,'email', now() + interval '10 minutes')`,
-    [req.user.id, hashToken(code)]
-  );
-  const tpl = emailTemplates.verifyCode(code, "email_verify");
-  void sendEmail({ to: req.user.email, ...tpl });
-  res.json({ ok: true });
+router.post("/verify-email/send", authLimiter, requireAuth, asyncHandler(async (req, res) => {
+  if (req.user.email_verified) throw conflict("That email address is already verified");
+  await issueVerificationCode({
+    userId: req.user.id,
+    purpose: "email_verify",
+    channel: "email",
+    to: req.user.email
+  });
+  res.json({ ok: true, sentTo: req.user.email, expiresInMinutes: CODE_TTL_MINUTES });
 }));
 
 // ---------- POST /api/auth/verify-email (confirm) ----------
-router.post("/verify-email/confirm", requireAuth, asyncHandler(async (req, res) => {
+router.post("/verify-email/confirm", authLimiter, requireAuth, asyncHandler(async (req, res) => {
   const { code } = req.body ?? {};
-  const record = await one(
-    `SELECT * FROM verification_codes WHERE user_id = $1 AND purpose = 'email_verify' AND consumed_at IS NULL AND expires_at > now() ORDER BY created_at DESC LIMIT 1`,
-    [req.user.id]
-  );
-  if (!record || record.code_hash !== hashToken(String(code))) throw badRequest("Invalid or expired verification code");
-  await q("UPDATE verification_codes SET consumed_at = now() WHERE id = $1", [record.id]);
+  const result = await consumeVerificationCode({ userId: req.user.id, purpose: "email_verify", code });
+  if (!result.ok) {
+    await securityLog({ userId: req.user.id, event: "email_verification_failed", severity: "warning", ip: req.ip });
+    if (result.reason === "tooManyAttempts") {
+      throw badRequest("Too many incorrect codes. Request a new one.");
+    }
+    throw badRequest(result.message ?? "Invalid or expired verification code");
+  }
   await q("UPDATE users SET email_verified = TRUE WHERE id = $1", [req.user.id]);
   res.json({ ok: true, emailVerified: true });
 }));
 
 // ---------- POST /api/auth/verify-phone ----------
-router.post("/verify-phone/send", requireAuth, asyncHandler(async (req, res) => {
+router.post("/verify-phone/send", authLimiter, requireAuth, asyncHandler(async (req, res) => {
   const { phone } = req.body ?? {};
   if (phone) await q("UPDATE users SET phone = $2 WHERE id = $1", [req.user.id, phone]);
   const target = phone ?? req.user.phone;
   if (!target) throw badRequest("Add a phone number first");
-  const code = randomCode();
-  await q(
-    `INSERT INTO verification_codes (user_id, purpose, code_hash, channel, expires_at)
-     VALUES ($1,'phone_verify',$2,'sms', now() + interval '10 minutes')`,
-    [req.user.id, hashToken(code)]
-  );
-  void sendSms({ to: target, message: `Obligon verification code: ${code}` });
-  res.json({ ok: true });
+  if (req.user.phone_verified && !phone) throw conflict("That phone number is already verified");
+  await issueVerificationCode({
+    userId: req.user.id,
+    purpose: "phone_verify",
+    channel: "sms",
+    to: target
+  });
+  res.json({ ok: true, sentTo: target, expiresInMinutes: CODE_TTL_MINUTES });
 }));
 
-router.post("/verify-phone/confirm", requireAuth, asyncHandler(async (req, res) => {
+router.post("/verify-phone/confirm", authLimiter, requireAuth, asyncHandler(async (req, res) => {
   const { code } = req.body ?? {};
-  const record = await one(
-    `SELECT * FROM verification_codes WHERE user_id = $1 AND purpose = 'phone_verify' AND consumed_at IS NULL AND expires_at > now() ORDER BY created_at DESC LIMIT 1`,
-    [req.user.id]
-  );
-  if (!record || record.code_hash !== hashToken(String(code))) throw badRequest("Invalid or expired verification code");
-  await q("UPDATE verification_codes SET consumed_at = now() WHERE id = $1", [record.id]);
+  const result = await consumeVerificationCode({ userId: req.user.id, purpose: "phone_verify", code });
+  if (!result.ok) {
+    await securityLog({ userId: req.user.id, event: "phone_verification_failed", severity: "warning", ip: req.ip });
+    if (result.reason === "tooManyAttempts") {
+      throw badRequest("Too many incorrect codes. Request a new one.");
+    }
+    throw badRequest(result.message ?? "Invalid or expired verification code");
+  }
   await q("UPDATE users SET phone_verified = TRUE WHERE id = $1", [req.user.id]);
   res.json({ ok: true, phoneVerified: true });
 }));

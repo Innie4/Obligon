@@ -1216,14 +1216,20 @@ function WalletPage({
   balanceRefreshKey: number;
 }) {
   const router = useRouter();
+  // One request, not three. The balance, the ledger and the processor's record
+  // of the last top-up are three views of the same wallet, and asking for them
+  // separately on a 4-second poll is three round trips to render one screen.
   const {
-    status: topUpsStatus,
-    data: desktopTopUps,
-    error: topUpsError,
-    reload: reloadTopUps,
-    refresh: refreshTopUps
-  } = useAsync(() => api.getCustomerDesktopTopUps(), [balanceRefreshKey]);
+    status: walletStatus,
+    data: wallet,
+    error: walletError,
+    reload: reloadWallet,
+    refresh: refreshWallet
+  } = useAsync(() => api.getCustomerWallet(), [balanceRefreshKey]);
   const { data: topUpHistory } = useAsync(() => api.getCustomerTopUpHistory());
+  // The overview carries the MTD figures the wallet page reuses, and it is a
+  // separate aggregate, so it is refreshed on the same tick rather than folded
+  // into the wallet response.
   const { data: overviewMetrics, refresh: refreshBalance } = useAsync(
     () => api.getCustomerOverviewMetrics(),
     [balanceRefreshKey]
@@ -1233,9 +1239,17 @@ function WalletPage({
   // and the transaction list behind it, which is its own kind of wrong.
   usePolling(() => {
     refreshBalance();
-    refreshTopUps();
+    refreshWallet();
   }, { intervalMs: BALANCE_POLL_MS });
-  const totalBalance = metricValue(overviewMetrics, "Total Account Balance", "₦0.00");
+  const desktopTopUps = wallet?.desktopTopUps ?? null;
+  const topUpsStatus = walletStatus;
+  const topUpsError = walletError;
+  const reloadTopUps = reloadWallet;
+  // Taken from the wallet response rather than the overview metric: this is the
+  // same number the ledger that produced it reports, so the figure on this page
+  // and the entries beneath it cannot disagree.
+  const totalBalance = wallet?.balanceLabel ?? "₦0.00";
+  const lastTopUp = wallet?.lastTopUp ?? null;
   // The real budget limit, or nothing. Showing a badge only when there is an
   // actual limit avoids implying a facility that was never set.
   const budgetLimit = metricHelper(overviewMetrics, "Budget Usage") ?? "";
@@ -1277,6 +1291,44 @@ function WalletPage({
         <p className="mt-3 text-sm font-bold text-obligon-green">
           {hasHistory ? "Fund your wallet to keep paying for fuel anywhere on the network." : "Add funds to start paying for fuel."}
         </p>
+        {/* What the processor says about the last payment, next to our figure.
+            A customer who is told a transaction succeeded and sees nothing change
+            has no way to tell a missed credit from a stale screen. Naming the
+            reference, what was collected and the processor's own transaction id
+            lets them check both sides of that claim. The balance itself cannot
+            come from the processor: it holds no fuel balance, only payments. */}
+        {lastTopUp ? (
+          <div className="mt-6 rounded-xl border border-obligon-border bg-[#f7fbf8] p-4 text-sm">
+            <p className="text-xs font-extrabold uppercase text-obligon-text">Last top-up</p>
+            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1">
+              <span className="font-bold text-obligon-text">
+                Reference{" "}
+                <span className="font-extrabold text-obligon-navy">{lastTopUp.reference}</span>
+              </span>
+              <span className="font-bold text-obligon-text">
+                Charged{" "}
+                <span className="font-extrabold text-obligon-navy">{lastTopUp.chargedLabel}</span>
+              </span>
+              <span className="font-bold text-obligon-text">
+                Credited{" "}
+                <span className="font-extrabold text-obligon-navy">{lastTopUp.creditedLabel}</span>
+              </span>
+              <span className="font-bold text-obligon-text">
+                {lastTopUp.status === "success" ? "Confirmed" : "Status"}{" "}
+                <span
+                  className={`font-extrabold ${lastTopUp.status === "success" ? "text-obligon-green" : "text-[#b51f24]"}`}
+                >
+                  {lastTopUp.status === "success" ? lastTopUp.confirmedLabel ?? "yes" : lastTopUp.status}
+                </span>
+              </span>
+            </div>
+            <p className="mt-2 text-[11px] font-semibold text-obligon-text">
+              Confirmed by {lastTopUp.provider}
+              {lastTopUp.providerTransactionId ? ` · transaction ${lastTopUp.providerTransactionId}` : ""}
+              {lastTopUp.feeLabel && lastTopUp.feeLabel !== "₦0" ? ` · ${lastTopUp.feeLabel} gateway fee, not credited as fuel` : ""}
+            </p>
+          </div>
+        ) : null}
       </Card>
 
       {/* Only the history is gated. Previously the whole page, including the

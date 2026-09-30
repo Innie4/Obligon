@@ -16,7 +16,7 @@ import { refundCheckout } from "./payments.js";
  *   - balances can never go negative (enforced by the column CHECK as well)
  */
 
-async function applyLedgerEntry(t, { walletId, direction, amountKobo, reference, description }) {
+async function applyLedgerEntry(t, { walletId, direction, amountKobo, reference, idempotencyKey = null, description }) {
   const delta = direction === "credit" ? amountKobo : -amountKobo;
   const updated = await t.one(
     `UPDATE wallets SET balance_kobo = balance_kobo + $2
@@ -30,16 +30,23 @@ async function applyLedgerEntry(t, { walletId, direction, amountKobo, reference,
     throw err;
   }
   await t.query(
-    `INSERT INTO wallet_ledger (wallet_id, direction, amount_kobo, balance_after_kobo, reference, description)
-     VALUES ($1,$2,$3,$4,$5,$6)`,
-    [walletId, direction, amountKobo, updated.balance_kobo, reference, description]
+    `INSERT INTO wallet_ledger (wallet_id, direction, amount_kobo, balance_after_kobo, reference, idempotency_key, description)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+    [walletId, direction, amountKobo, updated.balance_kobo, reference, idempotencyKey, description]
   );
   return Number(updated.balance_kobo);
 }
 
 /**
  * Credit a wallet exactly once for a given idempotency key.
- * Used by wallet top-ups and by card-plan purchases.
+ *
+ * `ledgerReference` is what the customer reads in their wallet history — the
+ * payment reference, such as TRX-MUNG8GCWRPA. It is separate from
+ * `idempotencyKey` because the two answer different questions: the key is what
+ * makes the credit happen once, the reference is what proves to a person which
+ * payment it was. They used to be the same column, so a customer's history read
+ * "topup:6fcdbcfe-5aa9-4f88-a363-24060eca27f0" and the reference they were given
+ * when paying appeared nowhere.
  */
 export async function creditWalletOnce({
   walletId,
@@ -50,7 +57,7 @@ export async function creditWalletOnce({
 }) {
   return tx(async (t) => {
     const existing = await t.one(
-      "SELECT balance_after_kobo FROM wallet_ledger WHERE reference = $1",
+      "SELECT balance_after_kobo FROM wallet_ledger WHERE idempotency_key = $1",
       [idempotencyKey]
     );
     if (existing) return { credited: false, balanceKobo: Number(existing.balance_after_kobo) };
@@ -59,7 +66,8 @@ export async function creditWalletOnce({
       walletId,
       direction: "credit",
       amountKobo,
-      reference: idempotencyKey,
+      reference: ledgerReference ?? idempotencyKey,
+      idempotencyKey,
       description
     });
     return { credited: true, balanceKobo: balance };
@@ -75,7 +83,7 @@ export async function debitWalletOnce({
 }) {
   return tx(async (t) => {
     const existing = await t.one(
-      "SELECT balance_after_kobo FROM wallet_ledger WHERE reference = $1",
+      "SELECT balance_after_kobo FROM wallet_ledger WHERE idempotency_key = $1",
       [idempotencyKey]
     );
     if (existing) return { debited: false, balanceKobo: Number(existing.balance_after_kobo) };
@@ -85,6 +93,7 @@ export async function debitWalletOnce({
       direction: "debit",
       amountKobo,
       reference: idempotencyKey,
+      idempotencyKey,
       description
     });
     return { debited: true, balanceKobo: balance };

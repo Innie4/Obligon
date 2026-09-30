@@ -167,6 +167,8 @@ router.get("/overview", asyncHandler(async (req, res) => {
       reference: t.reference,
       status: t.status,
       link: "/customer/transactions",
+      // A transaction is identified by its reference, which is unique.
+      signature: `transaction:${t.reference}`,
       // Carried for the merge order only, then dropped. Sorting on the formatted
       // "2 hours ago" string would not order anything: it is not a date.
       sortAt: new Date(t.created_at).getTime()
@@ -184,12 +186,24 @@ router.get("/overview", asyncHandler(async (req, res) => {
       reference: null,
       status: null,
       link: e.link ?? "/customer/notifications",
+      // Title plus body, so two different payments of the same amount are still
+      // two entries. The new event_key would be exact, but historical rows do not
+      // carry one, and identical text raised twice is the same event either way.
+      signature: `notification:${e.title}:${e.body}`,
       sortAt: new Date(e.created_at).getTime()
     }))
   ]
+    // One entry per event, newest kept. Duplicate notifications are already
+    // prevented at the database level by notifications.event_key, so this is a
+    // backstop for rows written before that existed: the same message raised
+    // twice must not fill the panel and make a correct balance look wrong.
+    //
+    // findIndex keeps the first occurrence, and each list arrives newest-first,
+    // so what is kept is the most recent raising of the event.
+    .filter((item, index, all) => all.findIndex((other) => other.signature === item.signature) === index)
     .sort((a, b) => b.sortAt - a.sortAt)
     .slice(0, 6)
-    .map(({ sortAt, ...item }) => item);
+    .map(({ sortAt, signature, ...item }) => item);
 
   res.json({ metrics, recentActivity, projection });
 }));
@@ -281,12 +295,50 @@ router.get("/wallet", asyncHandler(async (req, res) => {
     [wallet.id]
   );
   const methods = await q("SELECT * FROM payment_methods WHERE user_id = $1 ORDER BY is_default DESC, created_at DESC", [req.user.id]);
+  // What the processor says about the most recent top-up, beside our own figure.
+  //
+  // The balance is the ledger's, and it has to be: Flutterwave holds no fuel
+  // balance, has never heard of one, and cannot be asked "how much fuel does this
+  // driver have". What the processor can be asked — and what a customer is right
+  // to insist on — is whether the payment that was supposed to add to that
+  // balance actually settled, for how much, and under which identifier. Surfacing
+  // it means "the transaction was successful but my balance did not change" is a
+  // question the page answers rather than one the customer has to take on trust.
+  const lastTopUp = await one(
+    `SELECT reference, amount_kobo, fee_kobo, charged_kobo, status, provider,
+            provider_transaction_id, paid_at, created_at
+     FROM top_ups WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
+    [req.user.id]
+  );
   res.json({
     balanceLabel: naira(wallet.balance_kobo),
     balanceKobo: wallet.balance_kobo,
     budgetLimitKobo: wallet.budget_limit_kobo,
     walletKind: wallet.kind ?? "individual",
     walletId: wallet.id,
+    // Where the balance comes from, stated rather than implied. Each entry names
+    // the payment that caused it, so a customer can reconcile the figure against
+    // their bank statement and the processor's own record.
+    balanceSource: "wallet_ledger",
+    lastTopUp: lastTopUp
+      ? {
+          reference: lastTopUp.reference,
+          provider: lastTopUp.provider,
+          status: lastTopUp.status,
+          // What the processor collected, and what was credited. They differ when
+          // the customer bears the gateway fee, and the difference is money that
+          // bought no fuel, so hiding it is how "charged ₦101, credited ₦100"
+          // becomes an argument.
+          chargedLabel: naira(lastTopUp.charged_kobo ?? lastTopUp.amount_kobo),
+          creditedLabel: naira(lastTopUp.amount_kobo),
+          feeLabel: naira(lastTopUp.fee_kobo ?? 0),
+          providerTransactionId: lastTopUp.provider_transaction_id ?? null,
+          confirmedAt: lastTopUp.paid_at ?? null,
+          // Null until confirmed, which is the honest answer rather than a
+          // reference that looks settled while the money is still moving.
+          confirmedLabel: lastTopUp.paid_at ? fmtDateTime(lastTopUp.paid_at) : null
+        }
+      : null,
     methods: methods.map((m) => ({
       id: m.id, type: m.type, label: m.label, brand: m.brand,
       last4: m.last4 ?? m.account_number_mask, isDefault: m.is_default,
@@ -412,21 +464,34 @@ router.post("/wallet/topup/confirm", asyncHandler(async (req, res) => {
     await q("UPDATE top_ups SET status = 'failed' WHERE id = $1", [topup.id]);
     throw badRequest("Payment was not successful");
   }
-  await completeTopUp(topup);
+  await completeTopUp(topup, { providerTransactionId: verification.providerTransactionId ?? null });
   const wallet = await getWallet(req.user.id, topup.wallet_id ? undefined : req.user.orgId ?? null);
   res.json({ ok: true, balanceLabel: naira(wallet.balance_kobo), provider: verification.provider });
 }));
 
-export async function completeTopUp(topup) {
+/**
+ * Settle a top-up: move the row to success, credit the wallet once, and tell the
+ * customer once.
+ *
+ * `providerTransactionId` is whatever the processor returned when it confirmed
+ * the charge. It is recorded so the wallet can show the processor's own identifier
+ * beside our figure — a customer who is told "the transaction was successful" and
+ * sees no trace of it anywhere has no way to check that claim. Without it,
+ * top_ups.provider_transaction_id stayed null for every bank transfer and a
+ * support question about a settled payment could only be answered by guessing.
+ */
+export async function completeTopUp(topup, { providerTransactionId = null } = {}) {
   let completed = false;
   await tx(async (t) => {
     // Claim the top-up first. The conditional UPDATE is the idempotency guard:
     // only the first caller sees a row come back, whether that is a webhook, the
     // browser redirect, or the reconciliation pass.
     const marked = await t.query(
-      `UPDATE top_ups SET status = 'success', paid_at = now(), reconcile_attempts = reconcile_attempts + 1, last_reconciled_at = now()
+      `UPDATE top_ups SET status = 'success', paid_at = now(),
+              provider_transaction_id = COALESCE(provider_transaction_id, $2),
+              reconcile_attempts = reconcile_attempts + 1, last_reconciled_at = now()
        WHERE id = $1 AND status = 'pending' RETURNING id`,
-      [topup.id]
+      [topup.id, providerTransactionId]
     );
     if (!marked.length) return;
     completed = true;
@@ -465,7 +530,18 @@ export async function completeTopUp(topup) {
     [topup.reference]
   );
 
-  await notify({ userId: topup.user_id, title: "Transaction Alert", body: `Success: ${naira(topup.amount_kobo)} added to your wallet.`, category: "transactions", link: "/customer/wallet" });
+  await notify({
+    userId: topup.user_id,
+    title: "Transaction Alert",
+    body: `Success: ${naira(topup.amount_kobo)} added to your wallet.`,
+    category: "transactions",
+    link: "/customer/wallet",
+    // Names the event, not the message. The webhook, the reconciliation pass and
+    // the customer returning from checkout all confirm this same payment, and
+    // each of them reaches this line. Without the key the feed showed one top-up
+    // three times, which reads as a wrong balance rather than a repeated message.
+    eventKey: `topup:${topup.id}:credited`
+  });
   return true;
 }
 

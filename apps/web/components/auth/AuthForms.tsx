@@ -587,7 +587,7 @@ function SignupForm() {
           email,
           password,
           fullName: signupForm.contactName ?? signupForm.name ?? email.split("@")[0],
-          role: topRole === "customer" ? "customer" : topRole === "company" ? "company" : topRole === "partner" ? (partnerType === "mechanic" ? "mechanic" : "partner") : "customer",
+          role: topRole === "customer" ? "customer" : topRole === "company" ? "company" : topRole === "partner" ? (partnerTypeMap[partnerType] ?? "other") : "customer",
           partnerType: topRole === "partner" ? (partnerTypeMap[partnerType] ?? "other") : undefined,
           organizationName: orgName,
           phone: signupForm.phone,
@@ -610,6 +610,22 @@ function SignupForm() {
           : topRole === "partner"
             ? routes.dashboard
             : routes.customerDashboard;
+
+      // Signup issues a code for both the email and the phone number the account
+      // was registered with, so the customer is sent through both before they see
+      // a dashboard. This used to redirect to a page reading "Identity Verified"
+      // while nothing had been verified at all.
+      //
+      // The wallet already exists by the time these codes are sent — it is created
+      // inside the signup transaction — so a customer who never finishes verifying
+      // still has an account that can be funded, and one who does can be reached
+      // on both the contact details they gave.
+      if (LIVE_MODE) {
+        const phoneStep = `${routes.verifyPhone}?contact=${encodeURIComponent(signupForm.phone ?? "")}&next=${encodeURIComponent(destination)}`;
+        const emailStep = `${routes.verifyEmail}?contact=${encodeURIComponent(email)}&next=${encodeURIComponent(phoneStep)}`;
+        router.push(emailStep);
+        return;
+      }
 
       router.push(`${routes.authSuccess}?redirect=${destination}`);
     } catch (err) {

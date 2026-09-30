@@ -293,6 +293,7 @@ export async function verifyCheckout({ transactionId, reference, expectedAmountK
       amountKobo: expectedAmountKobo ?? 0,
       currency: expectedCurrency,
       reference,
+      providerTransactionId: null,
       simulated: true
     };
   }
@@ -337,15 +338,19 @@ export async function verifyCheckout({ transactionId, reference, expectedAmountK
     }
   }
 
-  return {
-    status: data?.status ?? status,
-    paid,
-    amountKobo,
-    currency,
-    reference: data?.tx_ref ?? reference ?? null,
-    simulated: false
-  };
-}
+    return {
+      status: data?.status ?? status,
+      paid,
+      amountKobo,
+      currency,
+      reference: data?.tx_ref ?? reference ?? null,
+      // Flutterwave's own transaction id. Recorded against the top-up so the
+      // wallet can show the processor's identifier beside our figure, and so a
+      // support question about a settled payment is answerable without guessing.
+      providerTransactionId: data?.id != null ? String(data.id) : null,
+      simulated: false
+    };
+  }
 
 /**
  * Flutterwave webhook authenticity: the `verif-hash` header must equal the

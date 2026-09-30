@@ -80,7 +80,9 @@ import type {
   CustomerProfile,
   CustomerActivityItem,
   CustomerSpendProjection,
+  CustomerTopUpSummary,
   CustomerTransaction,
+  CustomerWallet,
   MobileTransactionGroup,
   NotificationPrefs,
   SessionUser,
@@ -241,6 +243,8 @@ export interface ApiClient {
   getCustomerRecentActivity(): Promise<CustomerActivityItem[]>;
   getCustomerTopUpHistory(): Promise<string[][]>;
   getCustomerDesktopTopUps(): Promise<string[][]>;
+  /** The full wallet response, including where the balance came from. */
+  getCustomerWallet(): Promise<CustomerWallet>;
   getCustomerOverviewMetrics(): Promise<CustomerMetric[]>;
   /** What the customer expects to spend this month, and whether they have said. */
   getCustomerSpendProjection(): Promise<CustomerSpendProjection>;
@@ -454,6 +458,9 @@ class LiveApiClient implements ApiClient {
     const data = await http<{ desktopTopUps: string[][] }>("/api/customer/wallet");
     return data.desktopTopUps;
   }
+  async getCustomerWallet(): Promise<CustomerWallet> {
+    return http<CustomerWallet>("/api/customer/wallet");
+  }
 
   // ---------- Company ----------
   async getCompanyOverviewMetrics(): Promise<Metric[]> {
@@ -648,6 +655,29 @@ class MockApiClient implements ApiClient {
   async getCustomerRecentActivity(): Promise<CustomerActivityItem[]> { return recentActivity; }
   async getCustomerTopUpHistory(): Promise<string[][]> { return topUpHistory; }
   async getCustomerDesktopTopUps(): Promise<string[][]> { return desktopTopUps; }
+  async getCustomerWallet(): Promise<CustomerWallet> {
+    return {
+      balanceLabel: "₦128,400.00",
+      balanceKobo: 12_840_000,
+      budgetLimitKobo: 2_000_000,
+      walletKind: "individual",
+      walletId: "wallet-demo",
+      balanceSource: "wallet_ledger",
+      lastTopUp: {
+        reference: "TRX-DEMO1",
+        provider: "flutterwave",
+        status: "success",
+        chargedLabel: "₦50,000.00",
+        creditedLabel: "₦50,000.00",
+        feeLabel: "₦0.00",
+        providerTransactionId: "2098567168",
+        confirmedAt: "2026-10-24T14:32:00.000Z",
+        confirmedLabel: "24 Oct, 14:32"
+      },
+      topUps: topUpHistory,
+      desktopTopUps
+    };
+  }
   async getCustomerOverviewMetrics(): Promise<CustomerMetric[]> { return customerOverviewMetrics; }
   async getCustomerSpendProjection(): Promise<CustomerSpendProjection> {
     return { ...mockSpendProjection, updatedAt: null };

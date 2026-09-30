@@ -10,6 +10,10 @@ export const routes = {
   sessionExpired: "/auth/session-expired",
   emailVerification: "/auth/verify-email",
   phoneVerification: "/auth/verify-phone",
+  // Aliases for the verification steps. Signup chains the two, and it reads
+  // better naming the steps in the flow than reaching into the long-form names.
+  verifyEmail: "/auth/verify-email",
+  verifyPhone: "/auth/verify-phone",
   mfaSetup: "/auth/mfa/setup",
   mfaChallenge: "/auth/mfa/challenge",
   logout: "/auth/logout",

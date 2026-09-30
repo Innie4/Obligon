@@ -265,35 +265,40 @@ export async function verifyCheckout({
   }
 
   if (simulated) {
+      return {
+        provider: "paystack",
+        paid: true,
+        status: "success",
+        amountKobo: expectedAmountKobo ?? 0,
+        currency: expectedCurrency,
+        reference,
+        // No processor, so there is no processor identifier to record. Stated
+        // rather than omitted so callers can tell "not simulated" from
+        // "the provider gave us nothing".
+        providerTransactionId: null,
+        simulated: true
+      };
+    }
+
+    const data = await paystack.verifyTransaction(reference);
+    const paid = data?.status === "success";
+    const amountKobo = Number(data?.amount ?? 0);
+    if (paid && expectedAmountKobo != null && amountKobo < expectedAmountKobo) {
+      // Paystack's own reference check is implicit (we look up by our reference).
+      const { badRequest } = await import("./errors.js");
+      throw badRequest("Payment amount was less than the amount due");
+    }
     return {
       provider: "paystack",
-      paid: true,
-      status: "success",
-      amountKobo: expectedAmountKobo ?? 0,
-      currency: expectedCurrency,
-      reference,
-      simulated: true
+      paid,
+      status: data?.status ?? "unknown",
+      amountKobo,
+      currency: String(data?.currency ?? expectedCurrency),
+      reference: data?.reference ?? reference ?? null,
+      providerTransactionId: data?.id != null ? String(data.id) : null,
+      simulated: false
     };
   }
-
-  const data = await paystack.verifyTransaction(reference);
-  const paid = data?.status === "success";
-  const amountKobo = Number(data?.amount ?? 0);
-  if (paid && expectedAmountKobo != null && amountKobo < expectedAmountKobo) {
-    // Paystack's own reference check is implicit (we look up by our reference).
-    const { badRequest } = await import("./errors.js");
-    throw badRequest("Payment amount was less than the amount due");
-  }
-  return {
-    provider: "paystack",
-    paid,
-    status: data?.status ?? "unknown",
-    amountKobo,
-    currency: String(data?.currency ?? expectedCurrency),
-    reference: data?.reference ?? reference ?? null,
-    simulated: false
-  };
-}
 
 /**
  * Refund a charge, in full or in part, across providers.

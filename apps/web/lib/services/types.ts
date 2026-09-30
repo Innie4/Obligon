@@ -35,6 +35,13 @@ export interface SessionUser {
   address?: string;
   twoFactorEnabled?: boolean;
   biometricsEnabled?: boolean;
+  /**
+   * Whether the account has confirmed the address and number it was registered
+   * with. Carried on the session so the UI can state what has actually been
+   * verified instead of asserting it.
+   */
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
   notificationPrefs?: NotificationPrefs;
 }
 
@@ -200,6 +207,43 @@ export interface CustomerTransaction {
   time?: string;
   reference?: string;
   status?: string;
+}
+
+/**
+ * What the processor said about the most recent top-up.
+ *
+ * Surfaced because the balance is the wallet ledger's figure and cannot be the
+ * processor's: Flutterwave holds no fuel balance and cannot be asked for one.
+ * What it can be asked — and what a customer paying from their own bank is right
+ * to insist on — is whether the payment that was meant to add to that balance
+ * settled, for how much, and under which identifier.
+ */
+export interface CustomerTopUpSummary {
+  reference: string;
+  provider: string;
+  status: string;
+  /** What the processor collected, fee included. */
+  chargedLabel: string;
+  /** What reached the wallet. Less than the charge when the customer bears the fee. */
+  creditedLabel: string;
+  feeLabel: string;
+  /** The processor's own transaction id, or null while it has not confirmed. */
+  providerTransactionId: string | null;
+  confirmedAt: string | null;
+  confirmedLabel: string | null;
+}
+
+export interface CustomerWallet {
+  balanceLabel: string;
+  balanceKobo: number;
+  budgetLimitKobo: number;
+  walletKind: string;
+  walletId: string;
+  /** Where the balance is derived from, so the figure is traceable. */
+  balanceSource: string;
+  lastTopUp: CustomerTopUpSummary | null;
+  topUps: string[][];
+  desktopTopUps: string[][];
 }
 
 /**

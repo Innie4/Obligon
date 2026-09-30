@@ -170,7 +170,7 @@ router.post("/flutterwave", webhookLimiter, async (req, res) => {
         simulated: false
       });
       if (check.paid) {
-        await completeTopUp(topup);
+        await completeTopUp(topup, { providerTransactionId: check.providerTransactionId ?? parsed.transactionId ?? null });
       }
       // Otherwise the row is deliberately left pending. A bank transfer can
       // arrive before the provider will confirm it, and marking it failed here

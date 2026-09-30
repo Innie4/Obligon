@@ -8,6 +8,7 @@ import { Loader2, CheckCircle2, AlertTriangle, ArrowLeft, Mail, Phone, ShieldChe
 import { AuthShell } from "@/components/auth/AuthShell";
 import { routes } from "@/components/site/routes";
 import { useToast } from "@/components/shared/Toast";
+import { useSession } from "@/components/shared/AuthContext";
 import { authApi } from "@/lib/services";
 
 type VerificationType = "email" | "phone";
@@ -20,18 +21,12 @@ interface VerificationUIProps {
 
 export function VerificationUI({ type, redirect = "/" }: VerificationUIProps) {
   const router = useRouter();
-
-  // Read search params from URL directly instead of useSearchParams()
-  useEffect(() => {
-    const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-    const contactValue = urlParams?.get("contact") ?? "";
-    const token = urlParams?.get("token");
-
-    if (token) {
-      setStage("verifying");
-      verifyCode(token);
-    }
-  }, []);
+  // The persisted session is the API's own user payload, and it still says
+  // unverified after a successful confirm. Without refreshing it here, everything
+  // downstream — the success screen's own per-channel report, the profile page —
+  // would keep telling a customer who has just entered a valid code that they
+  // have not verified anything.
+  const { refresh: refreshSession } = useSession();
 
   const [stage, setStage] = React.useState<VerificationStage>("input");
   const [code, setCode] = React.useState("");
@@ -39,15 +34,15 @@ export function VerificationUI({ type, redirect = "/" }: VerificationUIProps) {
   const [submitting, setSubmitting] = React.useState(false);
   const [resendCooldown, setResendCooldown] = React.useState(0);
 
-  React.useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const timer = setInterval(() => setResendCooldown((c) => (c > 0 ? c - 1 : 0)), 1000);
-    return () => clearInterval(timer);
-  }, [resendCooldown]);
-  const { success: toastSuccess, error: toastError } = useToast();
-
-  // Read contact value from URL params (for display/masking) - safe for SSR
-  const contactValue = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("contact") ?? "" : "";
+  // Read search params from URL directly instead of useSearchParams()
+  const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const token = params?.get("token") ?? null;
+  // Where to go when this channel is done. Signup chains the two channels, so
+  // finishing the email has to lead to the phone rather than to the dashboard —
+  // the old version sent everyone straight to /customer and the phone was never
+  // asked for at all.
+  const next = params?.get("next");
+  const destination = next && next.startsWith("/") ? next : redirect;
 
   const verifyCode = async (codeToVerify: string) => {
     setSubmitting(true);
@@ -59,8 +54,11 @@ export function VerificationUI({ type, redirect = "/" }: VerificationUIProps) {
       } else {
         await authApi.verifyPhoneConfirm(codeToVerify);
       }
+      // Best-effort: the code is accepted either way, and a failed refresh must
+      // not strand the customer on a "verifying" screen.
+      await refreshSession().catch(() => undefined);
       setStage("success");
-      setTimeout(() => router.push(redirect), 1500);
+      setTimeout(() => router.push(destination), 1500);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invalid or expired code. Please try again.");
       setStage("failed");
@@ -68,6 +66,26 @@ export function VerificationUI({ type, redirect = "/" }: VerificationUIProps) {
       setSubmitting(false);
     }
   };
+
+  React.useEffect(() => {
+    if (token) {
+      setStage("verifying");
+      void verifyCode(token);
+    }
+    // Runs once: a token in the URL is a one-shot deep link, and re-running it
+    // would spend another attempt on a code that has already been consumed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  React.useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => setResendCooldown((c) => (c > 0 ? c - 1 : 0)), 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+  const { success: toastSuccess, error: toastError } = useToast();
+
+  // Read contact value from URL params (for display/masking) - safe for SSR
+  const contactValue = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("contact") ?? "" : "";
 
   const resendCode = async () => {
     setSubmitting(true);
@@ -91,7 +109,9 @@ export function VerificationUI({ type, redirect = "/" }: VerificationUIProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (code.length === 6) {
-      verifyCode(code);
+      void verifyCode(code);
+    } else {
+      setError("Enter the 6-digit code.");
     }
   };
 
@@ -127,7 +147,9 @@ export function VerificationUI({ type, redirect = "/" }: VerificationUIProps) {
     },
     success: {
       title: `${contactLabel} Verified!`,
-      body: "Your account is now verified. Redirecting...",
+      body: next
+        ? "One down. Taking you to the next step..."
+        : "Your account is now verified. Redirecting...",
       showInput: false,
       showResend: false,
     },

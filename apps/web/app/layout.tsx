@@ -18,7 +18,16 @@ const plusJakarta = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: "Obligon LTD | Powering Nigeria's Energy Infrastructure",
-  description: "Enterprise-grade fuel card management, POS authorizations, generator IoT telemetry, and logistics solutions for Nigerian fleets."
+  description: "Enterprise-grade fuel card management, POS authorizations, generator IoT telemetry, and logistics solutions for Nigerian fleets.",
+  // app/icon.svg is picked up automatically and emitted as the favicon link, but
+  // naming it here as well is what puts the brand in the tab for browsers and
+  // hostings that read metadata rather than the file convention. There was no
+  // icon at all before, so every tab showed whatever the browser guessed.
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    shortcut: ["/icon.svg"],
+    apple: [{ url: "/icon.svg" }]
+  }
 };
 
 export default function RootLayout({
