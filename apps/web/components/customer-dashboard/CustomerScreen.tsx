@@ -37,7 +37,7 @@ import {
   type CustomerPageKey,
   type CustomerTone
 } from "@/lib/mock/customer-data";
-import { api, mutationsApi, DEFAULT_NOTIFICATION_PREFS, ApiError, type CardCheckout, type CardPlan, type CardRequest, type CardRequestProgress, type CustomerTransaction, type NotificationPrefs, type OpenCardRequest } from "@/lib/services";
+import { api, mutationsApi, DEFAULT_NOTIFICATION_PREFS, ApiError, type CardCheckout, type CardPlan, type CardRequest, type CardRequestProgress, type CustomerMoneyEvent, type CustomerTransaction, type NotificationPrefs, type OpenCardRequest } from "@/lib/services";
 import { AsyncBoundary } from "@/components/shared/States";
 import { useAsync } from "@/components/shared/useAsync";
 import { usePolling } from "@/components/shared/usePolling";
@@ -171,7 +171,12 @@ function ActivityList({ desktop = false }: { desktop?: boolean }) {
       <Card className="overflow-hidden">
         <div className="flex items-center justify-between px-6 py-6 border-b border-[#eef3ee]">
           <h2 className="font-display text-2xl font-extrabold text-obligon-navy">{desktop ? "Recent Activity" : "Recent Transactions"}</h2>
-          <button onClick={() => router.push("/customer/transactions")} className="text-sm font-bold text-obligon-green hover:underline" type="button">
+          {/* Notifications, not the transaction page. This panel lists account
+              events as well as purchases, so sending someone to a page that only
+              showed fuel dispenses lost most of what they were looking at — and
+              for a customer who had only ever topped up, it landed on an empty
+              screen. */}
+          <button onClick={() => router.push("/customer/notifications")} className="text-sm font-bold text-obligon-green hover:underline" type="button">
             View All
           </button>
         </div>
@@ -364,25 +369,34 @@ function OverviewPage({
 }
 
 function TransactionsPage() {
-  const { status: txnStatus, data: transactionHistory, error: txnError, reload } = useAsync(() => api.getCustomerTransactions());
-  const { data: mobileHistory } = useAsync(() => api.getMobileHistory());
+  const { status: txnStatus, data: history, error: txnError, reload, refresh } = useAsync(
+    () => api.getCustomerMoneyHistory()
+  );
   const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [filters, setFilters] = React.useState({ station: "All Stations", vehicle: "All Vehicles", fuel: "All Fuels" });
   const [applied, setApplied] = React.useState(filters);
-  const [selectedTxn, setSelectedTxn] = React.useState<CustomerTransaction | null>(null);
+  const [selectedTxn, setSelectedTxn] = React.useState<CustomerMoneyEvent | null>(null);
   const [currentPage, setCurrentPage] = React.useState(1);
   const pageSize = 5;
   const { success: toastSuccess, error: toastError } = useToast();
   const [downloadingReceipt, setDownloadingReceipt] = React.useState(false);
+  // A purchase or a top-up can land while this page is open, so it settles and
+  // redraws on the same tick as the wallet and the overview.
+  usePolling(refresh, { intervalMs: BALANCE_POLL_MS });
 
-  const stations = Array.from(new Set((transactionHistory ?? []).map((row) => row.station)));
-  const vehicles = Array.from(new Set((transactionHistory ?? []).map((row) => row.vehicle ?? ""))).filter(Boolean);
-  const fuels = Array.from(new Set((transactionHistory ?? []).map((row) => row.fuel ?? "").filter(Boolean)));
+  const rows = history ?? [];
+  // Filter options come from dispenses only. A top-up has no vehicle and no fuel
+  // type, so including them would offer a filter that can only ever return
+  // nothing, and "PMS Petrol" must not match a bank transfer.
+  const dispenses = rows.filter((r) => r.kind === "dispense");
+  const stations = Array.from(new Set(dispenses.map((r) => r.station)));
+  const vehicles = Array.from(new Set(dispenses.map((r) => r.vehicle ?? ""))).filter((v): v is string => Boolean(v));
+  const fuels = Array.from(new Set(dispenses.map((r) => r.fuel ?? ""))).filter((f): f is string => Boolean(f));
 
-  const filtered = (transactionHistory ?? []).filter((row) => {
+  const filtered = rows.filter((row) => {
     if (applied.station !== "All Stations" && row.station !== applied.station) return false;
-    if (applied.vehicle !== "All Vehicles" && row.vehicle !== applied.vehicle) return false;
-    if (applied.fuel !== "All Fuels" && row.fuel !== applied.fuel) return false;
+    if (applied.vehicle !== "All Vehicles" && (row.vehicle ?? "") !== applied.vehicle) return false;
+    if (applied.fuel !== "All Fuels" && (row.fuel ?? "") !== applied.fuel) return false;
     return true;
   });
 
@@ -392,16 +406,16 @@ function TransactionsPage() {
   const hasActiveFilters =
     applied.station !== "All Stations" || applied.vehicle !== "All Vehicles" || applied.fuel !== "All Fuels";
 
-  function handleDownloadReceipt(txn: CustomerTransaction) {
+  function handleDownloadReceipt(txn: CustomerMoneyEvent) {
     setDownloadingReceipt(true);
     setTimeout(() => {
-      const ref = txn.reference ?? `TXN-${Math.abs(hashString(txn.station + (txn.time ?? ""))).toString().slice(0, 8)}`;
+      const ref = txn.reference ?? `TXN-${Math.abs(hashString(txn.title + (txn.time ?? ""))).toString().slice(0, 8)}`;
       const receiptContent = `====================================================
                OBLIGON LTD OFFICIAL RECEIPT
 ====================================================
 Reference:     ${ref}
 Station:       ${txn.station}
-Location:      ${txn.meta ?? "Main Station Hub"}
+Location:      ${txn.subtitle ?? "Main Station Hub"}
 Vehicle ID:    ${txn.vehicle ?? "FLT-8492"}
 Fuel Type:     ${txn.fuel ?? "Premium Diesel"}
 Amount Paid:   ${txn.amount}
@@ -449,7 +463,7 @@ Support: support@obligon.energy | +234 800 OBLIGON
     <AsyncBoundary
       status={txnStatus}
       error={txnError?.message ?? null}
-      isEmpty={(transactionHistory?.length ?? 0) === 0 && (mobileHistory?.length ?? 0) === 0}
+      isEmpty={rows.length === 0}
       onRetry={reload}
       loadingLabel="Loading transactions…"
       empty={{ title: "No transactions found", message: "Your transaction history will appear here once activity is recorded." }}
@@ -510,7 +524,7 @@ Support: support@obligon.energy | +234 800 OBLIGON
             <table className="w-full text-left min-w-[640px]">
               <thead className="bg-[#f0f4f0] text-xs uppercase text-[#3f463d]">
                 <tr>
-                  {["Station & Location", "Vehicle ID", "Fuel Type", "Amount", "Timestamp", "Action"].map((h) => (
+                  {["Activity", "Reference", "Amount", "Balance After", "Timestamp", "Action"].map((h) => (
                     <th key={h} className="px-6 py-4">{h}</th>
                   ))}
                 </tr>
@@ -518,22 +532,34 @@ Support: support@obligon.energy | +234 800 OBLIGON
               <tbody className="divide-y divide-[#eef3ee]">
                 {paginated.length > 0 ? (
                   paginated.map((row) => (
-                    <tr
-                      key={`${row.station}-${row.time}`}
-                      className="transition hover:bg-[#f7fbf8]"
-                    >
+                    <tr key={row.id} className="transition hover:bg-[#f7fbf8]">
                       <td className="px-6 py-4">
-                        <p className="font-extrabold text-obligon-navy">{row.station}</p>
-                        <p className="text-xs text-obligon-text">{row.meta}</p>
+                        <div className="flex items-center gap-3">
+                          <MiniIcon tone={row.kind === "dispense" ? "muted" : "green"}>
+                            {row.kind === "dispense" ? <Fuel size={16} /> : <WalletCards size={16} />}
+                          </MiniIcon>
+                          <div className="min-w-0">
+                            <p className="font-extrabold text-obligon-navy">{row.title}</p>
+                            {row.subtitle ? (
+                              <p className="truncate text-xs text-obligon-text">{row.subtitle}</p>
+                            ) : null}
+                          </div>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 font-bold text-obligon-green">{row.vehicle ?? "FLT-8492"}</td>
-                      <td className="px-6 py-4 text-sm text-obligon-navy">{row.fuel ?? "PMS Petrol"}</td>
-                      <td className="px-6 py-4 font-extrabold text-obligon-navy">{row.amount}</td>
+                      <td className="px-6 py-4 text-xs font-bold text-obligon-text">
+                        {row.reference ?? "—"}
+                      </td>
+                      <td className={`px-6 py-4 font-extrabold ${row.signedKobo >= 0 ? "text-obligon-green" : "text-obligon-navy"}`}>
+                        {row.amount}
+                      </td>
+                      <td className="px-6 py-4 text-xs font-bold text-obligon-text">
+                        {row.balanceAfterLabel ?? "—"}
+                      </td>
                       <td className="px-6 py-4 text-xs text-obligon-text">{row.time}</td>
                       <td className="px-6 py-4">
                         <button
                           type="button"
-                          onClick={() => setSelectedTxn(row as CustomerTransaction)}
+                          onClick={() => setSelectedTxn(row)}
                           className="rounded-lg bg-obligon-mist border border-obligon-border px-3 py-1.5 text-xs font-bold text-obligon-navy hover:bg-obligon-green hover:text-white transition"
                         >
                           View Receipt
@@ -666,12 +692,23 @@ Support: support@obligon.energy | +234 800 OBLIGON
               </div>
 
               <div className="mt-5 space-y-3.5 text-sm divide-y divide-[#eef3ee]">
+<DetailRow label="Type" value={selectedTxn.kind === "dispense" ? "Fuel purchase" : "Wallet top-up"} />
                 <DetailRow label="Merchant / Station" value={selectedTxn.station} />
-                <DetailRow label="Location" value={selectedTxn.meta ?? "Main Highway Hub"} />
-                <DetailRow label="Vehicle ID" value={selectedTxn.vehicle ?? "FLT-8492"} />
-                <DetailRow label="Fuel Type" value={selectedTxn.fuel ?? "Premium Diesel"} />
+                {/* Only meaningful for a purchase. Showing "Main Highway Hub" beside
+                    a bank transfer would be a fabricated place of business. */}
+                {selectedTxn.kind === "dispense" ? (
+                  <>
+                    <DetailRow label="Vehicle ID" value={selectedTxn.vehicle ?? "FLT-8492"} />
+                    <DetailRow label="Fuel Type" value={selectedTxn.fuel ?? "Premium Diesel"} />
+                  </>
+                ) : (
+                  <DetailRow label="Description" value={selectedTxn.subtitle ?? "Credited to fuel wallet"} />
+                )}
                 <DetailRow label="Timestamp" value={selectedTxn.time ?? "Oct 24, 14:32"} />
-                <DetailRow label="Card Number" value="•••• •••• •••• 4092" />
+                {selectedTxn.balanceAfterLabel ? (
+                  <DetailRow label="Balance After" value={selectedTxn.balanceAfterLabel} />
+                ) : null}
+                {selectedTxn.kind === "dispense" ? <DetailRow label="Card Number" value="•••• •••• •••• 4092" /> : null}
               </div>
 
               <div className="mt-7 flex gap-3">
@@ -1297,38 +1334,47 @@ function WalletPage({
             reference, what was collected and the processor's own transaction id
             lets them check both sides of that claim. The balance itself cannot
             come from the processor: it holds no fuel balance, only payments. */}
-        {lastTopUp ? (
-          <div className="mt-6 rounded-xl border border-obligon-border bg-[#f7fbf8] p-4 text-sm">
-            <p className="text-xs font-extrabold uppercase text-obligon-text">Last top-up</p>
-            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1">
-              <span className="font-bold text-obligon-text">
-                Reference{" "}
-                <span className="font-extrabold text-obligon-navy">{lastTopUp.reference}</span>
-              </span>
-              <span className="font-bold text-obligon-text">
-                Charged{" "}
-                <span className="font-extrabold text-obligon-navy">{lastTopUp.chargedLabel}</span>
-              </span>
-              <span className="font-bold text-obligon-text">
-                Credited{" "}
-                <span className="font-extrabold text-obligon-navy">{lastTopUp.creditedLabel}</span>
-              </span>
-              <span className="font-bold text-obligon-text">
-                {lastTopUp.status === "success" ? "Confirmed" : "Status"}{" "}
-                <span
-                  className={`font-extrabold ${lastTopUp.status === "success" ? "text-obligon-green" : "text-[#b51f24]"}`}
-                >
-                  {lastTopUp.status === "success" ? lastTopUp.confirmedLabel ?? "yes" : lastTopUp.status}
-                </span>
-              </span>
-            </div>
-            <p className="mt-2 text-[11px] font-semibold text-obligon-text">
-              Confirmed by {lastTopUp.provider}
-              {lastTopUp.providerTransactionId ? ` · transaction ${lastTopUp.providerTransactionId}` : ""}
-              {lastTopUp.feeLabel && lastTopUp.feeLabel !== "₦0" ? ` · ${lastTopUp.feeLabel} gateway fee, not credited as fuel` : ""}
+        {/* The processor's own figure, next to ours.
+            The balance above is a running total of payments the processor
+            confirmed as successful, added once each — a fuel balance is not a
+            thing Flutterwave holds, so it cannot be read from there. What
+            Flutterwave can be asked is how much it has collected, and that is
+            stated here so the two can be reconciled by eye instead of taken on
+            trust. It is the sum of the charges that were actually taken, which is
+            the number a customer will recognise from their bank statement. */}
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-obligon-border bg-[#f7fbf8] p-4">
+            <p className="text-xs font-extrabold uppercase text-obligon-text">Settled with Flutterwave</p>
+            <p className="mt-1 font-display text-2xl font-extrabold text-obligon-navy">
+              {wallet?.settledInLabel ?? "₦0.00"}
+            </p>
+            <p className="mt-1 text-[11px] font-semibold text-obligon-text">
+              {wallet?.settledCount
+                ? `${wallet.settledCount} confirmed payment${wallet.settledCount === 1 ? "" : "s"}`
+                : "No confirmed payments yet"}
             </p>
           </div>
-        ) : null}
+          {lastTopUp ? (
+            <div className="rounded-xl border border-obligon-border bg-[#f7fbf8] p-4">
+              <p className="text-xs font-extrabold uppercase text-obligon-text">Last top-up</p>
+              <p className="mt-1 font-display text-2xl font-extrabold text-obligon-navy">{lastTopUp.chargedLabel}</p>
+              <p className="mt-1 text-[11px] font-semibold text-obligon-text">
+                <span className="font-extrabold text-obligon-navy">{lastTopUp.reference}</span>
+                {" · "}
+                {lastTopUp.status === "success" ? (
+                  <span className="font-extrabold text-obligon-green">confirmed {lastTopUp.confirmedLabel}</span>
+                ) : (
+                  <span className="font-extrabold text-[#b51f24]">{lastTopUp.status}</span>
+                )}
+              </p>
+              {lastTopUp.providerTransactionId ? (
+                <p className="mt-1 text-[11px] font-semibold text-obligon-text">
+                  Transaction {lastTopUp.providerTransactionId} on {lastTopUp.provider}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       </Card>
 
       {/* Only the history is gated. Previously the whole page, including the

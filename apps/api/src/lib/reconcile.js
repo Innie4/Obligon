@@ -289,3 +289,172 @@ export async function runPaymentReconciliation({ limit = DEFAULT_BATCH } = {}) {
   }
   return { ok: true, requiresAttention: requiredAction > 0, ...summary };
 }
+
+/**
+ * How long one user with an outstanding payment is left alone between sweeps.
+ *
+ * Short, because this only ever applies to someone whose payment has not settled
+ * — precisely the person waiting on a number. The pages poll every four seconds,
+ * so a ten-second window means a stuck payment is picked up within a few polls
+ * while a burst against the processor is still impossible. A longer window was
+ * tried first and reproduced the original complaint at a smaller scale: the
+ * figure stayed stale for the length of the cooldown.
+ */
+const ON_DEMAND_COOLDOWN_MS = 10 * 1000;
+
+const sweeping = new Map();
+
+/**
+ * Settle one customer's pending top-ups when they next look at their account.
+ *
+ * This exists because a background timer is not a guarantee. The scheduler runs
+ * inside a free-tier process that is suspended without traffic and restarted
+ * without warning, and a `setInterval` does not survive either: a real bank
+ * transfer sat pending for thirteen hours, confirmed as successful by the
+ * processor the whole time, with reconcile_attempts still zero because no pass
+ * had ever run. The customer was staring at "pending" the entire time and no
+ * amount of refreshing could have helped, because the page had nothing to refresh
+ * from.
+ *
+ * So the read path settles. Whoever is looking at the account is exactly the
+ * person who needs the answer, and the sweep is throttled per user so a page that
+ * polls every four seconds costs one processor call per minute at most rather
+ * than one per poll.
+ *
+ * Never throws: a provider outage must leave the customer looking at a stale
+ * balance, not at an error page.
+ */
+export async function settlePendingForUser(userId, { waitMs = 0 } = {}) {
+  if (!activeProvider() || !userId) return false;
+
+  // One cheap indexed lookup before any throttling. The overwhelmingly common
+  // case is a customer with nothing outstanding, and for them the sweep costs a
+  // local query and nothing else — no processor call, and no waiting. Putting
+  // this ahead of the cooldown matters: a cooldown keyed on "have we swept
+  // recently" would otherwise delay a genuinely stuck payment by up to the full
+  // window, which is the exact symptom this is meant to remove.
+  const outstanding = await one(
+    `SELECT count(*)::int AS count FROM top_ups WHERE user_id = $1 AND status = 'pending'`,
+    [userId]
+  );
+  if (!Number(outstanding?.count ?? 0)) return false;
+
+  const now = Date.now();
+  const last = sweeping.get(userId);
+  // A sweep already in flight, or one that ran moments ago, is enough. The
+  // in-flight case matters because these pages poll: without it every poll would
+  // start its own pass and the provider would see a burst.
+  if (last && (last.running || now - last.at < ON_DEMAND_COOLDOWN_MS)) {
+    // A sweep is already running on this user's behalf. Waiting briefly for it
+    // is what lets the read that started it return the settled figure; giving up
+    // immediately would serve a balance we already know is about to change.
+    return waitMs > 0 ? waitForSweep(userId, waitMs) : false;
+  }
+
+  const entry = { at: now, running: true };
+  sweeping.set(userId, entry);
+
+  const sweep = reconcileTopUpsForUser(userId)
+    .then((stats) => {
+      entry.completed = stats.completed;
+      return stats.completed > 0;
+    })
+    .catch((err) => {
+      console.warn(`[reconcile] on-demand sweep failed for user ${userId}:`, err?.message ?? err);
+      return false;
+    })
+    .finally(() => {
+      sweeping.set(userId, { at: Date.now(), running: false, completed: entry.completed ?? 0 });
+      // Do not let the map grow without bound on a long-lived process.
+      if (sweeping.size > 5000) {
+        for (const [key, value] of sweeping) {
+          if (Date.now() - value.at > ON_DEMAND_COOLDOWN_MS) sweeping.delete(key);
+        }
+      }
+    });
+
+  // With no deadline the caller asked for the answer, so it waits.
+  if (waitMs > 0) return sweep;
+  return false;
+}
+
+/**
+ * Wait for an in-flight sweep to finish, or give up and let the page answer from
+ * what it knows.
+ *
+ * Bounded because a page that cannot load is worse than a page showing a balance
+ * one poll behind. The provider is a third party and the poll interval is four
+ * seconds, so the next one catches up.
+ */
+async function waitForSweep(userId, waitMs) {
+  const deadline = Date.now() + waitMs;
+  while (Date.now() < deadline) {
+    const entry = sweeping.get(userId);
+    if (!entry?.running) return (entry?.completed ?? 0) > 0;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  return false;
+}
+
+/**
+ * Reconcile pending top-ups for a single user.
+ *
+ * The customer's own rows are checked oldest-first regardless of the global
+ * batch limit, so one account with a long queue cannot be starved by another's.
+ */
+async function reconcileTopUpsForUser(userId) {
+  const pending = await q(
+    `SELECT id, user_id, reference, amount_kobo, charged_kobo, provider, provider_transaction_id, wallet_id,
+            reconcile_attempts
+     FROM top_ups
+     WHERE user_id = $1 AND status = 'pending'
+     ORDER BY created_at ASC LIMIT $2`,
+    [userId, DEFAULT_BATCH]
+  );
+  if (!pending.length) return { checked: 0, completed: 0 };
+
+  const stats = { checked: pending.length, completed: 0 };
+  for (const topup of pending) {
+    try {
+      const verification = await verifyCheckout({
+        provider: topup.provider,
+        reference: topup.reference,
+        transactionId: topup.provider_transaction_id,
+        expectedAmountKobo: Number(topup.charged_kobo ?? topup.amount_kobo)
+      });
+      if (verification.paid) {
+        const { completeTopUp } = await import("../routes/customer.routes.js");
+        if (
+          await completeTopUp(topup, {
+            providerTransactionId: verification.providerTransactionId ?? null
+          })
+        ) {
+          stats.completed += 1;
+        }
+      } else {
+        await q(
+          `UPDATE top_ups SET reconcile_attempts = reconcile_attempts + 1, last_reconciled_at = now() WHERE id = $1`,
+          [topup.id]
+        );
+      }
+    } catch (err) {
+      // "No such transaction" is the processor saying it has no record yet. A
+      // bank transfer can take a while to appear, so this is counted and left
+      // pending rather than treated as an abandonment — the global pass decides
+      // when to give up, and only after a real number of attempts.
+      if (err?.transactionMissing) {
+        await q(
+          `UPDATE top_ups SET reconcile_attempts = reconcile_attempts + 1, last_reconciled_at = now()
+           WHERE id = $1 AND status = 'pending'`,
+          [topup.id]
+        );
+        continue;
+      }
+      await q(
+        `UPDATE top_ups SET reconcile_attempts = reconcile_attempts + 1, last_reconciled_at = now() WHERE id = $1`,
+        [topup.id]
+      );
+    }
+  }
+  return stats;
+}

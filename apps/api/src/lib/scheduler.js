@@ -126,6 +126,8 @@ export async function runScheduledTasks() {
     // best-effort, so pending charges must be polled until they settle.
     const { runPaymentReconciliation } = await import("./reconcile.js");
     const reconciliation = await runPaymentReconciliation();
+    lastReconciliationAt = new Date().toISOString();
+    lastReconciliationError = null;
     console.log(`[scheduler] Completed:`, { purgeStats, autoSettlementsCount: settlementStats.length, reconciliation });
     return { ok: true, timestamp, purgeStats, settlements: settlementStats, reconciliation };
   } catch (err) {
@@ -136,6 +138,42 @@ export async function runScheduledTasks() {
 
 let timer = null;
 let paymentTimer = null;
+let lastRunAt = null;
+let lastReconciliationAt = null;
+let lastReconciliationError = null;
+
+/**
+ * Whether the recurring timers are actually alive.
+ *
+ * Exposed because "the scheduler is enabled" in configuration is not the same
+ * claim as "the scheduler is running", and nothing distinguished them. A
+ * `setInterval` inside a process that the host suspends and restarts is not a
+ * guarantee that anything fires — which is exactly how a confirmed bank transfer
+ * sat pending for thirteen hours with no pass having ever run. Diagnostics that
+ * report configuration rather than state are what let that go unnoticed.
+ *
+ * `nextRunInMs` is the honest version: derived from the last actual run, so a
+ * stalled timer is visible as a growing number rather than as a cheerful "true".
+ */
+export function schedulerState() {
+  const expectedIntervalMs = 5 * 60 * 1000;
+  // Parsed, not subtracted as a string: `lastReconciliationAt` is stored as an
+  // ISO string, and Date.now() minus that is NaN, which then serialises to null
+  // and reads as "never ran" — the exact thing this is meant to detect.
+  const lastMs = lastReconciliationAt ? Date.parse(lastReconciliationAt) : NaN;
+  const sinceLast = Number.isFinite(lastMs) ? Date.now() - lastMs : null;
+  return {
+    enabled: Boolean(env.ENABLE_SCHEDULER),
+    running: Boolean(timer) && Boolean(paymentTimer),
+    lastRunAt,
+    lastReconciliationAt,
+    // Over two intervals means a pass is overdue. Set generously so ordinary
+    // jitter and a slow provider call do not read as a stall.
+    overdue: sinceLast != null && sinceLast > expectedIntervalMs * 2,
+    msSinceLastReconciliation: sinceLast,
+    lastReconciliationError
+  };
+}
 
 /** Payments settle in minutes, so they are polled far more often than the sweep. */
 const PAYMENT_RECONCILE_INTERVAL_MS = 5 * 60 * 1000;
@@ -151,25 +189,42 @@ export function startScheduler(intervalMs = 60 * 60 * 1000) {
 
   console.log(`✓ Background scheduler active (interval: ${intervalMs / 1000}s)`);
   console.log(`✓ Payment reconciliation active (interval: ${PAYMENT_RECONCILE_INTERVAL_MS / 1000}s)`);
+
+  // The timers below do not keep a suspended process awake, and a host that
+  // suspends and restarts will silently drop them. Anything whose absence costs a
+  // customer money therefore does not rely on these alone: `settlePendingForUser`
+  // reconciles on the read path, so a stopped scheduler delays a sweep rather
+  // than preventing one. This is the safety net for the slow sweep, not for
+  // payments.
+  const runOne = async () => {
+    lastRunAt = new Date().toISOString();
+    return runScheduledTasks();
+  };
+
   // Run an initial sweep after startup grace period (15s)
   setTimeout(() => {
-    runScheduledTasks().catch((err) => console.error("[scheduler] Initial run error:", err));
+    runOne().catch((err) => console.error("[scheduler] Initial run error:", err));
   }, 15000);
 
   timer = setInterval(() => {
-    runScheduledTasks().catch((err) => console.error("[scheduler] Interval run error:", err));
+    runOne().catch((err) => console.error("[scheduler] Interval run error:", err));
   }, intervalMs);
 
   if (!paymentTimer) {
     const runPayments = async () => {
       try {
         const { runPaymentReconciliation } = await import("./reconcile.js");
+        lastReconciliationAt = new Date().toISOString();
+        lastReconciliationError = null;
         const result = await runPaymentReconciliation();
         if (result?.requiresAttention) {
           console.warn("[scheduler] Payments need attention:", JSON.stringify(result));
         }
       } catch (err) {
-        console.error("[scheduler] Payment reconciliation error:", err.message);
+        // Recorded rather than only logged: a reconciliation that keeps throwing
+        // looks identical to one that never ran, from the outside.
+        lastReconciliationError = err.message;
+        console.error("[scheduler] Payment reconciliation error:", err);
       }
     };
     setTimeout(runPayments, 30000);

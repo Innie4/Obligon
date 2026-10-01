@@ -6,6 +6,7 @@ import { hashPin, verifyPin, randomToken } from "../lib/security.js";
 import { naira, fmtDate, fmtDateTime, relativeTime, dayGroup, maskPan, maskAccount, distanceLabel, reference, initials } from "../lib/format.js";
 import { customerSavings, monthStart } from "../lib/savings.js";
 import { readSpendProjection, setSpendProjection } from "../lib/spend.js";
+import { settlePendingForUser } from "../lib/reconcile.js";
 import { notify, audit, securityLog } from "../lib/notify.js";
 import { resolveWallet } from "../lib/wallets.js";
 import { startCheckout, verifyCheckout, activeProvider, checkoutIsSimulated, priceWithFee, minimumTopupKobo } from "../lib/payments.js";
@@ -18,6 +19,17 @@ import multer from "multer";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+/**
+ * How long a read waits for an on-demand payment sweep before answering anyway.
+ *
+ * A settled payment must not be able to sit behind a balance that has not caught
+ * up, so the read settles first. It cannot wait indefinitely: the processor is a
+ * third party, and a page that never loads is worse than one showing a figure
+ * four seconds stale. The client's poll is four seconds, so the next one catches
+ * up either way.
+ */
+const SETTLE_WAIT_MS = 2500;
 
 router.use(requireAuth);
 
@@ -69,6 +81,9 @@ router.put("/spend-projection", asyncHandler(async (req, res) => {
 // ============ OVERVIEW ============
 router.get("/overview", asyncHandler(async (req, res) => {
   const userId = req.user.id;
+  // Same reason as the wallet: a settled payment must not be able to sit behind
+  // a balance that has not caught up yet.
+  await settlePendingForUser(userId, { waitMs: SETTLE_WAIT_MS });
   const wallet = await getWallet(userId);
   const monthStartDate = monthStart();
   const agg = await one(
@@ -241,6 +256,94 @@ router.get("/transactions", asyncHandler(async (req, res) => {
   res.json({ transactions, total: total.count });
 }));
 
+/**
+ * Everything that has moved the customer's money, in one list.
+ *
+ * The page above reads only `transactions`, so a customer who had funded their
+ * wallet but not yet dispensed fuel was shown an empty "No transactions found"
+ * screen — while the overview beside them showed a balance those very top-ups had
+ * produced. The page's own heading promises "fuel card dispenses and wallet
+ * top-ups", and only the first was ever returned.
+ *
+ * A funding event and a dispense are different kinds of record, so they are
+ * tagged rather than flattened: `kind` lets the client label them, and the
+ * filters that only make sense for one of them are applied only to that one.
+ * Top-ups are also included in the fuel-specific filters' exclusion set, so
+ * filtering by "PMS Petrol" cannot return a bank transfer.
+ */
+router.get("/transactions/all", asyncHandler(async (req, res) => {
+  await settlePendingForUser(req.user.id, { waitMs: SETTLE_WAIT_MS });
+
+  const [dispenses, movements] = await Promise.all([
+    q(
+      `SELECT t.id, t.reference, t.amount_kobo, t.litres, t.fuel_type, t.status, t.created_at,
+              s.name AS station_name, v.plate AS vehicle_plate
+       FROM transactions t
+       LEFT JOIN stations s ON s.id = t.station_id
+       LEFT JOIN vehicles v ON v.id = t.vehicle_id
+       WHERE t.customer_user_id = $1
+       ORDER BY t.created_at DESC LIMIT 100`,
+      [req.user.id]
+    ),
+    q(
+      `SELECT l.id, l.direction, l.amount_kobo, l.balance_after_kobo, l.description, l.reference,
+              l.idempotency_key, l.created_at,
+              w.id AS wallet_id
+       FROM wallet_ledger l
+       JOIN wallets w ON w.id = l.wallet_id
+       WHERE w.user_id = $1
+       ORDER BY l.created_at DESC LIMIT 100`,
+      [req.user.id]
+    )
+  ]);
+
+  const combined = [
+    ...dispenses.map((t) => ({
+      id: `dispense:${t.id}`,
+      kind: "dispense",
+      reference: t.reference,
+      title: t.station_name ?? "Obligon Network",
+      subtitle: [t.vehicle_plate ?? "Wallet", t.fuel_type].filter(Boolean).join(" • "),
+      station: t.station_name ?? "Obligon Network",
+      vehicle: t.vehicle_plate ?? undefined,
+      fuel: t.fuel_type,
+      // A dispense is money leaving, so it is shown as a reduction. Signed here
+      // rather than in the client so every consumer agrees on the direction.
+      amount: `-${naira(t.amount_kobo)}`,
+      signedKobo: -Number(t.amount_kobo),
+      status: t.status,
+      time: fmtDateTime(t.created_at),
+      createdAt: t.created_at
+    })),
+    ...movements.map((l) => {
+      const isCredit = l.direction === "credit";
+      const isTopUp = String(l.idempotency_key ?? l.reference ?? "").startsWith("topup:");
+      return {
+        id: `movement:${l.id}`,
+        kind: isTopUp ? "topup" : "movement",
+        reference: l.reference ?? null,
+        title: isTopUp ? "Wallet top-up" : (l.description ?? "Wallet movement"),
+        subtitle: isTopUp ? "Added to your fuel wallet" : (l.description ?? ""),
+        station: "Obligon Wallet",
+        amount: `${isCredit ? "+" : "-"}${naira(l.amount_kobo)}`,
+        signedKobo: isCredit ? Number(l.amount_kobo) : -Number(l.amount_kobo),
+        // A ledger row is money that is already ours, so it carries no processor
+        // status. Saying "success" would be inventing one; the label reads
+        // "Recorded" instead.
+        status: isCredit ? "credited" : "debited",
+        balanceAfterKobo: Number(l.balance_after_kobo),
+        balanceAfterLabel: naira(l.balance_after_kobo),
+        time: fmtDateTime(l.created_at),
+        createdAt: l.created_at
+      };
+    })
+  ]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 200);
+
+  res.json({ transactions: combined, total: combined.length });
+}));
+
 router.get("/transactions/mobile-history", asyncHandler(async (req, res) => {
   const rows = await q(
     `SELECT t.*, s.name AS station_name, v.plate AS vehicle_plate FROM transactions t
@@ -288,14 +391,43 @@ router.get("/transactions/:id/receipt", asyncHandler(async (req, res) => {
 
 // ============ WALLET & TOP-UPS ============
 router.get("/wallet", asyncHandler(async (req, res) => {
-  const wallet = await getWallet(req.user.id, req.user.orgId ?? null);
+  // Answering from a balance that is known to be behind is what made a confirmed
+  // payment look like it had gone missing, and the customer cannot tell a stale
+  // figure from a wrong one.
+  //
+  // The sweep runs first and is awaited, so a payment that has just settled is in
+  // the figures this response returns rather than arriving on the next poll.
+  await settlePendingForUser(req.user.id, { waitMs: SETTLE_WAIT_MS });
+
+  const [wallet, lastTopUp, settled, methods] = await Promise.all([
+    getWallet(req.user.id, req.user.orgId ?? null),
+    // What the processor says about the most recent top-up, beside our own figure.
+    one(
+      `SELECT reference, amount_kobo, fee_kobo, charged_kobo, status, provider,
+              provider_transaction_id, paid_at, created_at
+       FROM top_ups WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
+      [req.user.id]
+    ),
+    // What the processor has actually collected into this wallet, summed from the
+    // charges it confirmed. Counted from `charged_kobo` — the base plus the fee —
+    // because that is the figure that left the customer's bank, which is the
+    // number they will recognise from their statement.
+    one(
+      `SELECT COALESCE(SUM(charged_kobo), 0)::bigint AS settled_kobo, COUNT(*)::int AS count
+       FROM top_ups WHERE user_id = $1 AND status = 'success'`,
+      [req.user.id]
+    ),
+    q("SELECT * FROM payment_methods WHERE user_id = $1 ORDER BY is_default DESC, created_at DESC", [req.user.id])
+  ]);
+
   const ledger = await q(
     `SELECT direction, amount_kobo, balance_after_kobo, description, reference, created_at FROM wallet_ledger
      WHERE wallet_id = $1 ORDER BY created_at DESC LIMIT 20`,
     [wallet.id]
   );
-  const methods = await q("SELECT * FROM payment_methods WHERE user_id = $1 ORDER BY is_default DESC, created_at DESC", [req.user.id]);
-  // What the processor says about the most recent top-up, beside our own figure.
+  // `settled` and `lastTopUp` were fetched alongside the sweep above: what the
+  // processor has actually collected into this wallet, and what it said about the
+  // most recent payment.
   //
   // The balance is the ledger's, and it has to be: Flutterwave holds no fuel
   // balance, has never heard of one, and cannot be asked "how much fuel does this
@@ -304,22 +436,29 @@ router.get("/wallet", asyncHandler(async (req, res) => {
   // balance actually settled, for how much, and under which identifier. Surfacing
   // it means "the transaction was successful but my balance did not change" is a
   // question the page answers rather than one the customer has to take on trust.
-  const lastTopUp = await one(
-    `SELECT reference, amount_kobo, fee_kobo, charged_kobo, status, provider,
-            provider_transaction_id, paid_at, created_at
-     FROM top_ups WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
-    [req.user.id]
-  );
   res.json({
     balanceLabel: naira(wallet.balance_kobo),
     balanceKobo: wallet.balance_kobo,
     budgetLimitKobo: wallet.budget_limit_kobo,
     walletKind: wallet.kind ?? "individual",
     walletId: wallet.id,
-    // Where the balance comes from, stated rather than implied. Each entry names
-    // the payment that caused it, so a customer can reconcile the figure against
-    // their bank statement and the processor's own record.
+    // Where the balance comes from, stated rather than implied.
+    //
+    // Every kobo here was added by a charge the processor confirmed as
+    // successful, and only ever once — the ledger is a running total of settled
+    // money, not an estimate of it. That is as close to "the processor's number"
+    // as a fuel balance can honestly be: Flutterwave holds no fuel balance and
+    // cannot be asked for one. What it can be asked, and is asked below for every
+    // top-up, is whether the payment that was meant to add to this balance
+    // settled, for how much, and under which identifier.
     balanceSource: "wallet_ledger",
+    // The total the processor has actually settled into this wallet, summed from
+    // the confirmed top-ups rather than from our own arithmetic. It equals the
+    // balance plus fuel already spent, and is reported so the two can be
+    // reconciled by eye instead of taken on trust.
+    settledInKobo: Number(settled.settled_kobo ?? 0),
+    settledInLabel: naira(settled.settled_kobo ?? 0),
+    settledCount: Number(settled.count ?? 0),
     lastTopUp: lastTopUp
       ? {
           reference: lastTopUp.reference,

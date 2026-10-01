@@ -16,6 +16,7 @@ export type {
   CardRequestStatus,
   CustomerProfile,
   CustomerActivityItem,
+  CustomerMoneyEvent,
   CustomerSpendProjection,
   CustomerTopUpSummary,
   CustomerTransaction,

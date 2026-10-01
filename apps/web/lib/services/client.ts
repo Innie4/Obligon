@@ -80,6 +80,7 @@ import type {
   CustomerProfile,
   CustomerActivityItem,
   CustomerSpendProjection,
+  CustomerMoneyEvent,
   CustomerTopUpSummary,
   CustomerTransaction,
   CustomerWallet,
@@ -235,6 +236,8 @@ export interface ApiClient {
   getCustomerProfile(): Promise<CustomerProfile>;
   getCardPlans(): Promise<CardPlan[]>;
   getCustomerTransactions(): Promise<CustomerTransaction[]>;
+  /** Dispenses and wallet movements together, newest first. */
+  getCustomerMoneyHistory(): Promise<CustomerMoneyEvent[]>;
   getMobileHistory(): Promise<MobileTransactionGroup[]>;
   getStations(): Promise<Station[]>;
   getVehicles(): Promise<Vehicle[]>;
@@ -415,6 +418,10 @@ class LiveApiClient implements ApiClient {
   }
   async getCustomerTransactions(): Promise<CustomerTransaction[]> {
     const data = await http<{ transactions: CustomerTransaction[] }>("/api/customer/transactions");
+    return data.transactions;
+  }
+  async getCustomerMoneyHistory(): Promise<CustomerMoneyEvent[]> {
+    const data = await http<{ transactions: CustomerMoneyEvent[] }>("/api/customer/transactions/all");
     return data.transactions;
   }
   async getMobileHistory(): Promise<MobileTransactionGroup[]> {
@@ -640,6 +647,24 @@ class MockApiClient implements ApiClient {
     };
   }
   async getCustomerTransactions(): Promise<CustomerTransaction[]> { return transactionHistory; }
+  async getCustomerMoneyHistory(): Promise<CustomerMoneyEvent[]> {
+    // Mirrors the live shape: both kinds of record, tagged rather than flattened.
+    return transactionHistory.map((t) => ({
+      id: `dispense:${t.reference}`,
+      kind: "dispense" as const,
+      reference: t.reference ?? null,
+      title: t.station,
+      subtitle: [t.vehicle, t.fuel].filter(Boolean).join(" • "),
+      station: t.station,
+      vehicle: t.vehicle,
+      fuel: t.fuel,
+      amount: `-${t.amount}`,
+      signedKobo: -1,
+      status: "success",
+      time: t.time ?? "",
+      createdAt: new Date().toISOString()
+    }));
+  }
   async getMobileHistory(): Promise<MobileTransactionGroup[]> { return mobileHistory; }
   async getStations(): Promise<Station[]> { return stations; }
   async getVehicles(): Promise<Vehicle[]> {
@@ -663,6 +688,9 @@ class MockApiClient implements ApiClient {
       walletKind: "individual",
       walletId: "wallet-demo",
       balanceSource: "wallet_ledger",
+      settledInLabel: "₦178,400.00",
+      settledInKobo: 17_840_000,
+      settledCount: 4,
       lastTopUp: {
         reference: "TRX-DEMO1",
         provider: "flutterwave",

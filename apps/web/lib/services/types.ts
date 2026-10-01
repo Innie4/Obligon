@@ -241,9 +241,42 @@ export interface CustomerWallet {
   walletId: string;
   /** Where the balance is derived from, so the figure is traceable. */
   balanceSource: string;
+  /** What the processor has actually collected into this wallet. */
+  settledInLabel: string;
+  settledInKobo: number;
+  settledCount: number;
   lastTopUp: CustomerTopUpSummary | null;
   topUps: string[][];
   desktopTopUps: string[][];
+}
+
+/**
+ * One entry in the customer's complete money history.
+ *
+ * A funding event and a fuel dispense are different kinds of record, so `kind`
+ * distinguishes them rather than flattening both into "a transaction". The page
+ * previously read only the dispense table, so a customer who had funded their
+ * wallet but not yet bought fuel was shown an empty history beside a balance
+ * those top-ups had produced.
+ */
+export interface CustomerMoneyEvent {
+  id: string;
+  kind: "dispense" | "topup" | "movement";
+  reference: string | null;
+  title: string;
+  subtitle?: string;
+  station: string;
+  vehicle?: string;
+  fuel?: string;
+  /** Signed and formatted, e.g. "+₦100.00" or "-₦4,500.00". */
+  amount: string;
+  signedKobo: number;
+  status: string;
+  /** The balance this left behind, when the row came from the ledger. */
+  balanceAfterKobo?: number;
+  balanceAfterLabel?: string;
+  time: string;
+  createdAt: string;
 }
 
 /**

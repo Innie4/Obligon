@@ -125,7 +125,9 @@ test("the wallet shows the processor's record beside our figure", () => {
   assert.match(customer, /lastTopUp: lastTopUp/);
   assert.match(customer, /chargedLabel: naira\(lastTopUp\.charged_kobo \?\? lastTopUp\.amount_kobo\)/);
   assert.match(screen, /Last top-up/);
-  assert.match(screen, /Confirmed by \{lastTopUp\.provider\}/);
+  // The provider and its own transaction id, so the claim can be checked against
+  // the processor's record rather than taken on trust.
+  assert.match(screen, /Transaction \{lastTopUp\.providerTransactionId\} on \{lastTopUp\.provider\}/);
 });
 
 // --------------------------------------------------------------- verification

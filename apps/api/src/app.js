@@ -6,6 +6,7 @@ import { providerStatus } from "./config/env.js";
 import { attachUser } from "./middleware/auth.js";
 import { generalLimiter } from "./middleware/security.js";
 import { HttpError } from "./lib/errors.js";
+import { schedulerState } from "./lib/scheduler.js";
 import authRoutes from "./routes/auth.routes.js";
 import customerRoutes from "./routes/customer.routes.js";
 import companyRoutes from "./routes/company.routes.js";
@@ -39,7 +40,17 @@ export function createApp() {
   app.use(generalLimiter);
 
   app.get("/health", (_req, res) => {
-    res.json({ ok: true, service: "obligon-api", time: new Date().toISOString(), providers: providerStatus() });
+    // Scheduler *state*, not just whether it is configured to exist. A suspended
+    // or restarted process drops its intervals while `ENABLE_SCHEDULER` stays
+    // true, so a health check that only echoed configuration would have reported
+    // a healthy service whose payment sweep had never run.
+    res.json({
+      ok: true,
+      service: "obligon-api",
+      time: new Date().toISOString(),
+      providers: providerStatus(),
+      scheduler: schedulerState()
+    });
   });
 
   app.use("/api/auth", authRoutes);
