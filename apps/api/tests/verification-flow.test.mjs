@@ -24,6 +24,49 @@ const ui = read(webRoot, "components", "auth", "VerificationUI.tsx");
 const signup = read(webRoot, "components", "auth", "AuthForms.tsx");
 const routes = read(webRoot, "components", "site", "routes.ts");
 
+// ------------------------------------------- delivery is reported, not assumed
+test("a refused send is not reported as a sent code", () => {
+  // The defect: `issueVerificationCode` fired `sendEmail`/`sendSms` without
+  // awaiting them and every caller answered `sent: true` regardless. An unverified
+  // sending domain and an unapproved sender id both produced a cheerful success
+  // and no message anywhere. Now the helper's result decides the answer.
+  assert.match(auth, /const outcome = await issueVerificationCode\(\{/);
+  assert.match(auth, /sent: outcome\.delivered/);
+  assert.match(auth, /verificationSent\[channel\] = outcome\.delivered/);
+});
+
+test("nothing hard-codes a delivery as successful", () => {
+  // Both of these were `sent: true` / `verificationSent = { email: true, ... }`.
+  assert.doesNotMatch(auth, /sent: true/);
+  assert.doesNotMatch(auth, /verificationSent = \{ email: true/);
+});
+
+test("every send endpoint refuses when the provider did", () => {
+  // The batch route reports each channel honestly and raises when none landed;
+  // the two legacy per-channel endpoints reported `ok: true` whatever the gateway
+  // answered, so each now refuses outright. Three routes, three refusals.
+  assert.match(auth, /if \(!sentAny\) \{/);
+  assert.match(auth, /throw misconfigured\(\s*reasons \|\|/);
+  const guarded = auth.match(/if \(!outcome\.delivered\) \{/g) ?? [];
+  assert.equal(guarded.length, 2, "expected both per-channel routes to refuse");
+  assert.equal(auth.match(/throw misconfigured\(describeDeliveryFailure\(outcome\)\);/g)?.length, 2);
+});
+
+test("a provider's own refusal survives to the caller", () => {
+  // `serviceUnavailable` was masking the reason behind a generic apology, so an
+  // unverified domain was indistinguishable from a database fault.
+  assert.match(auth, /function describeDeliveryFailure\(outcome\)/);
+  assert.match(auth, /domain is not verified/i);
+  assert.match(auth, /sender.?id.*not (registered|approved)/i);
+  // And nothing secret can leak through it.
+  const body = auth.slice(auth.indexOf("function describeDeliveryFailure"), auth.indexOf("function describeDeliveryFailure") + 1600);
+  assert.doesNotMatch(body, /RESEND_API_KEY|TERMII_API_KEY|Authorization|headers/i);
+});
+
+test("a failed send is recorded", () => {
+  assert.match(auth, /action: "auth\.verification_send_failed"/);
+});
+
 // ------------------------------------------------------------- one page, one code
 test("one endpoint sends to both channels", () => {
   assert.match(auth, /router\.post\("\/verify\/send"/);

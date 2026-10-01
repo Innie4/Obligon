@@ -2,7 +2,7 @@ import { Router } from "express";
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { q, one, tx } from "../db.js";
-import { asyncHandler, badRequest, unauthorized, conflict, notFound, serviceUnavailable } from "../lib/errors.js";
+import { asyncHandler, badRequest, unauthorized, conflict, notFound, misconfigured } from "../lib/errors.js";
 import {
   hashPassword, verifyPassword, signAccessToken, signRefreshToken, verifyRefreshToken,
   hashToken, randomToken, randomCode, refreshExpiry, generateMfaSetup, verifyTotp, hashPin, verifyPin, sha256
@@ -32,7 +32,17 @@ const CODE_TTL_MINUTES = 10;
  */
 const MAX_CODE_ATTEMPTS = 5;
 
-/** Issue a verification code for one purpose and send it on the right channel. */
+/**
+ * Issue a verification code for one purpose and send it on the right channel.
+ *
+ * The delivery result is awaited and returned. It used to be fire-and-forget,
+ * which meant a caller could only ever report "sent" — so an unverified sending
+ * domain or an unregistered sender id looked identical to a delivered message,
+ * and the page confidently told a customer to check their inbox for a code that
+ * had never left. A code nobody received is not a sent code.
+ *
+ * @returns {Promise<{code: string, delivered: boolean, error?: string}>}
+ */
 async function issueVerificationCode({ userId, purpose, channel, to, message, emailTemplate }) {
   const code = randomCode();
   // Supersede any code still outstanding for this purpose, so an old one cannot
@@ -47,13 +57,33 @@ async function issueVerificationCode({ userId, purpose, channel, to, message, em
      VALUES ($1,$2,$3,$4, now() + ($5 || ' minutes')::interval)`,
     [userId, purpose, hashToken(code), channel, String(CODE_TTL_MINUTES)]
   );
-  if (channel === "email") {
-    const tpl = emailTemplates.verifyCode(code, purpose);
-    void sendEmail({ to, ...tpl });
-  } else {
-    void sendSms({ to, message: message ?? `Obligon verification code: ${code}` });
+
+  let result;
+  try {
+    if (channel === "email") {
+      const tpl = emailTemplates.verifyCode(code, purpose);
+      result = await sendEmail({ to, ...tpl });
+    } else {
+      result = await sendSms({ to, message: message ?? `Obligon verification code: ${code}` });
+    }
+  } catch (err) {
+    // A transport-level throw rather than a provider rejection. Recorded, not
+    // swallowed: the caller needs to know the code did not arrive.
+    console.warn(`[verify] ${purpose} delivery threw:`, err?.message ?? err);
+    result = { delivered: false, error: err?.message ?? "delivery failed" };
   }
-  return code;
+
+  if (!result?.delivered) {
+    // The provider's own words, logged. This is where an unverified Resend domain
+    // or an unregistered Termii sender id becomes visible instead of presenting to
+    // the customer as a code that never arrived.
+    console.warn(
+      `[verify] ${purpose} not delivered to ${to}:`,
+      result?.skipped ? "no provider configured" : result?.error ?? "unknown"
+    );
+  }
+
+  return { code, delivered: Boolean(result?.delivered), error: result?.error, skipped: result?.skipped };
 }
 
 /** The live, unconsumed code for one purpose, or null. Read-only. */
@@ -351,28 +381,26 @@ router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
   // The wallet above already exists by this point, so a customer who never
   // finishes verifying still has somewhere to be funded; the codes establish
   // that they are reachable on the address and number they gave us, which is what
-  // makes the wallet meaningful. Neither send is awaited: a slow or failing
-  // mail or SMS gateway must not fail a registration that has already committed,
-  // and the customer can always ask for a new code once signed in.
-  const verificationSent = { email: true, phone: true };
-  await issueVerificationCode({
-    userId: created.user.id,
-    purpose: "email_verify",
-    channel: "email",
-    to: created.user.email
-  });
-  try {
-    await issueVerificationCode({
-      userId: created.user.id,
-      purpose: "phone_verify",
-      channel: "sms",
-      to: phone
-    });
-  } catch {
-    // Recorded as not sent rather than failing the signup. The customer is told
-    // which channel still needs doing instead of being left with a false "check
-    // your messages" and no way to tell which one arrived.
-    verificationSent.phone = false;
+  // makes the wallet meaningful.
+  //
+  // A gateway that refuses the message does not fail the registration — the
+  // account is committed and the wallet exists — but it is reported honestly rather
+  // than assumed sent. `verificationSent` used to be a hard-coded `{email:true,
+  // phone:true}`, which told the page a code had gone out when an unverified
+  // sending domain had refused it.
+  const verificationSent = { email: false, phone: false };
+  for (const channel of ["email", "phone"]) {
+    try {
+      const outcome = await issueVerificationCode({
+        userId: created.user.id,
+        purpose: channel === "email" ? "email_verify" : "phone_verify",
+        channel: channel === "email" ? "email" : "sms",
+        to: channel === "email" ? created.user.email : phone
+      });
+      verificationSent[channel] = outcome.delivered;
+    } catch {
+      verificationSent[channel] = false;
+    }
   }
 
   const tokens = await issueSession(req, created.user, false);
@@ -385,6 +413,9 @@ router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
   res.status(201).json({
     user: sessionPayload(created.user, created.org),
     ...tokens,
+    // Honest about what left the building. `verificationRequired` stays both
+    // channels: a gateway refusing a code does not make that channel need less
+    // verification, only mean the customer has to ask for a new code.
     verificationSent,
     verificationRequired: ["email", "phone"],
     expiresInMinutes: CODE_TTL_MINUTES
@@ -511,6 +542,36 @@ router.post("/reset-password", authLimiter, asyncHandler(async (req, res) => {
  * with no SMS gateway can still deliver the email code, and the page has to be
  * able to say which one arrived instead of failing the whole attempt.
  */
+/**
+ * Turn a provider's rejection into words a customer can act on.
+ *
+ * The raw provider errors are specific and useful — an unverified sending domain,
+ * an unregistered sender id, a suppressed account — and passing them through
+ * verbatim is what makes the failure diagnosable at the point it happens rather
+ * than from a support ticket later. Nothing here is a secret: no key, no header.
+ */
+function describeDeliveryFailure(outcome) {
+  const raw = String(outcome?.error ?? "");
+  if (outcome?.skipped) return "no provider is configured for this channel";
+  if (/domain is not verified|verify your domain/i.test(raw)) {
+    return "the sending email domain is not verified yet";
+  }
+  if (/sender.?id.*not (registered|approved)|SENDER_ID_NOT_APPROVED/i.test(raw)) {
+    return "the SMS sender id is not registered with the provider";
+  }
+  if (/testing email address|example\.com/i.test(raw)) {
+    return "the recipient address is not deliverable by this provider";
+  }
+  if (/suppressed|invalid.*email|does not exist/i.test(raw)) {
+    return "the address was rejected by the provider";
+  }
+  if (/unauthorized|invalid.*key|401|403/i.test(raw)) {
+    return "the provider rejected our credentials";
+  }
+  if (/rate limit|429/i.test(raw)) return "the provider is rate limiting us";
+  return "the message could not be delivered";
+}
+
 router.post("/verify/send", authLimiter, requireAuth, asyncHandler(async (req, res) => {
   const results = {};
 
@@ -527,30 +588,38 @@ router.post("/verify/send", authLimiter, requireAuth, asyncHandler(async (req, r
 
     try {
       if (channel === "email") {
-        await issueVerificationCode({
+        const outcome = await issueVerificationCode({
           userId: req.user.id,
           purpose: "email_verify",
           channel: "email",
           to: req.user.email
         });
-        results.email = { sent: true, to: req.user.email };
+        results.email = {
+          sent: outcome.delivered,
+          to: req.user.email,
+          ...(outcome.delivered ? {} : { reason: describeDeliveryFailure(outcome) })
+        };
       } else {
         if (!req.user.phone) {
           results.phone = { sent: false, reason: "no phone number on this account" };
           continue;
         }
-        await issueVerificationCode({
+        const outcome = await issueVerificationCode({
           userId: req.user.id,
           purpose: "phone_verify",
           channel: "sms",
           to: req.user.phone
         });
-        results.phone = { sent: true, to: req.user.phone };
+        results.phone = {
+          sent: outcome.delivered,
+          to: req.user.phone,
+          ...(outcome.delivered ? {} : { reason: describeDeliveryFailure(outcome) })
+        };
       }
     } catch (err) {
-      // Logged so a failing gateway is diagnosable, but reported per channel
-      // rather than thrown: one channel failing must not cost the customer the
-      // code that did succeed.
+      // Logged so a failing gateway is diagnosable, and reported per channel rather
+      // than thrown: one channel failing must not cost the customer the code that
+      // did succeed, and must not be reported as a success either.
       console.warn(`[verify] ${channel} code failed for user ${req.user.id}:`, err?.message ?? err);
       results[channel] = { sent: false, reason: "could not be delivered" };
     }
@@ -558,8 +627,21 @@ router.post("/verify/send", authLimiter, requireAuth, asyncHandler(async (req, r
 
   const sentAny = results.email?.sent === true || results.phone?.sent === true;
   if (!sentAny) {
+    // Every channel was refused, so the account cannot be verified yet and the
+    // reason is worth saying plainly — it is almost always one unset credential
+    // or one unverified domain, and "try again" hides both.
     const reasons = [results.email?.reason, results.phone?.reason].filter(Boolean).join("; ");
-    throw serviceUnavailable(
+    await audit({
+      actorUserId: req.user.id,
+      action: "auth.verification_send_failed",
+      severity: "warning",
+      metadata: { channels: results }
+    });
+    // `misconfigured`, not `serviceUnavailable`: a 5xx message is replaced with a
+    // generic apology unless it is flagged exposable. That masking is right for a
+    // crash and wrong here — it made an unverified domain and a database fault
+    // indistinguishable to the caller, which is how this stayed invisible.
+    throw misconfigured(
       reasons || "We could not send a verification code right now. Please try again in a moment."
     );
   }
@@ -570,12 +652,17 @@ router.post("/verify/send", authLimiter, requireAuth, asyncHandler(async (req, r
 // ---------- POST /api/auth/verify-email (send code) ----------
 router.post("/verify-email/send", authLimiter, requireAuth, asyncHandler(async (req, res) => {
   if (req.user.email_verified) throw conflict("That email address is already verified");
-  await issueVerificationCode({
+  const outcome = await issueVerificationCode({
     userId: req.user.id,
     purpose: "email_verify",
     channel: "email",
     to: req.user.email
   });
+  // The per-channel endpoint reports honestly too. It used to say "ok" whatever
+  // the gateway did, which is how an unverified domain went unnoticed.
+  if (!outcome.delivered) {
+    throw misconfigured(describeDeliveryFailure(outcome));
+  }
   res.json({ ok: true, sentTo: req.user.email, expiresInMinutes: CODE_TTL_MINUTES });
 }));
 
@@ -601,14 +688,17 @@ router.post("/verify-phone/send", authLimiter, requireAuth, asyncHandler(async (
   const target = phone ?? req.user.phone;
   if (!target) throw badRequest("Add a phone number first");
   if (req.user.phone_verified && !phone) throw conflict("That phone number is already verified");
-  await issueVerificationCode({
-    userId: req.user.id,
-    purpose: "phone_verify",
-    channel: "sms",
-    to: target
-  });
-  res.json({ ok: true, sentTo: target, expiresInMinutes: CODE_TTL_MINUTES });
-}));
+const outcome = await issueVerificationCode({
+      userId: req.user.id,
+      purpose: "phone_verify",
+      channel: "sms",
+      to: target
+    });
+    if (!outcome.delivered) {
+      throw misconfigured(describeDeliveryFailure(outcome));
+    }
+    res.json({ ok: true, sentTo: target, expiresInMinutes: CODE_TTL_MINUTES });
+  }));
 
 router.post("/verify-phone/confirm", authLimiter, requireAuth, asyncHandler(async (req, res) => {
   const { code } = req.body ?? {};

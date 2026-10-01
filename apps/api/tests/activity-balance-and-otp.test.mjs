@@ -149,10 +149,23 @@ test("signup verifies both channels and requires the phone to do it", () => {
   assert.match(auth, /if \(!phone\) throw badRequest\("A phone number is required/);
   assert.match(auth, /purpose: "email_verify"/);
   assert.match(auth, /purpose: "phone_verify"/);
-  assert.match(auth, /verificationSent = \{ email: true, phone: true \}/);
   // A channel that could not be delivered is reported as such, rather than
-  // sending the customer to check a message that never left.
-  assert.match(auth, /verificationSent\.phone = false;/);
+  // sending the customer to check a message that never left. This used to be
+  // asserted as `{ email: true, phone: true }` with a `verificationSent.phone =
+  // false` fallback for a throw the send never produced — so it passed against a
+  // route that reported success no matter what the gateways answered.
+  assert.match(auth, /verificationSent\[channel\] = outcome\.delivered/);
+  assert.match(auth, /verificationSent\[channel\] = false;/);
+  assert.doesNotMatch(auth, /verificationSent = \{ email: true, phone: true \}/);
+});
+
+test("a registration survives a gateway that refuses", () => {
+  // The account and its wallet are already committed by this point. A failed
+  // send is not a failed signup — it is a signup whose codes the customer has to
+  // ask for again, and the code must not throw its way out of the loop.
+  const loop = auth.slice(auth.indexOf('for (const channel of ["email", "phone"])'), auth.indexOf('for (const channel of ["email", "phone"])') + 700);
+  assert.match(loop, /try \{/);
+  assert.match(loop, /\} catch \{/);
 });
 
 test("the wallet still exists before verification", () => {
