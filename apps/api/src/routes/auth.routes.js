@@ -2,7 +2,7 @@ import { Router } from "express";
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { q, one, tx } from "../db.js";
-import { asyncHandler, badRequest, unauthorized, conflict, notFound } from "../lib/errors.js";
+import { asyncHandler, badRequest, unauthorized, conflict, notFound, serviceUnavailable } from "../lib/errors.js";
 import {
   hashPassword, verifyPassword, signAccessToken, signRefreshToken, verifyRefreshToken,
   hashToken, randomToken, randomCode, refreshExpiry, generateMfaSetup, verifyTotp, hashPin, verifyPin, sha256
@@ -56,50 +56,66 @@ async function issueVerificationCode({ userId, purpose, channel, to, message, em
   return code;
 }
 
-/**
- * Check a submitted code against the live one for a purpose.
- *
- * The attempt is counted whether or not it matched, and a code that has used up
- * its allowance is consumed so it cannot be guessed at further — telling the
- * caller to resend is more use than leaving a spent code in play.
- */
-async function consumeVerificationCode({ userId, purpose, code }) {
-  const record = await one(
-    `SELECT * FROM verification_codes
+/** The live, unconsumed code for one purpose, or null. Read-only. */
+async function liveVerificationCode(userId, purpose) {
+  return one(
+    `SELECT id, code_hash, attempts FROM verification_codes
      WHERE user_id = $1 AND purpose = $2 AND consumed_at IS NULL AND expires_at > now()
      ORDER BY created_at DESC LIMIT 1`,
     [userId, purpose]
   );
-  if (!record) return { ok: false, reason: "expired" };
+}
 
-  const spent = await one(
-    `UPDATE verification_codes SET attempts = attempts + 1
-     WHERE id = $1 AND consumed_at IS NULL RETURNING attempts`,
-    [record.id]
-  );
-  if (!spent) return { ok: false, reason: "expired" };
+/**
+ * Does a submitted code equal the stored hash? Constant-time, no side effects.
+ *
+ * A missing code is a non-match rather than an error. `hashToken` of undefined
+ * reaches Buffer.from as undefined, which threw and turned an empty submit into
+ * a 500 instead of "that is not our code".
+ */
+function codeMatches(record, code) {
+  const stored = record?.code_hash;
+  if (typeof stored !== "string" || stored.length === 0) return false;
+  if (code == null || code === "") return false;
+  const expected = Buffer.from(stored, "hex");
+  const actual = Buffer.from(hashToken(String(code)), "hex");
+  return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+}
 
-  if (spent.attempts > MAX_CODE_ATTEMPTS) {
+/**
+ * Record one wrong guess against one code, and refuse once the allowance is gone.
+ *
+ * Counting an attempt and checking the guess are separate steps on purpose. One
+ * wrong code is one wrong guess, so a caller comparing against two channels must
+ * be able to try both without the first comparison spending the second one's
+ * allowance. Consuming on a match is a separate, explicit act.
+ */
+async function spendFailedAttempt(record) {
+  const attempts = Number(record.attempts ?? 0) + 1;
+  await q("UPDATE verification_codes SET attempts = $2 WHERE id = $1", [record.id, attempts]);
+  if (attempts > MAX_CODE_ATTEMPTS) {
     await q("UPDATE verification_codes SET consumed_at = now() WHERE id = $1", [record.id]);
     return { ok: false, reason: "tooManyAttempts" };
   }
-  // Constant-time comparison of the stored hash. A six-digit code is a small
-  // space, so a comparison that leaks how many leading characters matched is a
-  // real if modest advantage to whoever is guessing.
-  const expected = Buffer.from(record.code_hash, "hex");
-  const actual = Buffer.from(hashToken(String(code ?? "")), "hex");
-  if (expected.length !== actual.length || !crypto.timingSafeEqual(expected, actual)) {
-    const left = MAX_CODE_ATTEMPTS - spent.attempts;
-    return {
-      ok: false,
-      reason: "mismatch",
-      message:
-        left > 0
-          ? `That code is not correct. ${left} attempt${left === 1 ? "" : "s"} left.`
-          : "That code is not correct."
-    };
-  }
+  const left = MAX_CODE_ATTEMPTS - attempts;
+  return {
+    ok: false,
+    reason: "mismatch",
+    message:
+      left > 0
+        ? `That code is not correct. ${left} attempt${left === 1 ? "" : "s"} left.`
+        : "That code is not correct."
+  };
+}
 
+/**
+ * Check a submitted code against the live one for a purpose, and consume it on a
+ * match.
+ */
+async function consumeVerificationCode({ userId, purpose, code }) {
+  const record = await liveVerificationCode(userId, purpose);
+  if (!record) return { ok: false, reason: "expired" };
+  if (!codeMatches(record, code)) return spendFailedAttempt(record);
   await q("UPDATE verification_codes SET consumed_at = now() WHERE id = $1", [record.id]);
   return { ok: true };
 }
@@ -475,6 +491,82 @@ router.post("/reset-password", authLimiter, asyncHandler(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// ---------- POST /api/auth/verify (send both codes) ----------
+/**
+ * Send a code to the email address and the phone number at the same time.
+ *
+ * One request rather than two, because a customer verifying an account is
+ * answering one question — "is this me?" — and asking them to press Send twice,
+ * once per channel, to answer it once, is a step that does not exist for any
+ * other reason. It also means one call cannot half-succeed in a way the UI then
+ * has to explain.
+ *
+ * The two codes are independent on purpose. The same six digits going to both
+ * channels would mean a single intercepted SMS could claim an email address,
+ * which is exactly the claim the email code exists to support. Each channel gets
+ * its own code, stored against its own purpose, and each is confirmed against its
+ * own.
+ *
+ * Per-channel outcomes are reported rather than a single boolean: a deployment
+ * with no SMS gateway can still deliver the email code, and the page has to be
+ * able to say which one arrived instead of failing the whole attempt.
+ */
+router.post("/verify/send", authLimiter, requireAuth, asyncHandler(async (req, res) => {
+  const results = {};
+
+  for (const channel of ["email", "phone"]) {
+    if (channel === "email") {
+      if (req.user.email_verified) {
+        results.email = { sent: false, alreadyVerified: true };
+        continue;
+      }
+    } else if (req.user.phone_verified) {
+      results.phone = { sent: false, alreadyVerified: true };
+      continue;
+    }
+
+    try {
+      if (channel === "email") {
+        await issueVerificationCode({
+          userId: req.user.id,
+          purpose: "email_verify",
+          channel: "email",
+          to: req.user.email
+        });
+        results.email = { sent: true, to: req.user.email };
+      } else {
+        if (!req.user.phone) {
+          results.phone = { sent: false, reason: "no phone number on this account" };
+          continue;
+        }
+        await issueVerificationCode({
+          userId: req.user.id,
+          purpose: "phone_verify",
+          channel: "sms",
+          to: req.user.phone
+        });
+        results.phone = { sent: true, to: req.user.phone };
+      }
+    } catch (err) {
+      // Logged so a failing gateway is diagnosable, but reported per channel
+      // rather than thrown: one channel failing must not cost the customer the
+      // code that did succeed.
+      console.warn(`[verify] ${channel} code failed for user ${req.user.id}:`, err?.message ?? err);
+      results[channel] = { sent: false, reason: "could not be delivered" };
+    }
+  }
+
+  const sentAny = results.email?.sent === true || results.phone?.sent === true;
+  if (!sentAny) {
+    const reasons = [results.email?.reason, results.phone?.reason].filter(Boolean).join("; ");
+    throw serviceUnavailable(
+      reasons || "We could not send a verification code right now. Please try again in a moment."
+    );
+  }
+
+  res.json({ ok: true, channels: results, expiresInMinutes: CODE_TTL_MINUTES });
+}));
+
 // ---------- POST /api/auth/verify-email (send code) ----------
 router.post("/verify-email/send", authLimiter, requireAuth, asyncHandler(async (req, res) => {
   if (req.user.email_verified) throw conflict("That email address is already verified");
@@ -530,6 +622,119 @@ router.post("/verify-phone/confirm", authLimiter, requireAuth, asyncHandler(asyn
   }
   await q("UPDATE users SET phone_verified = TRUE WHERE id = $1", [req.user.id]);
   res.json({ ok: true, phoneVerified: true });
+}));
+
+/**
+ * Check a submitted code against both channels.
+ *
+ * One field serves both, so the same digits are offered to each channel and
+ * whichever recognises them is the one they were sent to. Reported per channel
+ * so the caller can finish the account when both land, and can say which is still
+ * outstanding when only one does.
+ *
+ * Only the channel that matched has its code consumed. Spending an attempt on the
+ * channel that did not recognise the digits would burn a customer's allowance
+ * twice for one guess, and a six-digit space is small enough that the difference
+ * between three guesses and six is the difference between usable and not.
+ *
+ * Tries the email code first only because it is the cheaper of the two to check;
+ * there is no preference about which a person should be told to wait for.
+ */
+router.post("/verify/confirm", authLimiter, requireAuth, asyncHandler(async (req, res) => {
+  const { code } = req.body ?? {};
+  // Read fresh rather than trusting the token: the request that verifies the first
+  // channel also sets the flag, so a second submit in the same session would
+  // otherwise offer an already-consumed code again and report success for it.
+  const current = await one(
+    "SELECT email_verified, phone_verified FROM users WHERE id = $1",
+    [req.user.id]
+  );
+  const outcomes = {
+    email: Boolean(current?.email_verified),
+    phone: Boolean(current?.phone_verified)
+  };
+
+  // Every unconsumed code for each purpose, newest first — not just one.
+  //
+  // Reading a single row and matching against it meant a customer who had
+  // reissued a code kept the old one in the list, so submitting the new one
+  // consumed the old, reported success, and then set no verified flag: the code
+  // was accepted and the channel was not verified. A reissue is normal here —
+  // signup issues codes, and the verification page issues them again on arrival.
+  const live = {};
+  for (const [purpose, channel] of [["email_verify", "email"], ["phone_verify", "phone"]]) {
+    if (outcomes[channel]) {
+      live[purpose] = [];
+      continue;
+    }
+    live[purpose] = await q(
+      `SELECT id, code_hash, attempts, created_at FROM verification_codes
+       WHERE user_id = $1 AND purpose = $2 AND consumed_at IS NULL AND expires_at > now()
+       ORDER BY created_at DESC`,
+      [req.user.id, purpose]
+    );
+  }
+
+  // Every live code is offered the submitted digits. Matched before spent, and a
+  // guess is one guess however many codes it was compared against — otherwise a
+  // customer with two outstanding codes would lose an allowance per comparison.
+  // Assigned rather than declared with the old `find` form below removed, so the
+  // name appears once.
+  let hit = null;
+  for (const [purpose, records] of Object.entries(live)) {
+    const record = records.find((candidate) => codeMatches(candidate, code));
+    if (record) { hit = { purpose, record }; break; }
+  }
+
+  // Matched before spent, and matched against the codes rather than the
+  // submitted string's shape. A guess is one guess whether it was offered to one
+  // channel or two, so it may only ever cost one attempt.
+  //
+  // The newest live code per purpose wins: reissuing supersedes the previous one
+  // (see issueVerificationCode), so an older row is a code nobody is holding.
+  const matched = Object.entries(live).find(([, record]) => record && codeMatches(record, code));
+
+  if (!hit) {
+    await securityLog({ userId: req.user.id, event: "verification_code_mismatch", severity: "warning", ip: req.ip });
+    // Charged to exactly one code: the newest, which is the one the customer was
+    // last told to expect. Spreading a guess across several would halve a
+    // five-try allowance for no security gain.
+    const chargeable = Object.values(live).flat();
+    if (!chargeable.length) {
+      throw badRequest("That code has already been used, or it has expired. Send yourself a new one.");
+    }
+    const result = await spendFailedAttempt(chargeable[0]);
+    if (result.reason === "tooManyAttempts") {
+      throw badRequest("Too many incorrect codes. Request a new one.");
+    }
+    throw badRequest(result.message ?? "That code is not one of ours. Check it and try again, or send a new one.");
+  }
+
+  const channel = hit.purpose === "email_verify" ? "email" : "phone";
+  // Every code for that channel is superseded, not just the one that matched.
+  // Leaving the others live would let a spent code be retried against the same
+  // channel indefinitely.
+  await q(
+    "UPDATE verification_codes SET consumed_at = now() WHERE user_id = $1 AND purpose = $2 AND consumed_at IS NULL",
+    [req.user.id, hit.purpose]
+  );
+  outcomes[channel] = true;
+  await q(
+    `UPDATE users SET ${channel === "email" ? "email_verified" : "phone_verified"} = TRUE WHERE id = $1`,
+    [req.user.id]
+  );
+
+  const remaining = [];
+  if (!outcomes.email) remaining.push("email");
+  if (!outcomes.phone) remaining.push("phone");
+
+  res.json({
+    ok: true,
+    emailVerified: outcomes.email,
+    phoneVerified: outcomes.phone,
+    allVerified: remaining.length === 0,
+    remaining
+  });
 }));
 
 // ---------- MFA ----------

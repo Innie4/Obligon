@@ -135,7 +135,11 @@ test("a verification code has a bounded number of guesses", () => {
   assert.match(migration17, /ADD COLUMN IF NOT EXISTS attempts INTEGER NOT NULL DEFAULT 0/);
   assert.match(auth, /const MAX_CODE_ATTEMPTS = 5/);
   // The counter is on the row, so it survives a restart and a resend is fresh.
-  assert.match(auth, /SET attempts = attempts \+ 1/);
+  // Read-then-write rather than `attempts + 1` in the UPDATE: the value was
+  // already fetched to decide whether to refuse, and re-deriving it in SQL means
+  // two sources of truth for the same counter.
+  assert.match(auth, /const attempts = Number\(record\.attempts \?\? 0\) \+ 1;/);
+  assert.match(auth, /SET attempts = \$2 WHERE id = \$1/);
   // And the comparison is not short-circuiting, which on a million-key space is a
   // measurable advantage to whoever is guessing.
   assert.match(auth, /crypto\.timingSafeEqual/);
@@ -163,17 +167,11 @@ test("the wallet still exists before verification", () => {
   assert.match(inTransaction, /createWalletForAccount/);
 });
 
-test("signup sends the customer through both codes", () => {
+test("signup sends the customer through verification", () => {
   // It used to redirect to a page reading "Identity Verified" while nothing had
-  // been verified at all.
-  assert.match(signupForm, /const phoneStep = `\$\{routes\.verifyPhone\}/);
-  assert.match(signupForm, /const emailStep = `\$\{routes\.verifyEmail\}/);
-  assert.match(signupForm, /router\.push\(emailStep\);/);
-});
-
-test("finishing one channel leads to the other", () => {
-  assert.match(verifyUI, /const destination = next && next\.startsWith\("\/"\) \? next : redirect;/);
-  assert.match(verifyUI, /router\.push\(destination\)/);
+  // been verified at all. It is now one step rather than a chain of two, and the
+  // detail is covered in verification-flow.test.mjs.
+  assert.match(signupForm, /router\.push\(routes\.verifyEmail\);/);
 });
 
 test("the success page reports what was verified, not what it wishes", () => {

@@ -1,257 +1,304 @@
 "use client";
 
 import * as React from "react";
-import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, CheckCircle2, AlertTriangle, ArrowLeft, Mail, Phone, ShieldCheck, RotateCcw } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, Mail, Phone, ShieldCheck } from "lucide-react";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { routes } from "@/components/site/routes";
 import { useToast } from "@/components/shared/Toast";
 import { useSession } from "@/components/shared/AuthContext";
-import { authApi } from "@/lib/services";
+import { authApi, type VerificationChannelResult } from "@/lib/services";
 
-type VerificationType = "email" | "phone";
-type VerificationStage = "input" | "sent" | "verifying" | "success" | "failed";
+/** Six digits, as a numeric input. Length is a server concern; see CODE_LENGTH. */
+const CODE_LENGTH = 6;
 
-interface VerificationUIProps {
-  type: VerificationType;
-  redirect?: string;
+type Stage = "input" | "verifying" | "success" | "failed";
+
+/** Masks an address for display without hiding which one it is. */
+function maskEmail(email: string) {
+  if (!email) return "your email address";
+  const [local, domain] = email.split("@");
+  if (!domain) return email;
+  const head = local.slice(0, Math.min(2, local.length));
+  return `${head}${"*".repeat(Math.max(3, local.length - head.length))}@${domain}`;
 }
 
-export function VerificationUI({ type, redirect = "/" }: VerificationUIProps) {
+function maskPhone(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 4) return phone || "your phone number";
+  return `••• ••• ${digits.slice(-4)}`;
+}
+
+/**
+ * Verify an account's email address and phone number.
+ *
+ * One code for both channels, one form, one field. The previous version was
+ * built as two separate pages with six single-character boxes, and asked the
+ * customer to press Send once per channel to answer a single question.
+ *
+ * The two codes are still separate values, confirmed against the channel each
+ * was sent to. Sending one code to both would mean an intercepted text message
+ * could claim an email address, which is the claim the email code exists to
+ * support.
+ */
+export function VerificationUI() {
   const router = useRouter();
-  // The persisted session is the API's own user payload, and it still says
-  // unverified after a successful confirm. Without refreshing it here, everything
-  // downstream — the success screen's own per-channel report, the profile page —
-  // would keep telling a customer who has just entered a valid code that they
-  // have not verified anything.
-  const { refresh: refreshSession } = useSession();
+  const { user, refresh: refreshSession } = useSession();
+  const { success: toastSuccess, error: toastError } = useToast();
 
-  const [stage, setStage] = React.useState<VerificationStage>("input");
+  // Read from the session rather than the URL. They used to arrive as
+  // `?contact=` parameters, which put an email address and a phone number into
+  // browser history, referrer headers and proxy logs for no benefit.
+  const contactEmail = user?.email ?? "";
+  const contactPhone = user?.phone ?? "";
+
   const [code, setCode] = React.useState("");
+  const [stage, setStage] = React.useState<Stage>("input");
   const [error, setError] = React.useState<string | null>(null);
-  const [submitting, setSubmitting] = React.useState(false);
-  const [resendCooldown, setResendCooldown] = React.useState(0);
+  const [notice, setNotice] = React.useState<string | null>(null);
+  const [sending, setSending] = React.useState(false);
+  const [sendingCode, setSendingCode] = React.useState(false);
+  const [cooldown, setCooldown] = React.useState(0);
+  const [channels, setChannels] = React.useState<{ email?: VerificationChannelResult; phone?: VerificationChannelResult }>({});
 
-  // Read search params from URL directly instead of useSearchParams()
-  const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-  const token = params?.get("token") ?? null;
-  // Where to go when this channel is done. Signup chains the two channels, so
-  // finishing the email has to lead to the phone rather than to the dashboard —
-  // the old version sent everyone straight to /customer and the phone was never
-  // asked for at all.
-  const next = params?.get("next");
-  const destination = next && next.startsWith("/") ? next : redirect;
-
-  const verifyCode = async (codeToVerify: string) => {
-    setSubmitting(true);
-    setError(null);
-    setStage("verifying");
-    try {
-      if (type === "email") {
-        await authApi.verifyEmailConfirm(codeToVerify);
-      } else {
-        await authApi.verifyPhoneConfirm(codeToVerify);
-      }
-      // Best-effort: the code is accepted either way, and a failed refresh must
-      // not strand the customer on a "verifying" screen.
-      await refreshSession().catch(() => undefined);
-      setStage("success");
-      setTimeout(() => router.push(destination), 1500);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Invalid or expired code. Please try again.");
-      setStage("failed");
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const busy = stage === "verifying";
+  const ready = code.length === CODE_LENGTH && !busy;
 
   React.useEffect(() => {
-    if (token) {
-      setStage("verifying");
-      void verifyCode(token);
-    }
-    // Runs once: a token in the URL is a one-shot deep link, and re-running it
-    // would spend another attempt on a code that has already been consumed.
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => setCooldown((c) => (c > 0 ? c - 1 : 0)), 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
+
+  // Send on arrival. A customer arriving here is mid-verification because
+  // something asked them to be, and making them press Send first to receive a
+  // code that was already on its way is a step that exists only here.
+  React.useEffect(() => {
+    void sendCodes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  React.useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const timer = setInterval(() => setResendCooldown((c) => (c > 0 ? c - 1 : 0)), 1000);
-    return () => clearInterval(timer);
-  }, [resendCooldown]);
-  const { success: toastSuccess, error: toastError } = useToast();
+  /** Issue a code for every channel that is not already verified, in one call. */
+  const sendCodes = async () => {
+    setSending(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await authApi.verifySendBoth();
+      setChannels(result.channels ?? {});
+      const sent = [result.channels?.email?.sent, result.channels?.phone?.sent].filter(Boolean).length;
+      const failed = [
+        result.channels?.email?.sent === false ? "email" : null,
+        result.channels?.phone?.sent === false ? "SMS" : null
+      ].filter(Boolean);
+      if (sent === 0) {
+        setError("We could not send a verification code. Please try again in a moment.");
+      } else if (failed.length) {
+        // Said plainly rather than as a silent half-delivery: a customer who
+        // waits for a text that was never sent has no way to know.
+        setNotice(`We sent your code by ${failed.length === 2 ? "neither channel" : failed[0] === "email" ? "SMS" : "email"} — check your ${failed.join(" and ")}.`);
+      }
+      setCooldown(30);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "We could not send a verification code.");
+    } finally {
+      setSending(false);
+    }
+  };
 
-  // Read contact value from URL params (for display/masking) - safe for SSR
-  const contactValue = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("contact") ?? "" : "";
-
-  const resendCode = async () => {
-    setSubmitting(true);
+  const resend = async () => {
+    if (cooldown > 0 || sendingCode) return;
+    setSendingCode(true);
     setError(null);
     try {
-      if (type === "email") {
-        await authApi.verifyEmailSend();
-      } else {
-        await authApi.verifyPhoneSend(contactValue || undefined);
-      }
-      setStage("sent");
-      toastSuccess("A new code has been sent.");
-      setResendCooldown(30);
+      const result = await authApi.verifySendBoth();
+      setChannels(result.channels ?? {});
+      toastSuccess("A new code has been sent to your email and phone.");
+      setCooldown(30);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not resend the code. Please try again.");
+      const message = err instanceof Error ? err.message : "Could not resend the code.";
+      setError(message);
+      toastError(message);
     } finally {
-      setSubmitting(false);
+      setSendingCode(false);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (code.length === 6) {
-      void verifyCode(code);
-    } else {
-      setError("Enter the 6-digit code.");
+  /**
+   * Try the code against each channel in turn.
+   *
+   * One field serves both, so the same digits are offered to each and whichever
+   * accepts is the one that was sent to that channel. A code that matches
+   * neither is reported as such rather than "verification failed", which is what
+   * a single-channel endpoint made of it.
+   */
+  const verify = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!ready) return;
+    setStage("verifying");
+    setError(null);
+    try {
+      const result = await authApi.verifyConfirmEither(code);
+      await refreshSession().catch(() => undefined);
+      setStage("success");
+      if (result.allVerified) {
+        setTimeout(() => router.push(routes.customerDashboard), 1200);
+      } else {
+        setTimeout(() => router.push(`/customer?verify=${result.remaining?.join(",") ?? ""}`), 1200);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "That code is not correct.");
+      setStage("failed");
     }
   };
 
-  const handleRetry = () => {
-    setStage("input");
-    setCode("");
+  const onCodeChange = (value: string) => {
+    // Digits only. The field also carries inputMode and type below, so this is
+    // belt and braces — but a pasted code with a space in it ("123 456") is a
+    // normal thing to do, and stripping non-digits handles it.
+    setCode(value.replace(/\D/g, "").slice(0, CODE_LENGTH));
+    if (stage === "failed") setStage("input");
+    if (error) setError(null);
   };
 
-  const Icon = type === "email" ? Mail : Phone;
-  const contactLabel = type === "email" ? "Email" : "Phone";
-  const maskedContact = type === "email"
-    ? contactValue.replace(/(.{2}).*(@.*)/, "$1****$2")
-    : contactValue.replace(/(\+\d{2})(\d{3})(\d{3})(\d{4})/, "$1 $2 *** $4");
-
-  const stages = {
-    input: {
-      title: `Verify Your ${contactLabel}`,
-      body: `Enter the 6-digit code sent to ${maskedContact}`,
-      showInput: true,
-      showResend: true,
-    },
-    sent: {
-      title: `Code Sent to ${contactLabel}`,
-      body: `We've sent a 6-digit code to ${maskedContact}. Enter it below to verify.`,
-      showInput: true,
-      showResend: true,
-    },
-    verifying: {
-      title: "Verifying...",
-      body: "Please wait while we verify your code.",
-      showInput: false,
-      showResend: false,
-    },
-    success: {
-      title: `${contactLabel} Verified!`,
-      body: next
-        ? "One down. Taking you to the next step..."
-        : "Your account is now verified. Redirecting...",
-      showInput: false,
-      showResend: false,
-    },
-    failed: {
-      title: "Verification Failed",
-      body: "The code was invalid or has expired.",
-      showInput: true,
-      showResend: true,
-    },
-  };
-
-  const current = stages[stage];
-
-  const renderCodeInput = () => (
-    <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-      <div className="flex gap-3">
-        {[...code].map((char, i) => (
-          <input
-            key={i}
-            type="text"
-            maxLength={1}
-            value={code[i] ?? ""}
-            onChange={(e) => {
-              if (e.target.value.length === 1 && i < 5) {
-                setCode(code + e.target.value);
-              } else if (e.target.value === "" && i > 0) {
-                setCode(code.slice(0, -1));
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Backspace" && !e.currentTarget.value && i > 0) {
-                setCode(code.slice(0, -1));
-              }
-            }}
-            className="h-14 w-12 text-center text-2xl font-bold rounded-lg border-obligon-border bg-white focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20"
-            autoComplete="one-time-code"
-            disabled={submitting}
-            autoFocus
-          />
-        ))}
-        <input type="hidden" value={code} onChange={(e) => setCode(e.target.value)} />
-      </div>
-    </form>
-  );
-
-  const renderResendButton = () => (
-    <button
-      onClick={() => {
-        if (resendCooldown > 0 || submitting) return;
-        void resendCode();
-      }}
-      disabled={submitting || resendCooldown > 0}
-      className="mt-6 inline-flex w-full items-center justify-center text-sm font-bold text-obligon-green hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      {resendCooldown > 0
-        ? `Resend code in ${resendCooldown}s`
-        : `Resend ${contactLabel.toLowerCase()} code`}
-    </button>
-  );
+  const emailSent = channels.email?.sent === true || channels.email?.alreadyVerified === true;
+  const phoneSent = channels.phone?.sent === true || channels.phone?.alreadyVerified === true;
 
   return (
     <AuthShell compact>
-      <div className="w-full max-w-[440px] mx-auto">
-        <div className="mx-auto grid size-16 place-items-center rounded-full bg-obligon-green/10 text-obligon-green">
+      <div className="mx-auto w-full max-w-[440px]">
+        {/* Top left, as asked. It used to sit at the bottom of the card, below the
+            form, where a customer who mistyped a code had to scroll past their own
+            mistake to leave. */}
+        <Link
+          href={routes.login}
+          className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[1.2px] text-obligon-green hover:underline"
+        >
+          <ArrowLeft size={15} />
+          Back to Login
+        </Link>
+
+        <div className="mt-8 grid size-16 place-items-center rounded-full bg-obligon-green/10 text-obligon-green">
           <ShieldCheck size={32} />
         </div>
 
-        <h1 className="mt-8 text-center font-display text-3xl font-extrabold leading-10 text-obligon-navy">
-          {current.title}
+        <h1 className="mt-6 text-center font-display text-3xl font-extrabold leading-10 text-obligon-navy">
+          {stage === "success" ? "Verified" : "Verify your account"}
         </h1>
         <p className="mt-4 text-center text-base leading-6 text-obligon-text">
-          {current.body}
+          {stage === "success"
+            ? "Your account is verified."
+            : "We sent a 6-digit code to your email and phone. Enter whichever one you receive."}
         </p>
 
-        {error && (
-          <div className="mt-6 rounded-lg bg-[#fff0f0] border border-[#fecaca] p-3 text-sm text-[#93000a] flex items-start gap-2" role="alert">
+        <div className="mt-5 space-y-2">
+          {[
+            { label: "Email", Icon: Mail, detail: maskEmail(contactEmail), ok: emailSent },
+            { label: "Phone", Icon: Phone, detail: maskPhone(contactPhone), ok: phoneSent }
+          ].map(({ label, Icon, detail, ok }) => (
+            <div
+              key={label}
+              className="flex items-center gap-3 rounded-xl border border-obligon-border bg-[#f7fbf8] px-4 py-3"
+            >
+              <Icon size={17} className="shrink-0 text-obligon-navy" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-extrabold uppercase text-obligon-text">{label}</p>
+                <p className="truncate text-sm font-bold text-obligon-navy">{detail}</p>
+              </div>
+              {ok ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-obligon-lime/30 px-2.5 py-1 text-[11px] font-extrabold text-obligon-navy">
+                  <Check size={12} /> Sent
+                </span>
+              ) : (
+                <span className="rounded-full bg-[#fff3d8] px-2.5 py-1 text-[11px] font-extrabold text-[#9a6300]">
+                  Not sent
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {sending ? (
+          <p className="mt-5 text-center text-sm font-semibold text-obligon-text">Sending your code…</p>
+        ) : null}
+
+        {notice && !error ? (
+          <p className="mt-5 rounded-lg border border-obligon-border bg-[#fff3d8] p-3 text-sm text-[#9a6300]" role="status">
+            {notice}
+          </p>
+        ) : null}
+
+        {error ? (
+          <div
+            className="mt-5 flex items-start gap-2 rounded-lg border border-[#fecaca] bg-[#fff0f0] p-3 text-sm text-[#93000a]"
+            role="alert"
+          >
             <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
             <span>{error}</span>
           </div>
+        ) : null}
+
+        {stage === "success" ? (
+          <div className="mt-8 flex items-center justify-center gap-2 rounded-xl bg-obligon-lime/20 p-4 text-sm font-extrabold text-obligon-navy">
+            <Check size={18} />
+            Code accepted
+          </div>
+        ) : (
+          <form onSubmit={verify} className="mt-8">
+            <label htmlFor="otp-code" className="block text-xs font-extrabold uppercase text-obligon-text">
+              6-digit code
+            </label>
+            <input
+              id="otp-code"
+              // type=tel rather than type=text: paired with inputMode=numeric this
+              // puts the numeric keypad on a phone, which is where most of these
+              // codes are read. type=number is rejected because it silently drops
+              // a leading zero, and a code may legitimately start with one.
+              type="tel"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              autoComplete="one-time-code"
+              // Fires once the field is full. A six-digit code is complete the
+              // moment the sixth digit lands, and making someone also press the
+              // button is the same friction as the Send button.
+              onChange={(e) => onCodeChange(e.target.value)}
+              value={code}
+              disabled={busy}
+              maxLength={CODE_LENGTH}
+              placeholder="000000"
+              aria-describedby="otp-code-help"
+              aria-invalid={stage === "failed"}
+              className="mt-2 h-16 w-full rounded-xl border border-obligon-border bg-white px-4 text-center font-mono text-3xl font-extrabold tracking-[0.5em] text-obligon-navy outline-none focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20 disabled:opacity-60"
+            />
+            <p id="otp-code-help" className="mt-2 text-center text-xs font-semibold text-obligon-text">
+              {code.length < CODE_LENGTH
+                ? `${CODE_LENGTH - code.length} digit${CODE_LENGTH - code.length === 1 ? "" : "s"} to go`
+                : "Verifying…"}
+            </p>
+            <button
+              type="submit"
+              disabled={!ready}
+              className="mt-5 h-12 w-full rounded-xl bg-obligon-green font-extrabold text-white shadow-green transition hover:bg-obligon-green/90 disabled:opacity-50"
+            >
+              {busy ? "Verifying…" : "Verify account"}
+            </button>
+          </form>
         )}
 
-        {current.showInput && renderCodeInput()}
-
-        {stage === "failed" && (
+        <div className="mt-6 flex items-center justify-between text-sm">
           <button
-            onClick={handleRetry}
-            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-obligon-border px-6 py-3 text-sm font-bold text-obligon-navy hover:bg-obligon-mist"
+            type="button"
+            onClick={() => void resend()}
+            disabled={cooldown > 0 || sendingCode}
+            className="font-bold text-obligon-green hover:underline disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
           >
-            <RotateCcw size={16} />
-            Try Again
+            {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}
           </button>
-        )}
-
-        {stage !== "success" && stage !== "verifying" && current.showResend && renderResendButton()}
-
-        <Link
-          href={routes.login}
-          className="mt-8 inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[1.2px] text-obligon-green"
-        >
-          <ArrowLeft size={16} />
-          Back to Login
-        </Link>
+          <Link href={routes.support} className="font-bold text-obligon-text hover:underline">
+            Having trouble?
+          </Link>
+        </div>
       </div>
     </AuthShell>
   );

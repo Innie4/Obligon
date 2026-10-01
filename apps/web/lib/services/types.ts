@@ -218,6 +218,27 @@ export interface CustomerTransaction {
  * to insist on — is whether the payment that was meant to add to that balance
  * settled, for how much, and under which identifier.
  */
+/**
+ * Per-channel outcome of sending a verification code.
+ *
+ * Deliberately not a single boolean: with one gateway missing in a deployment,
+ * one channel can fail while the other succeeds, and a page told only "failed"
+ * would tell a customer to wait for a message that is never coming.
+ */
+export interface VerificationChannelResult {
+  sent: boolean;
+  /** The masked or full address/number the code went to. */
+  to?: string;
+  /** Present when `sent` is false, in words a person can act on. */
+  reason?: string;
+  alreadyVerified?: boolean;
+}
+
+export interface VerificationSendResult {
+  email?: VerificationChannelResult;
+  phone?: VerificationChannelResult;
+}
+
 export interface CustomerTopUpSummary {
   reference: string;
   provider: string;

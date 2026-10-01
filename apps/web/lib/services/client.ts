@@ -85,6 +85,8 @@ import type {
   CustomerTransaction,
   CustomerWallet,
   MobileTransactionGroup,
+  VerificationChannelResult,
+  VerificationSendResult,
   NotificationPrefs,
   SessionUser,
   Station,
@@ -842,6 +844,27 @@ export const authApi = {
     if (!LIVE_MODE) { await simulate({}); return { ok: true }; }
     return http<{ ok: boolean }>("/api/auth/verify-email/send", { method: "POST" });
   },
+  /**
+   * Send a code to the email address and the phone number in one call.
+   *
+   * Per-channel outcomes rather than a single flag, because a deployment with no
+   * SMS gateway can still deliver the email code and the page has to be able to
+   * say which one arrived.
+   */
+  async verifySendBoth() {
+    if (!LIVE_MODE) {
+      await simulate({}, 400);
+      return {
+        ok: true,
+        channels: { email: { sent: true, to: "you@example.com" }, phone: { sent: true, to: "+234 800 000 0000" } },
+        expiresInMinutes: 10
+      };
+    }
+    return http<{ ok: boolean; channels: VerificationSendResult; expiresInMinutes: number }>(
+      "/api/auth/verify/send",
+      { method: "POST" }
+    );
+  },
   async verifyEmailConfirm(code: string) {
     if (!LIVE_MODE) { await simulate({}); return { ok: true }; }
     return http<{ ok: boolean }>("/api/auth/verify-email/confirm", { method: "POST", body: JSON.stringify({ code }) });
@@ -853,6 +876,26 @@ export const authApi = {
   async verifyPhoneConfirm(code: string) {
     if (!LIVE_MODE) { await simulate({}); return { ok: true }; }
     return http<{ ok: boolean }>("/api/auth/verify-phone/confirm", { method: "POST", body: JSON.stringify({ code }) });
+  },
+  /**
+   * Offer one submitted code to both channels.
+   *
+   * Whichever channel recognises the digits is the one it was sent to; the
+   * response says which verified so the caller can finish the account when both
+   * land and name the one still outstanding when only one does.
+   */
+  async verifyConfirmEither(code: string) {
+    if (!LIVE_MODE) {
+      await simulate({}, 500);
+      return { ok: true, emailVerified: true, phoneVerified: true, allVerified: true, remaining: [] as string[] };
+    }
+    return http<{
+      ok: boolean;
+      emailVerified: boolean;
+      phoneVerified: boolean;
+      allVerified: boolean;
+      remaining: string[];
+    }>("/api/auth/verify/confirm", { method: "POST", body: JSON.stringify({ code }) });
   },
   async mfaChallenge(payload: { email: string; totp: string; rememberMe?: boolean }) {
     if (!LIVE_MODE) { await simulate({}); return { user: readPersistedSession() } as unknown as LoginResponse; }

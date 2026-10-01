@@ -611,19 +611,17 @@ function SignupForm() {
             ? routes.dashboard
             : routes.customerDashboard;
 
-      // Signup issues a code for both the email and the phone number the account
-      // was registered with, so the customer is sent through both before they see
-      // a dashboard. This used to redirect to a page reading "Identity Verified"
-      // while nothing had been verified at all.
+      // One verification step, not two. Signup already issued a code to both the
+      // email and the phone number, and the page collects either one, so there is
+      // nothing to chain and nothing to put in the URL — the details were read
+      // from the account instead.
       //
-      // The wallet already exists by the time these codes are sent — it is created
-      // inside the signup transaction — so a customer who never finishes verifying
-      // still has an account that can be funded, and one who does can be reached
-      // on both the contact details they gave.
+      // This used to redirect to a page reading "Identity Verified" while nothing
+      // had been verified at all. The wallet already exists by now — it is created
+      // inside the signup transaction — so a customer who never finishes here
+      // still has an account that can be funded.
       if (LIVE_MODE) {
-        const phoneStep = `${routes.verifyPhone}?contact=${encodeURIComponent(signupForm.phone ?? "")}&next=${encodeURIComponent(destination)}`;
-        const emailStep = `${routes.verifyEmail}?contact=${encodeURIComponent(email)}&next=${encodeURIComponent(phoneStep)}`;
-        router.push(emailStep);
+        router.push(routes.verifyEmail);
         return;
       }
 

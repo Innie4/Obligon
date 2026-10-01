@@ -25,7 +25,9 @@ export type {
   SessionUser,
   Station,
   UserRole,
-  Vehicle
+  Vehicle,
+  VerificationChannelResult,
+  VerificationSendResult
 } from "./types";
 export {
   api,
