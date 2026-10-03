@@ -428,6 +428,131 @@ export async function listRefunds(transactionId) {
   return Array.isArray(data) ? data : [];
 }
 
+// ---------------------------------------------------------------------------
+// Transfers (money out, to a partner's bank)
+//
+// Flutterwave has no analogue of Paystack's transfer recipient. There, a
+// recipient is created once and every later transfer names a `recipient_code`.
+// Here a transfer either names the beneficiary's bank code and account number
+// inline, or references a beneficiary created ahead of time — which is the
+// equivalent, and what `bank_accounts.beneficiary_id` holds.
+//
+// The account number is never stored here. It goes to the processor and the
+// handle comes back, so our database keeps only the mask it already kept.
+//
+// Status is a two-step thing and the difference matters: a created transfer
+// reports `NEW` (queued, nothing sent yet), and only a later fetch reports
+// `SUCCESSFUL` or `FAILED`. Treating the create response as a completed payment
+// would mark money as sent the moment it was queued.
+// ---------------------------------------------------------------------------
+
+/** Terminal states for a transfer, lowercased for comparison. */
+const TRANSFER_FAILED = new Set(["failed", "reversed", "cancelled", "canceled"]);
+
+/**
+ * Register a bank account as a transferable beneficiary.
+ *
+ * @returns {{ id: string|null, accountNumber: string|null, bankName: string|null }}
+ */
+export async function createBeneficiary({ name, accountNumber, bankCode = "058", currency = "NGN" }) {
+  if (!enabled()) throw misconfigured("Flutterwave is not configured. The deployment is missing its payment credentials.");
+  const data = await flutterwaveFetch("/beneficiaries", {
+    method: "POST",
+    body: {
+      account_bank: bankCode,
+      account_number: String(accountNumber),
+      beneficiary_name: name,
+      currency
+    }
+  });
+  return {
+    id: data?.id != null ? String(data.id) : null,
+    accountNumber: data?.account_number ?? null,
+    bankName: data?.bank_name ?? null
+  };
+}
+
+/**
+ * Queue a transfer to a beneficiary.
+ *
+ * Returns `status: "queued"` for a `NEW` transfer rather than claiming success:
+ * the money has not left. Callers reconcile with `fetchTransfer`.
+ *
+ * @returns {{ transferCode: string|null, status: string, statusRaw: string, queued: boolean }}
+ */
+export async function initiateTransfer({
+  beneficiaryId,
+  accountNumber,
+  bankCode,
+  beneficiaryName,
+  amountKobo,
+  reference,
+  reason,
+  currency = "NGN"
+}) {
+  if (!enabled()) throw misconfigured("Flutterwave is not configured. The deployment is missing its payment credentials.");
+
+  // Prefer the stored beneficiary id; fall back to inline details for an account
+  // nominated before this column existed.
+  const useBeneficiary = beneficiaryId != null && String(beneficiaryId).trim() !== "";
+  const accountDigits = String(accountNumber ?? "").replace(/\D/g, "");
+  if (!useBeneficiary && accountDigits.length !== 10) {
+    throw badRequest("A 10-digit account number is required to send a transfer");
+  }
+
+  const body = {
+    // Major units again. `amount` here is the currency's major unit, so sending
+    // kobo would send 100x the intended payout.
+    amount: toProviderAmount(amountKobo),
+    currency,
+    reference,
+    ...(reason ? { narration: reason } : {}),
+    ...(useBeneficiary
+      ? { beneficiary: Number(beneficiaryId) }
+      : { account_bank: bankCode || "058", account_number: accountDigits, ...(beneficiaryName ? { beneficiary_name: beneficiaryName } : {}) })
+  };
+
+  const data = await flutterwaveFetch("/transfers", { method: "POST", body });
+
+  const statusRaw = String(data?.status ?? "").toUpperCase();
+  return {
+    transferCode: data?.id != null ? String(data.id) : null,
+    status: statusRaw.toLowerCase(),
+    // `NEW` means queued. Only SUCCESSFUL means the money actually moved, and the
+    // create response cannot report that.
+    queued: statusRaw === "NEW" || statusRaw === "PENDING",
+    statusRaw
+  };
+}
+
+/**
+ * Read a transfer's current state from the processor.
+ *
+ * This is the only authoritative answer to "did the money leave", which is why the
+ * scheduler and the payout route both call it rather than trusting the create
+ * response.
+ *
+ * @returns {{ transferCode: string|null, status: string, settled: boolean, failed: boolean, message: string|null, amountKobo: number }}
+ */
+export async function fetchTransfer(transferCode) {
+  if (!enabled()) throw misconfigured("Flutterwave is not configured. The deployment is missing its payment credentials.");
+  if (transferCode == null || String(transferCode).trim() === "") {
+    throw badRequest("A transfer id is required to check a transfer");
+  }
+  const data = await flutterwaveFetch(`/transfers/${encodeURIComponent(transferCode)}`);
+  const statusRaw = String(data?.status ?? "").toUpperCase();
+  return {
+    transferCode: data?.id != null ? String(data.id) : null,
+    status: statusRaw.toLowerCase(),
+    settled: statusRaw === "SUCCESSFUL",
+    failed: TRANSFER_FAILED.has(statusRaw),
+    // `complete_message` is the processor's explanation and is the difference
+    // between "the bank declined it" and "we never sent it".
+    message: data?.complete_message ?? data?.message ?? null,
+    amountKobo: toKobo(data?.amount ?? 0, "major")
+  };
+}
+
 /**
  * Create a collection subaccount so an organization's money is separated at the
  * processor rather than only in our ledger. `split_ratio_bp` is the share of each

@@ -10,7 +10,7 @@ import * as flutterwave from "./flutterwave.js";
  * that translation is contained here rather than leaking into business logic.
  */
 
-export const PAYMENT_PROVIDERS = ["paystack", "flutterwave"];
+export const PAYMENT_PROVIDERS = ["flutterwave", "paystack"];
 
 function configured(name) {
   if (name === "paystack") return paystack.paystackEnabled();
@@ -222,20 +222,16 @@ export async function startCheckout({
     return { provider: "flutterwave", reference: result.reference, providerTransactionId: result.providerTransactionId, authorization_url: result.authorization_url, simulated: result.simulated };
   }
 
-  const result = await paystack.initializeTopUp({
-    email,
-    amountKobo,
-    reference: txRef,
-    callbackUrl: redirectUrl,
-    metadata: meta
-  });
-  return {
-    provider: "paystack",
-    reference: result.reference,
-    providerTransactionId: null,
-    authorization_url: result.authorization_url,
-    simulated: false
-  };
+  // Flutterwave is the processor. The Paystack branch is unreachable in any
+  // configured deployment — its keys ship unset, so `activeProvider()` cannot
+  // return it and this line is only reached if someone deliberately reconfigures.
+  // It is kept rather than deleted so a rollback does not require a code change,
+  // and it fails closed: `initializeTopUp` is gone, so this throws a clear
+  // misconfiguration instead of quietly starting a Paystack charge.
+  throw misconfigured(
+    "Starting a new Paystack checkout is not supported: Flutterwave is the payment processor. " +
+      "Set PAYMENT_PROVIDER=flutterwave and configure FLW_PUBLIC_KEY and FLW_SECRET_KEY."
+  );
 }
 
 /**
@@ -354,6 +350,133 @@ export async function createSettlementSubaccount(provider, payload) {
     throw serviceUnavailable("Processor settlement subaccounts are only implemented for Flutterwave");
   }
   return flutterwave.createCollectionSubaccount(payload);
+}
+
+// ---------------------------------------------------------------------------
+// Transfers — money out to a partner's bank account.
+//
+// The two processors disagree about shape here, and the difference is not
+// cosmetic:
+//
+//   Paystack: a recipient is created once, and every later transfer names a
+//             `recipient_code`. One API call up front, then transfers are by id.
+//   Flutterwave: there is no recipient handle at all. A transfer names the
+//             beneficiary's bank code and account number inline, or references a
+//             beneficiary created separately. Creating one up front gives the
+//             same "nominate once, transfer by id" property, so that is what
+//             this layer does — and the account number is sent to the processor
+//             and not kept.
+//
+// Both statuses are normalised to one shape. `queued` is deliberately separate
+// from `settled`: a Flutterwave transfer reports `NEW` when it is accepted, and
+// nothing has left the balance. Callers must reconcile with `fetchTransfer`.
+// ---------------------------------------------------------------------------
+
+/** Register a bank account with the processor so transfers can name it. */
+export async function nominateTransferDestination(provider, { name, accountNumber, bankCode, currency = "NGN" }) {
+  const name_ = provider ?? activeProvider();
+  if (!name_) throw serviceUnavailable("No payment provider is configured");
+
+  if (name_ === "flutterwave") {
+    const result = await flutterwave.createBeneficiary({ name, accountNumber, bankCode, currency });
+    return { provider: "flutterwave", beneficiaryId: result.id, bankName: result.bankName };
+  }
+
+  const data = await paystack.createTransferRecipient({ name, accountNumber, bankCode });
+  return { provider: "paystack", beneficiaryId: data?.recipient_code ?? null, bankName: null };
+}
+
+/**
+ * Queue a transfer to a nominated destination.
+ *
+ * @returns {{ provider, transferCode, status, queued, settled, failed, message }}
+ */
+export async function initiateTransfer({
+  provider,
+  beneficiaryId,
+  accountNumber,
+  bankCode,
+  beneficiaryName,
+  amountKobo,
+  reference,
+  reason,
+  currency = "NGN"
+}) {
+  const name_ = provider ?? activeProvider();
+  if (!name_) throw serviceUnavailable("No payment provider is configured");
+
+  if (name_ === "flutterwave") {
+    const result = await flutterwave.initiateTransfer({
+      beneficiaryId,
+      accountNumber,
+      bankCode,
+      beneficiaryName,
+      amountKobo,
+      reference,
+      reason,
+      currency
+    });
+    // A queued transfer is not a settled one. Saying otherwise here is what would
+    // let a caller mark money as sent the moment the processor accepted it.
+    return {
+      provider: "flutterwave",
+      transferCode: result.transferCode,
+      status: result.status,
+      queued: result.queued,
+      settled: false,
+      failed: false,
+      message: null
+    };
+  }
+
+  const data = await paystack.initiateTransfer({
+    recipientCode: beneficiaryId,
+    amountKobo,
+    reference,
+    reason
+  });
+  return {
+    provider: "paystack",
+    transferCode: data?.transfer_code ?? null,
+    status: "processing",
+    // Paystack's transfer response means the transfer was accepted and is
+    // settling; it is not a confirmation that the money landed either.
+    queued: true,
+    settled: false,
+    failed: false,
+    message: null
+  };
+}
+
+/**
+ * Ask the processor whether a transfer actually completed.
+ *
+ * The only authoritative answer to "did the money leave", which is why both the
+ * payout route and the settlement scheduler use it instead of the create response.
+ *
+ * @returns {{ provider, transferCode, status, settled, failed, message, amountKobo }}
+ */
+export async function fetchTransfer(provider, transferCode) {
+  const name_ = provider ?? activeProvider();
+  if (!name_) throw serviceUnavailable("No payment provider is configured");
+
+  if (name_ === "flutterwave") {
+    const result = await flutterwave.fetchTransfer(transferCode);
+    return { provider: "flutterwave", ...result };
+  }
+  // Paystack exposes no read endpoint for a transfer's current state through this
+  // integration, so this reports what the create call recorded rather than
+  // inventing a confirmation. Returning `settled: false` is the honest answer:
+  // it is unknown, and unknown is not success.
+  return {
+    provider: "paystack",
+    transferCode: transferCode ?? null,
+    status: "unknown",
+    settled: false,
+    failed: false,
+    message: "This processor does not report transfer state",
+    amountKobo: 0
+  };
 }
 
 /** Webhook authenticity per provider. Fails closed when unconfigured. */

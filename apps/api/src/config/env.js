@@ -36,19 +36,24 @@ const schema = z.object({
   SUDO_SECRET_API_KEY: z.string().default(""),
   SUDO_WEBHOOK_SECRET: z.string().default(""),
 
-  // Paystack (top-ups, subscriptions, payouts)
-  PAYSTACK_SECRET_KEY: z.string().default(""),
-  PAYSTACK_PUBLIC_KEY: z.string().default(""),
-
-  // Flutterwave (hosted checkout, verification, webhooks)
+  // Flutterwave is the payment processor: hosted checkout, verification,
+  // webhooks, refunds, and transfers to partner bank accounts.
   FLW_PUBLIC_KEY: z.string().default(process.env.NEXT_PUBLIC_FLW_PUBLIC_KEY || ""),
   FLW_SECRET_KEY: z.string().default(""),
   FLW_ENCRYPTION_KEY: z.string().default(""),
   FLW_SECRET_HASH: z.string().default(""),
-  // Which processor handles checkout when several are configured. Empty means
-  // "use whichever provider actually has credentials".
-  PAYMENT_PROVIDER: z.enum(["paystack", "flutterwave", ""]).default(""),
-  NEXT_PUBLIC_PAYMENT_PROVIDER: z.enum(["paystack", "flutterwave", ""]).default(""),
+  // Paystack. Retained only so a webhook for a charge taken before the switch can
+  // still be verified and reconciled — an in-flight payment must not be lost
+  // because the processor changed. Nothing new is started against it, and the
+  // keys ship unset, so `paystackEnabled()` is false and the checkout path cannot
+  // select it.
+  PAYSTACK_SECRET_KEY: z.string().default(""),
+  PAYSTACK_PUBLIC_KEY: z.string().default(""),
+  // Which processor handles checkout. Defaults to Flutterwave so an unset value
+  // names the processor that actually has credentials, rather than falling
+  // through to "use whichever is configured" and picking by accident.
+  PAYMENT_PROVIDER: z.enum(["paystack", "flutterwave", ""]).default("flutterwave"),
+  NEXT_PUBLIC_PAYMENT_PROVIDER: z.enum(["paystack", "flutterwave", ""]).default("flutterwave"),
   // Who absorbs the gateway fee. Anything other than "customer" is treated as
   // "platform", which is the safe default: a customer is never billed for a fee
   // nobody has decided they should pay.

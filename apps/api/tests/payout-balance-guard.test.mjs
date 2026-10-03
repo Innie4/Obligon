@@ -121,10 +121,14 @@ test("an unverified account cannot be paid out to", () => {
 test("adding a bank account no longer pre-verifies it", () => {
   // `runAutoSettlements` pays from any default account with `verified = TRUE`,
   // and this route set that flag on insert — so nominating an account was enough
-  // to make it the destination for automated disbursement.
+  // to make it the destination for automated disbursement. The placeholder for
+  // `verified` has moved as columns were added, so the assertion is on the value
+  // and on the absence of a TRUE, not on a fixed position.
   const body = handler(code(routes), 'router.post("/bank-accounts"');
-  assert.match(body, /\$7,FALSE\) RETURNING/);
-  assert.doesNotMatch(body, /\$7,TRUE\) RETURNING/);
+  const insert = body.slice(body.indexOf("INSERT INTO bank_accounts"));
+  assert.match(insert, /verified\)/, "the insert should name the verified column last");
+  assert.match(insert, /FALSE\) RETURNING/, "verified must be written FALSE");
+  assert.doesNotMatch(insert, /TRUE\) RETURNING/);
 });
 
 test("an admin can see and decide on nominated accounts", () => {

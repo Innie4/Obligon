@@ -1,23 +1,43 @@
 import { Router } from "express";
 import { q, one, tx } from "../db.js";
 import { asyncHandler, badRequest, notFound, forbidden } from "../lib/errors.js";
-import { requireAuth } from "../middleware/auth.js";
+import {
+  requireAuth,
+  requireOrgMembership,
+  requireOrgRole,
+  requireCapability
+} from "../middleware/auth.js";
+import { sensitiveLimiter, payoutLimiter } from "../middleware/security.js";
 import { naira, fmtDate, fmtDateTime, relativeTime, dayGroup, reference, toCsv, maskPan } from "../lib/format.js";
 import { notify, audit, securityLog } from "../lib/notify.js";
 import { emitToOrg, emitToRole } from "../lib/sse.js";
 import { uploadFile, signedUrl } from "../lib/storage.js";
 import { verifyPin } from "../lib/security.js";
-import { createTransferRecipient, initiateTransfer } from "../lib/paystack.js";
+import { nominateTransferDestination, initiateTransfer, activeProvider } from "../lib/payments.js";
 import multer from "multer";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+/**
+ * Ceiling on how many driver PINs one POS attempt may be tested against.
+ *
+ * Each candidate costs a bcrypt comparison, so an uncapped scan made every attempt
+ * slower as drivers were added. Bounded, so the cost of one guess is a known
+ * quantity rather than a function of the customer base.
+ */
+const POS_PIN_CANDIDATE_LIMIT = 25;
 
 router.use(requireAuth, (req, _res, next) => {
   if (!["partner", "mechanic"].includes(req.user.role)) return next(forbidden("This area is for partner accounts"));
   if (!req.user.orgId) return next(forbidden("No organization is linked to this account"));
   next();
 });
+
+// Membership is re-read from the database on every request, so removing someone
+// takes effect immediately instead of at access-token expiry. See
+// requireOrgMembership for why the JWT's `org` claim alone was not enough.
+router.use(requireOrgMembership);
 
 const mechanicAllowedPaths = new Set([
   "/overview", "/overview/range", "/transactions", "/transactions/export",
@@ -192,23 +212,34 @@ router.get("/settlements", asyncHandler(async (req, res) => {
   });
 }));
 
-router.post("/bank-accounts", asyncHandler(async (req, res) => {
+router.post("/bank-accounts", payoutLimiter, requireOrgRole("admin"), asyncHandler(async (req, res) => {
   const { bankName, bankCode, accountNumber, accountName } = req.valid ?? req.body ?? {};
   if (!bankName || !accountNumber || !accountName) throw badRequest("Bank name, account number and account name are required");
   const orgId = partnerOrgId(req);
   const digits = String(accountNumber).replace(/\D/g, "");
-  // Paystack's own transfer API rejects these lengths, so catching it here turns
-  // a failed request into a clear message instead of a 422 from the provider.
+  // Nigerian account numbers are 10 digits. Checked here so the customer gets a
+  // clear message rather than a rejection from the processor.
   if (digits.length !== 10) throw badRequest("Nigerian account numbers are 10 digits");
-  const recipient = await createTransferRecipient({ name: accountName, accountNumber: digits, bankCode: bankCode ?? "058" });
+  const provider = activeProvider();
+  // Nominate the account with the processor once, so later payouts name a handle
+  // rather than re-sending the account number. Flutterwave calls this a
+  // beneficiary; Paystack a transfer recipient. The number itself is not kept.
+  const destination = await nominateTransferDestination(provider, {
+    name: accountName,
+    accountNumber: digits,
+    bankCode: bankCode ?? "058"
+  });
   // Stored unverified. The scheduler pays only from an account that is
   // `verified = TRUE`, and this route set that flag on creation — so adding a
   // bank account was enough to become the destination for automated settlement.
   // Verification is a separate, deliberate step.
   const account = await one(
-    `INSERT INTO bank_accounts (organization_id, bank_name, bank_code, account_number_mask, account_name, recipient_code, is_default, verified)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,FALSE) RETURNING *`,
-    [orgId, bankName, bankCode ?? "058", `•••• ${digits.slice(-4)}`, accountName, recipient.recipient_code ?? null,
+    `INSERT INTO bank_accounts (organization_id, bank_name, bank_code, account_number_mask, account_name, recipient_code, beneficiary_id, payout_provider, is_default, verified)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,FALSE) RETURNING *`,
+    [orgId, bankName, bankCode ?? "058", `•••• ${digits.slice(-4)}`, accountName,
+      destination.provider === "paystack" ? destination.beneficiaryId : null,
+      destination.provider === "flutterwave" ? destination.beneficiaryId : null,
+      destination.provider,
       (await q("SELECT 1 FROM bank_accounts WHERE organization_id = $1", [orgId])).length === 0]
   );
   audit({
@@ -216,18 +247,19 @@ router.post("/bank-accounts", asyncHandler(async (req, res) => {
     actorRole: req.user.role,
     action: "bank_account.added",
     entityId: account.id,
-    metadata: { bankName, last4: digits.slice(-4) }
+    // Provider and last four only. The full account number is never recorded.
+    metadata: { bankName, last4: digits.slice(-4), payoutProvider: destination.provider }
   });
-  res.json({ ok: true, id: account.id, verified: account.verified });
+  res.json({ ok: true, id: account.id, verified: account.verified, payoutProvider: destination.provider });
 }));
 
-router.delete("/bank-accounts/:id", asyncHandler(async (req, res) => {
+router.delete("/bank-accounts/:id", payoutLimiter, requireOrgRole("admin"), asyncHandler(async (req, res) => {
   const rows = await q("DELETE FROM bank_accounts WHERE id = $1 AND organization_id = $2 RETURNING id", [req.params.id, partnerOrgId(req)]);
   if (!rows.length) throw notFound("Bank account not found");
   res.json({ ok: true });
 }));
 
-router.post("/bank-accounts/:id/default", asyncHandler(async (req, res) => {
+router.post("/bank-accounts/:id/default", payoutLimiter, requireOrgRole("admin"), asyncHandler(async (req, res) => {
   await q("UPDATE bank_accounts SET is_default = FALSE WHERE organization_id = $1", [partnerOrgId(req)]);
   await q("UPDATE bank_accounts SET is_default = TRUE WHERE id = $1 AND organization_id = $2", [req.params.id, partnerOrgId(req)]);
   res.json({ ok: true });
@@ -241,7 +273,7 @@ router.post("/bank-accounts/:id/default", asyncHandler(async (req, res) => {
 // it far past the figure finance approved. Verified live: a partner moved their
 // own limit from N500,000 to N999,999,999 and got 200. Only the preference — when
 // to be paid — is the partner's to set.
-router.put("/settlements/config", asyncHandler(async (req, res) => {
+router.put("/settlements/config", requireOrgRole("manager"), asyncHandler(async (req, res) => {
   const { autoSettlement } = req.body ?? {};
   if (typeof autoSettlement !== "boolean") throw badRequest("autoSettlement must be true or false");
   const org = await one(
@@ -296,7 +328,7 @@ async function claimableBalanceKobo(orgId, { excludePayoutId = null } = {}) {
   };
 }
 
-router.post("/payouts", asyncHandler(async (req, res) => {
+router.post("/payouts", payoutLimiter, requireOrgRole("manager"), asyncHandler(async (req, res) => {
   const { amount, bankAccountId } = req.valid ?? req.body ?? {};
   // `Number("not-a-number") * 100` is NaN, and NaN is falsy, so this rejected
   // junk — but it also meant `amount: "5"` and `amount: 5` behaved differently
@@ -327,24 +359,40 @@ router.post("/payouts", asyncHandler(async (req, res) => {
     );
   }
 
-  const ref = reference("PY");
+const ref = reference("PY");
+  const provider = account.payout_provider ?? activeProvider();
+  // A transfer needs the processor's handle for this account. We deliberately do
+  // not store the account number itself, so an account nominated before the
+  // handle existed cannot be paid until it is nominated again — which is a
+  // request the customer can act on, rather than a transfer the processor rejects
+  // for a malformed account number.
+  const beneficiaryId = provider === "flutterwave" ? account.beneficiary_id : account.recipient_code;
+  if (!beneficiaryId) {
+    throw badRequest(
+      "This bank account was added before payout was switched to the current provider. " +
+        "Remove it and add it again so it can be registered for transfers."
+    );
+  }
   const payout = await one(
-    `INSERT INTO payouts (partner_org_id, bank_account_id, amount_kobo, status, reference) VALUES ($1,$2,$3,'pending',$4) RETURNING *`,
-    [orgId, account.id, amountKobo, ref]
+    `INSERT INTO payouts (partner_org_id, bank_account_id, amount_kobo, status, reference, provider, transfer_provider)
+     VALUES ($1,$2,$3,'pending',$4,$5,$5) RETURNING *`,
+    [orgId, account.id, amountKobo, ref, provider]
   );
   try {
     const transfer = await initiateTransfer({
-      recipientCode: account.recipient_code,
+      provider,
+      beneficiaryId,
       amountKobo,
       reference: ref,
       reason: "Obligon partner payout"
     });
-    // Previously `transfer.local ? "processing" : "processing"` — both branches
-    // the same, so the ternary only obscured that the status never depended on
-    // what the provider actually did.
+    // `queued` — the processor accepted the transfer. Money has not necessarily
+    // left. Flutterwave's create response reports `NEW` and cannot say more, and
+    // Paystack's is likewise an acceptance. So the payout is `processing`, and
+    // the reconciliation pass settles it.
     await q("UPDATE payouts SET provider_reference = $2, status = 'processing' WHERE id = $1", [
       payout.id,
-      transfer.transfer_code ?? null
+      transfer.transferCode ?? null
     ]);
   } catch (err) {
     await q("UPDATE payouts SET status = 'failed', failure_reason = $2 WHERE id = $1", [payout.id, err.message]);
@@ -353,7 +401,7 @@ router.post("/payouts", asyncHandler(async (req, res) => {
       actorRole: req.user.role,
       action: "payout.failed",
       entityId: payout.id,
-      metadata: { amountKobo },
+      metadata: { amountKobo, provider },
       severity: "warning"
     });
     throw err;
@@ -369,12 +417,12 @@ router.post("/payouts", asyncHandler(async (req, res) => {
     actorRole: req.user.role,
     action: "payout.requested",
     entityId: payout.id,
-    metadata: { amountKobo, claimableAfterKobo: balance.claimableKobo - amountKobo }
+    metadata: { amountKobo, claimableAfterKobo: balance.claimableKobo - amountKobo, provider }
   });
-  res.json({ ok: true, reference: ref });
+  res.json({ ok: true, reference: ref, status: "processing" });
 }));
 
-router.post("/payouts/:id/retry", asyncHandler(async (req, res) => {
+router.post("/payouts/:id/retry", payoutLimiter, requireOrgRole("manager"), asyncHandler(async (req, res) => {
   const orgId = partnerOrgId(req);
   const payout = await one("SELECT * FROM payouts WHERE id = $1 AND partner_org_id = $2", [req.params.id, orgId]);
   if (!payout) throw notFound("Payout not found");
@@ -386,6 +434,14 @@ router.post("/payouts/:id/retry", asyncHandler(async (req, res) => {
     [payout.bank_account_id, orgId]
   );
   if (!account) throw badRequest("The bank account for this payout is no longer on file");
+  const provider = payout.transfer_provider ?? account.payout_provider ?? activeProvider();
+  const beneficiaryId = provider === "flutterwave" ? account.beneficiary_id : account.recipient_code;
+  if (!beneficiaryId) {
+    throw badRequest(
+      "This bank account was added before payout was switched to the current provider. " +
+        "Remove it and add it again so it can be registered for transfers."
+    );
+  }
 
   // The failed attempt released its claim, so this one has to take it back. Checked
   // for the same reason as the original request: a retry is a fresh disbursement.
@@ -399,8 +455,12 @@ router.post("/payouts/:id/retry", asyncHandler(async (req, res) => {
   const ref = reference("PY");
   await q("UPDATE payouts SET status = 'processing', reference = $2, failure_reason = NULL WHERE id = $1", [payout.id, ref]);
   try {
-    const transfer = await initiateTransfer({ recipientCode: account.recipient_code, amountKobo: payout.amount_kobo, reference: ref });
-    await q("UPDATE payouts SET provider_reference = $2 WHERE id = $1", [payout.id, transfer.transfer_code ?? null]);
+    const transfer = await initiateTransfer({ provider, beneficiaryId, amountKobo: payout.amount_kobo, reference: ref });
+    await q("UPDATE payouts SET provider_reference = $2, provider = $3, transfer_provider = $3 WHERE id = $1", [
+      payout.id,
+      transfer.transferCode ?? null,
+      provider
+    ]);
   } catch (err) {
     await q("UPDATE payouts SET status = 'failed', failure_reason = $2 WHERE id = $1", [payout.id, err.message]);
     throw err;
@@ -410,9 +470,9 @@ router.post("/payouts/:id/retry", asyncHandler(async (req, res) => {
     actorRole: req.user.role,
     action: "payout.retried",
     entityId: payout.id,
-    metadata: { amountKobo: payout.amount_kobo }
+    metadata: { amountKobo: payout.amount_kobo, provider }
   });
-  res.json({ ok: true, reference: ref });
+  res.json({ ok: true, reference: ref, status: "processing" });
 }));
 
 router.get("/payouts/export", asyncHandler(async (req, res) => {
@@ -452,7 +512,7 @@ router.get("/station", asyncHandler(async (req, res) => {
   });
 }));
 
-router.put("/station", asyncHandler(async (req, res) => {
+router.put("/station", requireOrgRole("admin"), asyncHandler(async (req, res) => {
   const { name, address, city, lat, lng, hours, fuels } = req.valid ?? req.body ?? {};
   const station = await one("SELECT id FROM stations WHERE partner_org_id = $1 ORDER BY created_at LIMIT 1", [partnerOrgId(req)]);
   if (!station) throw notFound("No station registered for this partner");
@@ -466,7 +526,7 @@ router.put("/station", asyncHandler(async (req, res) => {
   res.json({ ok: true });
 }));
 
-router.post("/station/assets", upload.single("asset"), asyncHandler(async (req, res) => {
+router.post("/station/assets", requireOrgRole("admin"), upload.single("asset"), asyncHandler(async (req, res) => {
   if (!req.file) throw badRequest("Choose an image to upload");
   const station = await one("SELECT * FROM stations WHERE partner_org_id = $1 ORDER BY created_at LIMIT 1", [partnerOrgId(req)]);
   if (!station) throw notFound("No station registered");
@@ -476,7 +536,7 @@ router.post("/station/assets", upload.single("asset"), asyncHandler(async (req, 
   res.json({ ok: true, path, assets });
 }));
 
-router.delete("/station/assets", asyncHandler(async (req, res) => {
+router.delete("/station/assets", requireOrgRole("admin"), asyncHandler(async (req, res) => {
   const { path } = req.body ?? {};
   const station = await one("SELECT * FROM stations WHERE partner_org_id = $1 ORDER BY created_at LIMIT 1", [partnerOrgId(req)]);
   if (!station) throw notFound("No station registered");
@@ -485,7 +545,7 @@ router.delete("/station/assets", asyncHandler(async (req, res) => {
   res.json({ ok: true, assets });
 }));
 
-router.post("/station/message-terminal", asyncHandler(async (req, res) => {
+router.post("/station/message-terminal", requireOrgRole("manager"), asyncHandler(async (req, res) => {
   const { message } = req.body ?? {};
   if (!message) throw badRequest("Message is required");
   const station = await one("SELECT * FROM stations WHERE partner_org_id = $1 ORDER BY created_at LIMIT 1", [partnerOrgId(req)]);
@@ -496,7 +556,7 @@ router.post("/station/message-terminal", asyncHandler(async (req, res) => {
   res.json({ ok: true });
 }));
 
-router.post("/station/resupply", asyncHandler(async (req, res) => {
+router.post("/station/resupply", requireOrgRole("dispatcher"), asyncHandler(async (req, res) => {
   const { fuelType, litres } = req.valid ?? req.body ?? {};
   if (!fuelType || !litres) throw badRequest("Fuel type and litres are required");
   const station = await one("SELECT id FROM stations WHERE partner_org_id = $1 ORDER BY created_at LIMIT 1", [partnerOrgId(req)]);
@@ -532,7 +592,7 @@ router.get("/pricing", asyncHandler(async (req, res) => {
   });
 }));
 
-router.post("/pricing", asyncHandler(async (req, res) => {
+router.post("/pricing", requireOrgRole("manager"), asyncHandler(async (req, res) => {
   const updates = req.body?.updates ?? [];
   if (!Array.isArray(updates) || !updates.length) throw badRequest("Provide price updates");
   const orgId = partnerOrgId(req);
@@ -639,7 +699,7 @@ router.get("/staff", asyncHandler(async (req, res) => {
   });
 }));
 
-router.post("/staff", asyncHandler(async (req, res) => {
+router.post("/staff", requireOrgRole("admin"), asyncHandler(async (req, res) => {
   const { fullName, email, phone, role = "viewer", cardAccess } = req.valid ?? req.body ?? {};
   if (!fullName || !email) throw badRequest("Name and email are required");
   if (!["admin", "manager", "dispatcher", "viewer"].includes(role)) throw badRequest("Choose a valid role");
@@ -671,7 +731,7 @@ router.post("/staff", asyncHandler(async (req, res) => {
   res.json({ ok: true, memberId: member.id });
 }));
 
-router.put("/staff/:memberId", asyncHandler(async (req, res) => {
+router.put("/staff/:memberId", requireOrgRole("admin"), asyncHandler(async (req, res) => {
   const { role, cardAccess } = req.body ?? {};
   const member = await one("SELECT * FROM memberships WHERE id = $1 AND organization_id = $2", [req.params.memberId, partnerOrgId(req)]);
   if (!member) throw notFound("Staff member not found");
@@ -684,7 +744,7 @@ router.put("/staff/:memberId", asyncHandler(async (req, res) => {
   res.json({ ok: true });
 }));
 
-router.delete("/staff/:memberId", asyncHandler(async (req, res) => {
+router.delete("/staff/:memberId", requireOrgRole("admin"), asyncHandler(async (req, res) => {
   const member = await one("SELECT * FROM memberships WHERE id = $1 AND organization_id = $2", [req.params.memberId, partnerOrgId(req)]);
   if (!member) throw notFound("Staff member not found");
   if (member.role === "owner") throw forbidden("The owner cannot be removed");
@@ -693,7 +753,10 @@ router.delete("/staff/:memberId", asyncHandler(async (req, res) => {
 }));
 
 // ============ POS TERMINAL ============
-router.post("/pos/authorize", asyncHandler(async (req, res) => {
+// Role check first, then the limiter. Reversed, an unauthorised caller could
+// spend the shared terminal's rate-limit budget and lock out the operator who is
+// actually using it — a viewer able to deny service to their own manager.
+router.post("/pos/authorize", requireCapability("pos.operate"), sensitiveLimiter, asyncHandler(async (req, res) => {
   const { code, litres, fuelType } = req.valid ?? req.body ?? {};
   if (!/^\d{6}$/.test(String(code ?? ""))) throw badRequest("Enter the 6-digit authorization code");
   const card = await one(
@@ -703,14 +766,38 @@ router.post("/pos/authorize", asyncHandler(async (req, res) => {
      WHERE c.pos_code = $1 AND c.pos_code_expires_at > now()`,
     [String(code)]
   );
-  // Fallback: driver PIN as authorization
+  // Fallback: driver PIN as authorization.
+  //
+  // This used to select every driver on the platform with a PIN and run a bcrypt
+  // comparison against each, in a loop, for every attempt. Three problems in one
+  // expression: it read across tenants, so any station account could test a code
+  // against drivers belonging to other fleets; it cost one bcrypt round per
+  // enrolled driver, so the cost grew silently with the customer base; and it sat
+  // behind a 6-digit space with no limiter, which together made it a credential
+  // oracle. At the time of writing there were no driver PINs enrolled, so it cost
+  // nothing — which is exactly why it would have been found the day the first one
+  // was added.
+  //
+  // Scoped to the orgs whose cards this station actually serves, capped so the
+  // work per attempt is bounded, and rate-limited above.
   let viaPin = false;
   let target = card;
   if (!target) {
-    for (const d of await q(`SELECT d.*, o.name AS org_name, o.credit_limit_kobo, o.fleet_id FROM drivers d LEFT JOIN organizations o ON o.id = d.organization_id WHERE d.pin_hash IS NOT NULL`)) {
+    const candidates = await q(
+      `SELECT d.id, d.pin_hash, d.organization_id, o.name AS org_name, o.credit_limit_kobo, o.fleet_id
+       FROM drivers d
+       JOIN cards c ON c.driver_id = d.id AND c.status = 'active'
+       LEFT JOIN organizations o ON o.id = d.organization_id
+       WHERE d.pin_hash IS NOT NULL
+       LIMIT $1`,
+      [POS_PIN_CANDIDATE_LIMIT]
+    );
+    for (const d of candidates) {
       if (await verifyPin(code, d.pin_hash)) {
         const cardForDriver = await one(
-          `SELECT c.*, v.plate AS vehicle_plate, d2.name AS driver_name FROM cards c LEFT JOIN vehicles v ON v.id = c.vehicle_id LEFT JOIN drivers d2 ON d2.id = c.driver_id WHERE c.driver_id = $1 AND c.status = 'active'`,
+          `SELECT c.*, v.plate AS vehicle_plate, d2.name AS driver_name FROM cards c
+           LEFT JOIN vehicles v ON v.id = c.vehicle_id LEFT JOIN drivers d2 ON d2.id = c.driver_id
+           WHERE c.driver_id = $1 AND c.status = 'active' LIMIT 1`,
           [d.id]
         );
         if (cardForDriver) {
@@ -803,7 +890,7 @@ router.get("/disputes", asyncHandler(async (req, res) => {
 
 const capitalize = (s) => String(s ?? "").charAt(0).toUpperCase() + String(s ?? "").slice(1);
 
-router.post("/disputes", upload.array("evidence", 4), asyncHandler(async (req, res) => {
+router.post("/disputes", requireOrgRole("dispatcher"), upload.array("evidence", 4), asyncHandler(async (req, res) => {
   const { transactionReference, subject, category = "billing", description } = req.valid ?? req.body ?? {};
   if (!subject || !description) throw badRequest("Subject and description are required");
   const txRow = transactionReference
@@ -824,18 +911,41 @@ router.post("/disputes", upload.array("evidence", 4), asyncHandler(async (req, r
   res.json({ ok: true, reference: dispute.reference });
 }));
 
-router.put("/disputes/:id", asyncHandler(async (req, res) => {
-  const { draftResponse, status } = req.body ?? {};
+router.put("/disputes/:id", requireOrgRole("manager"), asyncHandler(async (req, res) => {
+  const { draftResponse } = req.body ?? {};
   const dispute = await one("SELECT * FROM disputes WHERE id = $1 AND (station_org_id = $2 OR organization_id = $2)", [req.params.id, partnerOrgId(req)]);
   if (!dispute) throw notFound("Dispute not found");
-  await q("UPDATE disputes SET draft_response = COALESCE($2, draft_response), status = COALESCE($3, status), updated_at = now() WHERE id = $1", [dispute.id, draftResponse ?? null, status ?? null]);
+  // `status` is accepted from the body and no longer applied. It previously was,
+  // which let the respondent write its own verdict: a station could mark a
+  // dispute against it `resolved` or `rejected`. Adjudication is
+  // `POST /api/admin/disputes/:id/resolve`, which is admin-only.
+  //
+  // The draft is the partner's *response to the claim*, so writing it is theirs.
+  await q("UPDATE disputes SET draft_response = COALESCE($2, draft_response), updated_at = now() WHERE id = $1", [dispute.id, draftResponse ?? null]);
+  audit({
+    actorUserId: req.user.id,
+    actorRole: req.user.role,
+    action: "dispute.response_drafted",
+    entityId: dispute.id
+  });
   res.json({ ok: true });
 }));
 
 router.get("/disputes/:id/evidence/:index", asyncHandler(async (req, res) => {
-  const dispute = await one("SELECT * FROM disputes WHERE id = $1", [req.params.id]);
+  // Scoped to the caller's org. This read the dispute by id alone, while the
+  // sibling `GET /disputes` in the same file filtered on station_org_id and
+  // organization_id — so anyone who learned or guessed a dispute UUID could pull
+  // another org's uploaded evidence through a signed URL.
+  const dispute = await one(
+    "SELECT * FROM disputes WHERE id = $1 AND (station_org_id = $2 OR organization_id = $2)",
+    [req.params.id, partnerOrgId(req)]
+  );
   if (!dispute) throw notFound("Dispute not found");
-  const path = (dispute.evidence ?? [])[Number(req.params.index)];
+  const index = Number(req.params.index);
+  // `Number("1abc")` is NaN and `arr[NaN]` is undefined, but `arr["0abc"]` is not,
+  // so the index is checked rather than trusted.
+  if (!Number.isInteger(index) || index < 0) throw badRequest("That is not a valid evidence number");
+  const path = (dispute.evidence ?? [])[index];
   if (!path) throw notFound("Evidence not found");
   const url = await signedUrl(path);
   res.json({ url });
@@ -859,12 +969,27 @@ router.get("/notifications", asyncHandler(async (req, res) => {
 }));
 
 router.post("/notifications/:id/read", asyncHandler(async (req, res) => {
-  await q("UPDATE notifications SET read_at = now() WHERE id = $1", [req.params.id]);
+  // Scoped. This was `UPDATE notifications SET read_at = now() WHERE id = $1`,
+  // with no org predicate, while the sibling read-all route in the same file was
+  // scoped — so any partner could mark any notification on the platform as read,
+  // and a non-existent id answered 200 as readily as a real one, which confirmed
+  // no ownership was being checked.
+  const rows = await q(
+    `UPDATE notifications SET read_at = now()
+     WHERE id = $1 AND (organization_id = $2 OR user_id = $3) RETURNING id`,
+    [req.params.id, partnerOrgId(req), req.user.id]
+  );
+  if (!rows.length) throw notFound("Notification not found");
   res.json({ ok: true });
 }));
 
 router.post("/notifications/:id/dismiss", asyncHandler(async (req, res) => {
-  await q("UPDATE notifications SET dismissed_at = now() WHERE id = $1", [req.params.id]);
+  const rows = await q(
+    `UPDATE notifications SET dismissed_at = now()
+     WHERE id = $1 AND (organization_id = $2 OR user_id = $3) RETURNING id`,
+    [req.params.id, partnerOrgId(req), req.user.id]
+  );
+  if (!rows.length) throw notFound("Notification not found");
   res.json({ ok: true });
 }));
 
@@ -883,7 +1008,7 @@ router.get("/settings", asyncHandler(async (req, res) => {
   });
 }));
 
-router.put("/settings", asyncHandler(async (req, res) => {
+router.put("/settings", requireOrgRole("admin"), asyncHandler(async (req, res) => {
   const { name, rcNumber, address, city, notificationPrefs } = req.valid ?? req.body ?? {};
   if (name || rcNumber || address || city) {
     await q(

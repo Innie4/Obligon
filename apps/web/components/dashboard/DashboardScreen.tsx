@@ -1213,6 +1213,9 @@ function PayoutModal({
     setSubmitting(true);
     try {
       const result = await mutationsApi.requestPayout({ amount: parsed });
+      // "Submitted and being processed" is what actually happened: the processor
+      // queues a transfer and settles it later, so nothing here claims the money
+      // has left. The settlement tab shows it reconcile.
       toastSuccess(`Payout ${result.reference} submitted and is being processed.`);
       onClose();
     } catch (err) {

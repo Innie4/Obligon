@@ -4,14 +4,26 @@ import { misconfigured } from "./errors.js";
 import { providerFetch } from "./http.js";
 
 /**
- * Paystack integration (https://paystack.com/docs) — the payment processor for:
- *  - wallet top-ups (initialize/verify transaction)
- *  - subscriptions (plans + subscription management)
- *  - payouts (transfers to partner bank accounts)
- *  - webhooks (charge.success, transfer.success/failed, subscription events)
+ * Paystack integration (https://paystack.com/docs).
  *
- * Provider credentials are required for financial operations. Test doubles
- * belong at the provider boundary in automated tests, never in live routes.
+ * Retained for exactly one purpose: verifying and reconciling a charge taken
+ * before Flutterwave became the processor. A customer who paid through Paystack
+ * an hour before the switch still has to be credited, and `/api/webhooks/paystack`
+ * still has to authenticate.
+ *
+ * Nothing new is started against it. Flutterwave is the processor for hosted
+ * checkout, verification, refunds, and partner transfers, so:
+ *   - `initializeTopUp` / `initializePlanPayment` / `createPlan` /
+ *     `createSubscription` / `cancelSubscription` are unused. The subscription and
+ *     plan endpoints were never wired to a route in the first place; they were
+ *     removed rather than left as an invitation to call a processor that is no
+ *     longer the one taking money.
+ *   - `createTransferRecipient` and `initiateTransfer` remain because
+ *     `payments.js` dispatches transfers per provider, and an account nominated
+ *     before the switch still carries a Paystack recipient code.
+ *
+ * The keys ship unset, so `paystackEnabled()` is false and the checkout path
+ * cannot select this provider. Anything that reaches it fails closed.
  */
 const BASE = "https://api.paystack.co";
 const enabled = () => Boolean(env.PAYSTACK_SECRET_KEY);
@@ -40,16 +52,13 @@ async function paystackFetch(path, { method = "GET", body } = {}) {
 
 export const paystackEnabled = enabled;
 
-/** Initialize a top-up. Returns { authorization_url, reference } */
-export async function initializeTopUp({ email, amountKobo, reference, callbackUrl, metadata }) {
-  if (!enabled()) throw misconfigured("Paystack is not configured");
-  const data = await paystackFetch("/transaction/initialize", {
-    method: "POST",
-    body: { email, amount: amountKobo, reference, callback_url: callbackUrl, metadata }
-  });
-  return { authorization_url: data.authorization_url, reference };
-}
-
+/**
+ * Verify a charge taken through Paystack.
+ *
+ * Only the read side is still used: a customer who paid before the switch to
+ * Flutterwave needs crediting, and reconciliation calls this to find out whether
+ * they did.
+ */
 export async function verifyTransaction(reference) {
   if (!enabled()) throw misconfigured("Paystack is not configured");
   return paystackFetch(`/transaction/verify/${encodeURIComponent(reference)}`);
@@ -68,6 +77,12 @@ export async function refundTransaction(transactionId) {
   });
 }
 
+/**
+ * Register a bank account as a Paystack transfer recipient.
+ *
+ * Still reachable for an account nominated before the switch, whose stored
+ * `recipient_code` is what later payouts name. New accounts go to Flutterwave.
+ */
 export async function createTransferRecipient({ name, accountNumber, bankCode }) {
   if (!enabled()) throw misconfigured("Paystack is not configured");
   const data = await paystackFetch("/transferrecipient", {
@@ -77,6 +92,7 @@ export async function createTransferRecipient({ name, accountNumber, bankCode })
   return data;
 }
 
+/** Queue a Paystack transfer, for an account holding a Paystack recipient code. */
 export async function initiateTransfer({ recipientCode, amountKobo, reference, reason }) {
   if (!enabled()) throw misconfigured("Paystack is not configured");
   const data = await paystackFetch("/transfer", {
@@ -92,21 +108,6 @@ export async function initiateTransfer({ recipientCode, amountKobo, reference, r
   return data;
 }
 
-export async function createPlan({ name, amountKobo, interval = "monthly" }) {
-  if (!enabled()) throw misconfigured("Paystack is not configured");
-  return paystackFetch("/plan", { method: "POST", body: { name, amount: amountKobo, interval } });
-}
-
-export async function createSubscription({ customerEmail, planCode }) {
-  if (!enabled()) throw misconfigured("Paystack is not configured");
-  return paystackFetch("/subscription", { method: "POST", body: { customer: customerEmail, plan: planCode } });
-}
-
-export async function cancelSubscription(subscriptionCode, emailToken) {
-  if (!enabled()) throw misconfigured("Paystack is not configured");
-  return paystackFetch(`/subscription/disable`, { method: "POST", body: { code: subscriptionCode, token: emailToken } });
-}
-
 /** Verify Paystack webhook signature: HMAC-SHA512 of raw body with secret key. */
 export function verifyPaystackSignature(rawBody, signature) {
   if (!env.PAYSTACK_SECRET_KEY || !signature) return false;
@@ -116,48 +117,4 @@ export function verifyPaystackSignature(rawBody, signature) {
   } catch {
     return false;
   }
-}
-
-// ---------------------------------------------------------------------------
-// Card-request plan checkout
-//
-// A fuel card is only issued against a paid plan, so the plan purchase runs
-// through the same processor as wallet top-ups. When Paystack is not configured
-// the flow would otherwise be untestable and unusable outside production, so
-// outside production a clearly-labelled simulated checkout is used instead. It
-// can never activate in production, and the API reports `simulated: true` so no
-// client can mistake it for a real charge.
-// ---------------------------------------------------------------------------
-
-/** Simulated checkout is available everywhere except production. */
-export const simulatedCheckoutEnabled = () => env.NODE_ENV !== "production";
-
-/**
- * Start payment for a card-request plan.
- * Returns { authorization_url, reference, simulated }.
- */
-export async function initializePlanPayment({ email, amountKobo, reference, callbackUrl, metadata }) {
-  if (enabled()) {
-    const data = await paystackFetch("/transaction/initialize", {
-      method: "POST",
-      body: { email, amount: amountKobo, reference, callback_url: callbackUrl, metadata }
-    });
-    return { authorization_url: data.authorization_url, reference, simulated: false };
-  }
-
-  if (!simulatedCheckoutEnabled()) throw misconfigured("Paystack is not configured");
-  return { authorization_url: callbackUrl, reference, simulated: true };
-}
-
-/**
- * Verify a plan payment. `simulated` must match how the payment was started so
- * a simulated reference can never be presented as a verified real charge.
- */
-export async function verifyPlanPayment(reference, { simulated = false } = {}) {
-  if (simulated) {
-    if (!simulatedCheckoutEnabled()) throw misconfigured("Paystack is not configured");
-    return { reference, status: "success", simulated: true };
-  }
-  const verification = await verifyTransaction(reference);
-  return { ...verification, simulated: false };
 }

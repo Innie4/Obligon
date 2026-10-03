@@ -1322,8 +1322,14 @@ export const mutationsApi = {
     return http<{ ok: boolean }>(`/api/partner/bank-accounts/${id}`, { method: "DELETE" });
   },
   async requestPayout(payload: { amount: number; bankAccountId?: string }) {
-    if (!LIVE_MODE) { await simulate({}, 900); return { ok: true, reference: `PY-LOCAL-${Date.now()}`, simulated: true }; }
-    return http<{ ok: boolean; reference: string }>("/api/partner/payouts", { method: "POST", body: JSON.stringify(payload) });
+    if (!LIVE_MODE) { await simulate({}, 900); return { ok: true, reference: `PY-LOCAL-${Date.now()}`, status: "processing" as const, simulated: true }; }
+    // `status` is always "processing": the processor accepts a transfer and settles
+    // it asynchronously, so a payout is queued rather than paid on response.
+    const data = await http<{ ok: boolean; reference: string; status?: string }>("/api/partner/payouts", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+    return { ok: data.ok, reference: data.reference, status: (data.status ?? "processing") as "processing", simulated: false };
   },
   async retryPayout(id: string) {
     if (!LIVE_MODE) { await simulate({}, 800); return { ok: true, simulated: true }; }

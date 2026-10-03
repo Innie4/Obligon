@@ -1,8 +1,8 @@
-import { q, one } from "../db.js";
+import { q, one, tx } from "../db.js";
 import { env } from "../config/env.js";
 import { reference } from "./format.js";
 import { notify, audit } from "./notify.js";
-import { initiateTransfer, paystackEnabled } from "./paystack.js";
+import { initiateTransfer, fetchTransfer, activeProvider } from "./payments.js";
 
 /**
  * Purges expired sessions, expired verification codes, and out-of-date invites.
@@ -58,45 +58,61 @@ export async function runAutoSettlements() {
         }
 
         const ref = reference("PY-AUTO");
+        const provider = defaultBank.payout_provider ?? activeProvider();
+        const beneficiaryId = provider === "flutterwave" ? defaultBank.beneficiary_id : defaultBank.recipient_code;
+        if (!beneficiaryId) {
+          // No processor handle for this account, so there is nothing to transfer
+          // to. Skipped loudly rather than attempted: the account was nominated
+          // before the switch and has to be added again.
+          console.warn(
+            `[scheduler:settlement] Skipping ${partner.name}: bank account has no ${provider} transfer handle`
+          );
+          results.push({ partnerId: partner.id, status: "skipped", reason: "no_transfer_handle" });
+          continue;
+        }
         const payout = await one(
-          `INSERT INTO payouts (partner_org_id, bank_account_id, amount_kobo, status, reference)
-           VALUES ($1, $2, $3, 'processing', $4) RETURNING *`,
-          [partner.id, defaultBank.id, pendingKobo, ref]
+          `INSERT INTO payouts (partner_org_id, bank_account_id, amount_kobo, status, reference, provider, transfer_provider)
+           VALUES ($1, $2, $3, 'processing', $4, $5, $5) RETURNING *`,
+          [partner.id, defaultBank.id, pendingKobo, ref, provider]
         );
 
         try {
           const transfer = await initiateTransfer({
-            recipientCode: defaultBank.recipient_code,
+            provider,
+            beneficiaryId,
             amountKobo: pendingKobo,
             reference: ref,
             reason: "Obligon automated partner settlement"
           });
 
-          await q(
-            `UPDATE settlements SET status = 'paid', paid_at = now() WHERE partner_org_id = $1 AND status = 'pending'`,
-            [partner.id]
-          );
-
-          await q(
-            `UPDATE payouts SET provider_reference = $2, status = 'success', paid_at = now() WHERE id = $1`,
-            [payout.id, transfer.transfer_code ?? ref]
-          );
+          // Queued is not paid. Flutterwave's create response reports `NEW` and
+          // cannot tell us the money left, so the settlements are NOT marked paid
+          // here — they stay pending until reconcilePayouts() asks the processor
+          // and gets a terminal answer. Marking them paid on acceptance would let
+          // the same balance be scheduled again next tick.
+          await q("UPDATE payouts SET provider_reference = $2 WHERE id = $1", [payout.id, transfer.transferCode ?? null]);
 
           await notify({
             orgId: partner.id,
-            title: "Auto-settlement completed",
-            body: `₦${(pendingKobo / 100).toLocaleString()} transferred to ${defaultBank.bank_name}.`,
+            title: "Settlement payout sent",
+            body: `₦${(pendingKobo / 100).toLocaleString()} to ${defaultBank.bank_name} is on its way.`,
             category: "settlements"
           });
 
           audit({
             actorRole: "system",
-            action: "settlement.auto_paid",
+            action: "settlement.payout_queued",
             entityId: payout.id,
-            metadata: { partnerId: partner.id, amountKobo: pendingKobo }
+            metadata: { partnerId: partner.id, amountKobo: pendingKobo, provider, transferCode: transfer.transferCode }
           });
 
-          results.push({ partnerId: partner.id, amountKobo: pendingKobo, reference: ref, status: "success" });
+          results.push({
+            partnerId: partner.id,
+            amountKobo: pendingKobo,
+            reference: ref,
+            status: "processing",
+            provider
+          });
         } catch (transferErr) {
           await q(
             `UPDATE payouts SET status = 'failed', failure_reason = $2 WHERE id = $1`,
@@ -114,6 +130,92 @@ export async function runAutoSettlements() {
 }
 
 /**
+ * Settle payouts the processor has finished with.
+ *
+ * A queued transfer is not a paid one. `runAutoSettlements` only queues, because
+ * Flutterwave's create response reports `NEW` and cannot say whether the money
+ * left; this is where that question gets answered. Until it runs, a queued payout
+ * stays `processing` and its settlements stay `pending` — which is deliberate, so
+ * the same balance cannot be scheduled again on the next tick.
+ *
+ * Runs before the scheduler queues anything, so a settled balance is visible in
+ * the same pass rather than the next one.
+ *
+ * @returns {{ settled: number, failed: number, stillPending: number }}
+ */
+export async function reconcilePayouts() {
+  const rows = await q(
+    `SELECT id, partner_org_id, amount_kobo, provider, transfer_provider, provider_reference
+     FROM payouts
+     WHERE status = 'processing' AND provider_reference IS NOT NULL
+     ORDER BY created_at ASC LIMIT 100`
+  );
+
+  const summary = { settled: 0, failed: 0, stillPending: 0 };
+
+  for (const payout of rows) {
+    const provider = payout.transfer_provider ?? payout.provider ?? activeProvider();
+    try {
+      const state = await fetchTransfer(provider, payout.provider_reference);
+
+      if (state.settled) {
+        // Mark the payouts paid AND the settlements they cover. Doing only the
+        // first would leave the balance pending and let it be scheduled again.
+        await tx(async (t) => {
+          await t.query(
+            `UPDATE payouts SET status = 'success', paid_at = now(), failure_reason = NULL WHERE id = $1`,
+            [payout.id]
+          );
+          await t.query(
+            `UPDATE settlements SET status = 'paid', paid_at = now()
+             WHERE partner_org_id = $1 AND status = 'pending'`,
+            [payout.partner_org_id]
+          );
+        });
+        await notify({
+          orgId: payout.partner_org_id,
+          title: "Settlement payout complete",
+          body: "Your payout has been confirmed by the bank.",
+          category: "settlements"
+        });
+        await audit({
+          actorRole: "system",
+          action: "settlement.payout_settled",
+          entityId: payout.id,
+          metadata: { amountKobo: payout.amount_kobo, provider, transferCode: payout.provider_reference }
+        });
+        summary.settled += 1;
+      } else if (state.failed) {
+        // The processor's own explanation, which is the difference between "the
+        // bank declined it" and "we never sent it".
+        await q(
+          `UPDATE payouts SET status = 'failed', failure_reason = $2 WHERE id = $1`,
+          [payout.id, state.message ?? `Transfer ${state.status}`]
+        );
+        await audit({
+          actorRole: "system",
+          action: "settlement.payout_failed",
+          entityId: payout.id,
+          metadata: { amountKobo: payout.amount_kobo, provider, transferStatus: state.status },
+          severity: "warning"
+        });
+        summary.failed += 1;
+      } else {
+        summary.stillPending += 1;
+      }
+    } catch (err) {
+      // A provider we cannot reach is not a failed payout. Left `processing` so
+      // the next pass tries again; counting it as failed would release a balance
+      // the bank may well have taken.
+      console.warn(`[scheduler:payouts] Could not read transfer ${payout.provider_reference}:`, err.message);
+      summary.stillPending += 1;
+    }
+  }
+
+  return summary;
+}
+
+/**
  * Run a full pass of all maintenance and automation tasks.
  */
 export async function runScheduledTasks() {
@@ -121,6 +223,9 @@ export async function runScheduledTasks() {
   console.log(`[scheduler] Running scheduled tasks at ${timestamp}...`);
   try {
     const purgeStats = await purgeExpiredData();
+    // Answer the processor's verdict on anything already queued before queuing
+    // more, so a balance confirmed in this pass is not re-scheduled in it.
+    const payouts = await reconcilePayouts();
     const settlementStats = await runAutoSettlements();
     // Payments are reconciled on every pass: webhooks and redirects are both
     // best-effort, so pending charges must be polled until they settle.
@@ -128,8 +233,13 @@ export async function runScheduledTasks() {
     const reconciliation = await runPaymentReconciliation();
     lastReconciliationAt = new Date().toISOString();
     lastReconciliationError = null;
-    console.log(`[scheduler] Completed:`, { purgeStats, autoSettlementsCount: settlementStats.length, reconciliation });
-    return { ok: true, timestamp, purgeStats, settlements: settlementStats, reconciliation };
+    console.log(`[scheduler] Completed:`, {
+      purgeStats,
+      payouts,
+      autoSettlementsCount: settlementStats.length,
+      reconciliation
+    });
+    return { ok: true, timestamp, purgeStats, payouts, settlements: settlementStats, reconciliation };
   } catch (err) {
     console.error(`[scheduler] Execution failed:`, err);
     return { ok: false, timestamp, error: err.message };

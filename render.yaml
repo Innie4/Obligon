@@ -113,6 +113,11 @@ services:
         sync: false
       - key: SUDO_WEBHOOK_SECRET
         sync: false
+      # Paystack. Deliberately left unset and present only so a charge taken
+      # before the switch to Flutterwave can still be verified and reconciled by
+      # /api/webhooks/paystack. Do NOT populate these: nothing new is started
+      # against Paystack, and starting a Paystack checkout now fails closed with
+      # a message saying Flutterwave is the processor.
       - key: PAYSTACK_SECRET_KEY
         sync: false
       - key: PAYSTACK_PUBLIC_KEY
