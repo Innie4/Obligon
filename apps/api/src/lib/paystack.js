@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { env } from "../config/env.js";
-import { serviceUnavailable } from "./errors.js";
+import { misconfigured } from "./errors.js";
 import { providerFetch } from "./http.js";
 
 /**
@@ -28,7 +28,12 @@ async function paystackFetch(path, { method = "GET", body } = {}) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.status === false) {
-    throw serviceUnavailable(data?.message || `Paystack error ${res.status}`);
+    // Flagged exposable so Paystack's own message reaches the caller. A top-up
+    // that failed because the account balance is short is a different problem
+    // from one that failed because a key is wrong, and "Something went wrong on
+    // our side" says neither. Paystack's messages carry no key material — they
+    // are the reason codes the API returns.
+    throw misconfigured(data?.message || `Paystack error ${res.status}`);
   }
   return data.data ?? data;
 }
@@ -37,7 +42,7 @@ export const paystackEnabled = enabled;
 
 /** Initialize a top-up. Returns { authorization_url, reference } */
 export async function initializeTopUp({ email, amountKobo, reference, callbackUrl, metadata }) {
-  if (!enabled()) throw serviceUnavailable("Paystack is not configured");
+  if (!enabled()) throw misconfigured("Paystack is not configured");
   const data = await paystackFetch("/transaction/initialize", {
     method: "POST",
     body: { email, amount: amountKobo, reference, callback_url: callbackUrl, metadata }
@@ -46,7 +51,7 @@ export async function initializeTopUp({ email, amountKobo, reference, callbackUr
 }
 
 export async function verifyTransaction(reference) {
-  if (!enabled()) throw serviceUnavailable("Paystack is not configured");
+  if (!enabled()) throw misconfigured("Paystack is not configured");
   return paystackFetch(`/transaction/verify/${encodeURIComponent(reference)}`);
 }
 
@@ -55,8 +60,8 @@ export async function verifyTransaction(reference) {
  * `amountKobo` is accepted for interface symmetry but must be omitted.
  */
 export async function refundTransaction(transactionId) {
-  if (!enabled()) throw serviceUnavailable("Paystack is not configured");
-  if (!transactionId) throw serviceUnavailable("A transaction id is required to refund this charge");
+  if (!enabled()) throw misconfigured("Paystack is not configured");
+  if (!transactionId) throw misconfigured("A transaction id is required to refund this charge");
   return paystackFetch("/refund", {
     method: "POST",
     body: { transaction: String(transactionId) }
@@ -64,7 +69,7 @@ export async function refundTransaction(transactionId) {
 }
 
 export async function createTransferRecipient({ name, accountNumber, bankCode }) {
-  if (!enabled()) throw serviceUnavailable("Paystack is not configured");
+  if (!enabled()) throw misconfigured("Paystack is not configured");
   const data = await paystackFetch("/transferrecipient", {
     method: "POST",
     body: { type: "nuban", name, account_number: accountNumber, bank_code: bankCode, currency: "NGN" }
@@ -73,7 +78,7 @@ export async function createTransferRecipient({ name, accountNumber, bankCode })
 }
 
 export async function initiateTransfer({ recipientCode, amountKobo, reference, reason }) {
-  if (!enabled()) throw serviceUnavailable("Paystack is not configured");
+  if (!enabled()) throw misconfigured("Paystack is not configured");
   const data = await paystackFetch("/transfer", {
     method: "POST",
     body: {
@@ -88,17 +93,17 @@ export async function initiateTransfer({ recipientCode, amountKobo, reference, r
 }
 
 export async function createPlan({ name, amountKobo, interval = "monthly" }) {
-  if (!enabled()) throw serviceUnavailable("Paystack is not configured");
+  if (!enabled()) throw misconfigured("Paystack is not configured");
   return paystackFetch("/plan", { method: "POST", body: { name, amount: amountKobo, interval } });
 }
 
 export async function createSubscription({ customerEmail, planCode }) {
-  if (!enabled()) throw serviceUnavailable("Paystack is not configured");
+  if (!enabled()) throw misconfigured("Paystack is not configured");
   return paystackFetch("/subscription", { method: "POST", body: { customer: customerEmail, plan: planCode } });
 }
 
 export async function cancelSubscription(subscriptionCode, emailToken) {
-  if (!enabled()) throw serviceUnavailable("Paystack is not configured");
+  if (!enabled()) throw misconfigured("Paystack is not configured");
   return paystackFetch(`/subscription/disable`, { method: "POST", body: { code: subscriptionCode, token: emailToken } });
 }
 
@@ -140,7 +145,7 @@ export async function initializePlanPayment({ email, amountKobo, reference, call
     return { authorization_url: data.authorization_url, reference, simulated: false };
   }
 
-  if (!simulatedCheckoutEnabled()) throw serviceUnavailable("Paystack is not configured");
+  if (!simulatedCheckoutEnabled()) throw misconfigured("Paystack is not configured");
   return { authorization_url: callbackUrl, reference, simulated: true };
 }
 
@@ -150,7 +155,7 @@ export async function initializePlanPayment({ email, amountKobo, reference, call
  */
 export async function verifyPlanPayment(reference, { simulated = false } = {}) {
   if (simulated) {
-    if (!simulatedCheckoutEnabled()) throw serviceUnavailable("Paystack is not configured");
+    if (!simulatedCheckoutEnabled()) throw misconfigured("Paystack is not configured");
     return { reference, status: "success", simulated: true };
   }
   const verification = await verifyTransaction(reference);

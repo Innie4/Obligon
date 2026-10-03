@@ -92,6 +92,14 @@ router.post("/companies", asyncHandler(async (req, res) => {
 
 router.put("/companies/:orgId", asyncHandler(async (req, res) => {
   const { creditLimit, settlementLimit, planCode, status, verificationStatus } = req.body ?? {};
+  // `Number("abc") * 100` is NaN, and NaN into a BIGINT is a 500. Both of these
+  // are money ceilings, so a typo must be refused rather than becoming an error.
+  const toKobo = (value, label) => {
+    if (value == null) return null;
+    const naira = Number(value);
+    if (!Number.isFinite(naira) || naira < 0) throw badRequest(`${label} must be a positive number`);
+    return Math.round(naira * 100);
+  };
   const org = await one(
     `UPDATE organizations SET
        credit_limit_kobo = COALESCE($2, credit_limit_kobo),
@@ -101,8 +109,7 @@ router.put("/companies/:orgId", asyncHandler(async (req, res) => {
        verification_status = COALESCE($6, verification_status),
        updated_at = now()
      WHERE id = $1 RETURNING *`,
-    [req.params.orgId, creditLimit != null ? Math.round(Number(creditLimit) * 100) : null,
-      settlementLimit != null ? Math.round(Number(settlementLimit) * 100) : null,
+    [req.params.orgId, toKobo(creditLimit, "Credit limit"), toKobo(settlementLimit, "Settlement limit"),
       planCode ?? null, status ?? null, verificationStatus ?? null]
   );
   if (!org) throw notFound("Organization not found");
@@ -215,6 +222,69 @@ router.post("/reconcile", asyncHandler(async (req, res) => {
  * pooling in the platform account. Organizations without one behave exactly as
  * before, so this is safe to roll out incrementally.
  */
+// ============ PARTNER PAYOUT DESTINATIONS ============
+/**
+ * Bank accounts partners have nominated for settlement, and the decision on each.
+ *
+ * `POST /api/partner/bank-accounts` used to write `verified = TRUE` on creation,
+ * and `runAutoSettlements` pays from any default account with that flag set. So
+ * adding a bank account was sufficient to make it the destination for automated
+ * disbursement — no one confirmed the account belonged to the partner or that the
+ * name matched. The flag is now only set here.
+ */
+router.get("/payout-accounts", asyncHandler(async (req, res) => {
+  const rows = await q(
+    `SELECT b.*, o.name AS organization_name, o.verification_status
+     FROM bank_accounts b JOIN organizations o ON o.id = b.organization_id
+     ORDER BY b.verified ASC, b.created_at DESC LIMIT 200`
+  );
+  res.json({
+    accounts: rows.map((b) => ({
+      id: b.id,
+      organizationId: b.organization_id,
+      organization: b.organization_name,
+      organizationVerified: b.verification_status === "verified",
+      bankName: b.bank_name,
+      bankCode: b.bank_code,
+      accountMask: b.account_number_mask,
+      accountName: b.account_name,
+      isDefault: b.is_default,
+      verified: b.verified,
+      // An unverified default account is where the scheduler will stop, so it is
+      // worth saying plainly rather than leaving it to be discovered.
+      blockedAutoSettlement: b.is_default && !b.verified,
+      createdAt: fmtDateTime(b.created_at)
+    }))
+  });
+}));
+
+router.post("/payout-accounts/:id/verify", asyncHandler(async (req, res) => {
+  const { approved } = req.body ?? {};
+  const account = await one("SELECT * FROM bank_accounts WHERE id = $1", [req.params.id]);
+  if (!account) throw notFound("Bank account not found");
+  // Only a default account can be paid automatically, so verifying a spare one is
+  // meaningless and would read as an approval that has no effect.
+  if (approved && !account.is_default) {
+    throw badRequest("Set this as the account's default before verifying it");
+  }
+  if (!account.recipient_code) {
+    throw badRequest("This account has no provider recipient code, so it cannot receive a transfer");
+  }
+  const updated = await one(
+    "UPDATE bank_accounts SET verified = $2 WHERE id = $1 RETURNING *",
+    [account.id, Boolean(approved)]
+  );
+  await audit({
+    actorUserId: req.user.id,
+    actorRole: req.user.role,
+    action: approved ? "bank_account.verified" : "bank_account.verification_revoked",
+    entityType: "bank_account",
+    entityId: account.id,
+    metadata: { organizationId: account.organization_id, bankName: account.bank_name, last4: account.account_number_mask }
+  });
+  res.json({ ok: true, verified: updated.verified });
+}));
+
 router.get("/settlement-accounts", asyncHandler(async (req, res) => {
   const rows = await q(
     `SELECT s.*, o.name AS organization_name

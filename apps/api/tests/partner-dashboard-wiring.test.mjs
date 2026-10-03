@@ -143,6 +143,27 @@ test("the reports table dropped its invented columns", () => {
   assert.doesNotMatch(routes, /status: "ACTIVE", tone: "success"\n    \}\)\)/);
 });
 
+test("the payout button is wired, because the endpoint is now safe", () => {
+  // It was left unwired in the previous commit because `POST /payouts` took the
+  // requested amount at face value: ₦50,000,000 against a ₦0 balance was accepted
+  // and written to the payouts table before failing at the transfer. That is fixed
+  // and asserted in payout-balance-guard.test.mjs, so the button can now do what
+  // it says. If the guard is ever removed, this test is what should notice.
+  assert.match(screen, /mutationsApi\.requestPayout\(/);
+  assert.doesNotMatch(screen, /Payout requests are not open yet/);
+  // The balance the page offers is the server's, not a number typed in.
+  assert.match(screen, /claimableKobo/);
+  // And a refusal is shown rather than swallowed into a generic success.
+  assert.match(screen, /toastError\(err instanceof Error \? err\.message/);
+});
+
+test("the settlement limit is displayed, not editable", () => {
+  // The partner reads the threshold finance set. Writing it was how a partner
+  // moved their own from ₦500,000 to ₦999,999,999.
+  assert.match(screen, /updatePayoutConfig\(\{\s*autoSettlement/);
+  assert.doesNotMatch(screen, /updatePayoutConfig\(\{[^}]*settlementLimit/);
+});
+
 // -------------------------------------------------- buttons that used to lie
 test("no control reports a side effect it does not perform", () => {
   // Each of these fired a toast and nothing else. Comments are stripped because
@@ -167,14 +188,15 @@ test("no control reports a side effect it does not perform", () => {
   }
 });
 
-test("the payout button is honest about not being wired", () => {
-  // Wiring `POST /payouts` as it stands would be worse than the lie: the endpoint
-  // has no balance check, so a real request for ₦50,000,000 against ₦0 pending is
-  // accepted and written to the payouts table before failing at the transfer.
+test("the payout button does not claim a submission it did not make", () => {
+  // It used to validate an amount, call nothing, and report "submitted to bank".
   const code = screen.replace(/^\s*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
-  assert.doesNotMatch(code, /mutationsApi\.requestPayout/);
   assert.doesNotMatch(code, /submitted to bank/);
-  assert.match(code, /Payout requests are not open yet/);
+  // The inert version's replacement text is gone too, since it is no longer true.
+  assert.doesNotMatch(code, /Payout requests are not open yet/);
+  // What it says now is what it does: a real request, whose reference is real.
+  assert.match(code, /mutationsApi\.requestPayout\(\{ amount: parsed \}\)/);
+  assert.match(code, /Payout \$\{result\.reference\} submitted/);
 });
 
 test("the POS receipt invents nothing", () => {
@@ -217,9 +239,12 @@ test("the settlement account is the organisation's own", () => {
 
 test("the settlements page shows what it claims to", () => {
   // The bank card advertised a payout while the page never fetched totals.
-  assert.match(screen, /data\.totals\.pendingLabel/);
+  assert.match(screen, /data\.totals\.claimableLabel/);
   assert.match(screen, /data\.totals\.totalSettledLabel/);
   assert.match(screen, /data\.config\.autoSettlement/);
+  // The ceiling the payout button opens with is the server's figure, so the page
+  // cannot offer more than `POST /payouts` will allow.
+  assert.match(screen, /data\.totals\.claimableKobo/);
 });
 
 test("notification read state reaches the database", () => {
@@ -270,10 +295,14 @@ test("the settlements nav item is labelled for what it opens", () => {
 
 // ----------------------------------------------------------- deliberately open
 test("known server-side gaps are not quietly presented as fixed", () => {
-  // This change wired the reads. It did not fix these, and a reader of the diff
-  // should not conclude otherwise.
-  assert.doesNotMatch(screen, /requestPayout/);
-  assert.doesNotMatch(screen, /updatePayoutConfig/);
+  // The payout guard and the settlement limit are fixed, and asserted in
+  // payout-balance-guard.test.mjs. These are not, and a reader of the diff should
+  // not conclude otherwise.
   assert.doesNotMatch(screen, /addBankAccount/);
   assert.doesNotMatch(screen, /addStaff/);
+  assert.doesNotMatch(screen, /retryPayout/);
+  assert.doesNotMatch(screen, /createDispute/);
+  assert.doesNotMatch(screen, /uploadStationAsset/);
+  assert.doesNotMatch(screen, /messageTerminal/);
+  assert.doesNotMatch(screen, /requestResupply/);
 });

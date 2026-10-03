@@ -7,7 +7,7 @@ import { notify, audit, securityLog } from "../lib/notify.js";
 import { emitToOrg, emitToRole } from "../lib/sse.js";
 import { uploadFile, signedUrl } from "../lib/storage.js";
 import { verifyPin } from "../lib/security.js";
-import { createTransferRecipient, initiateTransfer, paystackEnabled } from "../lib/paystack.js";
+import { createTransferRecipient, initiateTransfer } from "../lib/paystack.js";
 import multer from "multer";
 
 const router = Router();
@@ -166,6 +166,9 @@ router.get("/settlements", asyncHandler(async (req, res) => {
             COALESCE(SUM(net_kobo) FILTER (WHERE status = 'pending'),0) AS pending FROM settlements WHERE partner_org_id = $1`,
     [orgId]
   );
+  // The same figure `POST /payouts` enforces, so the page cannot offer a figure
+  // the endpoint will refuse. `pendingLabel` is kept for the pending total.
+  const balance = await claimableBalanceKobo(orgId);
   res.json({
     settlements: settlements.map((s) => ({
       id: s.id,
@@ -179,23 +182,43 @@ router.get("/settlements", asyncHandler(async (req, res) => {
       action: p.status === "failed" ? "RETRY" : undefined
     })),
     bankAccounts: accounts.map((b) => ({ id: b.id, bankName: b.bank_name, accountMask: b.account_number_mask, accountName: b.account_name, isDefault: b.is_default, verified: b.verified })),
-    config: { settlementLimitKobo: org.settlement_limit_kobo, autoSettlement: org.auto_settlement },
-    totals: { totalSettledLabel: naira(totals.total_settled), pendingLabel: naira(totals.pending) }
+    config: { settlementLimitKobo: Number(org.settlement_limit_kobo ?? 0), autoSettlement: org.auto_settlement },
+    totals: {
+      totalSettledLabel: naira(totals.total_settled),
+      pendingLabel: naira(totals.pending),
+      claimableKobo: balance.claimableKobo,
+      claimableLabel: naira(balance.claimableKobo)
+    }
   });
 }));
 
 router.post("/bank-accounts", asyncHandler(async (req, res) => {
   const { bankName, bankCode, accountNumber, accountName } = req.valid ?? req.body ?? {};
   if (!bankName || !accountNumber || !accountName) throw badRequest("Bank name, account number and account name are required");
-  const recipient = await createTransferRecipient({ name: accountName, accountNumber: String(accountNumber).replace(/\D/g, ""), bankCode: bankCode ?? "058" });
+  const orgId = partnerOrgId(req);
+  const digits = String(accountNumber).replace(/\D/g, "");
+  // Paystack's own transfer API rejects these lengths, so catching it here turns
+  // a failed request into a clear message instead of a 422 from the provider.
+  if (digits.length !== 10) throw badRequest("Nigerian account numbers are 10 digits");
+  const recipient = await createTransferRecipient({ name: accountName, accountNumber: digits, bankCode: bankCode ?? "058" });
+  // Stored unverified. The scheduler pays only from an account that is
+  // `verified = TRUE`, and this route set that flag on creation — so adding a
+  // bank account was enough to become the destination for automated settlement.
+  // Verification is a separate, deliberate step.
   const account = await one(
     `INSERT INTO bank_accounts (organization_id, bank_name, bank_code, account_number_mask, account_name, recipient_code, is_default, verified)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE) RETURNING *`,
-    [partnerOrgId(req), bankName, bankCode ?? "058", `•••• ${String(accountNumber).slice(-4)}`, accountName, recipient.recipient_code ?? null,
-      (await q("SELECT 1 FROM bank_accounts WHERE organization_id = $1", [partnerOrgId(req)])).length === 0]
+     VALUES ($1,$2,$3,$4,$5,$6,$7,FALSE) RETURNING *`,
+    [orgId, bankName, bankCode ?? "058", `•••• ${digits.slice(-4)}`, accountName, recipient.recipient_code ?? null,
+      (await q("SELECT 1 FROM bank_accounts WHERE organization_id = $1", [orgId])).length === 0]
   );
-  audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "bank_account.added", entityId: account.id });
-  res.json({ ok: true, id: account.id });
+  audit({
+    actorUserId: req.user.id,
+    actorRole: req.user.role,
+    action: "bank_account.added",
+    entityId: account.id,
+    metadata: { bankName, last4: digits.slice(-4) }
+  });
+  res.json({ ok: true, id: account.id, verified: account.verified });
 }));
 
 router.delete("/bank-accounts/:id", asyncHandler(async (req, res) => {
@@ -210,58 +233,185 @@ router.post("/bank-accounts/:id/default", asyncHandler(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// Admin writes `settlement_limit_kobo`; a partner reads it.
+//
+// This endpoint used to let the partner set it. That threshold decides when the
+// scheduler releases money without anyone watching, so a partner able to write it
+// could drop it to 1 kobo and have every settlement trigger a transfer, or raise
+// it far past the figure finance approved. Verified live: a partner moved their
+// own limit from N500,000 to N999,999,999 and got 200. Only the preference — when
+// to be paid — is the partner's to set.
 router.put("/settlements/config", asyncHandler(async (req, res) => {
-  const { settlementLimit, autoSettlement } = req.body ?? {};
+  const { autoSettlement } = req.body ?? {};
+  if (typeof autoSettlement !== "boolean") throw badRequest("autoSettlement must be true or false");
   const org = await one(
-    `UPDATE organizations SET
-       settlement_limit_kobo = COALESCE($2, settlement_limit_kobo),
-       auto_settlement = COALESCE($3, auto_settlement)
-     WHERE id = $1 RETURNING *`,
-    [partnerOrgId(req), settlementLimit != null ? Math.round(Number(settlementLimit) * 100) : null, autoSettlement ?? null]
+    `UPDATE organizations SET auto_settlement = $2 WHERE id = $1 RETURNING *`,
+    [partnerOrgId(req), autoSettlement]
   );
-  audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "settlement.config_updated" });
-  res.json({ ok: true, settlementLimitKobo: org.settlement_limit_kobo, autoSettlement: org.auto_settlement });
+  audit({
+    actorUserId: req.user.id,
+    actorRole: req.user.role,
+    action: "settlement.config_updated",
+    metadata: { autoSettlement }
+  });
+  res.json({
+    ok: true,
+    settlementLimitKobo: org.settlement_limit_kobo,
+    autoSettlement: org.auto_settlement
+  });
 }));
+
+/**
+ * What this partner is actually owed right now: settled, unpaid, less anything
+ * already promised.
+ *
+ * The scheduled path has always worked this out — `runAutoSettlements` sums
+ * `net_kobo` for pending settlements and transfers exactly that. The manual route
+ * took the amount the customer asked for and trusted it, so a partner could
+ * request N50,000,000 against N0 pending: the request was accepted, written to
+ * the payouts table, and only then failed at the transfer. Verified live.
+ *
+ * Payouts already in flight are deducted because the balance is only marked paid
+ * once a transfer settles. Without that, two requests for the same balance both
+ * pass this check and the second one overdraws.
+ */
+async function claimableBalanceKobo(orgId, { excludePayoutId = null } = {}) {
+  const [settled, promised] = await Promise.all([
+    one(
+      `SELECT COALESCE(SUM(net_kobo), 0)::bigint AS total FROM settlements
+       WHERE partner_org_id = $1 AND status = 'pending'`,
+      [orgId]
+    ),
+    one(
+      `SELECT COALESCE(SUM(amount_kobo), 0)::bigint AS total FROM payouts
+       WHERE partner_org_id = $1 AND status IN ('pending','processing')
+         AND ($2::uuid IS NULL OR id <> $2::uuid)`,
+      [orgId, excludePayoutId]
+    )
+  ]);
+  return {
+    claimableKobo: Number(settled?.total ?? 0) - Number(promised?.total ?? 0),
+    settledKobo: Number(settled?.total ?? 0),
+    promisedKobo: Number(promised?.total ?? 0)
+  };
+}
 
 router.post("/payouts", asyncHandler(async (req, res) => {
   const { amount, bankAccountId } = req.valid ?? req.body ?? {};
-  const amountKobo = Math.round(Number(amount) * 100);
-  if (!amountKobo || amountKobo < 100000) throw badRequest("Minimum payout is ₦1,000");
+  // `Number("not-a-number") * 100` is NaN, and NaN is falsy, so this rejected
+  // junk — but it also meant `amount: "5"` and `amount: 5` behaved differently
+  // from each other, and the range check below is where that has to be settled.
+  const amountNaira = Number(amount);
+  if (!Number.isFinite(amountNaira)) throw badRequest("Enter a payout amount");
+  const amountKobo = Math.round(amountNaira * 100);
+  if (amountKobo < 100000) throw badRequest("Minimum payout is ₦1,000");
+
+  const orgId = partnerOrgId(req);
   const account = bankAccountId
-    ? await one("SELECT * FROM bank_accounts WHERE id = $1 AND organization_id = $2", [bankAccountId, partnerOrgId(req)])
-    : await one("SELECT * FROM bank_accounts WHERE organization_id = $1 AND is_default = TRUE", [partnerOrgId(req)]);
+    ? await one("SELECT * FROM bank_accounts WHERE id = $1 AND organization_id = $2", [bankAccountId, orgId])
+    : await one("SELECT * FROM bank_accounts WHERE organization_id = $1 AND is_default = TRUE", [orgId]);
   if (!account) throw badRequest("Add a verified bank account before requesting a payout");
+  if (!account.verified) throw badRequest("That bank account is still awaiting verification");
+
+  const balance = await claimableBalanceKobo(orgId);
+  if (balance.claimableKobo <= 0) {
+    throw badRequest(
+      balance.settledKobo === 0
+        ? "You have no settled balance available to withdraw yet."
+        : "Your full settled balance is already promised to a payout in progress."
+    );
+  }
+  if (amountKobo > balance.claimableKobo) {
+    throw badRequest(
+      `That is more than you have available. ${naira(balance.claimableKobo)} is claimable right now.`
+    );
+  }
+
   const ref = reference("PY");
   const payout = await one(
     `INSERT INTO payouts (partner_org_id, bank_account_id, amount_kobo, status, reference) VALUES ($1,$2,$3,'pending',$4) RETURNING *`,
-    [partnerOrgId(req), account.id, amountKobo, ref]
+    [orgId, account.id, amountKobo, ref]
   );
   try {
-    const transfer = await initiateTransfer({ recipientCode: account.recipient_code, amountKobo, reference: ref, reason: "Obligon partner payout" });
-    await q("UPDATE payouts SET provider_reference = $2, status = $3 WHERE id = $1", [payout.id, transfer.transfer_code ?? null, transfer.local ? "processing" : "processing"]);
+    const transfer = await initiateTransfer({
+      recipientCode: account.recipient_code,
+      amountKobo,
+      reference: ref,
+      reason: "Obligon partner payout"
+    });
+    // Previously `transfer.local ? "processing" : "processing"` — both branches
+    // the same, so the ternary only obscured that the status never depended on
+    // what the provider actually did.
+    await q("UPDATE payouts SET provider_reference = $2, status = 'processing' WHERE id = $1", [
+      payout.id,
+      transfer.transfer_code ?? null
+    ]);
   } catch (err) {
     await q("UPDATE payouts SET status = 'failed', failure_reason = $2 WHERE id = $1", [payout.id, err.message]);
+    await audit({
+      actorUserId: req.user.id,
+      actorRole: req.user.role,
+      action: "payout.failed",
+      entityId: payout.id,
+      metadata: { amountKobo },
+      severity: "warning"
+    });
     throw err;
   }
-  await notify({ orgId: partnerOrgId(req), title: "Payout requested", body: `${naira(amountKobo)} to ${account.bank_name} is being processed.`, category: "settlements" });
-  audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "payout.requested", entityId: payout.id, metadata: { amountKobo } });
+  await notify({
+    orgId,
+    title: "Payout requested",
+    body: `${naira(amountKobo)} to ${account.bank_name} is being processed.`,
+    category: "settlements"
+  });
+  audit({
+    actorUserId: req.user.id,
+    actorRole: req.user.role,
+    action: "payout.requested",
+    entityId: payout.id,
+    metadata: { amountKobo, claimableAfterKobo: balance.claimableKobo - amountKobo }
+  });
   res.json({ ok: true, reference: ref });
 }));
 
 router.post("/payouts/:id/retry", asyncHandler(async (req, res) => {
-  const payout = await one("SELECT * FROM payouts WHERE id = $1 AND partner_org_id = $2", [req.params.id, partnerOrgId(req)]);
+  const orgId = partnerOrgId(req);
+  const payout = await one("SELECT * FROM payouts WHERE id = $1 AND partner_org_id = $2", [req.params.id, orgId]);
   if (!payout) throw notFound("Payout not found");
   if (payout.status !== "failed") throw badRequest("Only failed payouts can be retried");
-  const account = await one("SELECT * FROM bank_accounts WHERE id = $1", [payout.bank_account_id]);
+  // Scoped to the org, unlike the original `WHERE id = $1` — which read any
+  // account in the table if the ids ever disagreed.
+  const account = await one(
+    "SELECT * FROM bank_accounts WHERE id = $1 AND organization_id = $2",
+    [payout.bank_account_id, orgId]
+  );
+  if (!account) throw badRequest("The bank account for this payout is no longer on file");
+
+  // The failed attempt released its claim, so this one has to take it back. Checked
+  // for the same reason as the original request: a retry is a fresh disbursement.
+  const balance = await claimableBalanceKobo(orgId);
+  if (balance.claimableKobo < payout.amount_kobo) {
+    throw badRequest(
+      `Only ${naira(balance.claimableKobo)} is claimable right now, and this payout is for ${naira(payout.amount_kobo)}.`
+    );
+  }
+
   const ref = reference("PY");
   await q("UPDATE payouts SET status = 'processing', reference = $2, failure_reason = NULL WHERE id = $1", [payout.id, ref]);
   try {
-    const transfer = await initiateTransfer({ recipientCode: account?.recipient_code, amountKobo: payout.amount_kobo, reference: ref });
+    const transfer = await initiateTransfer({ recipientCode: account.recipient_code, amountKobo: payout.amount_kobo, reference: ref });
     await q("UPDATE payouts SET provider_reference = $2 WHERE id = $1", [payout.id, transfer.transfer_code ?? null]);
   } catch (err) {
     await q("UPDATE payouts SET status = 'failed', failure_reason = $2 WHERE id = $1", [payout.id, err.message]);
     throw err;
   }
+  audit({
+    actorUserId: req.user.id,
+    actorRole: req.user.role,
+    action: "payout.retried",
+    entityId: payout.id,
+    metadata: { amountKobo: payout.amount_kobo }
+  });
   res.json({ ok: true, reference: ref });
 }));
 

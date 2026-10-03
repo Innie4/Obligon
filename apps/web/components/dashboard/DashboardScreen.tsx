@@ -56,6 +56,21 @@ const metricIcons = [
   <Clock3 key="pending" size={21} />
 ];
 
+/**
+ * Kobo to a naira label, for the one figure the API sends as a number.
+ *
+ * The API formats its own strings with `naira()`, so most amounts arrive ready to
+ * print. `settlement_limit_kobo` is the exception — it is a number, and rendering
+ * it raw would show kobo under an naira label.
+ */
+function nairaLabel(kobo: number | null): string {
+  if (kobo == null) return "—";
+  return `₦${(Number(kobo) / 100).toLocaleString("en-NG", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}`;
+}
+
 function DashboardCanvas({ children }: { children: React.ReactNode }) {
   return (
     <>
@@ -515,10 +530,31 @@ function POSTerminalPage() {
 }
 
 // ============ SETTLEMENTS ============
-function SettlementsPage({ onOpenPayout }: { onOpenPayout: () => void }) {
+function SettlementsPage({
+  onOpenPayout
+}: {
+  onOpenPayout: (balance: { claimableKobo: number; claimableLabel: string }) => void;
+}) {
+  const { success: toastSuccess, error: toastError } = useToast();
   const { status, data, error, reload } = useAsync(() => api.getPartnerSettlements());
+  const [togglingAuto, setTogglingAuto] = React.useState(false);
 
   const defaultAccount = data?.bankAccounts.find((account) => account.isDefault) ?? data?.bankAccounts[0];
+
+  async function toggleAutoSettlement() {
+    if (!data) return;
+    const next = !data.config.autoSettlement;
+    setTogglingAuto(true);
+    try {
+      await mutationsApi.updatePayoutConfig({ autoSettlement: next });
+      toastSuccess(`Auto-settlement turned ${next ? "on" : "off"}.`);
+      reload();
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Could not change the auto-settlement setting.");
+    } finally {
+      setTogglingAuto(false);
+    }
+  }
 
   return (
     <DashboardCanvas>
@@ -552,22 +588,61 @@ function SettlementsPage({ onOpenPayout }: { onOpenPayout: () => void }) {
                 )}
 
                 <div className="mt-6 rounded-xl border border-obligon-border p-4">
-                  <p className="text-[11px] font-extrabold uppercase tracking-[0.8px] text-obligon-text">Pending</p>
-                  <p className="mt-1 font-display text-2xl font-extrabold text-obligon-navy">{data.totals.pendingLabel}</p>
-                  <p className="mt-3 text-[11px] font-extrabold uppercase tracking-[0.8px] text-obligon-text">Settled to date</p>
-                  <p className="mt-1 font-display text-2xl font-extrabold text-obligon-navy">{data.totals.totalSettledLabel}</p>
-                  <p className="mt-3 text-xs font-bold text-obligon-text">
-                    Auto-settlement is {data.config.autoSettlement ? "on" : "off"}
+                  <p className="text-[11px] font-extrabold uppercase tracking-[0.8px] text-obligon-text">Available to withdraw</p>
+                  <p className="mt-1 font-display text-2xl font-extrabold text-obligon-navy">{data.totals.claimableLabel}</p>
+                  <p className="mt-1 text-xs font-medium text-obligon-text">
+                    Settled and not already promised to a payout in progress.
                   </p>
+                  <p className="mt-4 text-[11px] font-extrabold uppercase tracking-[0.8px] text-obligon-text">Settled to date</p>
+                  <p className="mt-1 font-display text-2xl font-extrabold text-obligon-navy">{data.totals.totalSettledLabel}</p>
+
+                  <div className="mt-4 flex items-center justify-between gap-3 border-t border-obligon-border pt-4">
+                    <div>
+                      <p className="text-xs font-extrabold text-obligon-navy">Auto-settlement</p>
+                      <p className="text-xs font-medium text-obligon-text">
+                        {data.config.autoSettlement
+                          ? `Paid out automatically once ${nairaLabel(data.config.settlementLimitKobo)} clears.`
+                          : "Payouts are requested manually."}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={data.config.autoSettlement}
+                      aria-label="Auto-settlement"
+                      disabled={togglingAuto}
+                      onClick={toggleAutoSettlement}
+                      className={`relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-50 ${
+                        data.config.autoSettlement ? "bg-obligon-green" : "bg-[#c9ced9]"
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-1 size-5 rounded-full bg-white transition-all ${
+                          data.config.autoSettlement ? "left-6" : "left-1"
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
 
                 <button
                   type="button"
-                  onClick={onOpenPayout}
-                  className="mt-6 w-full h-11 rounded-xl bg-obligon-green text-sm font-extrabold text-white shadow-green hover:bg-obligon-green/90 transition"
+                  onClick={() =>
+                    onOpenPayout({
+                      claimableKobo: data.totals.claimableKobo,
+                      claimableLabel: data.totals.claimableLabel
+                    })
+                  }
+                  disabled={data.totals.claimableKobo < 100000}
+                  className="mt-6 w-full h-11 rounded-xl bg-obligon-green text-sm font-extrabold text-white shadow-green hover:bg-obligon-green/90 transition disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Request Direct Payout
                 </button>
+                {data.totals.claimableKobo < 100000 ? (
+                  <p className="mt-2 text-xs font-medium text-obligon-text">
+                    Nothing is available to withdraw yet.
+                  </p>
+                ) : null}
               </article>
             </aside>
 
@@ -1067,15 +1142,13 @@ function SettingsPage() {
 }
 
 export function DashboardScreen({ pageKey }: { pageKey: DashboardPageKey }) {
-  const [payoutModalOpen, setPayoutModalOpen] = React.useState(false);
-
-  const openPayout = () => setPayoutModalOpen(true);
+  const [payout, setPayout] = React.useState<{ claimableKobo: number; claimableLabel: string } | null>(null);
 
   const pages: Record<DashboardPageKey, React.ReactNode> = {
     overview: <OverviewPage />,
     pricing: <FuelPricingPage />,
     pos: <POSTerminalPage />,
-    settlements: <SettlementsPage onOpenPayout={openPayout} />,
+    settlements: <SettlementsPage onOpenPayout={setPayout} />,
     disputes: <DisputesPage />,
     profile: <StationProfilePage />,
     station: <StationProfilePage />,
@@ -1090,42 +1163,120 @@ export function DashboardScreen({ pageKey }: { pageKey: DashboardPageKey }) {
   return (
     <>
       {pages[pageKey] ?? <OverviewPage />}
-
-      {payoutModalOpen ? (
-        <PayoutNotice onClose={() => setPayoutModalOpen(false)} />
-      ) : null}
+      {payout ? <PayoutModal balance={payout} onClose={() => setPayout(null)} /> : null}
     </>
   );
 }
 
 /**
- * Deliberately not wired to `POST /api/partner/payouts`.
+ * Wired to `POST /api/partner/payouts`.
  *
- * The button used to validate an amount and then report "submitted to bank"
- * without making any request at all. Wiring it as-is would be worse than the
- * lie: `/payouts` has no balance check, so a real request for ₦50,000,000
- * against ₦0 pending is accepted and written to the payouts table before it
- * fails at the transfer. That endpoint needs its guard before this becomes a
- * real submission.
+ * It was left inert in the previous commit because the endpoint took the
+ * requested amount at face value, so a real submission would have been worse than
+ * the toast it replaced. That endpoint now checks the amount against the
+ * partner's claimable balance before writing anything.
+ *
+ * The ceiling is the server's figure, not a number typed in: the modal opens with
+ * the same `claimableKobo` the endpoint enforces, and the input is capped at it.
+ * The cap is a courtesy — the guard is the check that matters, and it lives on the
+ * server where it cannot be bypassed.
  */
-function PayoutNotice({ onClose }: { onClose: () => void }) {
+function PayoutModal({
+  balance,
+  onClose
+}: {
+  balance: { claimableKobo: number; claimableLabel: string };
+  onClose: () => void;
+}) {
+  // Failures are shown in the form rather than as a toast, so the message stays
+  // put while the amount is corrected. Only the success is transient.
+  const { success: toastSuccess } = useToast();
+  const [amount, setAmount] = React.useState("");
+  const [submitting, setSubmitting] = React.useState(false);
+  const [formError, setFormError] = React.useState<string | null>(null);
+
+  const maxNaira = balance.claimableKobo / 100;
+  const parsed = Number(amount);
+  const overLimit = amount.trim() !== "" && Number.isFinite(parsed) && parsed * 100 > balance.claimableKobo;
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      setFormError("Enter a payout amount greater than ₦0.");
+      return;
+    }
+    if (overLimit) {
+      setFormError(`You can withdraw up to ${balance.claimableLabel}.`);
+      return;
+    }
+    setFormError(null);
+    setSubmitting(true);
+    try {
+      const result = await mutationsApi.requestPayout({ amount: parsed });
+      toastSuccess(`Payout ${result.reference} submitted and is being processed.`);
+      onClose();
+    } catch (err) {
+      // The endpoint's own words: it names the claimable figure when refusing, and
+      // says which provider rejected it when the transfer fails. Swallowing those
+      // into a generic failure is what made this unusable.
+      setFormError(err instanceof Error ? err.message : "Could not submit the payout request.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const nothingClaimable = balance.claimableKobo < 100000;
+
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[#071853]/65 px-5 backdrop-blur-sm">
-      <div role="dialog" aria-modal="true" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-hero">
-        <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Payout requests are not open yet</h2>
-        <p className="mt-3 text-sm font-medium text-obligon-text">
-          Payouts cannot be requested from here at the moment. Our team is completing final checks on the
-          settlement flow and will enable it once every request is guaranteed to be checked against your
-          pending balance before any money moves.
+      <form onSubmit={submit} className="w-full max-w-md rounded-2xl bg-white p-6 shadow-hero">
+        <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Request Settlement Payout</h2>
+        <p className="mt-1 text-sm font-medium text-obligon-text">
+          {nothingClaimable
+            ? "There is no settled balance available to withdraw right now."
+            : `Up to ${balance.claimableLabel} is available to withdraw.`}
         </p>
-        <button
-          type="button"
-          onClick={onClose}
-          className="mt-6 h-11 w-full rounded-xl bg-obligon-green text-sm font-extrabold text-white"
-        >
-          Close
-        </button>
-      </div>
+
+        {formError ? (
+          <p role="alert" className="mt-4 rounded-xl border border-[#f3c6cc] bg-[#fff4f4] px-4 py-3 text-sm font-bold text-[#9f1027]">
+            {formError}
+          </p>
+        ) : null}
+
+        <label className="mt-5 block">
+          <span className="text-xs font-extrabold uppercase text-obligon-text">Payout Amount (₦)</span>
+          <input
+            value={amount}
+            onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
+            inputMode="decimal"
+            disabled={nothingClaimable}
+            placeholder={nothingClaimable ? undefined : maxNaira.toLocaleString("en-NG")}
+            aria-describedby="payout-available"
+            className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 font-display text-xl font-extrabold text-obligon-navy outline-none focus:border-obligon-green disabled:opacity-60"
+            required
+          />
+          <span id="payout-available" className="mt-1.5 block text-xs font-medium text-obligon-text">
+            {balance.claimableLabel} available
+          </span>
+        </label>
+
+        <div className="mt-6 flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-11 flex-1 rounded-xl border border-[#071853] text-sm font-bold"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={submitting || nothingClaimable || overLimit}
+            className="h-11 flex-1 rounded-xl bg-obligon-green text-sm font-extrabold text-white flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {submitting ? <Loader2 size={16} className="animate-spin" /> : "Confirm Payout"}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

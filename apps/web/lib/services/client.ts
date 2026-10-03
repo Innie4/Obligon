@@ -766,8 +766,8 @@ class MockApiClient implements ApiClient {
       settlements: [] as PartnerRow[],
       payouts: partnerPayoutRows as PartnerRow[],
       bankAccounts: [],
-      config: { settlementLimitKobo: null, autoSettlement: false },
-      totals: { totalSettledLabel: "—", pendingLabel: "—" }
+      config: { settlementLimitKobo: 0, autoSettlement: false },
+      totals: { totalSettledLabel: "—", pendingLabel: "—", claimableKobo: 0, claimableLabel: "—" }
     };
   }
   async getPartnerPricing(): Promise<PartnerPricing> {

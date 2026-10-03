@@ -442,8 +442,15 @@ export interface PartnerSettlements {
   settlements: PartnerRow[];
   payouts: PartnerRow[];
   bankAccounts: PartnerBankAccount[];
-  config: { settlementLimitKobo: number | null; autoSettlement: boolean };
-  totals: { totalSettledLabel: string; pendingLabel: string };
+  /** `settlementLimitKobo` is read-only from the partner's side; admin writes it. */
+  config: { settlementLimitKobo: number; autoSettlement: boolean };
+  totals: {
+    totalSettledLabel: string;
+    pendingLabel: string;
+    /** The figure `POST /payouts` enforces, so the page cannot offer more than the endpoint allows. */
+    claimableKobo: number;
+    claimableLabel: string;
+  };
 }
 
 export interface PartnerFuelPrice {
