@@ -62,7 +62,6 @@ import {
   type AdminRow
 } from "@/lib/mock/admin-data";
 import type { Metric, Row } from "@/lib/mock/company-data";
-import type { Metric as PartnerMetric, TableRow as PartnerTableRow } from "@/lib/mock/dashboard-data";
 
 import { readPersistedSession, readTokens, writeTokens, writePersistedSession, type AuthTokens } from "@/lib/session-store";
 import type {
@@ -90,7 +89,16 @@ import type {
   NotificationPrefs,
   SessionUser,
   Station,
-  Vehicle
+  Vehicle,
+  PartnerOverview,
+  PartnerRow,
+  PartnerSettlements,
+  PartnerPricing,
+  PartnerReports,
+  PartnerStaff,
+  PartnerNotifications,
+  PartnerStation,
+  PartnerSettings
 } from "./types";
 
 /**
@@ -271,16 +279,16 @@ export interface ApiClient {
   getCompanyRecentTransactions(): Promise<Row[]>;
 
   // Partner domain
-  getPartnerOverviewMetrics(): Promise<PartnerMetric[]>;
-  getPartnerQuickStats(): Promise<string[][]>;
-  getPartnerRecentTransactions(): Promise<PartnerTableRow[]>;
-  getPartnerPayouts(): Promise<PartnerTableRow[]>;
-  getPartnerPrices(): Promise<PartnerTableRow[]>;
-  getPartnerTransactions(): Promise<PartnerTableRow[]>;
-  getPartnerReports(): Promise<PartnerTableRow[]>;
-  getPartnerStaff(): Promise<PartnerTableRow[]>;
-  getPartnerDisputes(): Promise<PartnerTableRow[]>;
-  getPartnerNotifications(): Promise<AppNotification[]>;
+  getPartnerOverview(): Promise<PartnerOverview>;
+  getPartnerTransactions(params?: { search?: string; status?: string; limit?: number; offset?: number }): Promise<{ rows: PartnerRow[]; total: number }>;
+  getPartnerSettlements(): Promise<PartnerSettlements>;
+  getPartnerPricing(): Promise<PartnerPricing>;
+  getPartnerReports(rangeDays?: number): Promise<PartnerReports>;
+  getPartnerStaff(): Promise<PartnerStaff>;
+  getPartnerDisputes(): Promise<PartnerRow[]>;
+  getPartnerNotifications(): Promise<PartnerNotifications>;
+  getPartnerStation(): Promise<PartnerStation>;
+  getPartnerSettings(): Promise<PartnerSettings>;
 
   // Admin domain
   getAdminCompanyMetrics(): Promise<AdminMetric[]>;
@@ -341,6 +349,22 @@ async function refreshTokens(): Promise<boolean> {
     })();
   }
   return refreshing;
+}
+
+/**
+ * Builds a query string, skipping anything empty so an untouched filter does not
+ * narrow a result set. `search` is encoded here rather than interpolated at the
+ * call site: it is the one partner parameter that carries customer-supplied text
+ * into a URL.
+ */
+function queryString(params: Record<string, string | number | undefined>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === "") continue;
+    search.set(key, String(value));
+  }
+  const encoded = search.toString();
+  return encoded ? `?${encoded}` : "";
 }
 
 async function http<T>(path: string, init: RequestInit = {}, retried = false, allowRefresh = true): Promise<T> {
@@ -530,45 +554,44 @@ class LiveApiClient implements ApiClient {
   }
 
   // ---------- Partner ----------
-  async getPartnerOverviewMetrics(): Promise<PartnerMetric[]> {
-    const data = await http<{ metrics: PartnerMetric[] }>("/api/partner/overview");
-    return data.metrics;
+  // One call per page. The overview used to be reachable through three separate
+  // methods that each requested the same endpoint, so rendering the page issued
+  // three identical round trips and could show two of them disagreeing.
+  async getPartnerOverview(): Promise<PartnerOverview> {
+    return http<PartnerOverview>("/api/partner/overview");
   }
-  async getPartnerQuickStats(): Promise<string[][]> {
-    const data = await http<{ quickStats: string[][] }>("/api/partner/overview");
-    return data.quickStats;
+  async getPartnerTransactions(
+    params: { search?: string; status?: string; limit?: number; offset?: number } = {}
+  ): Promise<{ rows: PartnerRow[]; total: number }> {
+    const data = await http<{ transactions: PartnerRow[]; total: number }>(
+      `/api/partner/transactions${queryString(params)}`
+    );
+    return { rows: data.transactions, total: data.total };
   }
-  async getPartnerRecentTransactions(): Promise<PartnerTableRow[]> {
-    const data = await http<{ recentTransactions: PartnerTableRow[] }>("/api/partner/overview");
-    return data.recentTransactions;
+  async getPartnerSettlements(): Promise<PartnerSettlements> {
+    return http<PartnerSettlements>("/api/partner/settlements");
   }
-  async getPartnerPayouts(): Promise<PartnerTableRow[]> {
-    const data = await http<{ payouts: PartnerTableRow[] }>("/api/partner/settlements");
-    return data.payouts;
+  async getPartnerPricing(): Promise<PartnerPricing> {
+    return http<PartnerPricing>("/api/partner/pricing");
   }
-  async getPartnerPrices(): Promise<PartnerTableRow[]> {
-    const data = await http<{ history: PartnerTableRow[] }>("/api/partner/pricing");
-    return data.history;
+  async getPartnerReports(rangeDays = 30): Promise<PartnerReports> {
+    return http<PartnerReports>(`/api/partner/reports?range=${encodeURIComponent(String(rangeDays))}`);
   }
-  async getPartnerTransactions(): Promise<PartnerTableRow[]> {
-    const data = await http<{ transactions: PartnerTableRow[] }>("/api/partner/transactions");
-    return data.transactions;
+  async getPartnerStaff(): Promise<PartnerStaff> {
+    return http<PartnerStaff>("/api/partner/staff");
   }
-  async getPartnerReports(): Promise<PartnerTableRow[]> {
-    const data = await http<{ companies: PartnerTableRow[] }>("/api/partner/reports");
-    return data.companies;
-  }
-  async getPartnerStaff(): Promise<PartnerTableRow[]> {
-    const data = await http<{ staff: PartnerTableRow[] }>("/api/partner/staff");
-    return data.staff;
-  }
-  async getPartnerDisputes(): Promise<PartnerTableRow[]> {
-    const data = await http<{ disputes: PartnerTableRow[] }>("/api/partner/disputes");
+  async getPartnerDisputes(): Promise<PartnerRow[]> {
+    const data = await http<{ disputes: PartnerRow[] }>("/api/partner/disputes");
     return data.disputes;
   }
-  async getPartnerNotifications(): Promise<AppNotification[]> {
-    const data = await http<{ notifications: AppNotification[] }>("/api/partner/notifications");
-    return data.notifications;
+  async getPartnerNotifications(): Promise<PartnerNotifications> {
+    return http<PartnerNotifications>("/api/partner/notifications");
+  }
+  async getPartnerStation(): Promise<PartnerStation> {
+    return http<PartnerStation>("/api/partner/station");
+  }
+  async getPartnerSettings(): Promise<PartnerSettings> {
+    return http<PartnerSettings>("/api/partner/settings");
   }
 
   // ---------- Admin ----------
@@ -728,25 +751,64 @@ class MockApiClient implements ApiClient {
   async getCompanyCardMetrics(): Promise<Metric[]> { return cardMetrics; }
   async getCompanyRecentTransactions(): Promise<Row[]> { return recentTransactions; }
 
-  async getPartnerOverviewMetrics(): Promise<PartnerMetric[]> { return partnerOverviewMetrics; }
-  async getPartnerQuickStats(): Promise<string[][]> { return partnerQuickStats; }
-  async getPartnerRecentTransactions(): Promise<PartnerTableRow[]> { return partnerOverviewTransactions; }
-  async getPartnerPayouts(): Promise<PartnerTableRow[]> { return partnerPayoutRows; }
-  async getPartnerPrices(): Promise<PartnerTableRow[]> { return partnerPriceRows; }
-  async getPartnerTransactions(): Promise<PartnerTableRow[]> { return partnerTransactionRows; }
-  async getPartnerReports(): Promise<PartnerTableRow[]> { return partnerReportRows; }
-  async getPartnerStaff(): Promise<PartnerTableRow[]> { return partnerStaffRows; }
-  async getPartnerDisputes(): Promise<PartnerTableRow[]> { return partnerDisputeRows; }
-  async getPartnerNotifications(): Promise<AppNotification[]> {
-    return partnerNotificationGroups.flatMap((group) =>
-      group.items.map(([title, time, body]) => ({
+  async getPartnerOverview(): Promise<PartnerOverview> {
+    return {
+      metrics: partnerOverviewMetrics as PartnerOverview["metrics"],
+      quickStats: partnerQuickStats,
+      recentTransactions: partnerOverviewTransactions as PartnerRow[]
+    };
+  }
+  async getPartnerTransactions(): Promise<{ rows: PartnerRow[]; total: number }> {
+    return { rows: partnerTransactionRows as PartnerRow[], total: partnerTransactionRows.length };
+  }
+  async getPartnerSettlements(): Promise<PartnerSettlements> {
+    return {
+      settlements: [] as PartnerRow[],
+      payouts: partnerPayoutRows as PartnerRow[],
+      bankAccounts: [],
+      config: { settlementLimitKobo: null, autoSettlement: false },
+      totals: { totalSettledLabel: "—", pendingLabel: "—" }
+    };
+  }
+  async getPartnerPricing(): Promise<PartnerPricing> {
+    return { prices: [], history: partnerPriceRows as PartnerRow[] };
+  }
+  async getPartnerReports(): Promise<PartnerReports> {
+    return { metrics: partnerOverviewMetrics as PartnerReports["metrics"], companies: partnerReportRows as PartnerRow[] };
+  }
+  async getPartnerStaff(): Promise<PartnerStaff> {
+    const staff = partnerStaffRows as PartnerRow[];
+    return {
+      staff: staff.map((row, index) => ({ ...row, memberId: `mock-${index}`, cardAccess: false })),
+      stats: { total: staff.length, active: staff.length }
+    };
+  }
+  async getPartnerDisputes(): Promise<PartnerRow[]> {
+    return partnerDisputeRows as PartnerRow[];
+  }
+  async getPartnerNotifications(): Promise<PartnerNotifications> {
+    const groups = partnerNotificationGroups.map((group) => ({
+      label: group.label,
+      items: group.items.map(([title, time, body]) => ({
         group: group.label,
         title,
         time,
         body,
         read: false
       }))
-    );
+    }));
+    const notifications = groups.flatMap((group) => group.items);
+    return { notifications, groups, unreadCount: notifications.length };
+  }
+  async getPartnerStation(): Promise<PartnerStation> {
+    return { station: null, prices: [], logs: [], equipment: [] };
+  }
+  async getPartnerSettings(): Promise<PartnerSettings> {
+    return {
+      org: { id: "mock", name: "Demo Partner", rcNumber: null, address: null, city: null, verificationStatus: "verified" },
+      security: { twoFactorEnabled: false },
+      prefs: null
+    };
   }
 
   async getAdminCompanyMetrics(): Promise<AdminMetric[]> { return adminCompanyMetrics; }

@@ -47,6 +47,9 @@ router.get("/overview", asyncHandler(async (req, res) => {
     `SELECT COALESCE(SUM(net_kobo),0) AS total FROM settlements WHERE partner_org_id = $1 AND status = 'pending'`,
     [orgId]
   );
+  // Read once here rather than repeating a lookup further down. The flag decides
+  // what the pending card claims about itself, so it has to be the real one.
+  const org = await one("SELECT auto_settlement FROM organizations WHERE id = $1", [orgId]);
   const quick = await one(
     `SELECT
       (SELECT COUNT(*)::int FROM transactions WHERE station_id IN (SELECT id FROM stations WHERE partner_org_id = $1)) AS all_time,
@@ -61,11 +64,20 @@ router.get("/overview", asyncHandler(async (req, res) => {
      ORDER BY t.created_at DESC LIMIT 5`,
     [orgId]
   );
+  // No invented numbers. This used to carry a hard-coded "ESTIMATED NET MARGIN:
+  // 12.5%", a `delta: "live"`, and an "Auto-settlement enabled" helper printed
+  // whatever the org's setting happened to be. A partner reading a dashboard has
+  // no way to tell a computed margin from a constant, so none of them ship.
   res.json({
     metrics: [
-      { label: "TODAY'S TRANSACTIONS", value: today.count.toLocaleString(), delta: "live", tone: "success" },
-      { label: "TODAY'S REVENUE", value: `${naira(today.revenue)}.00`, delta: "today", helper: "ESTIMATED NET MARGIN: 12.5%", tone: "success" },
-      { label: "PENDING SETTLEMENTS", value: naira(pendingSettlement.total), helper: "Auto-settlement enabled" , tone: "pending" }
+      { label: "TODAY'S TRANSACTIONS", value: today.count.toLocaleString(), tone: "success" },
+      { label: "TODAY'S REVENUE", value: `${naira(today.revenue)}.00`, tone: "success" },
+      {
+        label: "PENDING SETTLEMENTS",
+        value: naira(pendingSettlement.total),
+        helper: org.auto_settlement ? "Auto-settlement on" : "Auto-settlement off",
+        tone: "pending"
+      }
     ],
     quickStats: [
       ["All-time Transactions", quick.all_time.toLocaleString()],
@@ -75,7 +87,10 @@ router.get("/overview", asyncHandler(async (req, res) => {
     ],
     recentTransactions: recent.map((t) => ({
       id: t.id, reference: t.reference,
-      cells: [t.reference, t.station_name ?? "Network", req.user.organization_name ? req.user.organization_name.slice(0, 12).toUpperCase() : "CLUSTER", naira(t.amount_kobo), fmtDateTime(t.created_at).split(", ")[1] ?? ""],
+      // The station name, which the join already provides. This cell used to be
+      // the requester's own organisation name truncated to 12 characters, under a
+      // "Station Hub" heading — the same string on every row, and not a station.
+      cells: [t.reference, t.station_name ?? "Network", naira(t.amount_kobo), fmtDateTime(t.created_at).split(", ")[1] ?? ""],
       status: t.status.toUpperCase(), tone: t.status === "success" ? "success" : t.status === "failed" ? "failed" : "pending"
     }))
   });
@@ -423,8 +438,13 @@ router.get("/reports", asyncHandler(async (req, res) => {
       { label: "Transactions", value: String(totals.count), tone: "info" }
     ],
     companies: companyBreakdown.map((c) => ({
-      cells: [`${c.name ?? "Direct"}\n${c.fleet_id ? `#${c.fleet_id}` : ""}`, "Network", Math.round(c.litres).toLocaleString(), c.revenue.toLocaleString()],
-      status: "ACTIVE", tone: "success"
+      // Three columns, all derived. The second used to be the literal "Network"
+      // under a "Primary Route" heading and the fourth printed
+      // `SUM(amount_kobo)` straight through — kobo, with no ₦ and no decimals,
+      // under a column headed "Spend (₦)". That overstated every fleet's spend
+      // by a factor of 100.
+      cells: [`${c.name ?? "Direct"}${c.fleet_id ? `\n#${c.fleet_id}` : ""}`, `${Math.round(c.litres).toLocaleString()} L`, naira(c.revenue)],
+      tone: "success"
     }))
   });
 }));
@@ -450,10 +470,14 @@ router.get("/staff", asyncHandler(async (req, res) => {
     [orgId]
   );
   res.json({
-    staff: staff.map((s, i) => ({
+    staff: staff.map((s) => ({
       id: s.id,
+      // A stable handle derived from the membership row. This was
+      // `#ST-${8800 + i}` — the position in this result set, so it changed
+      // whenever the list was filtered or reordered and corresponded to nothing
+      // stored anywhere.
       cells: [
-        `#ST-${String(8800 + i)}`,
+        `ST-${String(s.id).replace(/-/g, "").slice(0, 6).toUpperCase()}`,
         `${(s.full_name ?? s.email ?? "?").split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()}\n${s.full_name ?? s.email}\n${s.phone ?? "—"}`,
         s.role.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase()),
         s.status === "active" ? "Enabled" : "Pending"
@@ -597,14 +621,27 @@ router.post("/pos/authorize", asyncHandler(async (req, res) => {
 // ============ DISPUTES ============
 router.get("/disputes", asyncHandler(async (req, res) => {
   const rows = await q(
-    `SELECT d.*, t.reference AS tx_ref, t.amount_kobo FROM disputes d LEFT JOIN transactions t ON t.id = d.transaction_id
+    `SELECT d.*, t.reference AS tx_ref, t.amount_kobo, t.fuel_type, t.litres,
+            claimant.name AS claimant_name, claimant.fleet_id AS claimant_fleet
+     FROM disputes d
+     LEFT JOIN transactions t ON t.id = d.transaction_id
+     LEFT JOIN organizations claimant ON claimant.id = d.organization_id
      WHERE d.station_org_id = $1 OR d.organization_id = $1 ORDER BY d.created_at DESC LIMIT 50`,
     [partnerOrgId(req)]
   );
   res.json({
     disputes: rows.map((d) => ({
       id: d.id, reference: d.reference,
-      cells: [`#${d.reference}`, `${d.subject}\n${req.user.organization_name ?? "Station"}`, capitalize(d.category)],
+      // Four cells, matching the four columns the dashboard declares. The second
+      // used to be `req.user.organization_name` under a "Customer / Vehicle"
+      // heading — the requester's own organisation, so a station saw its own name
+      // in the customer column. The claimant is joined properly now.
+      cells: [
+        `#${d.reference}`,
+        `${d.subject}\n${d.claimant_name ?? d.claimant_fleet ?? "Direct walk-in"}`,
+        capitalize(d.category),
+        naira(d.refund_amount_kobo || d.amount_kobo || 0)
+      ],
       status: d.status.replace("_", " ").toUpperCase(), tone: d.status === "resolved" ? "success" : d.status === "rejected" ? "failed" : d.status === "in_review" ? "info" : "pending",
       action: "View Details",
       subject: d.subject, category: d.category, description: d.description, statusRaw: d.status,

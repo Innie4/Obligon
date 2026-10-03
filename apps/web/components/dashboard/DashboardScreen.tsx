@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import {
-  AlertTriangle,
   ArrowRight,
   BarChart3,
   Bell,
@@ -12,44 +11,27 @@ import {
   Clock3,
   CreditCard,
   Download,
-  Filter,
   Fuel,
-  MapPin,
-  MoreVertical,
+  Loader2,
   Plus,
   ReceiptText,
-  ShieldCheck,
-  SlidersHorizontal,
-  X,
   Building2,
-  Loader2,
-  Printer,
-  Upload,
-  UserPlus,
-  Wrench
+  Printer
 } from "lucide-react";
-import {
-  disputeRows,
-  notificationGroups,
-  overviewMetrics,
-  overviewTransactions,
-  pageCopy,
-  payoutRows,
-  priceRows,
-  quickStats,
-  reportRows,
-  staffRows,
-  transactionRows,
-  type DashboardPageKey,
-  type Metric,
-  type StatusTone,
-  type TableRow
-} from "@/lib/mock/dashboard-data";
+import { api, mutationsApi } from "@/lib/services";
 import { MobileDashboardNav } from "./MobileDashboardNav";
+import { AsyncBoundary, EmptyState } from "@/components/shared/States";
+import { useAsync } from "@/components/shared/useAsync";
 import { useToast } from "@/components/shared/Toast";
-import { mutationsApi } from "@/lib/services";
+import type {
+  PartnerMetric,
+  PartnerNotifications,
+  PartnerRow,
+  PartnerTone
+} from "@/lib/services/types";
+import type { DashboardPageKey } from "@/lib/mock/dashboard-data";
 
-const toneStyles: Record<StatusTone, string> = {
+const toneStyles: Record<PartnerTone, string> = {
   success: "bg-[#eaf7db] text-[#315d00]",
   pending: "bg-[#fff5d8] text-[#875b00]",
   failed: "bg-[#ffecef] text-[#9f1027]",
@@ -57,13 +39,22 @@ const toneStyles: Record<StatusTone, string> = {
   neutral: "bg-[#eef0f6] text-[#454650]"
 };
 
-const iconTile: Record<StatusTone, string> = {
+const iconTile: Record<PartnerTone, string> = {
   success: "bg-[#ecfbd7] text-obligon-green",
   pending: "bg-[#fff5d8] text-[#986700]",
   failed: "bg-[#ffecef] text-[#b5162d]",
   info: "bg-[#e9efff] text-obligon-blue",
   neutral: "bg-[#f0f1f7] text-[#454650]"
 };
+
+// Icons for the three overview/report metric cards, in the order the API returns
+// them. Keyed by position because the labels are what identify a card, and an
+// out-of-range index falls back rather than rendering nothing.
+const metricIcons = [
+  <ReceiptText key="transactions" size={20} />,
+  <CircleDollarSign key="revenue" size={21} />,
+  <Clock3 key="pending" size={21} />
+];
 
 function DashboardCanvas({ children }: { children: React.ReactNode }) {
   return (
@@ -74,11 +65,11 @@ function DashboardCanvas({ children }: { children: React.ReactNode }) {
   );
 }
 
-function StatusPill({ status, tone = "neutral" }: { status: string; tone?: StatusTone }) {
+function StatusPill({ status, tone = "neutral" }: { status: string; tone?: PartnerTone }) {
   return <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.5px] ${toneStyles[tone]}`}>{status}</span>;
 }
 
-function SmallMetric({ metric, icon }: { metric: Metric; icon: React.ReactNode }) {
+function SmallMetric({ metric, icon }: { metric: PartnerMetric; icon: React.ReactNode }) {
   return (
     <article className="rounded-xl border border-[#d7d8e4] bg-white p-6 shadow-sm">
       <div className="flex items-start justify-between">
@@ -87,7 +78,11 @@ function SmallMetric({ metric, icon }: { metric: Metric; icon: React.ReactNode }
       </div>
       <p className="mt-5 text-[11px] font-extrabold uppercase tracking-[0.8px] text-obligon-text">{metric.label}</p>
       <p className="mt-2 font-display text-[28px] font-extrabold leading-tight text-obligon-navy">{metric.value}</p>
-      {metric.helper ? <p className="mt-3 text-xs font-bold uppercase text-[#737582]">{metric.helper}</p> : <div className="mt-4 h-1 rounded-full bg-[#ecfbd7]" />}
+      {metric.helper ? (
+        <p className="mt-3 text-xs font-bold uppercase text-[#737582]">{metric.helper}</p>
+      ) : (
+        <div className="mt-4 h-1 rounded-full bg-[#ecfbd7]" />
+      )}
     </article>
   );
 }
@@ -98,14 +93,16 @@ function DataTable({
   columns,
   rows,
   actionLabel,
-  onAction
+  onAction,
+  rowKey = (row, index) => row.reference ?? row.id ?? `${row.cells[0]}-${index}`
 }: {
   title: string;
   subtitle?: string;
   columns: string[];
-  rows: TableRow[];
+  rows: PartnerRow[];
   actionLabel?: string;
-  onAction?: (row?: TableRow) => void;
+  onAction?: (row?: PartnerRow) => void;
+  rowKey?: (row: PartnerRow, index: number) => string;
 }) {
   return (
     <section className="overflow-hidden rounded-xl border border-[#d7d8e4] bg-white shadow-sm">
@@ -137,7 +134,7 @@ function DataTable({
           </thead>
           <tbody className="divide-y divide-[#ececf5]">
             {rows.map((row, rowIndex) => (
-              <tr key={`${row.cells[0]}-${rowIndex}`} className="hover:bg-[#fbfbff] transition">
+              <tr key={rowKey(row, rowIndex)} className="hover:bg-[#fbfbff] transition">
                 {row.cells.map((cell, cellIndex) => {
                   const parts = cell.split("\n");
                   return (
@@ -168,83 +165,111 @@ function DataTable({
   );
 }
 
-function OverviewPage({ onOpenPayout }: { onOpenPayout: () => void }) {
-  const [range, setRange] = React.useState("Today");
+/**
+ * Debounces a value so a text filter does not fire a request per keystroke.
+ * Without it, typing "Mainland" would send seven searches and race their
+ * responses, so the table could settle on the results for a prefix of what was
+ * actually typed.
+ */
+function useDebounced<T>(value: T, delayMs = 300): T {
+  const [settled, setSettled] = React.useState(value);
+  React.useEffect(() => {
+    const timer = setTimeout(() => setSettled(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+  return settled;
+}
+
+// ============ OVERVIEW ============
+function OverviewPage() {
+  const { status, data, error, reload } = useAsync(() => api.getPartnerOverview());
 
   return (
     <DashboardCanvas>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[1.2px] text-obligon-green">Station Operator Console</p>
-          <h1 className="mt-1 font-display text-3xl font-extrabold text-obligon-navy">Mainland Energy Station #492</h1>
-        </div>
-        <button
-          onClick={onOpenPayout}
-          className="h-11 rounded-xl bg-obligon-green px-5 text-sm font-extrabold text-white shadow-green hover:bg-obligon-green/90 transition"
-        >
-          Request Settlement Payout
-        </button>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-3">
-        <SmallMetric metric={overviewMetrics[0]} icon={<ReceiptText size={20} />} />
-        <SmallMetric metric={overviewMetrics[1]} icon={<CircleDollarSign size={21} />} />
-        <article className="relative overflow-hidden rounded-xl border border-[#d7d8e4] bg-white p-6 shadow-sm">
-          <span className="grid size-11 place-items-center rounded-xl bg-[#fff5d8] text-[#986700]">
-            <Clock3 size={21} />
-          </span>
-          <p className="mt-5 text-[11px] font-extrabold uppercase tracking-[0.8px] text-obligon-text">PENDING SETTLEMENT</p>
-          <p className="mt-2 font-display text-[28px] font-extrabold leading-tight text-obligon-navy">₦3,120,440.00</p>
-          <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-obligon-text">
-            <span className="size-2 rounded-full bg-obligon-green animate-pulse" />
-            Direct NUBAN ACH Batch processing
-          </div>
-        </article>
-      </div>
-
-      <section className="mt-8 grid rounded-xl border border-[#d7d8e4] bg-white sm:grid-cols-2 xl:grid-cols-4 shadow-sm">
-        {quickStats.map(([label, value], index) => (
-          <article key={label} className={`p-6 ${index < 3 ? "xl:border-r xl:border-[#e3e4ef]" : ""}`}>
-            <p className="text-xs font-semibold text-obligon-text">{label}</p>
-            <div className="mt-2 flex items-center gap-2">
-              <p className="font-display text-[26px] font-extrabold text-obligon-navy">{value}</p>
-              {label === "Verified Partners" ? <CheckCircle2 className="text-obligon-green" size={18} /> : null}
+      <AsyncBoundary
+        status={status}
+        error={error?.message ?? null}
+        onRetry={reload}
+        loadingLabel="Loading your station…"
+      >
+        {data ? (
+          <>
+            <div className="mb-8">
+              <p className="text-xs font-bold uppercase tracking-[1.2px] text-obligon-green">Station Operator Console</p>
             </div>
-          </article>
-        ))}
-      </section>
 
-      <div className="mt-8">
-        <DataTable
-          title="Live Dispenser Authorizations"
-          columns={["Reference", "Vehicle / Driver", "Station Hub", "Amount Dispensed", "Status", "Time"]}
-          rows={overviewTransactions}
-          actionLabel="View All Ledger"
-        />
-      </div>
+            <div className="grid gap-6 xl:grid-cols-3">
+              {data.metrics.map((metric, index) => (
+                <SmallMetric
+                  key={metric.label}
+                  metric={metric}
+                  icon={metricIcons[index] ?? <BarChart3 size={20} />}
+                />
+              ))}
+            </div>
+
+            <section className="mt-8 grid rounded-xl border border-[#d7d8e4] bg-white sm:grid-cols-2 xl:grid-cols-4 shadow-sm">
+              {data.quickStats.map(([label, value], index) => (
+                <article key={label} className={`p-6 ${index < 3 ? "xl:border-r xl:border-[#e3e4ef]" : ""}`}>
+                  <p className="text-xs font-semibold text-obligon-text">{label}</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <p className="font-display text-[26px] font-extrabold text-obligon-navy">{value}</p>
+                    {label === "Verified Partners" ? <CheckCircle2 className="text-obligon-green" size={18} /> : null}
+                  </div>
+                </article>
+              ))}
+            </section>
+
+            <div className="mt-8">
+              <DataTable
+                title="Recent Dispenser Authorizations"
+                columns={["Reference", "Station", "Amount Dispensed", "Time"]}
+                rows={data.recentTransactions}
+                rowKey={(row) => row.id ?? row.reference ?? row.cells[0]}
+              />
+            </div>
+          </>
+        ) : null}
+      </AsyncBoundary>
     </DashboardCanvas>
   );
 }
 
+// ============ FUEL PRICING ============
+type PriceDraft = { fuelType: string; price: string };
+
 function FuelPricingPage() {
   const { success: toastSuccess, error: toastError } = useToast();
-  const [pms, setPms] = React.useState("1020");
-  const [ago, setAgo] = React.useState("1180");
-  const [cng, setCng] = React.useState("280");
+  const { status, data, error, reload } = useAsync(() => api.getPartnerPricing());
+  const [drafts, setDrafts] = React.useState<PriceDraft[] | null>(null);
   const [syncing, setSyncing] = React.useState(false);
 
-  async function handleSync(e: React.FormEvent) {
-    e.preventDefault();
+  // The rows come from the prices the station actually has, rather than three
+  // fixed fuel types with made-up starting values. Drafts stay null until the
+  // fetch lands so a re-render never briefly shows the previous station's rates.
+  const rows: PriceDraft[] =
+    drafts ?? (data?.prices ?? []).map((price) => ({ fuelType: price.fuelType, price: String(price.price) }));
+
+  const setRow = (index: number, patch: Partial<PriceDraft>) =>
+    setDrafts(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+
+  async function handleSync(event: React.FormEvent) {
+    event.preventDefault();
+    const updates = rows
+      .filter((row) => row.fuelType.trim() && Number(row.price) > 0)
+      .map((row) => ({ fuelType: row.fuelType.trim(), price: Number(row.price) }));
+    if (!updates.length) {
+      toastError("Enter a fuel type and a price above zero.");
+      return;
+    }
     setSyncing(true);
     try {
-      await mutationsApi.updatePrices([
-        { fuelType: "PMS Petrol", price: Number(pms) },
-        { fuelType: "AGO Diesel", price: Number(ago) },
-        { fuelType: "LPG Gas", price: Number(cng) }
-      ]);
-      toastSuccess("Fuel pricing updated and broadcast to all digital dispensers.");
+      await mutationsApi.updatePrices(updates);
+      toastSuccess(`${updates.length} price${updates.length === 1 ? "" : "s"} published to your dispensers.`);
+      setDrafts(null);
+      reload();
     } catch (err) {
-      toastError?.(err instanceof Error ? err.message : "Could not sync pricing. Please try again.");
+      toastError(err instanceof Error ? err.message : "Could not publish pricing. Please try again.");
     } finally {
       setSyncing(false);
     }
@@ -257,82 +282,86 @@ function FuelPricingPage() {
         <p className="mt-1 text-sm text-obligon-text">Configure live pump rates and sync prices directly with smart dispenser meters.</p>
       </div>
 
-      <form onSubmit={handleSync} className="grid gap-6 lg:grid-cols-3">
-        <article className="rounded-xl border border-[#d7d8e4] bg-white p-6 shadow-sm">
-          <div className="flex items-center gap-3">
-            <Fuel className="text-obligon-green" size={24} />
-            <h2 className="font-display text-xl font-extrabold text-obligon-navy">PMS Petrol</h2>
-          </div>
-          <p className="mt-1 text-xs text-obligon-text">Premium Motor Spirit (Dispenser Pumps 1-6)</p>
-          <div className="mt-6 flex items-center rounded-xl border border-[#cfd8cc] bg-[#f7fbf8] px-4">
-            <span className="font-extrabold text-xl text-obligon-navy">₦</span>
-            <input
-              value={pms}
-              onChange={(e) => setPms(e.target.value)}
-              className="h-12 w-full bg-transparent px-2 font-display text-2xl font-extrabold text-obligon-navy outline-none"
-              required
-            />
-            <span className="text-xs font-bold text-obligon-text">/ Litre</span>
-          </div>
-        </article>
+      <AsyncBoundary
+        status={status}
+        error={error?.message ?? null}
+        onRetry={reload}
+        loadingLabel="Loading current prices…"
+      >
+        {data ? (
+          <form onSubmit={handleSync} className="grid gap-6 lg:grid-cols-3">
+            {rows.length ? (
+              rows.map((row, index) => (
+                <article key={row.fuelType} className="rounded-xl border border-[#d7d8e4] bg-white p-6 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <Fuel className="text-obligon-green" size={24} />
+                    <input
+                      value={row.fuelType}
+                      onChange={(e) => setRow(index, { fuelType: e.target.value })}
+                      aria-label="Fuel type"
+                      className="w-full rounded-lg border border-transparent bg-transparent font-display text-xl font-extrabold text-obligon-navy outline-none focus:border-obligon-green"
+                      required
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-obligon-text">
+                    Last published {data.prices[index]?.updatedAt ?? "—"}
+                  </p>
+                  <div className="mt-6 flex items-center rounded-xl border border-[#cfd8cc] bg-[#f7fbf8] px-4">
+                    <span className="font-extrabold text-xl text-obligon-navy">₦</span>
+                    <input
+                      value={row.price}
+                      onChange={(e) => setRow(index, { price: e.target.value.replace(/[^\d.]/g, "") })}
+                      inputMode="decimal"
+                      aria-label={`${row.fuelType} price per litre`}
+                      className="h-12 w-full bg-transparent px-2 font-display text-2xl font-extrabold text-obligon-navy outline-none"
+                      required
+                    />
+                    <span className="text-xs font-bold text-obligon-text">/ Litre</span>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="lg:col-span-3">
+                <EmptyState
+                  title="No prices published yet"
+                  message="Add your first pump rate. It is published to your dispensers and recorded in the price history."
+                />
+              </div>
+            )}
 
-        <article className="rounded-xl border border-[#d7d8e4] bg-white p-6 shadow-sm">
-          <div className="flex items-center gap-3">
-            <Fuel className="text-obligon-blue" size={24} />
-            <h2 className="font-display text-xl font-extrabold text-obligon-navy">AGO Diesel</h2>
-          </div>
-          <p className="mt-1 text-xs text-obligon-text">Automotive Gas Oil (Dispenser Pumps 7-10)</p>
-          <div className="mt-6 flex items-center rounded-xl border border-[#cfd8cc] bg-[#f7fbf8] px-4">
-            <span className="font-extrabold text-xl text-obligon-navy">₦</span>
-            <input
-              value={ago}
-              onChange={(e) => setAgo(e.target.value)}
-              className="h-12 w-full bg-transparent px-2 font-display text-2xl font-extrabold text-obligon-navy outline-none"
-              required
-            />
-            <span className="text-xs font-bold text-obligon-text">/ Litre</span>
-          </div>
-        </article>
-
-        <article className="rounded-xl border border-[#d7d8e4] bg-white p-6 shadow-sm">
-          <div className="flex items-center gap-3">
-            <Fuel className="text-[#875b00]" size={24} />
-            <h2 className="font-display text-xl font-extrabold text-obligon-navy">CNG Gas</h2>
-          </div>
-          <p className="mt-1 text-xs text-obligon-text">Compressed Natural Gas (Dispenser Bay 3)</p>
-          <div className="mt-6 flex items-center rounded-xl border border-[#cfd8cc] bg-[#f7fbf8] px-4">
-            <span className="font-extrabold text-xl text-obligon-navy">₦</span>
-            <input
-              value={cng}
-              onChange={(e) => setCng(e.target.value)}
-              className="h-12 w-full bg-transparent px-2 font-display text-2xl font-extrabold text-obligon-navy outline-none"
-              required
-            />
-            <span className="text-xs font-bold text-obligon-text">/ SCm</span>
-          </div>
-        </article>
-
-        <div className="lg:col-span-3 flex justify-end">
-          <button
-            disabled={syncing}
-            type="submit"
-            className="h-12 rounded-xl bg-obligon-green px-8 font-extrabold text-white shadow-green hover:bg-obligon-green/90 transition flex items-center gap-2"
-          >
-            {syncing ? <Loader2 size={18} className="animate-spin" /> : "Broadcast & Sync to Dispensers"}
-          </button>
-        </div>
-      </form>
+            <div className="lg:col-span-3 flex flex-wrap items-center justify-between gap-4">
+              <button
+                type="button"
+                onClick={() => setDrafts([...rows, { fuelType: "", price: "" }])}
+                className="h-11 rounded-xl border border-[#d7d8e4] bg-white px-5 text-sm font-extrabold text-obligon-navy hover:bg-[#f7f7fd] transition"
+              >
+                <span className="inline-flex items-center gap-2"><Plus size={16} /> Add fuel type</span>
+              </button>
+              <button
+                disabled={syncing || !rows.length}
+                type="submit"
+                className="h-12 rounded-xl bg-obligon-green px-8 font-extrabold text-white shadow-green hover:bg-obligon-green/90 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {syncing ? <Loader2 size={18} className="animate-spin" /> : "Broadcast & Sync to Dispensers"}
+              </button>
+            </div>
+          </form>
+        ) : null}
+      </AsyncBoundary>
     </DashboardCanvas>
   );
 }
 
+// ============ POS TERMINAL ============
 function POSTerminalPage() {
   const { success: toastSuccess, error: toastError } = useToast();
   const [code, setCode] = React.useState("");
-  const [pump, setPump] = React.useState("Pump #04 (PMS)");
+  const [pump, setPump] = React.useState("PMS Petrol");
   const [amount, setAmount] = React.useState("25000");
   const [verifying, setVerifying] = React.useState(false);
-  const [authReceipt, setAuthReceipt] = React.useState<{ code: string; vehicle: string; amount: number; driver: string; ref: string } | null>(null);
+  const [authReceipt, setAuthReceipt] = React.useState<{
+    reference: string; vehicle: string; amount: string; driver: string; card: string;
+  } | null>(null);
 
   async function handleAuthorize(e: React.FormEvent) {
     e.preventDefault();
@@ -342,16 +371,23 @@ function POSTerminalPage() {
     }
     setVerifying(true);
     try {
-      const result = await mutationsApi.posAuthorize({ code, litres: Number(amount) ? Number(amount) / 1085 : undefined, fuelType: pump.includes("PMS") ? "PMS Petrol" : "AGO Diesel" });
-      const receipt = {
+      const result = await mutationsApi.posAuthorize({
         code,
-        vehicle: (result?.vehicle as string) ?? "Fleet vehicle",
-        amount: Number((result?.amountLabel as string)?.replace(/[^0-9.]/g, "")) || Number(amount) || 25000,
-        driver: (result?.driver as string) ?? "Fleet driver",
-        ref: (result?.reference as string) ?? `POS-${Math.floor(100000 + Math.random() * 899999)}`
-      };
-      setAuthReceipt(receipt);
-      toastSuccess(`Authorization ${receipt.ref} APPROVED. Pump activated.`);
+        litres: Number(amount) ? Number(amount) / 1085 : undefined,
+        fuelType: pump
+      });
+      // Every field comes from the authorization response. The previous version
+      // fell back to "Fleet vehicle", "Fleet driver" and a reference invented with
+      // Math.random(), so a declined-looking receipt could still show a
+      // transaction that never existed.
+      setAuthReceipt({
+        reference: String(result?.reference ?? "—"),
+        vehicle: String(result?.vehicle ?? "—"),
+        amount: String(result?.amountLabel ?? "—"),
+        driver: String(result?.driver ?? "—"),
+        card: String(result?.card ?? "—")
+      });
+      toastSuccess(`Authorization ${result?.reference} approved. Pump activated.`);
     } catch (err) {
       toastError(err instanceof Error ? err.message : "Authorization declined. Check the code and try again.");
     } finally {
@@ -364,7 +400,7 @@ function POSTerminalPage() {
       <div className="max-w-2xl mx-auto">
         <div className="mb-8 text-center">
           <h1 className="font-display text-3xl font-extrabold text-obligon-navy">POS Authorization Terminal</h1>
-          <p className="mt-1 text-sm text-obligon-text">Enter driver&apos;s 6-digit OTC code or tap NFC Fuelvista card to unlock dispenser.</p>
+          <p className="mt-1 text-sm text-obligon-text">Enter a driver&apos;s 6-digit authorization code to unlock the dispenser.</p>
         </div>
 
         {authReceipt ? (
@@ -374,38 +410,37 @@ function POSTerminalPage() {
             </span>
             <h2 className="mt-5 font-display text-3xl font-extrabold text-obligon-navy">Dispense Authorized</h2>
             <p className="mt-1 text-sm text-obligon-text">
-              Reference: <strong className="font-mono font-extrabold text-obligon-navy">{authReceipt.ref}</strong>
+              Reference: <strong className="font-mono font-extrabold text-obligon-navy">{authReceipt.reference}</strong>
             </p>
 
             <div className="mt-6 rounded-xl bg-[#f7fbf8] p-5 border border-obligon-border space-y-2 text-left text-sm">
-              <div className="flex justify-between">
-                <span className="text-obligon-text">Fleet Vehicle</span>
-                <span className="font-bold text-obligon-navy">{authReceipt.vehicle}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-obligon-text">Driver</span>
-                <span className="font-bold text-obligon-navy">{authReceipt.driver}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-obligon-text">Total Approved</span>
-                <span className="font-extrabold text-obligon-green">₦{authReceipt.amount.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-obligon-text">Dispenser Pump</span>
-                <span className="font-bold text-obligon-navy">{pump}</span>
-              </div>
+              {[
+                ["Card", authReceipt.card],
+                ["Fleet Vehicle", authReceipt.vehicle],
+                ["Driver", authReceipt.driver],
+                ["Total Approved", authReceipt.amount],
+                ["Fuel Type", pump]
+              ].map(([label, value]) => (
+                <div key={label} className="flex justify-between gap-4">
+                  <span className="text-obligon-text">{label}</span>
+                  <span className="text-right font-bold text-obligon-navy">{value}</span>
+                </div>
+              ))}
             </div>
 
             <div className="mt-6 flex gap-3">
+              {/*
+                There is no printer integration. This used to claim a receipt had
+                been sent to a thermal printer when nothing was sent, so it now
+                offers the browser's own print dialog for the record on screen.
+              */}
               <button
                 type="button"
-                onClick={() => {
-                  toastSuccess("Receipt sent to station thermal printer.");
-                }}
+                onClick={() => window.print()}
                 className="h-12 flex-1 rounded-xl border border-obligon-border font-bold text-obligon-navy flex items-center justify-center gap-2 hover:bg-obligon-mist transition"
               >
                 <Printer size={18} />
-                Print Receipt
+                Print Record
               </button>
               <button
                 type="button"
@@ -423,7 +458,7 @@ function POSTerminalPage() {
           <form onSubmit={handleAuthorize} className="rounded-2xl border border-obligon-border bg-white p-8 shadow-card space-y-5">
             <div>
               <label className="text-xs font-extrabold uppercase text-obligon-text block mb-2">
-                6-Digit Driver OTC Authorization Code
+                6-Digit Driver Authorization Code
               </label>
               <input
                 value={code}
@@ -440,19 +475,15 @@ function POSTerminalPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="text-xs font-extrabold uppercase text-obligon-text block mb-1.5">
-                  Select Pump Meter
+                  Fuel Type
                 </label>
                 <select
                   value={pump}
                   onChange={(e) => setPump(e.target.value)}
                   className="h-12 w-full rounded-xl border border-[#cfd8cc] bg-white px-3 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green"
                 >
-                  <option>Pump #01 (PMS Petrol)</option>
-                  <option>Pump #02 (PMS Petrol)</option>
-                  <option>Pump #03 (PMS Petrol)</option>
-                  <option>Pump #04 (PMS Petrol)</option>
-                  <option>Pump #07 (AGO Diesel)</option>
-                  <option>Pump #08 (AGO Diesel)</option>
+                  <option>PMS Petrol</option>
+                  <option>AGO Diesel</option>
                 </select>
               </div>
               <div>
@@ -461,8 +492,8 @@ function POSTerminalPage() {
                 </label>
                 <input
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  inputMode="numeric"
+                  onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
+                  inputMode="decimal"
                   className="h-12 w-full rounded-xl border border-[#cfd8cc] px-4 font-display text-xl font-extrabold text-obligon-navy outline-none focus:border-obligon-green"
                   required
                 />
@@ -483,55 +514,88 @@ function POSTerminalPage() {
   );
 }
 
+// ============ SETTLEMENTS ============
 function SettlementsPage({ onOpenPayout }: { onOpenPayout: () => void }) {
-  const { success: toastSuccess, error: toastError } = useToast();
+  const { status, data, error, reload } = useAsync(() => api.getPartnerSettlements());
+
+  const defaultAccount = data?.bankAccounts.find((account) => account.isDefault) ?? data?.bankAccounts[0];
 
   return (
     <DashboardCanvas>
-      <div className="grid gap-8 xl:grid-cols-[320px_1fr]">
-        <aside className="space-y-5">
-          <article className="rounded-xl border border-[#d7d8e4] bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <h2 className="font-display text-xl font-extrabold text-obligon-navy">Linked Settlement Account</h2>
-              <button
-                type="button"
-                className="text-xs font-extrabold text-obligon-green hover:underline"
-                onClick={() => toastSuccess("Bank account update requested.")}
-              >
-                EDIT
-              </button>
-            </div>
-            <div className="mt-5 rounded-xl bg-[#f7fbf8] p-4 border border-obligon-border">
-              <p className="font-extrabold text-obligon-navy">Guaranty Trust Bank (GTBank)</p>
-              <p className="mt-1 font-mono text-sm text-obligon-text">NUBAN: 0128492014</p>
-              <p className="mt-1 text-xs font-bold text-obligon-green">MAINLAND ENERGY ENTERPRISE LTD</p>
-            </div>
-            <button
-              onClick={onOpenPayout}
-              className="mt-6 w-full h-11 rounded-xl bg-obligon-green text-sm font-extrabold text-white shadow-green hover:bg-obligon-green/90 transition"
-            >
-              Request Direct Payout
-            </button>
-          </article>
-        </aside>
+      <AsyncBoundary
+        status={status}
+        error={error?.message ?? null}
+        onRetry={reload}
+        loadingLabel="Loading settlement account…"
+      >
+        {data ? (
+          <div className="grid gap-8 xl:grid-cols-[320px_1fr]">
+            <aside className="space-y-5">
+              <article className="rounded-xl border border-[#d7d8e4] bg-white p-6 shadow-sm">
+                <h2 className="font-display text-xl font-extrabold text-obligon-navy">
+                  {defaultAccount ? "Settlement Account" : "No Settlement Account"}
+                </h2>
 
-        <main>
-          <DataTable
-            title="Settlement Payout History"
-            subtitle="Automated NUBAN disbursements and merchant clearing ledgers."
-            columns={["Batch ID", "Settlement Period", "Gross Sales", "Net Payout", "Status", "Settled Date"]}
-            rows={payoutRows}
-            actionLabel="Export CSV"
-            onAction={() => toastSuccess("Settlement history exported.")}
-          />
-        </main>
-      </div>
+                {defaultAccount ? (
+                  <div className="mt-5 rounded-xl bg-[#f7fbf8] p-4 border border-obligon-border">
+                    <p className="font-extrabold text-obligon-navy">{defaultAccount.bankName}</p>
+                    <p className="mt-1 font-mono text-sm text-obligon-text">{defaultAccount.accountMask}</p>
+                    <p className="mt-1 text-xs font-bold text-obligon-navy">{defaultAccount.accountName}</p>
+                    {!defaultAccount.verified ? (
+                      <p className="mt-2 text-xs font-extrabold text-[#b5162d]">Awaiting verification</p>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="mt-4 text-sm font-medium text-obligon-text">
+                    Add a bank account to receive settlements. Payouts cannot be requested without one.
+                  </p>
+                )}
+
+                <div className="mt-6 rounded-xl border border-obligon-border p-4">
+                  <p className="text-[11px] font-extrabold uppercase tracking-[0.8px] text-obligon-text">Pending</p>
+                  <p className="mt-1 font-display text-2xl font-extrabold text-obligon-navy">{data.totals.pendingLabel}</p>
+                  <p className="mt-3 text-[11px] font-extrabold uppercase tracking-[0.8px] text-obligon-text">Settled to date</p>
+                  <p className="mt-1 font-display text-2xl font-extrabold text-obligon-navy">{data.totals.totalSettledLabel}</p>
+                  <p className="mt-3 text-xs font-bold text-obligon-text">
+                    Auto-settlement is {data.config.autoSettlement ? "on" : "off"}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={onOpenPayout}
+                  className="mt-6 w-full h-11 rounded-xl bg-obligon-green text-sm font-extrabold text-white shadow-green hover:bg-obligon-green/90 transition"
+                >
+                  Request Direct Payout
+                </button>
+              </article>
+            </aside>
+
+            <main className="space-y-8">
+              <DataTable
+                title="Settlement Periods"
+                columns={["Period Start", "Period End", "Gross Sales", "Fees", "Net Payout"]}
+                rows={data.settlements}
+                rowKey={(row) => row.id ?? row.cells.join("/")}
+              />
+              <DataTable
+                title="Payout History"
+                subtitle="Automated NUBAN disbursements and manual payout requests."
+                columns={["Reference", "Requested", "Amount", "Destination"]}
+                rows={data.payouts}
+                rowKey={(row) => row.id ?? row.reference ?? row.cells[0]}
+              />
+            </main>
+          </div>
+        ) : null}
+      </AsyncBoundary>
     </DashboardCanvas>
   );
 }
 
+// ============ DISPUTES ============
 function DisputesPage() {
-  const { success: toastSuccess, error: toastError } = useToast();
+  const { status, data, error, reload } = useAsync(() => api.getPartnerDisputes());
 
   return (
     <DashboardCanvas>
@@ -539,305 +603,479 @@ function DisputesPage() {
         <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Disputes &amp; Reconciliations</h1>
         <p className="mt-1 text-sm text-obligon-text">Manage customer charge disputes, pump meter adjustments, and proof of dispensing.</p>
       </div>
-      <DataTable
-        title="Dispute Cases"
-        columns={["Case ID", "Customer / Vehicle", "Claim Reason", "Amount Disputed", "Status", "Filed Date"]}
-        rows={disputeRows}
-        actionLabel="Review All"
-        onAction={(row) => toastSuccess(`Opened dispute case review for ${row?.cells[0] ?? "case"}`)}
-      />
+      <AsyncBoundary
+        status={status}
+        error={error?.message ?? null}
+        isEmpty={!data || data.length === 0}
+        onRetry={reload}
+        loadingLabel="Loading disputes…"
+        empty={{ title: "No disputes raised", message: "Cases raised against your stations will appear here." }}
+      >
+        {data ? (
+          <DataTable
+            title="Dispute Cases"
+            columns={["Case ID", "Customer / Vehicle", "Claim Reason", "Amount Disputed"]}
+            rows={data}
+            rowKey={(row) => row.id ?? row.reference ?? row.cells[0]}
+          />
+        ) : null}
+      </AsyncBoundary>
     </DashboardCanvas>
   );
 }
 
+// ============ STATION PROFILE ============
 function StationProfilePage() {
   const { success: toastSuccess, error: toastError } = useToast();
-  const [stationName, setStationName] = React.useState("Mainland Energy Station #492");
-  const [address, setAddress] = React.useState("Plot 14, Commercial Avenue, Ikeja, Lagos");
-  const [phone, setPhone] = React.useState("+234 803 456 7890");
-  const [pumps, setPumps] = React.useState("12");
-  const [amenities, setAmenities] = React.useState({
-    restrooms: true,
-    atm: true,
-    carWash: true,
-    cngBay: true,
-    evCharger: false
-  });
+  const { status, data, error, reload } = useAsync(() => api.getPartnerStation());
+  const [form, setForm] = React.useState<{ name: string; address: string; city: string; hours: string; fuels: string } | null>(null);
+  const [saving, setSaving] = React.useState(false);
 
-  function handleSave(e: React.FormEvent) {
+  const station = data?.station ?? null;
+  const fields = form ?? (station ? {
+    name: station.name ?? "",
+    address: station.address ?? "",
+    city: station.city ?? "",
+    hours: station.hours ?? "",
+    fuels: station.fuels ?? ""
+  } : null);
+
+  const setField = (key: keyof NonNullable<typeof fields>, value: string) =>
+    setForm({ ...(fields ?? { name: "", address: "", city: "", hours: "", fuels: "" }), [key]: value });
+
+  async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    toastSuccess("Station amenities and location profile saved.");
+    if (!fields) return;
+    setSaving(true);
+    try {
+      await mutationsApi.updateStation({
+        name: fields.name,
+        address: fields.address,
+        city: fields.city,
+        hours: fields.hours || null,
+        fuels: fields.fuels || null
+      });
+      toastSuccess("Station profile saved.");
+      setForm(null);
+      reload();
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Could not save the station profile.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <DashboardCanvas>
       <div className="mb-8">
-        <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Station Profile &amp; Amenities</h1>
-        <p className="mt-1 text-sm text-obligon-text">Configure public station locator listings, available amenities, and manager contacts.</p>
+        <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Station Profile</h1>
+        <p className="mt-1 text-sm text-obligon-text">The details customers see in the station locator.</p>
       </div>
 
-      <form onSubmit={handleSave} className="grid gap-8 lg:grid-cols-[1fr_360px]">
-        <article className="rounded-xl border border-[#d7d8e4] bg-white p-7 shadow-sm space-y-4">
-          <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Location Details</h2>
-          <label className="block">
-            <span className="text-xs font-extrabold uppercase text-obligon-text">Station Brand &amp; Name</span>
-            <input value={stationName} onChange={(e) => setStationName(e.target.value)} className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 font-bold text-obligon-navy outline-none focus:border-obligon-green" required />
-          </label>
-          <label className="block">
-            <span className="text-xs font-extrabold uppercase text-obligon-text">Physical Address</span>
-            <input value={address} onChange={(e) => setAddress(e.target.value)} className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 font-bold text-obligon-navy outline-none focus:border-obligon-green" required />
-          </label>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block">
-              <span className="text-xs font-extrabold uppercase text-obligon-text">Manager Phone</span>
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 font-bold text-obligon-navy outline-none focus:border-obligon-green" required />
-            </label>
-            <label className="block">
-              <span className="text-xs font-extrabold uppercase text-obligon-text">Active Fuel Pumps</span>
-              <input value={pumps} onChange={(e) => setPumps(e.target.value)} className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 font-bold text-obligon-navy outline-none focus:border-obligon-green" required />
-            </label>
-          </div>
-          <button type="submit" className="mt-6 h-12 rounded-xl bg-obligon-green px-8 font-extrabold text-white shadow-green">
-            Save Profile
-          </button>
-        </article>
+      <AsyncBoundary
+        status={status}
+        error={error?.message ?? null}
+        onRetry={reload}
+        loadingLabel="Loading station…"
+      >
+        {data ? (
+          !station || !fields ? (
+            <EmptyState
+              icon={Building2}
+              title="No station linked yet"
+              message="This account is not linked to a station. Our team can connect one for you."
+            />
+          ) : (
+            <form onSubmit={handleSave} className="grid gap-8 lg:grid-cols-[1fr_360px]">
+              <article className="rounded-xl border border-[#d7d8e4] bg-white p-7 shadow-sm space-y-4">
+                <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Location Details</h2>
+                {([
+                  ["name", "Station Brand & Name"],
+                  ["address", "Physical Address"],
+                  ["city", "City"],
+                  ["hours", "Opening Hours"]
+                ] as const).map(([key, label]) => (
+                  <label key={key} className="block">
+                    <span className="text-xs font-extrabold uppercase text-obligon-text">{label}</span>
+                    <input
+                      value={fields[key]}
+                      onChange={(e) => setField(key, e.target.value)}
+                      className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 font-bold text-obligon-navy outline-none focus:border-obligon-green"
+                      required={key === "name"}
+                    />
+                  </label>
+                ))}
+                <label className="block">
+                  <span className="text-xs font-extrabold uppercase text-obligon-text">Fuels Available</span>
+                  <input
+                    value={fields.fuels}
+                    onChange={(e) => setField("fuels", e.target.value)}
+                    className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 font-bold text-obligon-navy outline-none focus:border-obligon-green"
+                  />
+                </label>
+                <button
+                  disabled={saving}
+                  type="submit"
+                  className="mt-6 h-12 rounded-xl bg-obligon-green px-8 font-extrabold text-white shadow-green disabled:opacity-50"
+                >
+                  {saving ? <Loader2 size={18} className="animate-spin" /> : "Save Profile"}
+                </button>
+              </article>
 
-        <article className="rounded-xl border border-[#d7d8e4] bg-white p-7 shadow-sm">
-          <h2 className="font-display text-2xl font-extrabold text-obligon-navy">On-Site Amenities</h2>
-          <div className="mt-6 space-y-3">
-            {[
-              { key: "restrooms" as const, label: "Clean Customer Restrooms" },
-              { key: "atm" as const, label: "24/7 ATM Gallery" },
-              { key: "carWash" as const, label: "Automated Car Wash Bay" },
-              { key: "cngBay" as const, label: "CNG Fast-Fill Nozzles" },
-              { key: "evCharger" as const, label: "DC Fast EV Charger (50kW)" }
-            ].map(({ key, label }) => (
-              <label key={key} className="flex items-center justify-between p-3.5 rounded-xl bg-[#f7fbf8] border border-obligon-border cursor-pointer">
-                <span className="text-xs font-bold text-obligon-navy">{label}</span>
-                <input
-                  type="checkbox"
-                  checked={amenities[key]}
-                  onChange={(e) => setAmenities((p) => ({ ...p, [key]: e.target.checked }))}
-                  className="size-4 text-obligon-green accent-obligon-green rounded"
-                />
-              </label>
-            ))}
-          </div>
-        </article>
-      </form>
+              <article className="rounded-xl border border-[#d7d8e4] bg-white p-7 shadow-sm">
+                <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Equipment</h2>
+                {data.equipment.length ? (
+                  <ul className="mt-6 space-y-3">
+                    {data.equipment.map((item) => (
+                      <li key={item.id} className="flex items-center justify-between rounded-xl border border-obligon-border p-3.5">
+                        <span className="text-xs font-bold text-obligon-navy">{item.name}</span>
+                        <span className="text-xs font-extrabold text-obligon-text">
+                          {item.status}{item.lastService ? ` · ${item.lastService}` : ""}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-4 text-sm font-medium text-obligon-text">No equipment recorded.</p>
+                )}
+
+                <h2 className="mt-8 font-display text-2xl font-extrabold text-obligon-navy">Recent Dispensing</h2>
+                {data.logs.length ? (
+                  <ul className="mt-4 space-y-2">
+                    {data.logs.slice(0, 8).map((log) => (
+                      <li key={log.id} className="flex items-center justify-between text-xs font-bold text-obligon-navy">
+                        <span>{log.fuelType} · {log.litres} L</span>
+                        <span className="text-obligon-text">{log.time}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-4 text-sm font-medium text-obligon-text">No dispensing recorded yet.</p>
+                )}
+              </article>
+            </form>
+          )
+        ) : null}
+      </AsyncBoundary>
     </DashboardCanvas>
   );
 }
 
+// ============ TRANSACTIONS ============
 function TransactionsPage() {
-  const { success: toastSuccess } = useToast();
   const [query, setQuery] = React.useState("");
-  const filteredRows = transactionRows.filter((row) => row.cells.join(" ").toLowerCase().includes(query.trim().toLowerCase()));
+  const debouncedQuery = useDebounced(query);
+  const { status, data, error, reload } = useAsync(
+    () => api.getPartnerTransactions({ search: debouncedQuery || undefined, limit: 50 }),
+    [debouncedQuery]
+  );
 
   return (
     <DashboardCanvas>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
           <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Fleet Transactions</h1>
-          <p className="mt-1 text-sm text-obligon-text">Every card-authorized fuel dispense across your partner network.</p>
+          <p className="mt-1 text-sm text-obligon-text">
+            Every card-authorized fuel dispense across your partner network.
+            {data ? ` ${data.total.toLocaleString()} matching.` : ""}
+          </p>
         </div>
-        <button
-          type="button"
-          onClick={() => toastSuccess("Transaction ledger exported as a local summary.")}
+        <a
+          href="/api/partner/transactions/export"
           className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#d7d8e4] bg-white px-5 text-sm font-extrabold text-obligon-navy hover:bg-[#f7f7fd] transition"
         >
           <Download size={16} />
           Export Ledger
-        </button>
+        </a>
       </div>
+
       <label className="mb-6 flex h-11 max-w-sm items-center gap-2 rounded-xl border border-[#d7d8e4] bg-white px-3">
         <CreditCard size={16} className="text-obligon-text" />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by fleet, card, or amount..."
+          placeholder="Search by reference or fleet…"
           aria-label="Search transactions"
           className="w-full bg-transparent text-sm outline-none"
         />
       </label>
-      {filteredRows.length ? (
-        <DataTable
-          title="Card Authorizations"
-          columns={["Date & Time", "Fleet / Vehicle", "Card", "Amount (₦)"]}
-          rows={filteredRows}
-          actionLabel="View Receipt"
-          onAction={(row) => toastSuccess(`Opened receipt for ${row?.cells[0] ?? "transaction"}.`)}
-        />
-      ) : (
-        <p className="rounded-xl border border-dashed border-[#d7d8e4] bg-white p-8 text-center font-bold text-obligon-text">No transactions match that search.</p>
-      )}
+
+      <AsyncBoundary
+        status={status}
+        error={error?.message ?? null}
+        isEmpty={!data || data.rows.length === 0}
+        onRetry={reload}
+        loadingLabel="Loading transactions…"
+        empty={{
+          title: query ? "No transactions match that search" : "No transactions yet",
+          message: query ? "Try a different reference or fleet name." : "Authorizations at your dispensers will appear here."
+        }}
+      >
+        {data ? (
+          <DataTable
+            title="Card Authorizations"
+            columns={["Date & Time", "Fleet / Vehicle", "Card", "Amount (₦)"]}
+            rows={data.rows}
+            rowKey={(row) => row.id ?? row.reference ?? row.cells.join("/")}
+          />
+        ) : null}
+      </AsyncBoundary>
     </DashboardCanvas>
   );
 }
 
+// ============ REPORTS ============
 function ReportsPage() {
-  const { success: toastSuccess } = useToast();
+  const [range, setRange] = React.useState(30);
+  const { status, data, error, reload } = useAsync(() => api.getPartnerReports(range), [range]);
 
   return (
     <DashboardCanvas>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
           <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Analytics &amp; Fleet Reports</h1>
-          <p className="mt-1 text-sm text-obligon-text">Consumption, spend, and routing insight across enrolled fleet partners.</p>
+          <p className="mt-1 text-sm text-obligon-text">Consumption and spend by enrolled fleet account.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => toastSuccess("Report exported as a local summary file.")}
-          className="inline-flex h-11 items-center gap-2 rounded-xl bg-obligon-green px-5 text-sm font-extrabold text-white shadow-green hover:bg-obligon-green/90 transition"
-        >
-          <Download size={16} />
-          Export Report
-        </button>
+        <div className="flex items-center gap-3">
+          <select
+            value={range}
+            onChange={(e) => setRange(Number(e.target.value))}
+            aria-label="Reporting period"
+            className="h-11 rounded-xl border border-[#d7d8e4] bg-white px-4 text-sm font-extrabold text-obligon-navy outline-none"
+          >
+            <option value={7}>Last 7 days</option>
+            <option value={30}>Last 30 days</option>
+            <option value={90}>Last 90 days</option>
+            <option value={365}>Last 365 days</option>
+          </select>
+          <a
+            href="/api/partner/reports/export"
+            className="inline-flex h-11 items-center gap-2 rounded-xl bg-obligon-green px-5 text-sm font-extrabold text-white shadow-green hover:bg-obligon-green/90 transition"
+          >
+            <Download size={16} />
+            Export Report
+          </a>
+        </div>
       </div>
-      <div className="mb-8 grid gap-6 sm:grid-cols-3">
-        <SmallMetric metric={overviewMetrics[0]} icon={<BarChart3 size={20} />} />
-        <SmallMetric metric={overviewMetrics[1]} icon={<CircleDollarSign size={21} />} />
-        <SmallMetric metric={overviewMetrics[2]} icon={<Clock3 size={21} />} />
-      </div>
-      <DataTable
-        title="Fleet Consumption Report"
-        subtitle="Litres dispensed and spend by enrolled fleet account."
-        columns={["Fleet Account", "Primary Route", "Litres (L)", "Spend (₦)"]}
-        rows={reportRows}
-        actionLabel="View Fleet"
-        onAction={(row) => toastSuccess(`Opened fleet report for ${row?.cells[0]?.split("\n")[0] ?? "fleet"}.`)}
-      />
+
+      <AsyncBoundary
+        status={status}
+        error={error?.message ?? null}
+        onRetry={reload}
+        loadingLabel="Building report…"
+      >
+        {data ? (
+          <>
+            <div className="mb-8 grid gap-6 sm:grid-cols-3">
+              {data.metrics.map((metric, index) => (
+                <SmallMetric key={metric.label} metric={metric} icon={metricIcons[index] ?? <BarChart3 size={20} />} />
+              ))}
+            </div>
+            <DataTable
+              title="Fleet Consumption"
+              subtitle="Litres dispensed and spend by enrolled fleet account."
+              columns={["Fleet Account", "Litres (L)", "Spend (₦)"]}
+              rows={data.companies}
+              rowKey={(row) => row.cells[0]}
+            />
+          </>
+        ) : null}
+      </AsyncBoundary>
     </DashboardCanvas>
   );
 }
 
+// ============ NOTIFICATIONS ============
 function NotificationsPage() {
-  const { success: toastSuccess } = useToast();
-  const [readIds, setReadIds] = React.useState<Set<string>>(new Set());
-  const allIds = notificationGroups.flatMap((group, gi) => group.items.map((_, ii) => `${gi}-${ii}`));
-  const allRead = readIds.size >= allIds.length;
+  const { success: toastSuccess, error: toastError } = useToast();
+  const { status, data, error, reload } = useAsync(() => api.getPartnerNotifications());
+  const [busy, setBusy] = React.useState(false);
+
+  async function markRead(id: string) {
+    if (!data) return;
+    // Marking read used to only mutate a local Set of array indices, so it was
+    // undone by any navigation and never reached the database. The server's
+    // response is the new truth: refetch rather than guessing, so a refusal
+    // cannot leave the dot on screen.
+    try {
+      await mutationsApi.partnerNotificationAction(id, "read");
+      reload();
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Could not mark that as read.");
+    }
+  }
+
+  async function markAllRead() {
+    setBusy(true);
+    try {
+      await mutationsApi.partnerNotificationAction(null, "read-all");
+      toastSuccess("All notifications marked as read.");
+      reload();
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Could not mark all as read.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <DashboardCanvas>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
-          <h1 className="font-display text-3xl font-extrabold text-obligon-navy">System Notifications</h1>
-          <p className="mt-1 text-sm text-obligon-text">Finance, support, security, and platform alerts for your station network.</p>
+          <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Notifications</h1>
+          <p className="mt-1 text-sm text-obligon-text">
+            Finance, support, security, and platform alerts for your station network.
+            {data?.unreadCount ? ` ${data.unreadCount} unread.` : ""}
+          </p>
         </div>
         <button
           type="button"
-          disabled={allRead}
-          onClick={() => {
-            setReadIds(new Set(allIds));
-            toastSuccess("All notifications marked as read.");
-          }}
+          disabled={busy || !data?.unreadCount}
+          onClick={markAllRead}
           className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#d7d8e4] bg-white px-5 text-sm font-extrabold text-obligon-navy hover:bg-[#f7f7fd] transition disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Check size={16} />
           Mark all as read
         </button>
       </div>
-      <div className="space-y-8">
-        {notificationGroups.map((group, gi) => (
-          <section key={group.label}>
-            <h2 className="mb-3 text-xs font-extrabold uppercase tracking-[1px] text-obligon-text">{group.label}</h2>
-            <div className="divide-y divide-[#ececf5] overflow-hidden rounded-xl border border-[#d7d8e4] bg-white shadow-sm">
-              {group.items.map(([title, time, description], ii) => {
-                const id = `${gi}-${ii}`;
-                const isRead = readIds.has(id);
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setReadIds((prev) => new Set(prev).add(id))}
-                    className="flex w-full items-start gap-4 px-6 py-5 text-left hover:bg-[#fbfbff] transition"
-                  >
-                    <span className={`mt-1 grid size-9 shrink-0 place-items-center rounded-xl ${isRead ? "bg-[#eef0f6] text-[#737582]" : "bg-[#ecfbd7] text-obligon-green"}`}>
-                      <Bell size={16} />
-                    </span>
-                    <span className="flex-1">
-                      <span className="flex items-center justify-between gap-3">
-                        <span className={`text-sm ${isRead ? "font-bold text-obligon-text" : "font-extrabold text-obligon-navy"}`}>{title}</span>
-                        <span className="shrink-0 text-xs font-bold text-obligon-text">{time}</span>
+
+      <AsyncBoundary
+        status={status}
+        error={error?.message ?? null}
+        isEmpty={!data || data.groups.length === 0}
+        onRetry={reload}
+        loadingLabel="Loading notifications…"
+        empty={{ title: "Nothing to report", message: "Alerts about settlements, disputes and security will appear here." }}
+      >
+        {data ? (
+          <div className="space-y-8">
+            {data.groups.map((group: PartnerNotifications["groups"][number]) => (
+              <section key={group.label}>
+                <h2 className="mb-3 text-xs font-extrabold uppercase tracking-[1px] text-obligon-text">{group.label}</h2>
+                <div className="divide-y divide-[#ececf5] overflow-hidden rounded-xl border border-[#d7d8e4] bg-white shadow-sm">
+                  {group.items.map((item) => (
+                    <button
+                      key={item.id ?? `${group.label}-${item.title}`}
+                      type="button"
+                      disabled={item.read || busy}
+                      onClick={() => item.id && void markRead(item.id)}
+                      className="flex w-full items-start gap-4 px-6 py-5 text-left hover:bg-[#fbfbff] transition disabled:cursor-default disabled:opacity-70"
+                    >
+                      <span className={`mt-1 grid size-9 shrink-0 place-items-center rounded-xl ${item.read ? "bg-[#eef0f6] text-[#737582]" : "bg-[#ecfbd7] text-obligon-green"}`}>
+                        <Bell size={16} />
                       </span>
-                      <span className="mt-1 block text-xs text-obligon-text">{description}</span>
-                    </span>
-                    {!isRead ? <span className="mt-1.5 size-2 shrink-0 rounded-full bg-obligon-green" /> : null}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        ))}
-      </div>
+                      <span className="flex-1">
+                        <span className="flex items-center justify-between gap-3">
+                          <span className={`text-sm ${item.read ? "font-bold text-obligon-text" : "font-extrabold text-obligon-navy"}`}>{item.title}</span>
+                          <span className="shrink-0 text-xs font-bold text-obligon-text">{item.time}</span>
+                        </span>
+                        <span className="mt-1 block text-xs text-obligon-text">{item.body}</span>
+                      </span>
+                      {!item.read ? <span className="mt-1.5 size-2 shrink-0 rounded-full bg-obligon-green" /> : null}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        ) : null}
+      </AsyncBoundary>
     </DashboardCanvas>
   );
 }
 
+// ============ STAFF ============
 function StaffPage() {
-  const { success: toastSuccess, error: toastError } = useToast();
+  const { status, data, error, reload } = useAsync(() => api.getPartnerStaff());
 
   return (
     <DashboardCanvas>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
-          <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Station Pump Staff</h1>
-          <p className="mt-1 text-sm text-obligon-text">Manage attendant credentials, assigned shifts, and POS transaction limits.</p>
+          <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Station Staff</h1>
+          <p className="mt-1 text-sm text-obligon-text">
+            Attendants and supervisors with access to your station.
+            {data ? ` ${data.stats.active} of ${data.stats.total} active.` : ""}
+          </p>
         </div>
-        <button
-          onClick={() => toastSuccess("Add Staff modal opened.")}
-          className="h-11 rounded-xl bg-obligon-green px-5 text-sm font-extrabold text-white shadow-green"
-        >
-          + Add Attendant
-        </button>
       </div>
-      <DataTable
-        title="Active Attendants &amp; Supervisors"
-        columns={["Staff Member", "Role", "Shift Schedule", "Pumps Assigned", "Status", "Last Active"]}
-        rows={staffRows}
-        actionLabel="Permissions"
-        onAction={(r) => toastSuccess(`Managing staff member ${r?.cells[0] ?? ""}`)}
-      />
+
+      <AsyncBoundary
+        status={status}
+        error={error?.message ?? null}
+        isEmpty={!data || data.staff.length === 0}
+        onRetry={reload}
+        loadingLabel="Loading staff…"
+        empty={{ title: "No staff yet", message: "Invite attendants and supervisors to your station." }}
+      >
+        {data ? (
+          <DataTable
+            title="Staff Members"
+            columns={["Reference", "Member", "Role"]}
+            rows={data.staff}
+            rowKey={(row, index) => row.id ?? `${row.cells[0]}-${index}`}
+          />
+        ) : null}
+      </AsyncBoundary>
+    </DashboardCanvas>
+  );
+}
+
+// ============ SETTINGS ============
+function SettingsPage() {
+  const { status, data, error, reload } = useAsync(() => api.getPartnerSettings());
+
+  const rows: Array<[string, string]> = data
+    ? [
+        ["Organisation", data.org.name],
+        ["RC Number", data.org.rcNumber ?? "—"],
+        ["Address", data.org.address ?? "—"],
+        ["City", data.org.city ?? "—"],
+        ["Verification", data.org.verificationStatus],
+        ["Two-factor authentication", data.security.twoFactorEnabled ? "Enabled" : "Disabled"]
+      ]
+    : [];
+
+  return (
+    <DashboardCanvas>
+      <div className="mb-8">
+        <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Organisation Settings</h1>
+        <p className="mt-1 text-sm text-obligon-text">Your registered details and account security.</p>
+      </div>
+
+      <AsyncBoundary
+        status={status}
+        error={error?.message ?? null}
+        onRetry={reload}
+        loadingLabel="Loading settings…"
+      >
+        {data ? (
+          <section className="overflow-hidden rounded-xl border border-[#d7d8e4] bg-white shadow-sm">
+            <div className="divide-y divide-[#ececf5]">
+              {rows.map(([label, value]) => (
+                <div key={label} className="flex flex-col gap-1 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="text-sm font-bold text-obligon-navy">{label}</span>
+                  <span className="text-sm font-medium text-obligon-text">{value}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+      </AsyncBoundary>
     </DashboardCanvas>
   );
 }
 
 export function DashboardScreen({ pageKey }: { pageKey: DashboardPageKey }) {
-  const { success: toastSuccess, error: toastError } = useToast();
   const [payoutModalOpen, setPayoutModalOpen] = React.useState(false);
-  const [payoutAmount, setPayoutAmount] = React.useState("1500000");
-  const [payoutSubmitting, setPayoutSubmitting] = React.useState(false);
-  const [payoutFormError, setPayoutFormError] = React.useState<string | null>(null);
 
-  function closePayoutModal() {
-    setPayoutModalOpen(false);
-    setPayoutFormError(null);
-  }
-
-  async function handlePayoutSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const amount = Number(payoutAmount);
-    if (!payoutAmount.trim() || Number.isNaN(amount) || amount <= 0) {
-      setPayoutFormError("Enter a payout amount greater than ₦0.");
-      return;
-    }
-    setPayoutFormError(null);
-    setPayoutSubmitting(true);
-    try {
-      setPayoutModalOpen(false);
-      toastSuccess(`Payout request for ₦${amount.toLocaleString()} submitted to bank. This is a local session request; no funds have moved.`);
-    } catch (err) {
-      toastError(err instanceof Error ? err.message : "Could not submit the payout request. Please try again.");
-    } finally {
-      setPayoutSubmitting(false);
-    }
-  }
+  const openPayout = () => setPayoutModalOpen(true);
 
   const pages: Record<DashboardPageKey, React.ReactNode> = {
-    overview: <OverviewPage onOpenPayout={() => setPayoutModalOpen(true)} />,
+    overview: <OverviewPage />,
     pricing: <FuelPricingPage />,
     pos: <POSTerminalPage />,
-    settlements: <SettlementsPage onOpenPayout={() => setPayoutModalOpen(true)} />,
+    settlements: <SettlementsPage onOpenPayout={openPayout} />,
     disputes: <DisputesPage />,
     profile: <StationProfilePage />,
     station: <StationProfilePage />,
@@ -846,53 +1084,48 @@ export function DashboardScreen({ pageKey }: { pageKey: DashboardPageKey }) {
     reports: <ReportsPage />,
     verification: <POSTerminalPage />,
     notifications: <NotificationsPage />,
-    settings: <StationProfilePage />
+    settings: <SettingsPage />
   };
 
   return (
     <>
-      {pages[pageKey] ?? <OverviewPage onOpenPayout={() => setPayoutModalOpen(true)} />}
+      {pages[pageKey] ?? <OverviewPage />}
 
       {payoutModalOpen ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-[#071853]/65 px-5 backdrop-blur-sm">
-          <form onSubmit={handlePayoutSubmit} className="w-full max-w-md rounded-2xl bg-white p-6 shadow-hero">
-            <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Request Settlement Payout</h2>
-            <p className="mt-1 text-sm text-obligon-text">Funds will be disbursed to GTBank NUBAN ending in 2014.</p>
-
-            {payoutFormError ? (
-              <p role="alert" className="mt-4 rounded-xl border border-[#f3c6cc] bg-[#fff4f4] px-4 py-3 text-sm font-bold text-[#9f1027]">{payoutFormError}</p>
-            ) : null}
-
-            <label className="mt-5 block">
-              <span className="text-xs font-extrabold uppercase text-obligon-text">Payout Amount (₦)</span>
-              <input
-                value={payoutAmount}
-                onChange={(e) => setPayoutAmount(e.target.value)}
-                inputMode="numeric"
-                className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 font-display text-xl font-extrabold text-obligon-navy outline-none focus:border-obligon-green"
-                required
-              />
-            </label>
-
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={closePayoutModal}
-                className="h-11 flex-1 rounded-xl border border-[#071853] text-sm font-bold"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={payoutSubmitting}
-                className="h-11 flex-1 rounded-xl bg-obligon-green text-sm font-extrabold text-white shadow-green flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {payoutSubmitting ? <Loader2 size={16} className="animate-spin" /> : "Confirm Payout"}
-              </button>
-            </div>
-          </form>
-        </div>
+        <PayoutNotice onClose={() => setPayoutModalOpen(false)} />
       ) : null}
     </>
+  );
+}
+
+/**
+ * Deliberately not wired to `POST /api/partner/payouts`.
+ *
+ * The button used to validate an amount and then report "submitted to bank"
+ * without making any request at all. Wiring it as-is would be worse than the
+ * lie: `/payouts` has no balance check, so a real request for ₦50,000,000
+ * against ₦0 pending is accepted and written to the payouts table before it
+ * fails at the transfer. That endpoint needs its guard before this becomes a
+ * real submission.
+ */
+function PayoutNotice({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[#071853]/65 px-5 backdrop-blur-sm">
+      <div role="dialog" aria-modal="true" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-hero">
+        <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Payout requests are not open yet</h2>
+        <p className="mt-3 text-sm font-medium text-obligon-text">
+          Payouts cannot be requested from here at the moment. Our team is completing final checks on the
+          settlement flow and will enable it once every request is guaranteed to be checked against your
+          pending balance before any money moves.
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-6 h-11 w-full rounded-xl bg-obligon-green text-sm font-extrabold text-white"
+        >
+          Close
+        </button>
+      </div>
+    </div>
   );
 }

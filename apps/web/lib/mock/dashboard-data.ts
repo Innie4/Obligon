@@ -60,7 +60,7 @@ export const dashboardNav: Array<{ key: DashboardPageKey; label: string; href: s
   { key: "transactions", label: "Transactions", href: "/dashboard/transactions", icon: "transactions" },
   { key: "station", label: "Fuel Stations", href: "/dashboard/station-profile", icon: "station" },
   { key: "reports", label: "Analytics", href: "/dashboard/reports", icon: "reports" },
-  { key: "settlements", label: "Partners", href: "/dashboard/settlements", icon: "wallet" },
+  { key: "settlements", label: "Settlements", href: "/dashboard/settlements", icon: "wallet" },
   { key: "pricing", label: "Fuel Pricing", href: "/dashboard/fuel-pricing", icon: "pricing" },
   { key: "staff", label: "Staff Management", href: "/dashboard/staff", icon: "staff" },
   { key: "verification", label: "Card Verification POS", href: "/dashboard/card-verification", icon: "pos" },

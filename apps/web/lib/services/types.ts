@@ -392,6 +392,142 @@ export interface MobileTransactionGroup {
 export type CompanyStationRow = [string, string, string, string, string];
 export type CompanyNotificationRow = [string, string, string, string, string?];
 
+/**
+ * Partner domain.
+ *
+ * These used to be aliased to the mock module's `Metric` and `TableRow`
+ * (`client.ts` imported them as `PartnerMetric`/`PartnerTableRow`), which meant
+ * the live client's return types were defined by the fixture data rather than by
+ * the API. The shapes are the same wire format the partner routes have always
+ * returned — `cells` is a pre-formatted string array, because the server does the
+ * currency and date formatting — but they are declared here now so the dashboard
+ * is typed against something real.
+ */
+export type PartnerTone = "success" | "pending" | "failed" | "info" | "neutral";
+
+export interface PartnerMetric {
+  label: string;
+  value: string;
+  delta?: string;
+  helper?: string;
+  tone?: PartnerTone;
+}
+
+export interface PartnerRow {
+  id?: string;
+  reference?: string;
+  cells: string[];
+  status?: string;
+  tone?: PartnerTone;
+  action?: string;
+}
+
+/** One GET /api/partner/overview. Previously three methods, three round trips. */
+export interface PartnerOverview {
+  metrics: PartnerMetric[];
+  quickStats: string[][];
+  recentTransactions: PartnerRow[];
+}
+
+export interface PartnerBankAccount {
+  id: string;
+  bankName: string;
+  accountMask: string;
+  accountName: string;
+  isDefault: boolean;
+  verified: boolean;
+}
+
+export interface PartnerSettlements {
+  settlements: PartnerRow[];
+  payouts: PartnerRow[];
+  bankAccounts: PartnerBankAccount[];
+  config: { settlementLimitKobo: number | null; autoSettlement: boolean };
+  totals: { totalSettledLabel: string; pendingLabel: string };
+}
+
+export interface PartnerFuelPrice {
+  id: string;
+  fuelType: string;
+  price: number;
+  priceLabel: string;
+  updatedAt: string;
+}
+
+export interface PartnerPricing {
+  prices: PartnerFuelPrice[];
+  history: PartnerRow[];
+}
+
+export interface PartnerStation {
+  station: {
+    id: string;
+    name: string;
+    address: string;
+    city: string;
+    lat: number | null;
+    lng: number | null;
+    fuels: string | null;
+    hours: string | null;
+    assets: string[];
+    status: string;
+    messagingTerminal: { message?: string; updatedAt?: string } | null;
+  } | null;
+  prices: PartnerFuelPrice[];
+  logs: Array<{ id: string; fuelType: string; litres: number; reference: string | null; time: string }>;
+  equipment: Array<{ id: string; name: string; kind: string; status: string; lastService: string | null }>;
+}
+
+export interface PartnerReports {
+  metrics: PartnerMetric[];
+  companies: PartnerRow[];
+}
+
+export interface PartnerStaffMember extends PartnerRow {
+  memberId: string;
+  cardAccess: boolean;
+}
+
+export interface PartnerStaff {
+  staff: PartnerStaffMember[];
+  stats: { total: number; active: number };
+}
+
+export interface PartnerDispute extends PartnerRow {
+  subject: string;
+  category: string;
+  description: string;
+  statusRaw: string;
+  amountLabel: string;
+  evidence: string[];
+  draftResponse: string | null;
+  created: string;
+}
+
+export interface PartnerNotificationGroup {
+  label: string;
+  items: AppNotification[];
+}
+
+export interface PartnerNotifications {
+  notifications: AppNotification[];
+  groups: PartnerNotificationGroup[];
+  unreadCount: number;
+}
+
+export interface PartnerSettings {
+  org: {
+    id: string;
+    name: string;
+    rcNumber: string | null;
+    address: string | null;
+    city: string | null;
+    verificationStatus: string;
+  };
+  security: { twoFactorEnabled: boolean };
+  prefs: NotificationPrefs | null;
+}
+
 export type AsyncStatus = "idle" | "loading" | "success" | "error";
 
 export interface ApiResult<T> {

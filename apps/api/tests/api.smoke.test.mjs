@@ -219,6 +219,134 @@ test("company login sees fleet overview and partner login sees POS area", { skip
   assert.equal(partnerLogout.status, 200);
 });
 
+/**
+ * Every endpoint the partner dashboard reads, in one place.
+ *
+ * The dashboard rendered fixture data for its entire life, so nothing here had a
+ * consumer and nothing broke when a response changed shape — a column header
+ * could sit above three cells for months without a single failure. These assert
+ * the contract the components destructure: the keys they read, and the cell count
+ * matching the columns each table declares.
+ */
+test("every dashboard read returns the shape its table declares", { skip: !BASE }, async () => {
+  const login = await api("/api/auth/login", {
+    method: "POST",
+    body: { email: "partner@obligon.com", password: "Partner#123" }
+  });
+  assert.equal(login.status, 200);
+  const token = login.data.accessToken;
+
+  const cellsAre = (rows, expected) =>
+    rows.every((row) => Array.isArray(row.cells) && row.cells.length === expected);
+
+  const overview = await api("/api/partner/overview", { token });
+  assert.equal(overview.status, 200);
+  assert.ok(overview.data.metrics.length >= 3);
+  assert.ok(overview.data.metrics.every((m) => m.label && m.value));
+  assert.ok(overview.data.quickStats.every((s) => Array.isArray(s) && s.length === 2));
+  assert.ok(cellsAre(overview.data.recentTransactions, 4));
+
+  const settlements = await api("/api/partner/settlements", { token });
+  assert.equal(settlements.status, 200);
+  assert.ok(Array.isArray(settlements.data.settlements));
+  assert.ok(Array.isArray(settlements.data.payouts));
+  assert.ok(Array.isArray(settlements.data.bankAccounts));
+  assert.equal(typeof settlements.data.config.autoSettlement, "boolean");
+
+  const pricing = await api("/api/partner/pricing", { token });
+  assert.equal(pricing.status, 200);
+  assert.ok(Array.isArray(pricing.data.prices));
+  assert.ok(pricing.data.prices.every((p) => p.fuelType && typeof p.price === "number"));
+
+  const reports = await api("/api/partner/reports?range=30", { token });
+  assert.equal(reports.status, 200);
+  assert.ok(Array.isArray(reports.data.companies));
+  assert.ok(cellsAre(reports.data.companies, 3));
+
+  const staff = await api("/api/partner/staff", { token });
+  assert.equal(staff.status, 200);
+  assert.ok(Array.isArray(staff.data.staff));
+  assert.equal(typeof staff.data.stats.total, "number");
+
+  const transactions = await api("/api/partner/transactions?limit=50", { token });
+  assert.equal(transactions.status, 200);
+  assert.ok(Array.isArray(transactions.data.transactions));
+  assert.equal(typeof transactions.data.total, "number");
+
+  const disputes = await api("/api/partner/disputes", { token });
+  assert.equal(disputes.status, 200);
+  assert.ok(cellsAre(disputes.data.disputes, 4));
+
+  const notifications = await api("/api/partner/notifications", { token });
+  assert.equal(notifications.status, 200);
+  assert.equal(typeof notifications.data.unreadCount, "number");
+  assert.ok(notifications.data.groups.every((g) => g.label && Array.isArray(g.items)));
+
+  const station = await api("/api/partner/station", { token });
+  assert.equal(station.status, 200);
+  assert.ok(Array.isArray(station.data.prices));
+  assert.ok(Array.isArray(station.data.equipment));
+
+  const settings = await api("/api/partner/settings", { token });
+  assert.equal(settings.status, 200);
+  assert.equal(typeof settings.data.org.name, "string");
+});
+
+test("a partner's search filters on the server, not in the browser", { skip: !BASE }, async () => {
+  // The search box filtered the fixture array, so it could only ever match rows
+  // that were already loaded — a real match on a later page was unreachable.
+  const login = await api("/api/auth/login", {
+    method: "POST",
+    body: { email: "partner@obligon.com", password: "Partner#123" }
+  });
+  const token = login.data.accessToken;
+
+  const all = await api("/api/partner/transactions", { token });
+  const first = all.data.transactions[0];
+  assert.ok(first?.reference, "expected at least one transaction to search for");
+
+  const hit = await api(`/api/partner/transactions?search=${encodeURIComponent(first.reference)}`, { token });
+  assert.equal(hit.status, 200);
+  assert.ok(hit.data.transactions.length >= 1);
+  assert.ok(hit.data.transactions.length <= all.data.total);
+  assert.ok(hit.data.transactions.every((t) => t.reference === first.reference));
+
+  const miss = await api("/api/partner/transactions?search=zzzznotarealreference", { token });
+  assert.equal(miss.data.transactions.length, 0);
+});
+
+test("no figure on the partner dashboard is invented", { skip: !BASE }, async () => {
+  // Each of these was a constant in the response, printed under a heading that
+  // read like a measurement.
+  const login = await api("/api/auth/login", {
+    method: "POST",
+    body: { email: "partner@obligon.com", password: "Partner#123" }
+  });
+  const token = login.data.accessToken;
+
+  const overview = await api("/api/partner/overview", { token });
+  for (const metric of overview.data.metrics) {
+    assert.doesNotMatch(metric.helper ?? "", /ESTIMATED NET MARGIN|12\.5%/i, `invented margin on ${metric.label}`);
+    assert.doesNotMatch(metric.helper ?? "", /^Auto-settlement enabled$/, `static auto-settlement flag on ${metric.label}`);
+    assert.ok(!metric.delta, `${metric.label} carries a hard-coded delta "${metric.delta}"`);
+  }
+
+  const reports = await api("/api/partner/reports?range=30", { token });
+  for (const company of reports.data.companies) {
+    // "Network" sat under a "Primary Route" heading, and "ACTIVE" was a literal.
+    assert.ok(!company.cells.includes("Network"), "invented route column");
+    assert.ok(!company.status, "invented status column");
+    // Amounts are kobo in the database. Printed raw they overstated spend 100x.
+    assert.match(String(company.cells[2]), /^₦/, `spend column is not formatted as naira: ${company.cells[2]}`);
+  }
+
+  const staff = await api("/api/partner/staff", { token });
+  for (const member of staff.data.staff) {
+    // Was `#ST-${8800 + index}` — a position in the result set, not an identity.
+    assert.doesNotMatch(String(member.cells[0]), /^#ST-\d+$/, "staff id derived from array position");
+  }
+});
+
 test("public endpoints are open", { skip: !BASE }, async () => {
   const plans = await api("/api/public/plans");
   assert.equal(plans.status, 200);
