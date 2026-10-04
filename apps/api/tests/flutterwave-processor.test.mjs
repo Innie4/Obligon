@@ -133,10 +133,26 @@ test("a transfer is settled by asking the processor", () => {
   assert.match(scheduler, /await fetchTransfer\(provider, payout\.provider_reference\)/);
   // Payout and the settlements it covers move together, in one transaction.
   assert.match(scheduler, /await tx\(async \(t\) => \{/);
-  assert.match(scheduler, /UPDATE settlements SET status = 'paid'/);
+  // Oldest-first, up to the amount transferred — not every pending settlement for
+  // the org, which declared unrelated periods disbursed and lost that revenue.
+  assert.match(scheduler, /ORDER BY period_start ASC/);
+  assert.match(scheduler, /status = 'paid'/);
+  assert.match(scheduler, /net_kobo = net_kobo - \$2/);
+  assert.doesNotMatch(
+    scheduler,
+    /UPDATE settlements SET status = 'paid', paid_at = now\(\)\s*\n\s*WHERE partner_org_id = \$1 AND status = 'pending'/
+  );
   // And an unreachable processor is not a failed payout.
   assert.match(scheduler, /A provider we cannot reach is not a failed payout/);
   assert.match(scheduler, /status: "processing"/);
+});
+
+test("a payout can never be stranded in processing", () => {
+  // Two ways it used to be: no provider reference at all after a crash between the
+  // insert and the transfer, and no age ceiling so nothing ever expired either way.
+  assert.match(scheduler, /STALE_AFTER_MS/);
+  assert.match(scheduler, /Transfer was never submitted to the processor/);
+  assert.match(scheduler, /summary\.expired/);
 });
 
 test("reconciliation runs before anything new is queued", () => {

@@ -3,6 +3,7 @@ import { env } from "../config/env.js";
 import { reference } from "./format.js";
 import { notify, audit } from "./notify.js";
 import { initiateTransfer, fetchTransfer, activeProvider } from "./payments.js";
+import { accrueSettlements } from "./settlements.js";
 
 /**
  * Purges expired sessions, expired verification codes, and out-of-date invites.
@@ -45,8 +46,32 @@ export async function runAutoSettlements() {
       const pendingKobo = Number(pending?.pending_total ?? 0);
       const threshold = Number(partner.settlement_limit_kobo || 0);
 
-      // Settle if threshold is 0 (immediate) or if accumulated amount meets/exceeds limit
-      if (pendingKobo > 0 && (threshold === 0 || pendingKobo >= threshold)) {
+      // Payouts already promised are deducted. Without this the same balance is
+      // re-queued on every tick while the transfer is still settling — and since
+      // settlements only become `paid` once `reconcilePayouts` confirms the money
+      // moved, that window spans at least one tick. Two transfers, one earning.
+      const promised = await one(
+        `SELECT COALESCE(SUM(amount_kobo), 0)::bigint AS promised_total
+         FROM payouts WHERE partner_org_id = $1 AND status IN ('pending', 'processing')`,
+        [partner.id]
+      );
+      const claimable = pendingKobo - Number(promised?.promised_total ?? 0);
+
+      // `threshold === 0` used to mean "settle immediately". `settlement_limit_kobo`
+      // is `BIGINT NOT NULL DEFAULT 0` and provisioning never sets it, so every new
+      // partner who enabled auto-settlement had their entire balance disbursed on the
+      // next tick with no approval threshold at all. Zero now means "not configured",
+      // and such a partner is skipped and named rather than swept.
+      if (threshold === 0) {
+        console.warn(
+          `[scheduler:settlement] Skipping ${partner.name}: no settlement limit configured, ` +
+            `so there is no approval threshold. Set one in admin > companies.`
+        );
+        results.push({ partnerId: partner.id, status: "skipped", reason: "no_settlement_limit" });
+        continue;
+      }
+
+      if (claimable > 0 && claimable >= threshold) {
         const defaultBank = await one(
           `SELECT * FROM bank_accounts WHERE organization_id = $1 AND is_default = TRUE AND verified = TRUE LIMIT 1`,
           [partner.id]
@@ -73,14 +98,14 @@ export async function runAutoSettlements() {
         const payout = await one(
           `INSERT INTO payouts (partner_org_id, bank_account_id, amount_kobo, status, reference, provider, transfer_provider)
            VALUES ($1, $2, $3, 'processing', $4, $5, $5) RETURNING *`,
-          [partner.id, defaultBank.id, pendingKobo, ref, provider]
+          [partner.id, defaultBank.id, claimable, ref, provider]
         );
 
         try {
           const transfer = await initiateTransfer({
             provider,
             beneficiaryId,
-            amountKobo: pendingKobo,
+            amountKobo: claimable,
             reference: ref,
             reason: "Obligon automated partner settlement"
           });
@@ -95,7 +120,7 @@ export async function runAutoSettlements() {
           await notify({
             orgId: partner.id,
             title: "Settlement payout sent",
-            body: `₦${(pendingKobo / 100).toLocaleString()} to ${defaultBank.bank_name} is on its way.`,
+            body: `₦${(claimable / 100).toLocaleString()} to ${defaultBank.bank_name} is on its way.`,
             category: "settlements"
           });
 
@@ -103,12 +128,12 @@ export async function runAutoSettlements() {
             actorRole: "system",
             action: "settlement.payout_queued",
             entityId: payout.id,
-            metadata: { partnerId: partner.id, amountKobo: pendingKobo, provider, transferCode: transfer.transferCode }
+            metadata: { partnerId: partner.id, amountKobo: claimable, provider, transferCode: transfer.transferCode }
           });
 
           results.push({
             partnerId: partner.id,
-            amountKobo: pendingKobo,
+            amountKobo: claimable,
             reference: ref,
             status: "processing",
             provider
@@ -118,7 +143,7 @@ export async function runAutoSettlements() {
             `UPDATE payouts SET status = 'failed', failure_reason = $2 WHERE id = $1`,
             [payout.id, transferErr.message]
           );
-          results.push({ partnerId: partner.id, amountKobo: pendingKobo, status: "failed", error: transferErr.message });
+          results.push({ partnerId: partner.id, amountKobo: claimable, status: "failed", error: transferErr.message });
         }
       }
     } catch (err) {
@@ -144,33 +169,87 @@ export async function runAutoSettlements() {
  * @returns {{ settled: number, failed: number, stillPending: number }}
  */
 export async function reconcilePayouts() {
+  // Anything still `processing` older than this is presumed lost — a transfer the
+  // processor cannot answer for, or a crashed run. Without a ceiling a payout can
+  // sit in `processing` forever, and because `claimableBalanceKobo` deducts
+  // in-flight payouts, that balance would never be withdrawable again.
+  const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
+
   const rows = await q(
-    `SELECT id, partner_org_id, amount_kobo, provider, transfer_provider, provider_reference
+    `SELECT id, partner_org_id, amount_kobo, provider, transfer_provider, provider_reference, created_at
      FROM payouts
-     WHERE status = 'processing' AND provider_reference IS NOT NULL
-     ORDER BY created_at ASC LIMIT 100`
+     WHERE (status = 'processing' AND provider_reference IS NOT NULL)
+        OR (status = 'processing' AND provider_reference IS NULL
+            AND created_at < now() - ($1 || ' milliseconds')::interval)
+     ORDER BY created_at ASC LIMIT 100`,
+    [String(STALE_AFTER_MS)]
   );
 
-  const summary = { settled: 0, failed: 0, stillPending: 0 };
+  const summary = { settled: 0, failed: 0, stillPending: 0, expired: 0 };
 
   for (const payout of rows) {
-    const provider = payout.transfer_provider ?? payout.provider ?? activeProvider();
+    // `activeProvider()` throws when PAYMENT_PROVIDER names an unconfigured
+    // provider. Called outside the try below, one such row threw out of this
+    // function, then out of `runScheduledTasks`, and every scheduled pass failed
+    // from then on — settlements and payment reconciliation stopped entirely.
     try {
+      const provider = payout.transfer_provider ?? payout.provider ?? activeProvider();
+
+      // A row with no provider reference means the transfer was never queued — the
+      // process died between the insert and the call. Nothing was sent, so the
+      // claim is released rather than held for a payment that does not exist.
+      if (!payout.provider_reference) {
+        await q(
+          `UPDATE payouts SET status = 'failed', failure_reason = $2 WHERE id = $1`,
+          [payout.id, "Transfer was never submitted to the processor; released for retry."]
+        );
+        await audit({
+          actorRole: "system",
+          action: "settlement.payout_expired",
+          entityId: payout.id,
+          metadata: { amountKobo: payout.amount_kobo, provider },
+          severity: "warning"
+        });
+        summary.expired += 1;
+        continue;
+      }
+
       const state = await fetchTransfer(provider, payout.provider_reference);
 
       if (state.settled) {
-        // Mark the payouts paid AND the settlements they cover. Doing only the
-        // first would leave the balance pending and let it be scheduled again.
+        // Mark the payout paid AND the settlements it covers — oldest first, up to
+        // the amount transferred. The previous statement marked *every* pending
+        // settlement for the org, so a period accrued after the transfer was queued
+        // was also declared disbursed, and that revenue became permanently
+        // unclaimable. `net_kobo` is BIGINT, so it is cast, not compared as text.
         await tx(async (t) => {
           await t.query(
             `UPDATE payouts SET status = 'success', paid_at = now(), failure_reason = NULL WHERE id = $1`,
             [payout.id]
           );
-          await t.query(
-            `UPDATE settlements SET status = 'paid', paid_at = now()
-             WHERE partner_org_id = $1 AND status = 'pending'`,
+          let remaining = Number(payout.amount_kobo);
+          const coverable = await t.query(
+            `SELECT id, net_kobo FROM settlements
+             WHERE partner_org_id = $1 AND status = 'pending'
+             ORDER BY period_start ASC, created_at ASC`,
             [payout.partner_org_id]
           );
+          for (const row of coverable) {
+            if (remaining <= 0) break;
+            const net = Number(row.net_kobo);
+            // A partial cover: split the period rather than leaving it wholly
+            // unpaid, so the unpaid remainder stays claimable.
+            const settledKobo = net <= remaining ? net : remaining;
+            remaining -= settledKobo;
+            await t.query(
+              `UPDATE settlements
+               SET status = 'paid', paid_at = now(),
+                   net_kobo = net_kobo - $2,
+                   gross_kobo = GREATEST(0, gross_kobo - $2)
+               WHERE id = $1`,
+              [row.id, settledKobo]
+            );
+          }
         });
         await notify({
           orgId: payout.partner_org_id,
@@ -201,6 +280,8 @@ export async function reconcilePayouts() {
         });
         summary.failed += 1;
       } else {
+        // Stale but not yet expired: hold the claim rather than release money the
+        // bank may already have taken.
         summary.stillPending += 1;
       }
     } catch (err) {
@@ -223,8 +304,11 @@ export async function runScheduledTasks() {
   console.log(`[scheduler] Running scheduled tasks at ${timestamp}...`);
   try {
     const purgeStats = await purgeExpiredData();
-    // Answer the processor's verdict on anything already queued before queuing
-    // more, so a balance confirmed in this pass is not re-scheduled in it.
+    // Accrue first: without a pending settlement period there is nothing to pay,
+    // and this is what creates them. Answer the processor's verdict on anything
+    // already queued before queuing more, so a balance confirmed in this pass is
+    // not re-scheduled in the same pass.
+    const accrual = await accrueSettlements();
     const payouts = await reconcilePayouts();
     const settlementStats = await runAutoSettlements();
     // Payments are reconciled on every pass: webhooks and redirects are both
@@ -233,13 +317,14 @@ export async function runScheduledTasks() {
     const reconciliation = await runPaymentReconciliation();
     lastReconciliationAt = new Date().toISOString();
     lastReconciliationError = null;
-    console.log(`[scheduler] Completed:`, {
+console.log(`[scheduler] Completed:`, {
       purgeStats,
+      accrual,
       payouts,
       autoSettlementsCount: settlementStats.length,
       reconciliation
     });
-    return { ok: true, timestamp, purgeStats, payouts, settlements: settlementStats, reconciliation };
+    return { ok: true, timestamp, purgeStats, accrual, payouts, settlements: settlementStats, reconciliation };
   } catch (err) {
     console.error(`[scheduler] Execution failed:`, err);
     return { ok: false, timestamp, error: err.message };
