@@ -23,6 +23,10 @@ export const routes = {
   careers: "/careers",
   support: "/support",
   dashboard: "/dashboard",
+  // The partner dashboard's own verification step. Distinct from
+  // `verifyEmail`, which is the signup flow's page: a partner verifies after
+  // signing in and lands back in the console, not on the customer dashboard.
+  partnerVerification: "/dashboard/verify",
   customerDashboard: "/customer",
   companyDashboard: "/company",
   notifications: "/dashboard/notifications",
