@@ -584,3 +584,119 @@ export async function createCollectionSubaccount({
     status: String(data?.status ?? "pending").toLowerCase()
   };
 }
+
+// ---------------------------------------------------------------------------
+// Payment plans (`GET /v3/payment-plans`)
+//
+// IMPORTANT, and the reason this is a reconciliation signal rather than a gate:
+// a Flutterwave payment plan is a *recurring subscription* the processor debits on
+// a schedule. Obligon's `card_plans` are one-off purchases — `POST
+// /card-request/checkout` calls `startCheckout`, a single hosted charge, and the
+// card is then issued. None of our plan codes exist as Flutterwave plans, so
+// requiring processor membership before taking payment would reject every plan we
+// sell.
+//
+// What this is genuinely good for is telling us when the processor catalogue and
+// ours have drifted — a plan cancelled at the processor, a recurring plan we no
+// longer intend to honour, a price that moved. That belongs in reconciliation and
+// on the health endpoint, where it informs a human rather than blocking a
+// customer.
+//
+// Rate limiting and caching are handled here rather than at each call site:
+// Flutterwave throttles aggressively, and this is called on a schedule.
+// ---------------------------------------------------------------------------
+
+/** How long a fetched plan list is trusted before it is refetched. */
+const PLAN_CACHE_TTL_MS = 15 * 60 * 1000;
+
+let planCache = { plans: null, fetchedAt: 0 };
+let planFetchInFlight = null;
+
+/** Drop the cached plan list. Called when a plan's local state changes. */
+export function invalidatePaymentPlans() {
+  planCache = { plans: null, fetchedAt: 0 };
+}
+
+/**
+ * The processor's payment plans, normalised and cached.
+ *
+ * Single-flight: concurrent callers share one request rather than each issuing
+ * their own, because the callers are a scheduled reconciliation sweep and a health
+ * probe, and the failure mode of getting this wrong is a throttled account.
+ *
+ * Never throws. A processor that is unreachable or throttling us must not be able
+ * to fail the reconciliation sweep that also settles real money — so a failure
+ * returns the last good list with `stale: true`, or an empty list when there has
+ * never been a good one.
+ *
+ * @returns {{ plans: Array, stale: boolean, fetchedAt: string|null, error: string|null, throttled: boolean }}
+ */
+export async function fetchPaymentPlans({ force = false, currency = "NGN" } = {}) {
+  if (!enabled()) {
+    return { plans: [], stale: true, fetchedAt: null, error: "Flutterwave is not configured", throttled: false, configured: false };
+  }
+
+  const fresh = planCache.plans && Date.now() - planCache.fetchedAt < PLAN_CACHE_TTL_MS;
+  if (fresh && !force) {
+    return { plans: planCache.plans, stale: false, fetchedAt: new Date(planCache.fetchedAt).toISOString(), error: null, throttled: false, configured: true };
+  }
+  if (planFetchInFlight) return planFetchInFlight;
+
+  planFetchInFlight = (async () => {
+    try {
+      // Paginated: the response carries `meta.page_info.total_pages`, and asking
+      // for page 1 alone would silently truncate a long catalogue.
+      const collected = [];
+      let page = 1;
+      let totalPages = 1;
+      do {
+        const raw = await flutterwaveFetch(`/payment-plans?page=${page}&currency=${encodeURIComponent(currency)}`, {
+          method: "GET"
+        });
+        for (const plan of Array.isArray(raw?.data) ? raw.data : []) {
+          collected.push({
+            id: plan?.id != null ? String(plan.id) : null,
+            name: String(plan?.name ?? ""),
+            // Major units, like every other Flutterwave amount field.
+            amount: Number(plan?.amount ?? 0),
+            interval: String(plan?.interval ?? ""),
+            duration: Number(plan?.duration ?? 0),
+            status: String(plan?.status ?? "").toLowerCase(),
+            currency: String(plan?.currency ?? currency),
+            planToken: plan?.plan_token ?? null,
+            createdAt: plan?.created_at ?? null
+          });
+        }
+        totalPages = Math.max(1, Number(raw?.meta?.page_info?.total_pages ?? 1));
+        page += 1;
+        // Hard stop, so a misreported total_pages cannot spin forever.
+      } while (page <= totalPages && page <= 20);
+
+      planCache = { plans: collected, fetchedAt: Date.now() };
+      return {
+        plans: collected,
+        stale: false,
+        fetchedAt: new Date(planCache.fetchedAt).toISOString(),
+        error: null,
+        throttled: false,
+        configured: true
+      };
+    } catch (err) {
+      const throttled = err?.providerStatus === 429 || /rate limit/i.test(String(err?.message ?? ""));
+      // A throttled fetch is not a failure of the data, so the cached list is kept
+      // and reported as stale rather than replaced with nothing.
+      return {
+        plans: planCache.plans ?? [],
+        stale: true,
+        fetchedAt: planCache.fetchedAt ? new Date(planCache.fetchedAt).toISOString() : null,
+        error: safeProviderMessage(String(err?.message ?? "plan fetch failed")),
+        throttled,
+        configured: true
+      };
+    } finally {
+      planFetchInFlight = null;
+    }
+  })();
+
+  return planFetchInFlight;
+}

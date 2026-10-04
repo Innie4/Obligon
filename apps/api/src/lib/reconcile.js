@@ -1,6 +1,7 @@
 import { q, one } from "../db.js";
 import { audit, notify } from "./notify.js";
 import { verifyCheckout, activeProvider } from "./payments.js";
+import { reconcilePaymentPlans } from "./plans.js";
 
 /**
  * Payment reconciliation.
@@ -277,17 +278,32 @@ export async function runPaymentReconciliation({ limit = DEFAULT_BATCH } = {}) {
   if (!activeProvider()) {
     return { ok: true, skipped: "no payment provider configured" };
   }
-  const [topUps, plans, refunds] = [await reconcileTopUps(limit), await reconcilePlanCheckouts(limit), await reconcileRefunds(limit)];
-  const summary = { topUps, plans, refunds };
+  // Plan-catalogue drift is checked alongside the money sweeps. It never gates a
+  // charge — our card plans are one-off purchases, not processor subscriptions —
+  // but a plan cancelled at the processor is worth knowing about, and the fetch is
+  // cached and single-flighted so it costs one request per fifteen minutes.
+  const [topUps, plans, refunds, planCatalogue] = [
+    await reconcileTopUps(limit),
+    await reconcilePlanCheckouts(limit),
+    await reconcileRefunds(limit),
+    await reconcilePaymentPlans()
+  ];
+  const summary = { topUps, plans, refunds, planCatalogue };
   const requiredAction = topUps.gaveUp + plans.gaveUp;
-  if (requiredAction > 0) {
+  if (requiredAction > 0 || planCatalogue.drift.length > 0) {
     await audit({
-      action: "payments.reconciliation_needs_attention",
-      severity: "warning",
-      metadata: { requiredAction, summary }
+      action: planCatalogue.drift.length > 0
+        ? "payments.plan_catalogue_drift"
+        : "payments.reconciliation_needs_attention",
+      severity: planCatalogue.drift.length > 0 ? "warning" : "warning",
+      metadata: { requiredAction, drift: planCatalogue.drift, planCatalogue }
     });
   }
-  return { ok: true, requiresAttention: requiredAction > 0, ...summary };
+  return {
+    ok: true,
+    requiresAttention: requiredAction > 0 || planCatalogue.drift.length > 0,
+    ...summary
+  };
 }
 
 /**
