@@ -7,6 +7,7 @@ import { attachUser } from "./middleware/auth.js";
 import { generalLimiter } from "./middleware/security.js";
 import { HttpError } from "./lib/errors.js";
 import { schedulerState } from "./lib/scheduler.js";
+import { businessTimeZone } from "./lib/time.js";
 import authRoutes from "./routes/auth.routes.js";
 import customerRoutes from "./routes/customer.routes.js";
 import companyRoutes from "./routes/company.routes.js";
@@ -48,6 +49,10 @@ export function createApp() {
       ok: true,
       service: "obligon-api",
       time: new Date().toISOString(),
+      // The timezone day boundaries are computed in. Worth surfacing: a figure that
+      // disagreed with a partner's own reading of "today" is otherwise impossible
+      // to diagnose from the outside.
+      businessTimeZone: businessTimeZone(),
       providers: providerStatus(),
       scheduler: schedulerState()
     });

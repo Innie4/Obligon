@@ -74,16 +74,36 @@ async function issueVerificationCode({ userId, purpose, channel, to, message, em
   }
 
   if (!result?.delivered) {
-    // The provider's own words, logged. This is where an unverified Resend domain
-    // or an unregistered Termii sender id becomes visible instead of presenting to
-    // the customer as a code that never arrived.
+    // The provider's own reason, classified, logged. This is where an unverified
+    // Resend domain or an unregistered Termii sender id becomes visible instead of
+    // presenting to the customer as a code that never arrived.
     console.warn(
       `[verify] ${purpose} not delivered to ${to}:`,
+      result?.code ?? "unclassified",
       result?.skipped ? "no provider configured" : result?.error ?? "unknown"
+    );
+    // The code is not left live. Outside production the providers fall back and
+    // report delivered, so this branch is reached in development only when no
+    // credentials exist at all — and a stored-but-unsendable code is an account
+    // locked out of verification with no way forward. Consuming it means the
+    // customer can simply ask for another, which fails or succeeds on its merits.
+    await q(
+      `UPDATE verification_codes SET consumed_at = now()
+       WHERE user_id = $1 AND purpose = $2 AND consumed_at IS NULL`,
+      [userId, purpose]
     );
   }
 
-  return { code, delivered: Boolean(result?.delivered), error: result?.error, skipped: result?.skipped };
+  return {
+    code,
+    delivered: Boolean(result?.delivered),
+    error: result?.error,
+    skipped: result?.skipped,
+    // Whether the message was actually transmitted or delivered in-process. A
+    // caller that wants to warn a developer, rather than a customer, keys off this.
+    simulated: Boolean(result?.simulated),
+    code: result?.code
+  };
 }
 
 /** The live, unconsumed code for one purpose, or null. Read-only. */
@@ -597,7 +617,11 @@ router.post("/verify/send", authLimiter, requireAuth, asyncHandler(async (req, r
         results.email = {
           sent: outcome.delivered,
           to: req.user.email,
-          ...(outcome.delivered ? {} : { reason: describeDeliveryFailure(outcome) })
+          // A message delivered in-process rather than transmitted is a
+          // configuration state, not a customer-facing success. Flagged so a
+          // developer can tell the two apart.
+          ...(outcome.simulated ? { simulated: true } : {}),
+          ...(outcome.delivered ? {} : { reason: describeDeliveryFailure(outcome), code: outcome.code ?? undefined })
         };
       } else {
         if (!req.user.phone) {
@@ -613,7 +637,8 @@ router.post("/verify/send", authLimiter, requireAuth, asyncHandler(async (req, r
         results.phone = {
           sent: outcome.delivered,
           to: req.user.phone,
-          ...(outcome.delivered ? {} : { reason: describeDeliveryFailure(outcome) })
+          ...(outcome.simulated ? { simulated: true } : {}),
+          ...(outcome.delivered ? {} : { reason: describeDeliveryFailure(outcome), code: outcome.code ?? undefined })
         };
       }
     } catch (err) {

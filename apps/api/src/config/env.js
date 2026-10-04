@@ -7,6 +7,14 @@ const schema = z.object({
   APP_URL: z.string().url().default("http://localhost:3000"),
   CORS_ORIGINS: z.string().default("http://localhost:3000"),
 
+  // The timezone "today" and "this month" are measured in, for the partner and
+  // company dashboards. Every timestamp column is TIMESTAMPTZ, so a day boundary
+  // has to be an instant; deriving it here rather than from server-local midnight
+  // is what keeps a figure from changing with where the container is scheduled.
+  // UTC by default — it is what the columns are stored in. Must be a valid IANA
+  // name; an unrecognised one falls back to UTC rather than throwing at boot.
+  BUSINESS_TIMEZONE: z.string().default("UTC"),
+
   // Supabase (database + storage + auth)
   DATABASE_URL: z.string().default(process.env.DATABASE_URL || (process.env.NODE_ENV === "test" ? "postgres://localhost:5432/obligon_test" : "")),
   SUPABASE_URL: z.string().default(process.env.NEXT_PUBLIC_SUPABASE_URL || ""),
