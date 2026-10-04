@@ -295,14 +295,24 @@ test("the settlements nav item is labelled for what it opens", () => {
 
 // ----------------------------------------------------------- deliberately open
 test("known server-side gaps are not quietly presented as fixed", () => {
-  // The payout guard and the settlement limit are fixed, and asserted in
-  // payout-balance-guard.test.mjs. These are not, and a reader of the diff should
-  // not conclude otherwise.
-  assert.doesNotMatch(screen, /addBankAccount/);
-  assert.doesNotMatch(screen, /addStaff/);
-  assert.doesNotMatch(screen, /retryPayout/);
-  assert.doesNotMatch(screen, /createDispute/);
-  assert.doesNotMatch(screen, /uploadStationAsset/);
-  assert.doesNotMatch(screen, /messageTerminal/);
-  assert.doesNotMatch(screen, /requestResupply/);
+  // These mutations still exist and are still unwired. That is deliberate: each
+  // needs a form and a decision about the workflow before it can be offered, and
+  // offering them without one is what produced the inert "RETRY" button on a failed
+  // payout. A reader of the diff should not conclude they were addressed.
+  //
+  // Asserted against code with comments stripped, because the names appear in
+  // comments describing exactly why they are not wired.
+  const code = screen.replace(/^\s*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+  for (const mutation of [
+    "addBankAccount",
+    "addStaff",
+    "retryPayout",
+    "createDispute",
+    "uploadStationAsset",
+    "messageTerminal",
+    "requestResupply",
+    "removeBankAccount"
+  ]) {
+    assert.doesNotMatch(code, new RegExp(`mutationsApi\\.${mutation}\\(`), `${mutation} is called but has no form`);
+  }
 });

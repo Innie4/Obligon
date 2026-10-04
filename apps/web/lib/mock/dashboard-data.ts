@@ -9,6 +9,8 @@ export type DashboardPageKey =
   | "verification"
   | "disputes"
   | "notifications"
+  | "verification"
+  | "accountVerification"
   | "settings"
   | "pos"
   | "profile";
@@ -24,6 +26,7 @@ export type DashboardIcon =
   | "pos"
   | "support"
   | "bell"
+  | "shield"
   | "settings";
 
 export type StatusTone = "success" | "pending" | "failed" | "info" | "neutral";
@@ -66,6 +69,9 @@ export const dashboardNav: Array<{ key: DashboardPageKey; label: string; href: s
   { key: "verification", label: "Card Verification POS", href: "/dashboard/card-verification", icon: "pos" },
   { key: "disputes", label: "Disputes & Support", href: "/dashboard/disputes", icon: "support" },
   { key: "notifications", label: "Notifications", href: "/dashboard/notifications", icon: "bell" },
+  // The partner console's own verification step, distinct from `verification`
+  // (the POS card-terminal page).
+  { key: "accountVerification", label: "Verify Account", href: "/dashboard/verify", icon: "shield" },
   { key: "settings", label: "System Settings", href: "/dashboard/settings", icon: "settings" }
 ];
 
@@ -184,6 +190,15 @@ export const pageCopy: Record<DashboardPageKey, DashboardPageCopy> = {
     searchPlaceholder: "Enter 6-digit OTC code...",
     userName: "POS Operator",
     userRole: "TERMINAL"
+  },
+  accountVerification: {
+    key: "accountVerification",
+    title: "Verify Station Account",
+    description: "Confirm your station operator can be reached at your email and phone.",
+    primaryAction: "Verify account",
+    searchPlaceholder: "Search dashboard sections",
+    userName: "Station Operator",
+    userRole: "PARTNER"
   },
   profile: {
     key: "profile",

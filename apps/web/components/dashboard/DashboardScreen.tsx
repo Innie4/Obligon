@@ -19,7 +19,6 @@ import {
   Printer
 } from "lucide-react";
 import { api, mutationsApi } from "@/lib/services";
-import { MobileDashboardNav } from "./MobileDashboardNav";
 import { AsyncBoundary, EmptyState } from "@/components/shared/States";
 import { useAsync } from "@/components/shared/useAsync";
 import { useToast } from "@/components/shared/Toast";
@@ -71,13 +70,12 @@ function nairaLabel(kobo: number | null): string {
   })}`;
 }
 
+/**
+ * Page body. The mobile nav is emitted once by PartnershipShell, above the page,
+ * not here — rendering it in both places put two copies on screen below `lg`.
+ */
 function DashboardCanvas({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <MobileDashboardNav />
-      <section className="px-5 py-8 sm:px-8 lg:px-12 lg:py-12">{children}</section>
-    </>
-  );
+  return <section className="px-5 py-8 sm:px-8 lg:px-12 lg:py-12">{children}</section>;
 }
 
 function StatusPill({ status, tone = "neutral" }: { status: string; tone?: PartnerTone }) {
@@ -144,10 +142,25 @@ function DataTable({
               {columns.map((column) => (
                 <th key={column} className="px-6 py-4">{column}</th>
               ))}
+              {/* A header per body column. This previously emitted `columns.length + 1`
+                  while rows emitted `cells.length + 2`, so every table in the
+                  dashboard was misaligned by one: on /dashboard/settlements the
+                  "Net Payout" heading sat over the status pill and the row action
+                  rendered under a heading that did not exist, and on /dashboard/staff
+                  the "Role" heading sat over "Enabled". The status column gets a
+                  heading only when a row actually carries a status. */}
+              <th className="px-6 py-4">Status</th>
               <th className="px-6 py-4 text-right">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#ececf5]">
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length + 2} className="px-6 py-10 text-center font-bold text-obligon-text">
+                  Nothing to show yet.
+                </td>
+              </tr>
+            ) : null}
             {rows.map((row, rowIndex) => (
               <tr key={rowKey(row, rowIndex)} className="hover:bg-[#fbfbff] transition">
                 {row.cells.map((cell, cellIndex) => {
@@ -155,21 +168,34 @@ function DataTable({
                   return (
                     <td key={`${cell}-${cellIndex}`} className="px-6 py-4 align-middle text-sm">
                       <p className="font-bold text-obligon-navy">{parts[0]}</p>
-                      {parts.slice(1).map((part) => (
-                        <p key={part} className="mt-0.5 text-xs font-medium text-obligon-text">{part}</p>
+                      {parts.slice(1).map((part, partIndex) => (
+                        // Keyed by position, not by content: a cell built as
+                        // `${subject}\n${claimant}` renders two identical strings when
+                        // those match, and content keys collide.
+                        <p key={`${partIndex}-${part}`} className="mt-0.5 text-xs font-medium text-obligon-text">
+                          {part}
+                        </p>
                       ))}
                     </td>
                   );
                 })}
                 <td className="px-6 py-4">{row.status ? <StatusPill status={row.status} tone={row.tone} /> : null}</td>
+                {/* No action button unless the caller supplies a handler. It used to
+                    render a clickable "Details" — and, for a failed payout, "RETRY" —
+                    that did nothing, while `mutationsApi.retryPayout` sat unused. An
+                    operator could believe they had retried a failed transfer. */}
                 <td className="px-6 py-4 text-right">
-                  <button
-                    type="button"
-                    onClick={() => onAction?.(row)}
-                    className="text-xs font-extrabold text-obligon-green hover:underline"
-                  >
-                    {row.action ?? "Details"}
-                  </button>
+                  {onAction ? (
+                    <button
+                      type="button"
+                      onClick={() => onAction(row)}
+                      className="text-xs font-extrabold text-obligon-green hover:underline"
+                    >
+                      {row.action ?? "Details"}
+                    </button>
+                  ) : (
+                    <span className="text-xs font-bold text-obligon-text">—</span>
+                  )}
                 </td>
               </tr>
             ))}
@@ -307,7 +333,15 @@ function FuelPricingPage() {
           <form onSubmit={handleSync} className="grid gap-6 lg:grid-cols-3">
             {rows.length ? (
               rows.map((row, index) => (
-                <article key={row.fuelType} className="rounded-xl border border-[#d7d8e4] bg-white p-6 shadow-sm">
+                <article
+                  // Keyed by index, not by `row.fuelType`. That value is editable:
+                  // using it as the key changed identity on every keystroke,
+                  // remounting the <article> and dropping focus to <body> — so
+                  // correcting one character of "PMS Petrol" meant clicking back
+                  // into the field for every character after it.
+                  key={index}
+                  className="rounded-xl border border-[#d7d8e4] bg-white p-6 shadow-sm"
+                >
                   <div className="flex items-center gap-3">
                     <Fuel className="text-obligon-green" size={24} />
                     <input
@@ -368,15 +402,47 @@ function FuelPricingPage() {
 }
 
 // ============ POS TERMINAL ============
+/**
+ * Authorise a fuel dispense.
+ *
+ * Two things this page deliberately does not do:
+ *
+ * It does not derive litres from the amount using a hard-coded rate. It used to send
+ * `amount / 1085` and the server then charged `litres * the station's published
+ * price`. At a station publishing PMS at N615/L an operator typing N25,000 was charged
+ * N14,170.51 — verified. The operator enters litres, which is what a dispenser
+ * actually measures, and the server prices it.
+ *
+ * And it does not claim a pump was activated. Nothing in the system drives a
+ * dispenser; the API records the authorisation. The previous copy said "Dispense
+ * Authorized" and toasted "Pump activated", which described a physical action that
+ * never happened.
+ */
 function POSTerminalPage() {
   const { success: toastSuccess, error: toastError } = useToast();
   const [code, setCode] = React.useState("");
-  const [pump, setPump] = React.useState("PMS Petrol");
-  const [amount, setAmount] = React.useState("25000");
+  const [fuelType, setFuelType] = React.useState("PMS Petrol");
+  const [litres, setLitres] = React.useState("40");
   const [verifying, setVerifying] = React.useState(false);
   const [authReceipt, setAuthReceipt] = React.useState<{
-    reference: string; vehicle: string; amount: string; driver: string; card: string;
+    reference: string; vehicle: string; amount: string; driver: string; card: string; litres: string; fuelType: string;
   } | null>(null);
+
+  // The fuel types this station has actually published a price for. Hard-coded
+  // options meant a station that published "PMS" matched nothing and the server
+  // fell back to a rate it never set.
+  const { data: pricing } = useAsync(() => api.getPartnerPricing());
+  const fuelTypes = React.useMemo(
+    () => (pricing?.prices ?? []).map((p) => p.fuelType).filter(Boolean),
+    [pricing]
+  );
+  const activeFuelType = fuelTypes.includes(fuelType) ? fuelType : (fuelTypes[0] ?? fuelType);
+  const unitPrice = pricing?.prices.find((p) => p.fuelType === activeFuelType)?.price ?? null;
+  const litresNum = Number(litres);
+  const litresValid = Number.isFinite(litresNum) && litresNum > 0;
+  // What the server will charge, from the price it will use. Shown so the operator
+  // is not asked to do arithmetic against a rate they cannot see.
+  const estimateKobo = unitPrice != null && litresValid ? Math.round(litresNum * unitPrice * 100) : null;
 
   async function handleAuthorize(e: React.FormEvent) {
     e.preventDefault();
@@ -384,25 +450,27 @@ function POSTerminalPage() {
       toastError("Please enter the complete 6-digit fleet authorization code.");
       return;
     }
+    if (!litresValid) {
+      toastError("Enter the litres to dispense.");
+      return;
+    }
     setVerifying(true);
     try {
-      const result = await mutationsApi.posAuthorize({
-        code,
-        litres: Number(amount) ? Number(amount) / 1085 : undefined,
-        fuelType: pump
-      });
+      const result = await mutationsApi.posAuthorize({ code, litres: litresNum, fuelType: activeFuelType });
       // Every field comes from the authorization response. The previous version
       // fell back to "Fleet vehicle", "Fleet driver" and a reference invented with
-      // Math.random(), so a declined-looking receipt could still show a
-      // transaction that never existed.
+      // Math.random(), so a declined-looking receipt could still name a transaction
+      // that never existed.
       setAuthReceipt({
         reference: String(result?.reference ?? "—"),
         vehicle: String(result?.vehicle ?? "—"),
         amount: String(result?.amountLabel ?? "—"),
         driver: String(result?.driver ?? "—"),
-        card: String(result?.card ?? "—")
+        card: String(result?.card ?? "—"),
+        litres,
+        fuelType: activeFuelType
       });
-      toastSuccess(`Authorization ${result?.reference} approved. Pump activated.`);
+      toastSuccess(`Authorization ${result?.reference} approved and recorded.`);
     } catch (err) {
       toastError(err instanceof Error ? err.message : "Authorization declined. Check the code and try again.");
     } finally {
@@ -423,9 +491,13 @@ function POSTerminalPage() {
             <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
               <Check size={32} />
             </span>
-            <h2 className="mt-5 font-display text-3xl font-extrabold text-obligon-navy">Dispense Authorized</h2>
+            <h2 className="mt-5 font-display text-3xl font-extrabold text-obligon-navy">Authorization Recorded</h2>
             <p className="mt-1 text-sm text-obligon-text">
               Reference: <strong className="font-mono font-extrabold text-obligon-navy">{authReceipt.reference}</strong>
+            </p>
+            <p className="mt-3 rounded-lg bg-[#fff3d8] px-4 py-3 text-left text-sm font-bold text-[#9a6300]">
+              This records the authorization for your accounts. Dispensing at the pump is
+              still done at the dispenser.
             </p>
 
             <div className="mt-6 rounded-xl bg-[#f7fbf8] p-5 border border-obligon-border space-y-2 text-left text-sm">
@@ -433,8 +505,9 @@ function POSTerminalPage() {
                 ["Card", authReceipt.card],
                 ["Fleet Vehicle", authReceipt.vehicle],
                 ["Driver", authReceipt.driver],
-                ["Total Approved", authReceipt.amount],
-                ["Fuel Type", pump]
+                ["Fuel Type", authReceipt.fuelType],
+                ["Litres", authReceipt.litres],
+                ["Amount Charged", authReceipt.amount]
               ].map(([label, value]) => (
                 <div key={label} className="flex justify-between gap-4">
                   <span className="text-obligon-text">{label}</span>
@@ -493,34 +566,61 @@ function POSTerminalPage() {
                   Fuel Type
                 </label>
                 <select
-                  value={pump}
-                  onChange={(e) => setPump(e.target.value)}
-                  className="h-12 w-full rounded-xl border border-[#cfd8cc] bg-white px-3 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green"
+                  value={activeFuelType}
+                  onChange={(e) => setFuelType(e.target.value)}
+                  disabled={!fuelTypes.length}
+                  className="h-12 w-full rounded-xl border border-[#cfd8cc] bg-white px-3 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green disabled:opacity-60"
                 >
-                  <option>PMS Petrol</option>
-                  <option>AGO Diesel</option>
+                  {fuelTypes.length ? (
+                    fuelTypes.map((t) => <option key={t}>{t}</option>)
+                  ) : (
+                    <option>No prices published</option>
+                  )}
                 </select>
+                {!fuelTypes.length ? (
+                  <p className="mt-1.5 text-xs font-bold text-[#9f1027]">
+                    Publish a price on Fuel Pricing before authorizing a dispense.
+                  </p>
+                ) : null}
               </div>
               <div>
                 <label className="text-xs font-extrabold uppercase text-obligon-text block mb-1.5">
-                  Amount Requested (₦)
+                  Litres to Dispense
                 </label>
                 <input
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
+                  value={litres}
+                  onChange={(e) => setLitres(e.target.value.replace(/[^\d.]/g, ""))}
                   inputMode="decimal"
+                  aria-label="Litres to dispense"
                   className="h-12 w-full rounded-xl border border-[#cfd8cc] px-4 font-display text-xl font-extrabold text-obligon-navy outline-none focus:border-obligon-green"
                   required
                 />
+                {unitPrice != null ? (
+                  <p className="mt-1.5 text-xs font-bold text-obligon-text">
+                    {unitPrice.toLocaleString("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 2 })}/L
+                    {estimateKobo != null ? (
+                      <>
+                        {" · "}
+                        <span className="text-obligon-navy">
+                          ≈ {(estimateKobo / 100).toLocaleString("en-NG", {
+                            style: "currency",
+                            currency: "NGN",
+                            maximumFractionDigits: 2
+                          })}
+                        </span>
+                      </>
+                    ) : null}
+                  </p>
+                ) : null}
               </div>
             </div>
 
             <button
-              disabled={verifying || code.length < 6}
+              disabled={verifying || code.length < 6 || !litresValid || !fuelTypes.length}
               type="submit"
               className="mt-4 h-14 w-full rounded-xl bg-obligon-green font-extrabold text-white text-base shadow-green hover:bg-obligon-green/90 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {verifying ? <Loader2 size={20} className="animate-spin" /> : "Authorize & Activate Dispenser"}
+              {verifying ? <Loader2 size={20} className="animate-spin" /> : "Authorize Dispense"}
             </button>
           </form>
         )}
@@ -1141,10 +1241,14 @@ function SettingsPage() {
   );
 }
 
+// The partner verification page is its own component at
+// `app/dashboard/verify`, not a variant here: it is a centred focused task rather
+// than a console page, and forcing it through this switch gave it a table-page
+// layout it does not suit.
 export function DashboardScreen({ pageKey }: { pageKey: DashboardPageKey }) {
   const [payout, setPayout] = React.useState<{ claimableKobo: number; claimableLabel: string } | null>(null);
 
-  const pages: Record<DashboardPageKey, React.ReactNode> = {
+  const pages: Partial<Record<DashboardPageKey, React.ReactNode>> = {
     overview: <OverviewPage />,
     pricing: <FuelPricingPage />,
     pos: <POSTerminalPage />,

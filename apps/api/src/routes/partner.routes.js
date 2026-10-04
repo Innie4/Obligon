@@ -14,6 +14,7 @@ import { emitToOrg, emitToRole } from "../lib/sse.js";
 import { uploadFile, signedUrl } from "../lib/storage.js";
 import { verifyPin } from "../lib/security.js";
 import { nominateTransferDestination, initiateTransfer, activeProvider } from "../lib/payments.js";
+import { businessTimeZone, dayWindowSql, daysForRange } from "../lib/time.js";
 import multer from "multer";
 
 const router = Router();
@@ -27,6 +28,64 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
  * quantity rather than a function of the customer base.
  */
 const POS_PIN_CANDIDATE_LIMIT = 25;
+
+/**
+ * Image types an upload may be stored as.
+ *
+ * `req.file.mimetype` is whatever the client claimed, and it is persisted as the
+ * stored object's content type, so an `.html` or `.svg` upload would be served back
+ * as active content from our own bucket. An allowlist rather than a denylist: a new
+ * executable-ish type is refused until someone has decided it is safe.
+ */
+const UPLOAD_MIME_ALLOWLIST = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+
+/** Assert an uploaded file is an allowed image type. */
+function assertUploadAllowed(file) {
+  if (!UPLOAD_MIME_ALLOWLIST.has(String(file?.mimetype ?? "").toLowerCase())) {
+    throw badRequest(`Images must be one of: ${[...UPLOAD_MIME_ALLOWLIST].join(", ")}`);
+  }
+}
+
+/** A UUID path or body parameter, or a 400 rather than a Postgres cast error. */
+function requireUuid(value, label = "id") {
+  const text = String(value ?? "").trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(text)) {
+    throw badRequest(`That ${label} is not valid`);
+  }
+  return text;
+}
+
+/**
+ * A finite, positive number, or a 400.
+ *
+ * `Number("abc")` is NaN and NaN is falsy, so `Number(x) || 0` silently turned
+ * unparseable input into zero — which for a dispense meant a real
+ * `status='success'` transaction for nothing.
+ */
+function requirePositiveNumber(value, label, { max = Number.MAX_SAFE_INTEGER, integer = false } = {}) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) throw badRequest(`${label} must be a number greater than zero`);
+  if (integer && !Number.isInteger(n)) throw badRequest(`${label} must be a whole number`);
+  if (n > max) throw badRequest(`${label} is larger than this operation allows`);
+  return n;
+}
+
+/**
+ * A finite latitude or longitude, or null when absent.
+ *
+ * `Number("abc")` is NaN and Postgres `float8` accepts the literal `'NaN'`, so a
+ * typo stored a NaN coordinate with a 200 response. The station then vanished from
+ * every bounding-box query while still counting towards the station total — a
+ * failure with no error anywhere. `1e400` stored Infinity the same way.
+ */
+function boundedCoordinate(value, label, limit) {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < -limit || n > limit) {
+    throw badRequest(`${label} must be a number between -${limit} and ${limit}`);
+  }
+  return n;
+}
 
 router.use(requireAuth, (req, _res, next) => {
   if (!["partner", "mechanic"].includes(req.user.role)) return next(forbidden("This area is for partner accounts"));
@@ -56,12 +115,20 @@ const partnerOrgId = (req) => req.user.orgId;
 // ============ OVERVIEW ============
 router.get("/overview", asyncHandler(async (req, res) => {
   const orgId = partnerOrgId(req);
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  // The day window is computed by Postgres from the same clock that stamps
+  // `created_at`, in the configured business timezone, and is closed at both ends.
+  // It was `new Date(); setHours(0,0,0,0)`, which is *server-local* midnight handed
+  // to the driver and serialised to a UTC instant — so on a host west of Greenwich
+  // "today" excluded the most recent hour and on one east of it counted an hour of
+  // tomorrow. The figure depended on where the container was scheduled.
+  const timeZone = businessTimeZone();
+  const todayWindow = dayWindowSql(2, 0);
   const today = await one(
     `SELECT COUNT(*)::int AS count, COALESCE(SUM(amount_kobo),0) AS revenue FROM transactions
-     WHERE station_id IN (SELECT id FROM stations WHERE partner_org_id = $1) AND created_at >= $2 AND status = 'success'`,
-    [orgId, todayStart]
+     WHERE station_id IN (SELECT id FROM stations WHERE partner_org_id = $1)
+       AND created_at >= ${todayWindow.from} AND created_at < ${todayWindow.to}
+       AND status = 'success'`,
+    [orgId, timeZone, 0]
   );
   const pendingSettlement = await one(
     `SELECT COALESCE(SUM(net_kobo),0) AS total FROM settlements WHERE partner_org_id = $1 AND status = 'pending'`,
@@ -120,11 +187,15 @@ router.get("/overview", asyncHandler(async (req, res) => {
 router.get("/overview/range", asyncHandler(async (req, res) => {
   const { range = "today" } = req.query;
   const orgId = partnerOrgId(req);
-  const interval = range === "weekly" ? "7 days" : range === "monthly" ? "30 days" : "1 day";
+  const days = range === "weekly" ? 7 : range === "monthly" ? 30 : 1;
+  const timeZone = businessTimeZone();
+  const window = dayWindowSql(2, days - 1);
   const agg = await one(
     `SELECT COUNT(*)::int AS count, COALESCE(SUM(amount_kobo),0) AS revenue FROM transactions
-     WHERE station_id IN (SELECT id FROM stations WHERE partner_org_id = $1) AND created_at >= now() - $2::interval AND status = 'success'`,
-    [orgId, interval]
+     WHERE station_id IN (SELECT id FROM stations WHERE partner_org_id = $1)
+       AND created_at >= ${window.from} AND created_at < ${window.to}
+       AND status = 'success'`,
+    [orgId, timeZone, days - 1]
   );
   res.json({ range, transactions: agg.count, revenueLabel: naira(agg.revenue) });
 }));
@@ -140,7 +211,9 @@ router.get("/transactions", asyncHandler(async (req, res) => {
   const rows = await q(
     `SELECT t.*, o.name AS org_name, o.fleet_id, c.masked_pan FROM transactions t
      LEFT JOIN organizations o ON o.id = t.organization_id LEFT JOIN cards c ON c.id = t.card_id
-     WHERE ${where} ORDER BY t.created_at DESC LIMIT ${Math.min(Number(limit) || 20, 100)} OFFSET ${Number(offset) || 0}`,
+     WHERE ${where} ORDER BY t.created_at DESC
+     LIMIT ${Math.min(Math.max(Number(limit) || 20, 1), 100)}
+     OFFSET ${Math.max(Number(offset) || 0, 0)}`,
     params
   );
   const total = await one(
@@ -434,6 +507,11 @@ router.post("/payouts/:id/retry", payoutLimiter, requireOrgRole("manager"), asyn
     [payout.bank_account_id, orgId]
   );
   if (!account) throw badRequest("The bank account for this payout is no longer on file");
+  // Re-checked. `POST /payouts` enforces it, but admin can revoke verification on any
+  // account at any time, and a retry is a fresh disbursement — so an account revoked
+  // because the number turned out to belong to someone else was still a valid
+  // destination for every earlier failed payout.
+  if (!account.verified) throw badRequest("That bank account is no longer verified");
   const provider = payout.transfer_provider ?? account.payout_provider ?? activeProvider();
   const beneficiaryId = provider === "flutterwave" ? account.beneficiary_id : account.recipient_code;
   if (!beneficiaryId) {
@@ -520,7 +598,7 @@ router.put("/station", requireOrgRole("admin"), asyncHandler(async (req, res) =>
     `UPDATE stations SET name = COALESCE($2, name), address = COALESCE($3, address), city = COALESCE($4, city),
        lat = COALESCE($5, lat), lng = COALESCE($6, lng), hours = COALESCE($7, hours), fuels = COALESCE($8, fuels)
      WHERE id = $1 RETURNING *`,
-    [station.id, name ?? null, address ?? null, city ?? null, lat != null ? Number(lat) : null, lng != null ? Number(lng) : null, hours ?? null, fuels ?? null]
+    [station.id, name ?? null, address ?? null, city ?? null, boundedCoordinate(lat, "Latitude", 90), boundedCoordinate(lng, "Longitude", 180), hours ?? null, fuels ?? null]
   );
   audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "station.updated", entityId: station.id });
   res.json({ ok: true });
@@ -530,6 +608,7 @@ router.post("/station/assets", requireOrgRole("admin"), upload.single("asset"), 
   if (!req.file) throw badRequest("Choose an image to upload");
   const station = await one("SELECT * FROM stations WHERE partner_org_id = $1 ORDER BY created_at LIMIT 1", [partnerOrgId(req)]);
   if (!station) throw notFound("No station registered");
+  assertUploadAllowed(req.file);
   const path = await uploadFile("asset", req.file.originalname, req.file.buffer, req.file.mimetype);
   const assets = [...(station.assets ?? []), path];
   await q("UPDATE stations SET assets = $2 WHERE id = $1", [station.id, assets]);
@@ -558,12 +637,15 @@ router.post("/station/message-terminal", requireOrgRole("manager"), asyncHandler
 
 router.post("/station/resupply", requireOrgRole("dispatcher"), asyncHandler(async (req, res) => {
   const { fuelType, litres } = req.valid ?? req.body ?? {};
-  if (!fuelType || !litres) throw badRequest("Fuel type and litres are required");
+  if (!fuelType) throw badRequest("Fuel type is required");
+  // `!litres` rejected 0 while letting "abc" through to an `INT NOT NULL` column as
+  // "NaN" — a 500. A negative resupply order was accepted outright.
+  const resupplyLitres = requirePositiveNumber(litres, "Litres", { max: 10_000_000, integer: true });
   const station = await one("SELECT id FROM stations WHERE partner_org_id = $1 ORDER BY created_at LIMIT 1", [partnerOrgId(req)]);
   if (!station) throw notFound("No station registered");
   const order = await one(
     "INSERT INTO resupply_orders (station_id, fuel_type, litres) VALUES ($1,$2,$3) RETURNING *",
-    [station.id, fuelType, Number(litres)]
+    [station.id, fuelType, resupplyLitres]
   );
   res.json({ ok: true, orderId: order.id });
 }));
@@ -627,19 +709,32 @@ router.post("/pricing", requireOrgRole("manager"), asyncHandler(async (req, res)
 // ============ REPORTS / ANALYTICS ============
 router.get("/reports", asyncHandler(async (req, res) => {
   const { range = "30" } = req.query;
-  const days = Math.min(Number(range) || 30, 365);
+  // Validated against a fixed list. `Math.min(Number(range) || 30, 365)` let a
+  // negative through — `-5` survives the clamp, and `now() - interval '-5 days'`
+  // is a future date, so the report silently came back empty.
+  const days = daysForRange(range);
   const orgId = partnerOrgId(req);
+  const timeZone = businessTimeZone();
+  // Whole business days, closed at both ends, matching `/overview`. A rolling
+  // `now() - interval` window straddles a day boundary, so the same range selector
+  // could report a different total depending on the hour it was clicked.
+  const window = dayWindowSql(2, days - 1);
+  const bounds = [orgId, timeZone, days - 1];
   const companyBreakdown = await q(
     `SELECT o.name, o.fleet_id, SUM(t.litres)::float AS litres, SUM(t.amount_kobo) AS revenue
      FROM transactions t LEFT JOIN organizations o ON o.id = t.organization_id
-     WHERE t.station_id IN (SELECT id FROM stations WHERE partner_org_id = $1) AND t.status = 'success' AND t.created_at >= now() - ($2 || ' days')::interval
+     WHERE t.station_id IN (SELECT id FROM stations WHERE partner_org_id = $1)
+       AND t.status = 'success'
+       AND t.created_at >= ${window.from} AND t.created_at < ${window.to}
      GROUP BY o.name, o.fleet_id ORDER BY revenue DESC LIMIT 10`,
-    [orgId, String(days)]
+    bounds
   );
   const totals = await one(
     `SELECT COUNT(*)::int AS count, COALESCE(SUM(amount_kobo),0) AS revenue, COALESCE(SUM(litres),0)::float AS litres FROM transactions
-     WHERE station_id IN (SELECT id FROM stations WHERE partner_org_id = $1) AND status = 'success' AND created_at >= now() - ($2 || ' days')::interval`,
-    [orgId, String(days)]
+     WHERE station_id IN (SELECT id FROM stations WHERE partner_org_id = $1)
+       AND status = 'success'
+       AND created_at >= ${window.from} AND created_at < ${window.to}`,
+    bounds
   );
   res.json({
     metrics: [
@@ -735,6 +830,21 @@ router.put("/staff/:memberId", requireOrgRole("admin"), asyncHandler(async (req,
   const { role, cardAccess } = req.body ?? {};
   const member = await one("SELECT * FROM memberships WHERE id = $1 AND organization_id = $2", [req.params.memberId, partnerOrgId(req)]);
   if (!member) throw notFound("Staff member not found");
+  // Validated, and `owner` is refused.
+  //
+  // `POST /staff` checks the role against a list that excludes `owner`; this path
+  // checked nothing. `memberships.role`'s CHECK constraint *does* include `owner`,
+  // so a partner admin could promote a colleague to owner — which outranks admin in
+  // ROLE_RANK and short-circuits `requireCapability` unconditionally, granting every
+  // capability in the product. `DELETE /staff/:memberId` then refuses to remove any
+  // owner, so the org admin could not revoke what they had just created.
+  const ROLES = ["admin", "manager", "dispatcher", "viewer"];
+  if (role != null) {
+    if (!ROLES.includes(role)) {
+      throw badRequest(`Role must be one of: ${ROLES.join(", ")}`);
+    }
+    if (member.role === "owner") throw forbidden("The account owner cannot be changed");
+  }
   const permissions = cardAccess === undefined ? undefined : JSON.stringify(cardAccess ? ["pos.operate"] : []);
   await q(
     "UPDATE memberships SET role = COALESCE($2, role), permissions = COALESCE($3, permissions) WHERE id = $1",
@@ -809,35 +919,66 @@ router.post("/pos/authorize", requireCapability("pos.operate"), sensitiveLimiter
     }
   }
   if (!target) {
-    emitToOrg(partnerOrgId(req), "pos.declined", { code, reason: "INVALID_CODE" });
+    // The credential is not broadcast. The code is a live authorisation secret, and
+  // pushing it to every connected dashboard on the org leaked it to anyone able to
+  // open a stream — including while an attacker was mid-probe. The security log on
+  // the next line deliberately masked the same value.
+  emitToOrg(partnerOrgId(req), "pos.declined", { reason: "INVALID_CODE" });
     await securityLog({ event: "pos_invalid_code", severity: "warning", metadata: { code: `***${String(code).slice(-2)}`, partner: req.user.organization_name } });
     throw badRequest("Invalid or expired authorization code");
   }
   if (target.status !== "active") {
-    emitToOrg(partnerOrgId(req), "pos.declined", { code, reason: "CARD_FROZEN", card: target.masked_pan });
+    emitToOrg(partnerOrgId(req), "pos.declined", { reason: "CARD_FROZEN", card: target.masked_pan });
     throw badRequest(`Card is ${target.status} — transaction declined`);
   }
-  const litresNum = Number(litres) || 0;
+  const litresNum = requirePositiveNumber(litres, "Litres", { max: 100_000 });
+  const station = await one(
+    "SELECT * FROM stations WHERE partner_org_id = $1 ORDER BY created_at LIMIT 1",
+    [partnerOrgId(req)]
+  );
+  // A dispenser needs somewhere to dispense from. The fuel log written below has a
+  // `NOT NULL` station_id, so without this check the revenue transaction committed
+  // and the log then threw — the operator saw a failed sale, retried, and a second
+  // revenue row existed.
+  if (!station) throw badRequest("No station is registered for this account yet");
+  const fuelTypeName = String(fuelType ?? "AGO Diesel").trim();
   const price = await one(
     `SELECT fp.price_kobo FROM fuel_prices fp JOIN stations s ON s.id = fp.station_id
      WHERE s.partner_org_id = $1 AND fp.fuel_type ILIKE $2 LIMIT 1`,
-    [partnerOrgId(req), `%${fuelType ?? "diesel"}%`]
+    [partnerOrgId(req), `%${fuelTypeName}%`]
   );
-  const amountKobo = Math.round(litresNum * (price?.price_kobo ?? 108500));
+  if (!price) {
+    // Previously a silent fallback to a hard-coded 1085 kobo, so a station that had
+    // published no price for that fuel type was charged a rate it never set.
+    throw badRequest(`No published price for ${fuelTypeName}. Set one on Fuel Pricing first.`);
+  }
+  const amountKobo = Math.round(litresNum * Number(price.price_kobo));
+  if (!Number.isFinite(amountKobo) || amountKobo <= 0) throw badRequest("That is not a dispensable amount");
   if (target.credit_limit_kobo && amountKobo > target.credit_limit_kobo) {
-    emitToOrg(partnerOrgId(req), "pos.declined", { code, reason: "CREDIT_LIMIT", card: target.masked_pan });
+    emitToOrg(partnerOrgId(req), "pos.declined", { reason: "CREDIT_LIMIT", card: target.masked_pan });
     throw badRequest(`Amount exceeds the fleet credit limit (${naira(target.credit_limit_kobo)})`);
   }
-  const station = await one("SELECT * FROM stations WHERE partner_org_id = $1 ORDER BY created_at LIMIT 1", [partnerOrgId(req)]);
   const txRef = reference("TXN");
-  const transaction = await one(
-    `INSERT INTO transactions (reference, organization_id, station_id, vehicle_id, driver_id, card_id, fuel_type, litres, amount_kobo, status, meta)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'success',$10) RETURNING *`,
-    [txRef, target.organization_id, station?.id ?? null, target.vehicle_id, target.driver_id, target.id,
-      fuelType ?? "AGO Diesel", litresNum, amountKobo, `${target.org_name ?? "Fleet"} • POS ${viaPin ? "PIN" : "code"} auth`]
-  );
-  await q("INSERT INTO fueling_logs (station_id, transaction_id, fuel_type, litres) VALUES ($1,$2,$3,$4)", [station?.id, transaction.id, fuelType ?? "AGO Diesel", litresNum]);
-  await q("UPDATE cards SET spend_today_kobo = spend_today_kobo + $2, spend_month_kobo = spend_month_kobo + $2, updated_at = now() WHERE id = $1", [target.id, amountKobo]);
+  // One transaction. These were three separate statements on the pool, so a failure
+  // after the first left revenue committed with no fuel log, and a retry produced a
+  // duplicate transaction.
+  const transaction = await tx(async (t) => {
+    const inserted = await t.one(
+      `INSERT INTO transactions (reference, organization_id, station_id, vehicle_id, driver_id, card_id, fuel_type, litres, amount_kobo, status, meta)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'success',$10) RETURNING *`,
+      [txRef, target.organization_id, station.id, target.vehicle_id, target.driver_id, target.id,
+        fuelTypeName, litresNum, amountKobo, `${target.org_name ?? "Fleet"} • POS ${viaPin ? "PIN" : "code"} auth`]
+    );
+    await t.query(
+      "INSERT INTO fueling_logs (station_id, transaction_id, fuel_type, litres) VALUES ($1,$2,$3,$4)",
+      [station.id, inserted.id, fuelTypeName, litresNum]
+    );
+    await t.query(
+      "UPDATE cards SET spend_today_kobo = spend_today_kobo + $2, spend_month_kobo = spend_month_kobo + $2, updated_at = now() WHERE id = $1",
+      [target.id, amountKobo]
+    );
+    return inserted;
+  });
   emitToOrg(partnerOrgId(req), "pos.approved", { reference: txRef, amountLabel: naira(amountKobo), card: target.masked_pan, vehicle: target.vehicle_plate, time: fmtDateTime(new Date()) });
   audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "pos.approved", entityType: "transaction", entityId: transaction.id, metadata: { amountKobo, viaPin } });
   res.json({
@@ -877,12 +1018,16 @@ router.get("/disputes", asyncHandler(async (req, res) => {
         `#${d.reference}`,
         `${d.subject}\n${d.claimant_name ?? d.claimant_fleet ?? "Direct walk-in"}`,
         capitalize(d.category),
-        naira(d.refund_amount_kobo || d.amount_kobo || 0)
+        // `Number(...)` on both terms, not `||`. `pg` returns BIGINT as a string,
+        // so `refund_amount_kobo` arrives as "0" — truthy — and the `||` chain
+        // short-circuited on it, so every dispute reported ₦0 regardless of the
+        // transaction it was raised against. Verified against the database.
+        naira(Number(d.refund_amount_kobo) || Number(d.amount_kobo) || 0)
       ],
       status: d.status.replace("_", " ").toUpperCase(), tone: d.status === "resolved" ? "success" : d.status === "rejected" ? "failed" : d.status === "in_review" ? "info" : "pending",
       action: "View Details",
       subject: d.subject, category: d.category, description: d.description, statusRaw: d.status,
-      amountLabel: naira(d.refund_amount_kobo || d.amount_kobo || 0), evidence: d.evidence,
+      amountLabel: naira(Number(d.refund_amount_kobo) || Number(d.amount_kobo) || 0), evidence: d.evidence,
       draftResponse: d.draft_response, created: fmtDateTime(d.created_at)
     }))
   });
@@ -894,11 +1039,24 @@ router.post("/disputes", requireOrgRole("dispatcher"), upload.array("evidence", 
   const { transactionReference, subject, category = "billing", description } = req.valid ?? req.body ?? {};
   if (!subject || !description) throw badRequest("Subject and description are required");
   const txRow = transactionReference
-    ? await one("SELECT * FROM transactions WHERE reference = $1", [transactionReference])
+    // Scoped to this partner's stations. This read the transaction by reference
+    // alone, and `GET /disputes` joins it back out and returns its amount, fuel
+    // type, litres and reference — so any partner who guessed a reference could read
+    // another org's transaction, and the "not found" message was an existence
+    // oracle over the whole platform.
+    ? await one(
+        `SELECT t.* FROM transactions t
+         WHERE t.reference = $1
+           AND t.station_id IN (SELECT id FROM stations WHERE partner_org_id = $2)`,
+        [transactionReference, partnerOrgId(req)]
+      )
     : null;
-  if (transactionReference && !txRow) throw notFound("Transaction not found for that reference");
+  if (transactionReference && !txRow) {
+    throw notFound("No transaction with that reference was dispensed at your station");
+  }
   const evidence = [];
   for (const file of req.files ?? []) {
+    assertUploadAllowed(file);
     evidence.push(await uploadFile("evidence", file.originalname, file.buffer, file.mimetype));
   }
   const dispute = await one(

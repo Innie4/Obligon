@@ -20,6 +20,7 @@ import {
   Layers,
   ReceiptText,
   Settings,
+  ShieldCheck,
   Users
 } from "lucide-react";
 import { dashboardNav, type DashboardIcon, type DashboardPageKey } from "@/lib/mock/dashboard-data";
@@ -37,6 +38,7 @@ const iconMap = {
   pos: CreditCard,
   support: Headphones,
   bell: Bell,
+  shield: ShieldCheck,
   settings: Settings
 } satisfies Record<DashboardIcon, ComponentType<{ size?: number; className?: string }>>;
 
@@ -50,6 +52,9 @@ const item = (key: DashboardPageKey): NavItem => {
 
 const primaryItems: NavItem[] = [
   item("overview"),
+  // Shown above the fold: it is the one nav item that changes what the platform will
+  // let this partner do, and it is easy to forget it exists.
+  item("accountVerification"),
   item("transactions"),
   item("station"),
   item("reports"),
@@ -174,3 +179,6 @@ export function PartnershipSidebar() {
     </aside>
   );
 }
+
+
+
