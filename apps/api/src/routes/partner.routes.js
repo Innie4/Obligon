@@ -158,7 +158,7 @@ router.get("/overview", asyncHandler(async (req, res) => {
   res.json({
     metrics: [
       { label: "TODAY'S TRANSACTIONS", value: today.count.toLocaleString(), tone: "success" },
-      { label: "TODAY'S REVENUE", value: `${naira(today.revenue)}.00`, tone: "success" },
+      { label: "TODAY'S REVENUE", value: naira(today.revenue), tone: "success" },
       {
         label: "PENDING SETTLEMENTS",
         value: naira(pendingSettlement.total),
@@ -235,14 +235,25 @@ router.get("/transactions", asyncHandler(async (req, res) => {
   });
 }));
 
+// Accepts the same `search`/`status`/`date` filters as the list above.
+//
+// It did not, so the export was not the page the operator was looking at. Exporting
+// from a search for "TRK-084" returned every transaction on the network — the file is
+// the artefact that leaves the building, so the filter has to survive the trip.
 router.get("/transactions/export", asyncHandler(async (req, res) => {
+  const { search, status, date } = req.query;
+  const params = [partnerOrgId(req)];
+  let where = `t.station_id IN (SELECT id FROM stations WHERE partner_org_id = $1)`;
+  if (search) { params.push(`%${search}%`); where += ` AND (t.reference ILIKE $${params.length} OR o.name ILIKE $${params.length})`; }
+  if (status) { params.push(status); where += ` AND t.status = $${params.length}`; }
+  if (date) { params.push(date); where += ` AND t.created_at::date = $${params.length}`; }
   const rows = await q(
     `SELECT t.*, o.name AS org_name FROM transactions t LEFT JOIN organizations o ON o.id = t.organization_id
-     WHERE t.station_id IN (SELECT id FROM stations WHERE partner_org_id = $1) ORDER BY t.created_at DESC LIMIT 5000`,
-    [partnerOrgId(req)]
+     WHERE ${where} ORDER BY t.created_at DESC LIMIT 5000`,
+    params
   );
   const csv = toCsv(rows.map((r) => ({ reference: r.reference, date: fmtDateTime(r.created_at), company: r.org_name ?? "", fuel: r.fuel_type, litres: r.litres, amount: (r.amount_kobo / 100).toFixed(2), status: r.status })));
-  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
   res.setHeader("Content-Disposition", `attachment; filename="partner-transactions-${Date.now()}.csv"`);
   res.send(csv);
 }));
@@ -327,14 +338,14 @@ router.post("/bank-accounts", payoutLimiter, requireOrgRole("admin"), asyncHandl
 }));
 
 router.delete("/bank-accounts/:id", payoutLimiter, requireOrgRole("admin"), asyncHandler(async (req, res) => {
-  const rows = await q("DELETE FROM bank_accounts WHERE id = $1 AND organization_id = $2 RETURNING id", [req.params.id, partnerOrgId(req)]);
+  const rows = await q("DELETE FROM bank_accounts WHERE id = $1 AND organization_id = $2 RETURNING id", [requireUuid(req.params.id, "bank account"), partnerOrgId(req)]);
   if (!rows.length) throw notFound("Bank account not found");
   res.json({ ok: true });
 }));
 
 router.post("/bank-accounts/:id/default", payoutLimiter, requireOrgRole("admin"), asyncHandler(async (req, res) => {
   await q("UPDATE bank_accounts SET is_default = FALSE WHERE organization_id = $1", [partnerOrgId(req)]);
-  await q("UPDATE bank_accounts SET is_default = TRUE WHERE id = $1 AND organization_id = $2", [req.params.id, partnerOrgId(req)]);
+  await q("UPDATE bank_accounts SET is_default = TRUE WHERE id = $1 AND organization_id = $2", [requireUuid(req.params.id, "bank account"), partnerOrgId(req)]);
   res.json({ ok: true });
 }));
 
@@ -432,7 +443,7 @@ router.post("/payouts", payoutLimiter, requireOrgRole("manager"), asyncHandler(a
     );
   }
 
-const ref = reference("PY");
+  const ref = reference("PY");
   const provider = account.payout_provider ?? activeProvider();
   // A transfer needs the processor's handle for this account. We deliberately do
   // not store the account number itself, so an account nominated before the
@@ -446,11 +457,38 @@ const ref = reference("PY");
         "Remove it and add it again so it can be registered for transfers."
     );
   }
-  const payout = await one(
-    `INSERT INTO payouts (partner_org_id, bank_account_id, amount_kobo, status, reference, provider, transfer_provider)
-     VALUES ($1,$2,$3,'pending',$4,$5,$5) RETURNING *`,
-    [orgId, account.id, amountKobo, ref, provider]
-  );
+  // The insert is fenced by an advisory lock on the partner's org id, and the
+  // affordability check is repeated inside that fence.
+  //
+  // It used to be check-then-insert with nothing between the two. Two requests — a
+  // double-clicked button, or an operator and a retrying script — could both read the
+  // same claimable balance and both insert, promising the same settled money twice.
+  // The balance lookup above counts only `pending` settlements, and a row that does
+  // not exist yet is not pending, so neither request could see the other.
+  //
+  // `pg_advisory_xact_lock` is scoped to the transaction and keyed on the org, so the
+  // two are now serialised against each other while unrelated partners stay parallel.
+  // Locking the partner's own row instead would work but would also serialise reads
+  // that contend for it. The lock is released by `COMMIT` or `ROLLBACK`, including on
+  // the error paths, so a failed payout attempt cannot wedge the org.
+  const payout = await tx(async (t) => {
+    await t.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [orgId]);
+    // Re-read inside the lock. The value computed above is now only the first half of
+    // the answer; this is the half that is guaranteed fresh.
+    const fresh = await claimableBalanceKobo(orgId);
+    if (amountKobo > fresh.claimableKobo) {
+      throw badRequest(
+        fresh.claimableKobo <= 0
+          ? "Your full settled balance is already promised to a payout in progress."
+          : `That is more than you have available. ${naira(fresh.claimableKobo)} is claimable right now.`
+      );
+    }
+    return t.one(
+      `INSERT INTO payouts (partner_org_id, bank_account_id, amount_kobo, status, reference, provider, transfer_provider)
+       VALUES ($1,$2,$3,'pending',$4,$5,$5) RETURNING *`,
+      [orgId, account.id, amountKobo, ref, provider]
+    );
+  });
   try {
     const transfer = await initiateTransfer({
       provider,
@@ -497,7 +535,7 @@ const ref = reference("PY");
 
 router.post("/payouts/:id/retry", payoutLimiter, requireOrgRole("manager"), asyncHandler(async (req, res) => {
   const orgId = partnerOrgId(req);
-  const payout = await one("SELECT * FROM payouts WHERE id = $1 AND partner_org_id = $2", [req.params.id, orgId]);
+  const payout = await one("SELECT * FROM payouts WHERE id = $1 AND partner_org_id = $2", [requireUuid(req.params.id, "payout"), orgId]);
   if (!payout) throw notFound("Payout not found");
   if (payout.status !== "failed") throw badRequest("Only failed payouts can be retried");
   // Scoped to the org, unlike the original `WHERE id = $1` — which read any
@@ -754,15 +792,26 @@ router.get("/reports", asyncHandler(async (req, res) => {
   });
 }));
 
+// Honours the same `range` window as `/reports`, in the same business timezone.
+//
+// The export previously ignored `range` entirely and returned the network's whole
+// history, so "Last 7 days" on screen and the attached file disagreed — and the file
+// is the one that gets reconciled against a statement.
 router.get("/reports/export", asyncHandler(async (req, res) => {
+  const days = daysForRange(req.query.range);
+  const timeZone = businessTimeZone();
+  const window = dayWindowSql(2, days - 1);
+  const bounds = [partnerOrgId(req), timeZone, days - 1];
   const rows = await q(
     `SELECT t.*, o.name AS org_name FROM transactions t LEFT JOIN organizations o ON o.id = t.organization_id
-     WHERE t.station_id IN (SELECT id FROM stations WHERE partner_org_id = $1) AND t.status = 'success' ORDER BY t.created_at DESC LIMIT 5000`,
-    [partnerOrgId(req)]
+     WHERE t.station_id IN (SELECT id FROM stations WHERE partner_org_id = $1) AND t.status = 'success'
+       AND t.created_at >= ${window.from} AND t.created_at < ${window.to}
+     ORDER BY t.created_at DESC LIMIT 5000`,
+    bounds
   );
   const csv = toCsv(rows.map((r) => ({ date: fmtDateTime(r.created_at), company: r.org_name ?? "", fuel: r.fuel_type, litres: r.litres, amount: (r.amount_kobo / 100).toFixed(2) })));
-  res.setHeader("Content-Type", "text/csv");
-  res.setHeader("Content-Disposition", `attachment; filename="partner-report-${Date.now()}.csv"`);
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="partner-report-${days}d-${Date.now()}.csv"`);
   res.send(csv);
 }));
 
@@ -828,7 +877,7 @@ router.post("/staff", requireOrgRole("admin"), asyncHandler(async (req, res) => 
 
 router.put("/staff/:memberId", requireOrgRole("admin"), asyncHandler(async (req, res) => {
   const { role, cardAccess } = req.body ?? {};
-  const member = await one("SELECT * FROM memberships WHERE id = $1 AND organization_id = $2", [req.params.memberId, partnerOrgId(req)]);
+  const member = await one("SELECT * FROM memberships WHERE id = $1 AND organization_id = $2", [requireUuid(req.params.memberId, "staff member"), partnerOrgId(req)]);
   if (!member) throw notFound("Staff member not found");
   // Validated, and `owner` is refused.
   //
@@ -855,7 +904,7 @@ router.put("/staff/:memberId", requireOrgRole("admin"), asyncHandler(async (req,
 }));
 
 router.delete("/staff/:memberId", requireOrgRole("admin"), asyncHandler(async (req, res) => {
-  const member = await one("SELECT * FROM memberships WHERE id = $1 AND organization_id = $2", [req.params.memberId, partnerOrgId(req)]);
+  const member = await one("SELECT * FROM memberships WHERE id = $1 AND organization_id = $2", [requireUuid(req.params.memberId, "staff member"), partnerOrgId(req)]);
   if (!member) throw notFound("Staff member not found");
   if (member.role === "owner") throw forbidden("The owner cannot be removed");
   await q("DELETE FROM memberships WHERE id = $1", [member.id]);
@@ -963,6 +1012,34 @@ router.post("/pos/authorize", requireCapability("pos.operate"), sensitiveLimiter
   // after the first left revenue committed with no fuel log, and a retry produced a
   // duplicate transaction.
   const transaction = await tx(async (t) => {
+    // The authorization code is spent here, by an atomic compare-and-clear, before
+    // any of the writes below.
+    //
+    // It used to only ever be read. `pos_code_expires_at` is 15 minutes out, so within
+    // that window one code could be presented repeatedly and each presentation
+    // committed a fresh transaction and incremented the card's spend counters — the
+    // same six digits driving a pump again and again. Whoever held the code, or read
+    // it over a shoulder, had an unmetered draw on the card's credit limit.
+    //
+    // The guard is `UPDATE ... WHERE pos_code = $2 AND pos_code_expires_at > now()`,
+    // which is a single row-level claim: the first caller clears it, the second
+    // matches nothing and is refused. Checking-then-clearing in two statements would
+    // not be safe here — two concurrent authorizations would both observe a live code
+    // and both proceed.
+    //
+    // Skipped on the PIN path: the code there is the driver's PIN, which is a standing
+    // credential, not a single-use authorization, and no `pos_code` was matched.
+    if (!viaPin) {
+      const claimed = await t.one(
+        `UPDATE cards SET pos_code = NULL, pos_code_expires_at = NULL, updated_at = now()
+         WHERE id = $1 AND pos_code = $2 AND pos_code_expires_at > now() RETURNING id`,
+        [target.id, String(code)]
+      );
+      if (!claimed) {
+        // Lost the race, or the code expired between the lookup above and this claim.
+        throw badRequest("That authorization code has already been used");
+      }
+    }
     const inserted = await t.one(
       `INSERT INTO transactions (reference, organization_id, station_id, vehicle_id, driver_id, card_id, fuel_type, litres, amount_kobo, status, meta)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'success',$10) RETURNING *`,
@@ -1071,7 +1148,7 @@ router.post("/disputes", requireOrgRole("dispatcher"), upload.array("evidence", 
 
 router.put("/disputes/:id", requireOrgRole("manager"), asyncHandler(async (req, res) => {
   const { draftResponse } = req.body ?? {};
-  const dispute = await one("SELECT * FROM disputes WHERE id = $1 AND (station_org_id = $2 OR organization_id = $2)", [req.params.id, partnerOrgId(req)]);
+  const dispute = await one("SELECT * FROM disputes WHERE id = $1 AND (station_org_id = $2 OR organization_id = $2)", [requireUuid(req.params.id, "dispute"), partnerOrgId(req)]);
   if (!dispute) throw notFound("Dispute not found");
   // `status` is accepted from the body and no longer applied. It previously was,
   // which let the respondent write its own verdict: a station could mark a
@@ -1096,7 +1173,7 @@ router.get("/disputes/:id/evidence/:index", asyncHandler(async (req, res) => {
   // another org's uploaded evidence through a signed URL.
   const dispute = await one(
     "SELECT * FROM disputes WHERE id = $1 AND (station_org_id = $2 OR organization_id = $2)",
-    [req.params.id, partnerOrgId(req)]
+    [requireUuid(req.params.id, "dispute"), partnerOrgId(req)]
   );
   if (!dispute) throw notFound("Dispute not found");
   const index = Number(req.params.index);
@@ -1135,7 +1212,7 @@ router.post("/notifications/:id/read", asyncHandler(async (req, res) => {
   const rows = await q(
     `UPDATE notifications SET read_at = now()
      WHERE id = $1 AND (organization_id = $2 OR user_id = $3) RETURNING id`,
-    [req.params.id, partnerOrgId(req), req.user.id]
+    [requireUuid(req.params.id, "notification"), partnerOrgId(req), req.user.id]
   );
   if (!rows.length) throw notFound("Notification not found");
   res.json({ ok: true });
@@ -1145,7 +1222,7 @@ router.post("/notifications/:id/dismiss", asyncHandler(async (req, res) => {
   const rows = await q(
     `UPDATE notifications SET dismissed_at = now()
      WHERE id = $1 AND (organization_id = $2 OR user_id = $3) RETURNING id`,
-    [req.params.id, partnerOrgId(req), req.user.id]
+    [requireUuid(req.params.id, "notification"), partnerOrgId(req), req.user.id]
   );
   if (!rows.length) throw notFound("Notification not found");
   res.json({ ok: true });

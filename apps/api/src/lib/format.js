@@ -1,6 +1,17 @@
 // Presentation formatting — the frontend renders server strings verbatim,
 // so every list/metric endpoint returns display-ready values.
 
+import { businessTimeZone } from "./time.js";
+
+/**
+ * The zone these strings are rendered in.
+ *
+ * Read per call rather than captured at module load, so a test or a tool that
+ * changes `BUSINESS_TIMEZONE` is honoured without re-importing every module that
+ * formats a date.
+ */
+const zone = () => businessTimeZone();
+
 export const naira = (kobo, { sign = false } = {}) => {
   const n = (Number(kobo) || 0) / 100;
   const abs = Math.abs(n).toLocaleString("en-NG", { minimumFractionDigits: n % 1 !== 0 ? 2 : 0, maximumFractionDigits: 2 });
@@ -16,12 +27,33 @@ export const nairaShort = (kobo) => {
 };
 
 export const fmtDate = (d) =>
-  new Date(d).toLocaleDateString("en-NG", { month: "short", day: "numeric", year: "numeric" });
+  new Date(d).toLocaleDateString("en-NG", { month: "short", day: "numeric", year: "numeric", timeZone: zone() });
 
+/**
+ * Every timestamp the dashboard shows is rendered in the business timezone.
+ *
+ * These used to rely on the host's, because `toLocaleString` without a `timeZone`
+ * option resolves to the runtime default. On Render that is UTC, so a dispense
+ * recorded at 09:15 in Lagos (WAT, UTC+1) was labelled 08:15 — and worse, the
+ * *date* could be wrong too, since a 23:00 WAT transaction is the previous day in
+ * UTC and rendered as such.
+ *
+ * The reporting windows in `/reports` and `/overview` were already computed by
+ * Postgres in this zone, so before this fix the totals and the timestamps
+ * underneath them were describing different days.
+ */
 export const fmtDateTime = (d) =>
-  new Date(d).toLocaleString("en-NG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+  new Date(d).toLocaleString("en-NG", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: zone()
+  });
 
-export const fmtTime = (d) => new Date(d).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit", hour12: true });
+export const fmtTime = (d) =>
+  new Date(d).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: zone() });
 
 /** "2h ago", "Yesterday, 09:15", "Oct 12" */
 export function relativeTime(d) {
@@ -39,11 +71,17 @@ export function relativeTime(d) {
 }
 
 export function dayGroup(d) {
-  const date = new Date(d);
-  const today = new Date();
-  const yesterday = new Date(Date.now() - 86400000);
-  if (date.toDateString() === today.toDateString()) return "TODAY";
-  if (date.toDateString() === yesterday.toDateString()) return "YESTERDAY";
+  // Grouped by the calendar date the operator would read off the row, so a
+  // transaction at 23:00 WAT is "TODAY" on the day it happened. Comparing
+  // `toDateString()` compared the host's calendar, which placed late-evening
+  // transactions under the previous day whenever the server ran in UTC.
+  const key = (value) =>
+    new Date(value).toLocaleDateString("en-CA", { timeZone: zone() });
+  const date = key(d);
+  const today = key(new Date());
+  const yesterday = key(new Date(Date.now() - 86400000));
+  if (date === today) return "TODAY";
+  if (date === yesterday) return "YESTERDAY";
   return "OLDER";
 }
 
