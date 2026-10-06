@@ -18,17 +18,20 @@ import {
   Building2,
   Printer
 } from "lucide-react";
-import { api, mutationsApi } from "@/lib/services";
+import { api, mutationsApi, saveBlob } from "@/lib/services";
 import { AsyncBoundary, EmptyState } from "@/components/shared/States";
 import { useAsync } from "@/components/shared/useAsync";
 import { useToast } from "@/components/shared/Toast";
 import type {
+  PartnerBankAccount,
+  PartnerDispute,
   PartnerMetric,
   PartnerNotifications,
   PartnerRow,
   PartnerTone
 } from "@/lib/services/types";
 import type { DashboardPageKey } from "@/lib/mock/dashboard-data";
+import { usePartnerNotifications } from "./PartnerNotificationsProvider";
 
 const toneStyles: Record<PartnerTone, string> = {
   success: "bg-[#eaf7db] text-[#315d00]",
@@ -100,7 +103,13 @@ function SmallMetric({ metric, icon }: { metric: PartnerMetric; icon: React.Reac
   );
 }
 
-function DataTable({
+/**
+ * Generic in the row type, so a page that receives the richer `PartnerDispute` gets
+ * a `PartnerDispute` from `onAction` rather than a `PartnerRow` — the detail panel
+ * reads `subject`, `description`, `statusRaw` and the rest, and widening to the base
+ * row to satisfy this signature is what made them inaccessible without an `any`.
+ */
+function DataTable<T extends PartnerRow = PartnerRow>({
   title,
   subtitle,
   columns,
@@ -112,10 +121,10 @@ function DataTable({
   title: string;
   subtitle?: string;
   columns: string[];
-  rows: PartnerRow[];
+  rows: T[];
   actionLabel?: string;
-  onAction?: (row?: PartnerRow) => void;
-  rowKey?: (row: PartnerRow, index: number) => string;
+  onAction?: (row?: T) => void;
+  rowKey?: (row: T, index: number) => string;
 }) {
   return (
     <section className="overflow-hidden rounded-xl border border-[#d7d8e4] bg-white shadow-sm">
@@ -306,7 +315,7 @@ function FuelPricingPage() {
     setSyncing(true);
     try {
       await mutationsApi.updatePrices(updates);
-      toastSuccess(`${updates.length} price${updates.length === 1 ? "" : "s"} published to your dispensers.`);
+      toastSuccess(`${updates.length} price${updates.length === 1 ? "" : "s"} published. They apply to the next authorization.`);
       setDrafts(null);
       reload();
     } catch (err) {
@@ -320,7 +329,15 @@ function FuelPricingPage() {
     <DashboardCanvas>
       <div className="mb-8">
         <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Station Fuel Pricing</h1>
-        <p className="mt-1 text-sm text-obligon-text">Configure live pump rates and sync prices directly with smart dispenser meters.</p>
+        <p className="mt-1 text-sm text-obligon-text">
+          Set the price per litre used to authorise a dispense at this station.
+        </p>
+        {/* The header used to promise "sync prices directly with smart dispenser
+            meters" and the button read "Broadcast & Sync to Dispensers". Nothing in
+            this system talks to a meter: `PUT /pricing` writes a row the POS
+            authorization reads when it prices a dispense. The wording now describes
+            that, because an operator who believed the meters were being driven
+            remotely would not re-enter a price that failed to reach them. */}
       </div>
 
       <AsyncBoundary
@@ -373,7 +390,7 @@ function FuelPricingPage() {
               <div className="lg:col-span-3">
                 <EmptyState
                   title="No prices published yet"
-                  message="Add your first pump rate. It is published to your dispensers and recorded in the price history."
+                  message="Add your first pump rate. It will be used to price the next authorization recorded at this station."
                 />
               </div>
             )}
@@ -391,7 +408,7 @@ function FuelPricingPage() {
                 type="submit"
                 className="h-12 rounded-xl bg-obligon-green px-8 font-extrabold text-white shadow-green hover:bg-obligon-green/90 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {syncing ? <Loader2 size={18} className="animate-spin" /> : "Broadcast & Sync to Dispensers"}
+                {syncing ? <Loader2 size={18} className="animate-spin" /> : "Publish Prices"}
               </button>
             </div>
           </form>
@@ -428,10 +445,19 @@ function POSTerminalPage() {
     reference: string; vehicle: string; amount: string; driver: string; card: string; litres: string; fuelType: string;
   } | null>(null);
 
-  // The fuel types this station has actually published a price for. Hard-coded
+// The fuel types this station has actually published a price for. Hard-coded
   // options meant a station that published "PMS" matched nothing and the server
   // fell back to a rate it never set.
-  const { data: pricing } = useAsync(() => api.getPartnerPricing());
+  //
+  // The status is destructured as well as the data. It used to read only `data`, so
+  // a failed or in-flight fetch left `prices` undefined and the fuel list empty — the
+  // same shape as "you have published no prices", and the operator was told to go and
+  // set prices that already existed. A network blip read as a configuration fault.
+  const { status: pricingStatus, data: pricing, error: pricingError, reload: reloadPricing } = useAsync(() =>
+    api.getPartnerPricing()
+  );
+  const pricesLoading = pricingStatus === "loading";
+  const pricesFailed = pricingStatus === "error";
   const fuelTypes = React.useMemo(
     () => (pricing?.prices ?? []).map((p) => p.fuelType).filter(Boolean),
     [pricing]
@@ -481,9 +507,55 @@ function POSTerminalPage() {
   return (
     <DashboardCanvas>
       <div className="max-w-2xl mx-auto">
+{pricesLoading || pricesFailed ? (
+          <div
+            role="status"
+            className={`mb-5 flex items-start gap-3 rounded-xl border px-4 py-3 text-sm font-bold ${
+              pricesFailed
+                ? "border-[#f3c6cc] bg-[#fff4f4] text-[#9f1027]"
+                : "border-obligon-border bg-[#f7f7fd] text-obligon-text"
+            }`}
+          >
+            {pricesLoading ? (
+              <Loader2 size={16} className="mt-0.5 animate-spin shrink-0" />
+            ) : (
+              <Clock3 size={16} className="mt-0.5 shrink-0" />
+            )}
+            <div>
+              {pricesLoading ? (
+                <p>Loading your published prices…</p>
+              ) : (
+                <>
+                  <p>Prices could not be loaded: {pricingError?.message ?? "the request failed"}</p>
+                  {/*
+                    A retry, and wording that does not blame the operator. Without this
+                    the page said "Publish a price on Fuel Pricing first", which sends
+                    someone to re-enter prices that were already saved and are still
+                    saved — the one conclusion the page must not draw from a failed
+                    read.
+                  */}
+                  <button
+                    type="button"
+                    onClick={reloadPricing}
+                    className="mt-2 text-xs font-extrabold text-[#9f1027] underline"
+                  >
+                    Try again
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        ) : null}
+        {pricingStatus === "success" && !fuelTypes.length ? (
+          <p className="mb-5 rounded-xl border border-obligon-border bg-[#f7f7fd] px-4 py-3 text-sm font-bold text-obligon-text">
+            No prices are published for this station yet, so a dispense cannot be authorised.
+          </p>
+        ) : null}
         <div className="mb-8 text-center">
           <h1 className="font-display text-3xl font-extrabold text-obligon-navy">POS Authorization Terminal</h1>
-          <p className="mt-1 text-sm text-obligon-text">Enter a driver&apos;s 6-digit authorization code to unlock the dispenser.</p>
+          <p className="mt-1 text-sm text-obligon-text">
+            Enter a driver&apos;s 6-digit authorization code to record an approved dispense.
+          </p>
         </div>
 
         {authReceipt ? (
@@ -616,7 +688,7 @@ function POSTerminalPage() {
             </div>
 
             <button
-              disabled={verifying || code.length < 6 || !litresValid || !fuelTypes.length}
+              disabled={verifying || code.length < 6 || !litresValid || !fuelTypes.length || pricesLoading || pricesFailed}
               type="submit"
               className="mt-4 h-14 w-full rounded-xl bg-obligon-green font-extrabold text-white text-base shadow-green hover:bg-obligon-green/90 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -631,15 +703,33 @@ function POSTerminalPage() {
 
 // ============ SETTLEMENTS ============
 function SettlementsPage({
-  onOpenPayout
+  onOpenPayout,
+  onPayoutRequested,
+  version
 }: {
   onOpenPayout: (balance: { claimableKobo: number; claimableLabel: string }) => void;
+  onPayoutRequested: () => void;
+  version: number;
 }) {
   const { success: toastSuccess, error: toastError } = useToast();
-  const { status, data, error, reload } = useAsync(() => api.getPartnerSettlements());
+  const { status, data, error, reload } = useAsync(() => api.getPartnerSettlements(), [version]);
   const [togglingAuto, setTogglingAuto] = React.useState(false);
+  const [addingAccount, setAddingAccount] = React.useState(false);
+  const [removingAccount, setRemovingAccount] = React.useState<PartnerBankAccount | null>(null);
+  const [retrying, setRetrying] = React.useState<PartnerRow | null>(null);
 
   const defaultAccount = data?.bankAccounts.find((account) => account.isDefault) ?? data?.bankAccounts[0];
+  // The endpoint refuses a payout without a verified destination, so the button
+  // checks it first. The page offered the modal regardless and then answered
+  // "Add a verified bank account" — an error the partner could only act on by
+  // guessing at a form that was not on the page.
+  const payoutBlockedReason = !defaultAccount
+    ? "Add a settlement account before requesting a payout."
+    : !defaultAccount.verified
+      ? "Your settlement account is still being verified."
+      : data && data.totals.claimableKobo < 100000
+        ? "Nothing is available to withdraw yet."
+        : null;
 
   async function toggleAutoSettlement() {
     if (!data) return;
@@ -672,7 +762,7 @@ function SettlementsPage({
                   {defaultAccount ? "Settlement Account" : "No Settlement Account"}
                 </h2>
 
-                {defaultAccount ? (
+{defaultAccount ? (
                   <div className="mt-5 rounded-xl bg-[#f7fbf8] p-4 border border-obligon-border">
                     <p className="font-extrabold text-obligon-navy">{defaultAccount.bankName}</p>
                     <p className="mt-1 font-mono text-sm text-obligon-text">{defaultAccount.accountMask}</p>
@@ -680,11 +770,35 @@ function SettlementsPage({
                     {!defaultAccount.verified ? (
                       <p className="mt-2 text-xs font-extrabold text-[#b5162d]">Awaiting verification</p>
                     ) : null}
+                    {/*
+                      Removal is here because the API asks for it. A payout against an
+                      account nominated before the provider switch is refused with
+                      "Remove it and add it again so it can be registered for
+                      transfers" — advice the page gave no way to follow, since
+                      `removeBankAccount` had no control anywhere.
+                    */}
+                    <button
+                      type="button"
+                      onClick={() => setRemovingAccount(defaultAccount)}
+                      className="mt-3 text-xs font-extrabold text-[#9f1027] underline"
+                    >
+                      Remove this account
+                    </button>
                   </div>
                 ) : (
-                  <p className="mt-4 text-sm font-medium text-obligon-text">
-                    Add a bank account to receive settlements. Payouts cannot be requested without one.
-                  </p>
+                  <div className="mt-4">
+                    <p className="text-sm font-medium text-obligon-text">
+                      Add a bank account to receive settlements. Payouts cannot be requested without one.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setAddingAccount(true)}
+                      className="mt-3 inline-flex h-10 items-center gap-2 rounded-xl bg-obligon-green px-4 text-xs font-extrabold text-white"
+                    >
+                      <Plus size={14} />
+                      Add Settlement Account
+                    </button>
+                  </div>
                 )}
 
                 <div className="mt-6 rounded-xl border border-obligon-border p-4">
@@ -725,7 +839,7 @@ function SettlementsPage({
                   </div>
                 </div>
 
-                <button
+<button
                   type="button"
                   onClick={() =>
                     onOpenPayout({
@@ -733,15 +847,13 @@ function SettlementsPage({
                       claimableLabel: data.totals.claimableLabel
                     })
                   }
-                  disabled={data.totals.claimableKobo < 100000}
+                  disabled={payoutBlockedReason !== null}
                   className="mt-6 w-full h-11 rounded-xl bg-obligon-green text-sm font-extrabold text-white shadow-green hover:bg-obligon-green/90 transition disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Request Direct Payout
                 </button>
-                {data.totals.claimableKobo < 100000 ? (
-                  <p className="mt-2 text-xs font-medium text-obligon-text">
-                    Nothing is available to withdraw yet.
-                  </p>
+                {payoutBlockedReason ? (
+                  <p className="mt-2 text-xs font-medium text-obligon-text">{payoutBlockedReason}</p>
                 ) : null}
               </article>
             </aside>
@@ -753,17 +865,47 @@ function SettlementsPage({
                 rows={data.settlements}
                 rowKey={(row) => row.id ?? row.cells.join("/")}
               />
-              <DataTable
+<DataTable
                 title="Payout History"
                 subtitle="Automated NUBAN disbursements and manual payout requests."
                 columns={["Reference", "Requested", "Amount", "Destination"]}
                 rows={data.payouts}
                 rowKey={(row) => row.id ?? row.reference ?? row.cells[0]}
+                onAction={(row) => row && setRetrying(row)}
               />
             </main>
           </div>
         ) : null}
       </AsyncBoundary>
+      {addingAccount ? (
+        <AddBankAccountModal
+          onClose={() => setAddingAccount(false)}
+          onSaved={() => {
+            reload();
+            onPayoutRequested();
+          }}
+        />
+      ) : null}
+      {removingAccount ? (
+        <RemoveBankAccountModal
+          account={removingAccount}
+          onClose={() => setRemovingAccount(null)}
+          onSaved={() => {
+            reload();
+            onPayoutRequested();
+          }}
+        />
+      ) : null}
+      {retrying ? (
+        <RetryPayoutModal
+          payout={retrying}
+          onClose={() => setRetrying(null)}
+          onRetried={() => {
+            reload();
+            onPayoutRequested();
+          }}
+        />
+      ) : null}
     </DashboardCanvas>
   );
 }
@@ -771,6 +913,7 @@ function SettlementsPage({
 // ============ DISPUTES ============
 function DisputesPage() {
   const { status, data, error, reload } = useAsync(() => api.getPartnerDisputes());
+  const [open, setOpen] = React.useState<PartnerDispute | null>(null);
 
   return (
     <DashboardCanvas>
@@ -786,15 +929,17 @@ function DisputesPage() {
         loadingLabel="Loading disputes…"
         empty={{ title: "No disputes raised", message: "Cases raised against your stations will appear here." }}
       >
-        {data ? (
+{data ? (
           <DataTable
             title="Dispute Cases"
             columns={["Case ID", "Customer / Vehicle", "Claim Reason", "Amount Disputed"]}
             rows={data}
             rowKey={(row) => row.id ?? row.reference ?? row.cells[0]}
+            onAction={(row) => row && setOpen(row)}
           />
         ) : null}
       </AsyncBoundary>
+      {open ? <DisputeDetailModal dispute={open} onClose={() => setOpen(null)} onSaved={reload} /> : null}
     </DashboardCanvas>
   );
 }
@@ -802,11 +947,13 @@ function DisputesPage() {
 // ============ STATION PROFILE ============
 function StationProfilePage() {
   const { success: toastSuccess, error: toastError } = useToast();
-  const { status, data, error, reload } = useAsync(() => api.getPartnerStation());
+const { status, data, error, reload } = useAsync(() => api.getPartnerStation());
   const [form, setForm] = React.useState<{ name: string; address: string; city: string; hours: string; fuels: string } | null>(null);
   const [saving, setSaving] = React.useState(false);
+  const [operationsOpen, setOperationsOpen] = React.useState(false);
 
   const station = data?.station ?? null;
+  const stationId = String(station?.id ?? "");
   const fields = form ?? (station ? {
     name: station.name ?? "",
     address: station.address ?? "",
@@ -842,9 +989,21 @@ function StationProfilePage() {
 
   return (
     <DashboardCanvas>
-      <div className="mb-8">
-        <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Station Profile</h1>
-        <p className="mt-1 text-sm text-obligon-text">The details customers see in the station locator.</p>
+<div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Station Profile</h1>
+          <p className="mt-1 text-sm text-obligon-text">The details customers see in the station locator.</p>
+        </div>
+        {station ? (
+          <button
+            type="button"
+            onClick={() => setOperationsOpen(true)}
+            className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border border-[#d7d8e4] bg-white px-5 text-sm font-extrabold text-obligon-navy hover:bg-[#f7f7fd] transition"
+          >
+            <Fuel size={16} />
+            Station Operations
+          </button>
+        ) : null}
       </div>
 
       <AsyncBoundary
@@ -930,20 +1089,123 @@ function StationProfilePage() {
               </article>
             </form>
           )
-        ) : null}
+) : null}
       </AsyncBoundary>
+      {operationsOpen && station && stationId ? (
+        <StationOperationsModal
+          stationId={stationId}
+          onClose={() => setOperationsOpen(false)}
+          onDone={() => {
+            reload();
+            setOperationsOpen(false);
+          }}
+        />
+      ) : null}
     </DashboardCanvas>
   );
+}
+
+/**
+ * An authenticated CSV export.
+ *
+ * These were `<a href="/api/partner/…/export">`. The session is a Bearer token in
+ * localStorage and an anchor cannot send a header, so the request went to the Next.js
+ * origin, where no `/api` proxy is configured — a 404 on the web host, or a 401 from
+ * the API if the two hosts were ever unified. Nothing about that failure was visible
+ * until the click did nothing.
+ *
+ * `query` carries the filters the operator is currently looking at, so the file and
+ * the table agree. The filename is taken from the server's `Content-Disposition`
+ * rather than invented here, and a refusal is surfaced — an export that silently
+ * produced an empty or error file is worse than one that visibly fails.
+ */
+function ExportButton({
+  path,
+  label,
+  pendingLabel,
+  className,
+  query
+}: {
+  path: string;
+  label: string;
+  pendingLabel: string;
+  className?: string;
+  query?: Record<string, string | number | undefined>;
+}) {
+  const [busy, setBusy] = React.useState(false);
+  const toast = useToast();
+
+  async function run() {
+    setBusy(true);
+    try {
+      const blob = await api.download(`${path}${queryString(query)}`);
+      saveBlob(blob, defaultExportName(path));
+      toast.success(`${label} downloaded`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "The export could not be downloaded");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={run}
+      disabled={busy}
+      aria-busy={busy}
+      className={`inline-flex h-11 items-center gap-2 rounded-xl px-5 text-sm font-extrabold transition disabled:cursor-not-allowed disabled:opacity-60 ${className ?? "border border-[#d7d8e4] bg-white text-obligon-navy hover:bg-[#f7f7fd]"}`}
+    >
+      {busy ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+      {busy ? pendingLabel : label}
+    </button>
+  );
+}
+
+/** Builds a `?a=b` suffix, skipping empty values so no filter is sent as `undefined`. */
+function queryString(query?: Record<string, string | number | undefined>): string {
+  if (!query) return "";
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value === undefined || value === null || value === "") continue;
+    search.set(key, String(value));
+  }
+  const encoded = search.toString();
+  return encoded ? `?${encoded}` : "";
+}
+
+function defaultExportName(path: string): string {
+  return path.includes("reports") ? "partner-report.csv" : "partner-transactions.csv";
 }
 
 // ============ TRANSACTIONS ============
 function TransactionsPage() {
   const [query, setQuery] = React.useState("");
   const debouncedQuery = useDebounced(query);
+  const [page, setPage] = React.useState(0);
+  const PAGE_SIZE = 50;
+  // A new search returns to the first page. Keeping page 4 while the term changes
+  // lands the operator on an empty table — which reads as "the search found
+  // nothing" when the result set is simply shorter than the offset.
+  React.useEffect(() => {
+    setPage(0);
+  }, [debouncedQuery]);
   const { status, data, error, reload } = useAsync(
-    () => api.getPartnerTransactions({ search: debouncedQuery || undefined, limit: 50 }),
-    [debouncedQuery]
+    () =>
+      api.getPartnerTransactions({
+        search: debouncedQuery || undefined,
+        limit: PAGE_SIZE,
+        offset: page * PAGE_SIZE
+      }),
+    [debouncedQuery, page]
   );
+  const total = data?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const shown = data?.rows.length ?? 0;
+  // The endpoint caps `limit` at 100 and the page asks for 50, so a page that comes
+  // back short is the last one — which is what stops the "Next" button staying live
+  // on an exact multiple of the page size.
+  const hasNext = shown > 0 && shown < PAGE_SIZE ? false : page + 1 < pageCount;
 
   return (
     <DashboardCanvas>
@@ -952,16 +1214,15 @@ function TransactionsPage() {
           <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Fleet Transactions</h1>
           <p className="mt-1 text-sm text-obligon-text">
             Every card-authorized fuel dispense across your partner network.
-            {data ? ` ${data.total.toLocaleString()} matching.` : ""}
+            {data ? ` ${total.toLocaleString()} matching.` : ""}
           </p>
         </div>
-        <a
-          href="/api/partner/transactions/export"
-          className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#d7d8e4] bg-white px-5 text-sm font-extrabold text-obligon-navy hover:bg-[#f7f7fd] transition"
-        >
-          <Download size={16} />
-          Export Ledger
-        </a>
+        <ExportButton
+          path="/api/partner/transactions/export"
+          label="Export Ledger"
+          pendingLabel="Preparing…"
+          query={{ search: debouncedQuery || undefined }}
+        />
       </div>
 
       <label className="mb-6 flex h-11 max-w-sm items-center gap-2 rounded-xl border border-[#d7d8e4] bg-white px-3">
@@ -986,13 +1247,46 @@ function TransactionsPage() {
           message: query ? "Try a different reference or fleet name." : "Authorizations at your dispensers will appear here."
         }}
       >
-        {data ? (
-          <DataTable
-            title="Card Authorizations"
-            columns={["Date & Time", "Fleet / Vehicle", "Card", "Amount (₦)"]}
-            rows={data.rows}
-            rowKey={(row) => row.id ?? row.reference ?? row.cells.join("/")}
-          />
+{data ? (
+          <>
+            <DataTable
+              title="Card Authorizations"
+              columns={["Date & Time", "Fleet / Vehicle", "Card", "Amount (₦)"]}
+              rows={data.rows}
+              rowKey={(row) => row.id ?? row.reference ?? row.cells.join("/")}
+            />
+            {total > PAGE_SIZE ? (
+              <nav
+                aria-label="Transaction pages"
+                className="mt-4 flex items-center justify-between border-t border-[#e3e4ef] pt-4"
+              >
+                <p className="text-xs text-obligon-text">
+                  Showing {page * PAGE_SIZE + 1}–{page * PAGE_SIZE + shown} of {total.toLocaleString()}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page === 0 || status === "loading"}
+                    className="inline-flex h-9 items-center rounded-lg border border-[#d7d8e4] bg-white px-3 text-xs font-extrabold text-obligon-navy disabled:opacity-40"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-xs font-bold text-obligon-text">
+                    Page {page + 1} of {pageCount}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => p + 1)}
+                    disabled={!hasNext || status === "loading"}
+                    className="inline-flex h-9 items-center rounded-lg border border-[#d7d8e4] bg-white px-3 text-xs font-extrabold text-obligon-navy disabled:opacity-40"
+                  >
+                    Next
+                  </button>
+                </div>
+              </nav>
+            ) : null}
+          </>
         ) : null}
       </AsyncBoundary>
     </DashboardCanvas>
@@ -1023,13 +1317,13 @@ function ReportsPage() {
             <option value={90}>Last 90 days</option>
             <option value={365}>Last 365 days</option>
           </select>
-          <a
-            href="/api/partner/reports/export"
-            className="inline-flex h-11 items-center gap-2 rounded-xl bg-obligon-green px-5 text-sm font-extrabold text-white shadow-green hover:bg-obligon-green/90 transition"
-          >
-            <Download size={16} />
-            Export Report
-          </a>
+<ExportButton
+            path="/api/partner/reports/export"
+            label="Export Report"
+            pendingLabel="Preparing…"
+            className="bg-obligon-green text-white shadow-green hover:bg-obligon-green/90"
+            query={{ range }}
+          />
         </div>
       </div>
 
@@ -1063,7 +1357,10 @@ function ReportsPage() {
 // ============ NOTIFICATIONS ============
 function NotificationsPage() {
   const { success: toastSuccess, error: toastError } = useToast();
-  const { status, data, error, reload } = useAsync(() => api.getPartnerNotifications());
+  // The same fetch the header badge reads, so marking something read clears the
+  // badge. This used to run its own `useAsync`, and the header kept its own
+  // separate copy — so the list emptied while the badge kept counting.
+  const { status, data, error, reload } = usePartnerNotifications();
   const [busy, setBusy] = React.useState(false);
 
   async function markRead(id: string) {
@@ -1162,6 +1459,8 @@ function NotificationsPage() {
 // ============ STAFF ============
 function StaffPage() {
   const { status, data, error, reload } = useAsync(() => api.getPartnerStaff());
+  const [inviting, setInviting] = React.useState(false);
+  const [editing, setEditing] = React.useState<PartnerRow | null>(null);
 
   return (
     <DashboardCanvas>
@@ -1173,6 +1472,14 @@ function StaffPage() {
             {data ? ` ${data.stats.active} of ${data.stats.total} active.` : ""}
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => setInviting(true)}
+          className="inline-flex h-11 items-center gap-2 rounded-xl bg-obligon-green px-5 text-sm font-extrabold text-white shadow-green hover:bg-obligon-green/90 transition"
+        >
+          <Plus size={16} />
+          Invite Attendant
+        </button>
       </div>
 
       <AsyncBoundary
@@ -1189,9 +1496,12 @@ function StaffPage() {
             columns={["Reference", "Member", "Role"]}
             rows={data.staff}
             rowKey={(row, index) => row.id ?? `${row.cells[0]}-${index}`}
+            onAction={(row) => row && setEditing(row)}
           />
         ) : null}
       </AsyncBoundary>
+      {inviting ? <StaffMemberModal member={null} onClose={() => setInviting(false)} onSaved={reload} /> : null}
+      {editing ? <StaffMemberModal member={editing} onClose={() => setEditing(null)} onSaved={reload} /> : null}
     </DashboardCanvas>
   );
 }
@@ -1247,12 +1557,26 @@ function SettingsPage() {
 // layout it does not suit.
 export function DashboardScreen({ pageKey }: { pageKey: DashboardPageKey }) {
   const [payout, setPayout] = React.useState<{ claimableKobo: number; claimableLabel: string } | null>(null);
+  // Bumped whenever a payout, retry or new settlement account changes the balance.
+  //
+  // The modal used to close on success and nothing re-fetched, so the claimable
+  // figure and the payout history behind it were the values from *before* the
+  // request. The partner immediately saw the same amount still available and could
+  // submit it again — which the server then refused, having already promised that
+  // money to the transfer in flight.
+  const [settlementVersion, setSettlementVersion] = React.useState(0);
 
   const pages: Partial<Record<DashboardPageKey, React.ReactNode>> = {
     overview: <OverviewPage />,
     pricing: <FuelPricingPage />,
     pos: <POSTerminalPage />,
-    settlements: <SettlementsPage onOpenPayout={setPayout} />,
+    settlements: (
+      <SettlementsPage
+        onOpenPayout={setPayout}
+        onPayoutRequested={() => setSettlementVersion((v) => v + 1)}
+        version={settlementVersion}
+      />
+    ),
     disputes: <DisputesPage />,
     profile: <StationProfilePage />,
     station: <StationProfilePage />,
@@ -1267,7 +1591,13 @@ export function DashboardScreen({ pageKey }: { pageKey: DashboardPageKey }) {
   return (
     <>
       {pages[pageKey] ?? <OverviewPage />}
-      {payout ? <PayoutModal balance={payout} onClose={() => setPayout(null)} /> : null}
+      {payout ? (
+        <PayoutModal
+          balance={payout}
+          onClose={() => setPayout(null)}
+          onSubmitted={() => setSettlementVersion((v) => v + 1)}
+        />
+      ) : null}
     </>
   );
 }
@@ -1285,12 +1615,706 @@ export function DashboardScreen({ pageKey }: { pageKey: DashboardPageKey }) {
  * The cap is a courtesy — the guard is the check that matters, and it lives on the
  * server where it cannot be bypassed.
  */
+/**
+ * The shared shell for every partner modal.
+ *
+ * Focus moves to the panel on open and Escape closes it. A dialog that traps
+ * neither is unusable by keyboard, and the payout and staff forms are the two
+ * places where a partner types money and account details.
+ */
+function Modal({
+  title,
+  description,
+  onClose,
+  children
+}: {
+  title: string;
+  description?: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  const panel = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    panel.current?.focus();
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-[#071853]/65 px-5 backdrop-blur-sm"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div
+        ref={panel}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        tabIndex={-1}
+        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-hero outline-none"
+      >
+        <h2 className="font-display text-2xl font-extrabold text-obligon-navy">{title}</h2>
+        {description ? <p className="mt-1 text-sm font-medium text-obligon-text">{description}</p> : null}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function FormError({ message }: { message: string | null }) {
+  if (!message) return null;
+  return (
+    <p role="alert" className="mt-4 rounded-xl border border-[#f3c6cc] bg-[#fff4f4] px-4 py-3 text-sm font-bold text-[#9f1027]">
+      {message}
+    </p>
+  );
+}
+
+const fieldClass =
+  "mt-1.5 h-11 w-full rounded-xl border border-[#cfd8cc] px-4 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green disabled:opacity-60";
+const labelClass = "block text-xs font-extrabold uppercase text-obligon-text";
+
+/**
+ * Adds the settlement account.
+ *
+ * This form does not exist anywhere in the dashboard, and the page it belongs on
+ * says "Add a bank account to receive settlements" and then offers no way to add
+ * one. An account can only be created through the API, so a partner who had not
+ * already nominated one could never reach a payout — which is exactly the state
+ * the API refuses with "Add a verified bank account before requesting a payout".
+ *
+ * Server-side validation is reused rather than duplicated: the account number is
+ * digit-stripped and length-checked by `POST /bank-accounts`, and its refusal is
+ * shown in the form.
+ */
+function AddBankAccountModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const { success: toastSuccess } = useToast();
+  const [form, setForm] = React.useState({ bankName: "", bankCode: "058", accountNumber: "", accountName: "" });
+  const [submitting, setSubmitting] = React.useState(false);
+  const [formError, setFormError] = React.useState<string | null>(null);
+
+  const set = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement>) =>
+    setForm((prev) => ({ ...prev, [key]: event.target.value }));
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setSubmitting(true);
+    setFormError(null);
+    try {
+      await mutationsApi.addBankAccount({
+        bankName: form.bankName.trim(),
+        bankCode: form.bankCode.trim() || "058",
+        accountNumber: form.accountNumber.replace(/\D/g, ""),
+        accountName: form.accountName.trim()
+      });
+      toastSuccess("Settlement account added. It will be verified before the next payout.");
+      onSaved();
+      onClose();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Could not add that bank account.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Modal
+      title="Add Settlement Account"
+      description="Payouts are sent to a verified Nigerian bank account in your name."
+      onClose={onClose}
+    >
+      <form onSubmit={submit}>
+        <FormError message={formError} />
+        <label className={`mt-5 ${labelClass}`}>
+          Bank name
+          <input className={fieldClass} value={form.bankName} onChange={set("bankName")} required placeholder="Access Bank" />
+        </label>
+        <label className={`mt-4 block ${labelClass}`}>
+          Account number
+          <input
+            className={fieldClass}
+            value={form.accountNumber}
+            onChange={set("accountNumber")}
+            required
+            inputMode="numeric"
+            placeholder="10 digits"
+          />
+        </label>
+        <label className={`mt-4 block ${labelClass}`}>
+          Account name
+          <input className={fieldClass} value={form.accountName} onChange={set("accountName")} required placeholder="As it appears at your bank" />
+        </label>
+        <label className={`mt-4 block ${labelClass}`}>
+          Bank code <span className="font-medium normal-case">(optional, defaults to GTBank 058)</span>
+          <input className={fieldClass} value={form.bankCode} onChange={set("bankCode")} inputMode="numeric" />
+        </label>
+        <div className="mt-6 flex gap-3">
+          <button type="button" onClick={onClose} className="h-11 flex-1 rounded-xl border border-[#071853] text-sm font-bold">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="h-11 flex-1 rounded-xl bg-obligon-green text-sm font-extrabold text-white flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {submitting ? <Loader2 size={16} className="animate-spin" /> : "Add Account"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+/** Removes a settlement account. Needed to act on the payout endpoint's own advice. */
+function RemoveBankAccountModal({
+  account,
+  onClose,
+  onSaved
+}: {
+  account: PartnerBankAccount;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { success: toastSuccess } = useToast();
+  const [removing, setRemoving] = React.useState(false);
+  const [formError, setFormError] = React.useState<string | null>(null);
+
+  async function remove() {
+    setRemoving(true);
+    setFormError(null);
+    try {
+      await mutationsApi.removeBankAccount(account.id);
+      toastSuccess("Settlement account removed.");
+      onSaved();
+      onClose();
+    } catch (err) {
+      // The endpoint refuses while a payout is still in flight to this account, and
+      // says so. Passing that through is the whole value of the dialog.
+      setFormError(err instanceof Error ? err.message : "Could not remove that account.");
+      setRemoving(false);
+    }
+  }
+
+  return (
+    <Modal title="Remove Settlement Account" description={`${account.bankName} ${account.accountMask}`} onClose={onClose}>
+      <FormError message={formError} />
+      <p className="mt-4 text-sm font-medium text-obligon-text">
+        Payouts already sent to this account are unaffected. A payout still in flight to it must complete before it can
+        be removed.
+      </p>
+      <div className="mt-6 flex gap-3">
+        <button type="button" onClick={onClose} className="h-11 flex-1 rounded-xl border border-[#071853] text-sm font-bold">
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={remove}
+          disabled={removing}
+          className="h-11 flex-1 rounded-xl bg-[#b5162d] text-sm font-extrabold text-white disabled:opacity-50"
+        >
+          {removing ? <Loader2 size={16} className="animate-spin" /> : "Remove Account"}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+/** Retries a failed payout. Reachable only from a row the API marked failed. */
+function RetryPayoutModal({
+  payout,
+  onClose,
+  onRetried
+}: {
+  payout: PartnerRow;
+  onClose: () => void;
+  onRetried: () => void;
+}) {
+  const { success: toastSuccess } = useToast();
+  const [submitting, setSubmitting] = React.useState(false);
+  const [formError, setFormError] = React.useState<string | null>(null);
+
+  async function submit() {
+    if (!payout.id) return;
+    setSubmitting(true);
+    setFormError(null);
+    try {
+      await mutationsApi.retryPayout(payout.id);
+      toastSuccess(`Payout ${payout.reference ?? ""} submitted for processing again.`.replace("  ", " "));
+      onRetried();
+      onClose();
+    } catch (err) {
+      // The endpoint re-checks that the destination is still verified, so its
+      // refusal here is meaningful and is passed through verbatim.
+      setFormError(err instanceof Error ? err.message : "Could not retry that payout.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Modal title="Retry Payout" description={payout.reference} onClose={onClose}>
+      <FormError message={formError} />
+      <p className="mt-4 text-sm font-medium text-obligon-text">
+        This submits the transfer to the processor again. If the previous attempt failed because the bank account is no
+        longer verified, it will be refused again.
+      </p>
+      <div className="mt-6 flex gap-3">
+        <button type="button" onClick={onClose} className="h-11 flex-1 rounded-xl border border-[#071853] text-sm font-bold">
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={submit}
+          disabled={submitting}
+          className="h-11 flex-1 rounded-xl bg-obligon-green text-sm font-extrabold text-white flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          {submitting ? <Loader2 size={16} className="animate-spin" /> : "Retry Transfer"}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+/**
+ * Invites an attendant, and edits or removes an existing one.
+ *
+ * The staff page is read-only. Its empty state says "invite your attendants" and
+ * the API has had `POST /staff`, `PUT /staff/:id` and `DELETE /staff/:id` the whole
+ * time — so an attendant could only be created by someone with curl.
+ */
+function StaffMemberModal({
+  member,
+  onClose,
+  onSaved
+}: {
+  member: PartnerRow | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { success: toastSuccess } = useToast();
+  const editing = Boolean(member);
+  const [form, setForm] = React.useState({
+    fullName: "",
+    email: "",
+    phone: "",
+    role: "attendant",
+    enabled: true
+  });
+  const [submitting, setSubmitting] = React.useState(false);
+  const [removing, setRemoving] = React.useState(false);
+  const [formError, setFormError] = React.useState<string | null>(null);
+
+  // One handler for both inputs and selects: they emit different event types, and
+  // typing it as `HTMLInputElement` made it unusable on the role <select>.
+  const set =
+    (key: keyof typeof form) =>
+    (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setForm((prev) => ({ ...prev, [key]: event.target.value }));
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!editing) {
+      setSubmitting(true);
+      setFormError(null);
+      try {
+        await mutationsApi.addStaff({
+          fullName: form.fullName.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim(),
+          role: form.role
+        });
+        toastSuccess(`${form.fullName.trim()} added. They can sign in once their account is verified.`);
+        onSaved();
+        onClose();
+      } catch (err) {
+        setFormError(err instanceof Error ? err.message : "Could not add that attendant.");
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+    // Guarded rather than asserted: `editing` is true exactly when `member` is set,
+    // but a row without an id would otherwise send `/staff/undefined` and produce a
+    // 400 the partner cannot act on.
+    if (!member?.id) {
+      setFormError("That attendant could not be identified. Reload the list and try again.");
+      return;
+    }
+    setSubmitting(true);
+    setFormError(null);
+    try {
+      await mutationsApi.updateStaff(member.id, { enabled: form.enabled });
+      toastSuccess("Attendant updated.");
+      onSaved();
+      onClose();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Could not update that attendant.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function remove() {
+    if (!member?.id) return;
+    setRemoving(true);
+    setFormError(null);
+    try {
+      await mutationsApi.removeStaff(member.id);
+      toastSuccess("Attendant removed.");
+      onSaved();
+      onClose();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Could not remove that attendant.");
+      setRemoving(false);
+    }
+  }
+
+  return (
+    <Modal
+      title={editing ? "Attendant" : "Invite Attendant"}
+      description={editing ? member?.cells[0] : "They will be able to sign in to the partner dashboard once verified."}
+      onClose={onClose}
+    >
+      <form onSubmit={submit}>
+        <FormError message={formError} />
+        {editing ? (
+          <>
+            <p className="mt-4 text-sm font-medium text-obligon-text">{member?.cells[1]}</p>
+            <label className="mt-4 flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={form.enabled}
+                onChange={(event) => setForm((prev) => ({ ...prev, enabled: event.target.checked }))}
+                className="size-4"
+              />
+              <span className="text-sm font-bold text-obligon-navy">Enabled</span>
+            </label>
+            <p className="mt-3 text-xs font-medium text-obligon-text">
+              Disabling keeps the record and its history; it revokes dashboard access.
+            </p>
+          </>
+        ) : (
+          <>
+            <label className={`mt-5 block ${labelClass}`}>
+              Full name
+              <input className={fieldClass} value={form.fullName} onChange={set("fullName")} required />
+            </label>
+            <label className={`mt-4 block ${labelClass}`}>
+              Email
+              <input className={fieldClass} type="email" value={form.email} onChange={set("email")} required />
+            </label>
+            <label className={`mt-4 block ${labelClass}`}>
+              Phone
+              <input className={fieldClass} value={form.phone} onChange={set("phone")} inputMode="tel" />
+            </label>
+            <label className={`mt-4 block ${labelClass}`}>
+              Role
+              <select className={fieldClass} value={form.role} onChange={set("role")}>
+                <option value="attendant">Attendant</option>
+                <option value="dispatcher">Dispatcher</option>
+                <option value="manager">Manager</option>
+                <option value="admin">Admin</option>
+              </select>
+            </label>
+            <p className="mt-3 text-xs font-medium text-obligon-text">
+              Roles decide what an attendant can do. Only an owner can promote someone to owner.
+            </p>
+          </>
+        )}
+        <div className="mt-6 flex gap-3">
+          <button type="button" onClick={onClose} className="h-11 flex-1 rounded-xl border border-[#071853] text-sm font-bold">
+            Cancel
+          </button>
+          {editing ? (
+            <button
+              type="button"
+              onClick={remove}
+              disabled={removing || submitting}
+              className="h-11 rounded-xl border border-[#f3c6cc] px-4 text-sm font-bold text-[#9f1027] disabled:opacity-50"
+            >
+              {removing ? "Removing…" : "Remove"}
+            </button>
+          ) : null}
+          <button
+            type="submit"
+            disabled={submitting || removing}
+            className="h-11 flex-1 rounded-xl bg-obligon-green text-sm font-extrabold text-white flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {submitting ? <Loader2 size={16} className="animate-spin" /> : editing ? "Save" : "Send Invitation"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+/**
+ * Responds to a dispute with a draft.
+ *
+ * `PUT /disputes/:id` exists and takes `draftResponse`, and the list said "View
+ * Details" on every row. "View" had no panel behind it, so a station could read a
+ * claim and had no way to answer it.
+ */
+function DisputeDetailModal({
+  dispute,
+  onClose,
+  onSaved
+}: {
+  dispute: PartnerDispute;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { success: toastSuccess } = useToast();
+  const [draft, setDraft] = React.useState("");
+  const [submitting, setSubmitting] = React.useState(false);
+  const [formError, setFormError] = React.useState<string | null>(null);
+  const description = dispute.description ?? "";
+  const existing = dispute.draftResponse ?? "";
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!dispute.id) return;
+    setSubmitting(true);
+    setFormError(null);
+    try {
+      await mutationsApi.updateDispute(dispute.id, { draftResponse: draft });
+      toastSuccess("Your response was saved and sent for review.");
+      onSaved();
+      onClose();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Could not save your response.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Modal title={dispute.reference ?? "Dispute"} description={dispute.subject} onClose={onClose}>
+      <form onSubmit={submit}>
+        <FormError message={formError} />
+        <dl className="mt-4 space-y-2 rounded-xl bg-[#f7f7fd] p-4 text-sm">
+          <div className="flex justify-between gap-4">
+            <dt className="font-bold text-obligon-text">Claimed amount</dt>
+            <dd className="font-extrabold text-obligon-navy">{dispute.amountLabel}</dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="font-bold text-obligon-text">Status</dt>
+            <dd className="font-extrabold text-obligon-navy">{dispute.statusRaw ?? dispute.status}</dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="font-bold text-obligon-text">Raised</dt>
+            <dd className="font-extrabold text-obligon-navy">{dispute.created}</dd>
+          </div>
+        </dl>
+        {description ? <p className="mt-4 text-sm font-medium text-obligon-text">{description}</p> : null}
+        {existing ? (
+          <p className="mt-4 rounded-xl border border-obligon-border p-3 text-sm font-medium text-obligon-text">
+            Your current response: {existing}
+          </p>
+        ) : null}
+        <label className={`mt-4 block ${labelClass}`}>
+          Your response
+          <textarea
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            rows={4}
+            required
+            placeholder="Describe what happened at the dispenser…"
+            className="mt-1.5 w-full rounded-xl border border-[#cfd8cc] px-4 py-3 text-sm font-medium text-obligon-navy outline-none focus:border-obligon-green"
+          />
+        </label>
+        <p className="mt-2 text-xs font-medium text-obligon-text">
+          Obligon reviews the case with both sides before a refund is decided.
+        </p>
+        <div className="mt-6 flex gap-3">
+          <button type="button" onClick={onClose} className="h-11 flex-1 rounded-xl border border-[#071853] text-sm font-bold">
+            Close
+          </button>
+          <button
+            type="submit"
+            disabled={submitting || draft.trim() === ""}
+            className="h-11 flex-1 rounded-xl bg-obligon-green text-sm font-extrabold text-white flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {submitting ? <Loader2 size={16} className="animate-spin" /> : "Submit Response"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+/**
+ * Station operations: upload a site asset, order a resupply, message the terminal.
+ *
+ * Three working endpoints with no control anywhere in the dashboard.
+ *
+ * The resupply order records the request against the station. Nothing in this
+ * system drives a dispenser or places an order with a supplier, so the wording is
+ * "request" throughout and the confirmation says a team member will follow up —
+ * it does not claim fuel is on the way.
+ */
+function StationOperationsModal({
+  stationId,
+  onClose,
+  onDone
+}: {
+  stationId: string;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const { success: toastSuccess, error: toastError } = useToast();
+  const [busy, setBusy] = React.useState<"asset" | "resupply" | "message" | null>(null);
+  const [file, setFile] = React.useState<File | null>(null);
+  const [fuelType, setFuelType] = React.useState("AGO Diesel");
+  const [litres, setLitres] = React.useState("");
+  const [message, setMessage] = React.useState("");
+
+  async function uploadAsset() {
+    if (!file) return;
+    setBusy("asset");
+    try {
+      await mutationsApi.uploadStationAsset(file);
+      toastSuccess("Asset uploaded.");
+      onDone();
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Could not upload that file.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function requestResupply() {
+    const parsed = Number(litres);
+    if (!Number.isFinite(parsed) || parsed <= 0) return;
+    setBusy("resupply");
+    try {
+      await mutationsApi.requestResupply({ fuelType, litres: parsed });
+      toastSuccess(`Resupply request for ${parsed.toLocaleString()} L of ${fuelType} recorded. A team member will follow up.`);
+      setLitres("");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Could not record that resupply request.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function sendMessage() {
+    if (message.trim() === "") return;
+    setBusy("message");
+    try {
+      await mutationsApi.messageTerminal(message.trim());
+      toastSuccess("Message sent to the terminal.");
+      setMessage("");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "Could not send that message.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const spinner = (which: typeof busy) =>
+    busy === which ? <Loader2 size={14} className="animate-spin" /> : null;
+
+  return (
+    <Modal title="Station Operations" description="Site records and requests for this station." onClose={onClose}>
+      <section className="mt-5">
+        <h3 className={labelClass}>Site asset</h3>
+        <p className="mt-1 text-xs font-medium text-obligon-text">
+          An image of the site, equipment or dispenser. Images only.
+        </p>
+        <div className="mt-2 flex gap-2">
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+            className="block w-full text-xs font-bold text-obligon-text file:mr-3 file:rounded-lg file:border-0 file:bg-[#f0f4e8] file:px-3 file:py-2 file:text-xs file:font-extrabold file:text-obligon-green"
+          />
+          <button
+            type="button"
+            onClick={uploadAsset}
+            disabled={!file || busy !== null}
+            className="h-10 shrink-0 rounded-xl border border-obligon-green px-4 text-xs font-extrabold text-obligon-green disabled:opacity-40"
+          >
+            {spinner("asset") ?? "Upload"}
+          </button>
+        </div>
+      </section>
+
+      <section className="mt-6 border-t border-obligon-border pt-5">
+        <h3 className={labelClass}>Request resupply</h3>
+        <div className="mt-2 flex gap-2">
+          <select
+            value={fuelType}
+            onChange={(event) => setFuelType(event.target.value)}
+            aria-label="Fuel type"
+            className="h-10 flex-1 rounded-xl border border-[#cfd8cc] px-3 text-xs font-bold text-obligon-navy"
+          >
+            <option>AGO Diesel</option>
+            <option>PMS</option>
+            <option>Petrol</option>
+          </select>
+          <input
+            value={litres}
+            onChange={(event) => setLitres(event.target.value.replace(/[^\d.]/g, ""))}
+            inputMode="decimal"
+            placeholder="Litres"
+            aria-label="Litres"
+            className="h-10 w-28 rounded-xl border border-[#cfd8cc] px-3 text-xs font-bold text-obligon-navy"
+          />
+          <button
+            type="button"
+            onClick={requestResupply}
+            disabled={busy !== null || litres.trim() === ""}
+            className="h-10 shrink-0 rounded-xl bg-obligon-green px-4 text-xs font-extrabold text-white disabled:opacity-40"
+          >
+            {spinner("resupply") ?? "Request"}
+          </button>
+        </div>
+      </section>
+
+      <section className="mt-6 border-t border-obligon-border pt-5">
+        <h3 className={labelClass}>Message the terminal</h3>
+        <div className="mt-2 flex gap-2">
+          <input
+            value={message}
+            onChange={(event) => setMessage(event.target.value)}
+            placeholder="Display message for the terminal"
+            aria-label="Terminal message"
+            className="h-10 flex-1 rounded-xl border border-[#cfd8cc] px-3 text-xs font-bold text-obligon-navy"
+          />
+          <button
+            type="button"
+            onClick={sendMessage}
+            disabled={busy !== null || message.trim() === ""}
+            className="h-10 shrink-0 rounded-xl border border-obligon-green px-4 text-xs font-extrabold text-obligon-green disabled:opacity-40"
+          >
+            {spinner("message") ?? "Send"}
+          </button>
+        </div>
+      </section>
+
+      <p className="mt-5 text-xs font-medium text-obligon-text">Station reference {stationId.slice(0, 8)}</p>
+      <button type="button" onClick={onClose} className="mt-3 h-11 w-full rounded-xl border border-[#071853] text-sm font-bold">
+        Done
+      </button>
+    </Modal>
+  );
+}
+
 function PayoutModal({
   balance,
-  onClose
+  onClose,
+  onSubmitted
 }: {
   balance: { claimableKobo: number; claimableLabel: string };
   onClose: () => void;
+  onSubmitted: () => void;
 }) {
   // Failures are shown in the form rather than as a toast, so the message stays
   // put while the amount is corrected. Only the success is transient.
@@ -1320,7 +2344,10 @@ function PayoutModal({
       // "Submitted and being processed" is what actually happened: the processor
       // queues a transfer and settles it later, so nothing here claims the money
       // has left. The settlement tab shows it reconcile.
-      toastSuccess(`Payout ${result.reference} submitted and is being processed.`);
+toastSuccess(`Payout ${result.reference} submitted and is being processed.`);
+      // Refetch before closing, so the balance and history the partner returns to
+      // reflect the request they just made.
+      onSubmitted();
       onClose();
     } catch (err) {
       // The endpoint's own words: it names the claimable figure when refusing, and

@@ -28,6 +28,7 @@ const screen = read(webRoot, "components", "dashboard", "DashboardScreen.tsx");
 const types = read(webRoot, "lib", "services", "types.ts");
 const client = read(webRoot, "lib", "services", "client.ts");
 const nav = read(webRoot, "lib", "mock", "dashboard-data.ts");
+const partnerRoutes = path.join(apiRoot, "src", "routes", "partner.routes.js");
 const routes = read(apiRoot, "src", "routes", "partner.routes.js");
 
 // ------------------------------------------------------- reads come from the API
@@ -45,7 +46,11 @@ test("no fixture data reaches the partner dashboard", () => {
 test("every page fetches, and handles the three states", () => {
   // Each page used to render a constant. Now each has to load, fail visibly and
   // recover, or a dead endpoint shows a plausible-looking empty page.
-  const pages = ["OverviewPage", "FuelPricingPage", "SettlementsPage", "DisputesPage", "StationProfilePage", "TransactionsPage", "ReportsPage", "NotificationsPage", "StaffPage", "SettingsPage"];
+  //
+  // `NotificationsPage` fetches through the shared provider rather than `useAsync`
+  // directly — that is the point of the provider, so the header badge and the page
+  // cannot disagree. It is asserted separately below.
+  const pages = ["OverviewPage", "FuelPricingPage", "SettlementsPage", "DisputesPage", "StationProfilePage", "TransactionsPage", "ReportsPage", "StaffPage", "SettingsPage"];
   for (const page of pages) {
     const start = screen.indexOf(`function ${page}(`);
     assert.ok(start > -1, `${page} is missing`);
@@ -54,6 +59,11 @@ test("every page fetches, and handles the three states", () => {
     assert.match(body, /AsyncBoundary/, `${page} has no loading/error boundary`);
     assert.match(body, /onRetry=\{reload\}/, `${page} offers no retry`);
   }
+  const notifStart = screen.indexOf("function NotificationsPage(");
+  const notifBody = screen.slice(notifStart, screen.indexOf("\nfunction ", notifStart + 1));
+  assert.match(notifBody, /usePartnerNotifications\(\)/, "NotificationsPage does not use the shared provider");
+  assert.match(notifBody, /AsyncBoundary/, "NotificationsPage has no loading/error boundary");
+  assert.match(notifBody, /onRetry=\{reload\}/, "NotificationsPage offers no retry");
 });
 
 test("an empty result says so rather than showing an empty table", () => {
@@ -69,9 +79,23 @@ test("an empty result says so rather than showing an empty table", () => {
 test("search filters on the server, debounced", () => {
   // It filtered the fixture array, so it could only match rows already loaded.
   // Per-keystroke requests were avoided with a debounce so responses cannot race.
-  assert.match(screen, /api\.getPartnerTransactions\(\{ search: debouncedQuery/);
+  //
+  // The call also carries `offset`, for pagination: the list asked for `limit: 50`
+  // and showed the matching total with no way to reach row 51.
+  assert.match(screen, /api\.getPartnerTransactions\(\{/);
+  assert.match(screen, /search: debouncedQuery/);
+  assert.match(screen, /offset: page \* PAGE_SIZE/);
   assert.match(screen, /function useDebounced/);
   assert.doesNotMatch(screen, /filteredRows/);
+});
+
+test("the transaction list paginates", () => {
+  // `limit: 50` with a total count and no pager meant rows past the first 50 were
+  // unreachable — not missing, just never reachable by a partner without API access.
+  assert.match(screen, /aria-label="Transaction pages"/);
+  // And the new search returns to page 1: keeping page 4 while the term changes
+  // lands the operator on an empty table, which reads as "no matches".
+  assert.match(screen, /setPage\(0\)/);
 });
 
 test("the client reads each page once", () => {
@@ -274,13 +298,50 @@ test("fuel prices are the station's own, and addable", () => {
   assert.doesNotMatch(screen, /useState\("280"\)/);
 });
 
-test("exports are real downloads", () => {
-  // A toast said "exported" while nothing left the browser. The CSV endpoints
-  // already existed and were never called.
+test("exports are authenticated downloads, not anchors", () => {
+  // A toast said "exported" while nothing left the browser.
+  //
+  // They were then `<a href="/api/partner/…/export">`. The session is a Bearer
+  // token in localStorage and an anchor sends no headers, so the request went to
+  // the Next.js origin — where no `/api` proxy is configured — and 404'd. The
+  // `href=` assertion is kept as a *prohibition* now: an anchor cannot authenticate,
+  // so its reappearance is the regression.
   for (const path of ["/api/partner/transactions/export", "/api/partner/reports/export"]) {
-    assert.ok(screen.includes(`href="${path}"`), `no real link to ${path}`);
+    assert.ok(screen.includes(`"${path}"`), `no export path for ${path}`);
+    assert.ok(
+      screen.includes(`path="${path}"`),
+      `${path} is not passed to the authenticated ExportButton`
+    );
+    assert.doesNotMatch(screen, new RegExp(`href="${path}"`), `${path} is an unauthenticated anchor`);
   }
+  // Authenticated download through the shared transport, which carries the Bearer
+  // token and refreshes once on a 401.
+  assert.match(client, /async download\(path: string/);
+  assert.match(client, /headers\.set\("Authorization", `Bearer \$\{tokens\.accessToken\}`\)/);
+  // A refused export must not be saved as a file: a silently-written "error.csv" is
+  // worse than a visible failure, because it gets analysed as if it were the ledger.
+  assert.match(client, /if \(!res\.ok\) \{/);
+  assert.match(screen, /toast\.error/);
   assert.doesNotMatch(screen, /exported as a local summary/);
+});
+
+test("the report export carries the selected range", () => {
+  // The range selector changed `/reports` but not the export link, so "Last 7 days"
+  // on screen and the attached file were different datasets. The file is the
+  // artefact that gets reconciled against a statement.
+  assert.match(screen, /query=\{\{ range \}\}/);
+  // And the export endpoint honours it rather than ignoring the parameter.
+  const routes = fs.readFileSync(partnerRoutes, "utf8");
+  const exportRoute = routes.slice(routes.indexOf('router.get("/reports/export"'));
+  assert.match(exportRoute, /daysForRange\(req\.query\.range\)/);
+});
+
+test("the transaction export carries the active search", () => {
+  const routes = fs.readFileSync(partnerRoutes, "utf8");
+  const exportRoute = routes.slice(routes.indexOf('router.get("/transactions/export"'));
+  // Same filters as the list endpoint, so the file matches the table.
+  assert.match(exportRoute, /const \{ search, status, date \} = req\.query/);
+  assert.match(screen, /query=\{\{ search: debouncedQuery \|\| undefined \}\}/);
 });
 
 test("a station name is not hard-coded into the console heading", () => {
@@ -293,26 +354,121 @@ test("the settlements nav item is labelled for what it opens", () => {
   assert.match(nav, /\{ key: "settlements", label: "Settlements", href: "\/dashboard\/settlements"/);
 });
 
-// ----------------------------------------------------------- deliberately open
-test("known server-side gaps are not quietly presented as fixed", () => {
-  // These mutations still exist and are still unwired. That is deliberate: each
-  // needs a form and a decision about the workflow before it can be offered, and
-  // offering them without one is what produced the inert "RETRY" button on a failed
-  // payout. A reader of the diff should not conclude they were addressed.
+// ----------------------------------------------------------- partner workflows
+test("every partner mutation the API offers is now reachable from the console", () => {
+  // These eight were all present in `mutationsApi` and all unwired. The previous
+  // version of this file asserted they stayed unwired, on the grounds that offering
+  // an action without a form produced the inert "RETRY" button on a failed payout.
+  // That reasoning was right about the button and wrong about the conclusion: the
+  // fix is the form, not the absence of the action.
   //
-  // Asserted against code with comments stripped, because the names appear in
-  // comments describing exactly why they are not wired.
+  // The page told partners to "add a bank account" with no way to add one, to
+  // "invite your attendants" with no way to invite anybody, and offered "View
+  // Details" on every dispute with nothing behind it.
+  //
+  // Asserted against code with comments stripped, because each name also appears in
+  // comments explaining why it is safe to call.
   const code = screen.replace(/^\s*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
   for (const mutation of [
     "addBankAccount",
+    "removeBankAccount",
     "addStaff",
+    "updateStaff",
+    "removeStaff",
     "retryPayout",
-    "createDispute",
+    "updateDispute",
     "uploadStationAsset",
     "messageTerminal",
-    "requestResupply",
-    "removeBankAccount"
+    "requestResupply"
   ]) {
-    assert.doesNotMatch(code, new RegExp(`mutationsApi\\.${mutation}\\(`), `${mutation} is called but has no form`);
+    assert.match(code, new RegExp(`mutationsApi\\.${mutation}\\(`), `${mutation} is still not reachable`);
   }
+});
+
+test("the settlement account can be added from the page that demands one", () => {
+  // "Add a bank account to receive settlements. Payouts cannot be requested without
+  // one." — and no control anywhere. A partner without an account could never reach
+  // a payout, and the only route to one was the API by hand.
+  assert.match(screen, /Add Settlement Account/);
+  assert.match(screen, /AddBankAccountModal/);
+});
+
+test("a failed payout is retryable and a dispute is answerable", () => {
+  assert.match(screen, /RetryPayoutModal/);
+  // The action is per-row, from the `failed` status the API marks.
+  assert.match(screen, /onAction=\{\(row\) => row && setRetrying\(row\)\}/);
+  assert.match(screen, /DisputeDetailModal/);
+});
+
+test("the payout button checks the destination before opening the modal", () => {
+  // It opened on any claimable balance, then the API refused with "Add a verified
+  // bank account" — an error the partner could only act on by finding a form that
+  // did not exist on the page.
+  assert.match(screen, /payoutBlockedReason/);
+  assert.match(screen, /Your settlement account is still being verified/);
+  assert.match(screen, /disabled=\{payoutBlockedReason !== null\}/);
+});
+
+test("a successful payout refreshes the balance behind it", () => {
+  // The modal closed without refetching, so the claimable figure still showed the
+  // pre-request amount and invited a second submission of money already promised.
+  assert.match(screen, /onSubmitted/);
+  assert.match(screen, /onSubmitted\(\);/);
+  assert.match(screen, /useAsync\(\(\) => api\.getPartnerSettlements\(\), \[version\]\)/);
+});
+
+test("the POS page distinguishes a failed price load from an empty price list", () => {
+  // It read only `data`, so a network failure left `prices` undefined and rendered
+  // "No prices published" — telling an operator to re-enter prices that already
+  // existed. A failed read must not be reported as a configuration fault.
+  assert.match(screen, /pricesFailed/);
+  assert.match(screen, /Prices could not be loaded/);
+  assert.match(screen, /reloadPricing/);
+  assert.match(screen, /No prices are published for this station yet/);
+});
+
+test("the header badge and the notifications page share one fetch", () => {
+  // Each ran its own `useAsync`. Marking read reloaded the page's copy only, so the
+  // badge kept counting notifications that no longer existed, on every other page,
+  // until a full reload — its dependency being the pathname.
+  assert.match(screen, /usePartnerNotifications/);
+  const header = read(webRoot, "components", "dashboard", "DashboardHeader.tsx");
+  assert.match(header, /usePartnerNotifications/);
+  // Comments stripped, because the header's comment quotes the old call.
+  const headerCode = header.replace(/^\s*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.doesNotMatch(headerCode, /getPartnerNotifications/);
+  assert.ok(
+    read(webRoot, "components", "dashboard", "PartnershipShell.tsx").includes("PartnerNotificationsProvider"),
+    "the provider is not mounted"
+  );
+});
+
+test("no action button renders without something to do", () => {
+  assert.match(screen, /\{onAction \? \(/);
+  assert.doesNotMatch(screen, /row\.action \?\? "Details"\s*\n\s*<\/button>/);
+});
+
+test("a disputed transaction amount is never printed with a doubled decimal point", () => {
+  // `${naira(revenue)}.00` against a naira() that renders cents when they are
+  // non-zero, so revenue with kobo read "₦123.45.00".
+  const routes = fs.readFileSync(partnerRoutes, "utf8");
+  assert.doesNotMatch(routes, /\$\{naira\(today\.revenue\)\}\.00/);
+});
+
+test("rendered timestamps follow the business timezone, not the host's", () => {
+  // The reporting windows were computed by Postgres in BUSINESS_TIMEZONE while
+  // `toLocaleString` with no `timeZone` option used the runtime default. On Render
+  // (UTC) a 09:15 WAT dispense was labelled 08:15, and a 23:00 one fell under the
+  // previous calendar day — so the totals and the timestamps beneath them described
+  // different days.
+  const format = fs.readFileSync(path.join(apiRoot, "src", "lib", "format.js"), "utf8");
+  assert.match(format, /fmtDateTime[\s\S]{0,600}?timeZone: zone\(\)/);
+  assert.match(format, /fmtDate[\s\S]{0,300}?timeZone: zone\(\)/);
+  assert.match(format, /import \{ businessTimeZone \} from "\.\/time\.js"/);
+  // The grouping keys off the business-timezone calendar date. `toDateString()`
+  // compared the *host's* calendar, which put late-evening transactions under the
+  // previous day on any UTC host. Comments stripped, since this module's comments
+  // name `toDateString` while explaining why it is gone.
+  const formatCode = format.replace(/^\s*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.doesNotMatch(formatCode, /toDateString\(\)/);
 });

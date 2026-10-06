@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { DashboardHeader } from "./DashboardHeader";
 import { PartnershipSidebar } from "./PartnershipSidebar";
 import { MobileDashboardNav } from "./MobileDashboardNav";
+import { PartnerNotificationsProvider } from "./PartnerNotificationsProvider";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { useSession } from "@/components/shared/AuthContext";
@@ -45,8 +46,9 @@ export function PartnershipShell({ children, allowedRoles }: PartnershipShellPro
   // lifetime.
   //
   // An empty role list means "no role may view this". AuthGuard treats an empty
-  // allow-list as a redirect, so a mechanic who navigates straight to a page the API
-  // refuses lands on the overview instead of a form that can only 403.
+  // allow-list as deny-all (it did not once, and rendered the page anyway), so a
+  // mechanic who navigates straight to a page the API refuses lands on the overview
+  // instead of a form that can only 403.
   const roles = React.useMemo<Array<"partner" | "mechanic">>(
     () => (allowed ? allowedRoles ?? ["partner"] : []),
     [allowed, allowedRoles]
@@ -54,6 +56,9 @@ export function PartnershipShell({ children, allowedRoles }: PartnershipShellPro
 
   return (
     <AuthGuard allowedRoles={allowed ? roles : []}>
+      {/* One notification fetch for the whole console, so the header badge and the
+          notifications page cannot disagree about what is unread. */}
+      <PartnerNotificationsProvider>
       <main className="min-h-screen bg-[#f7f7fd] text-obligon-navy">
         <PartnershipSidebar />
         <div className="lg:pl-[280px]">
@@ -77,6 +82,7 @@ export function PartnershipShell({ children, allowedRoles }: PartnershipShellPro
           {children}
         </div>
       </main>
+      </PartnerNotificationsProvider>
     </AuthGuard>
   );
 }

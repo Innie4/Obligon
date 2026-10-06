@@ -1,3 +1,5 @@
+import type { PartnerDispute } from "@/lib/services/types";
+
 export type DashboardPageKey =
   | "overview"
   | "settlements"
@@ -265,12 +267,96 @@ export const staffRows: TableRow[] = [
   { cells: ["#ST-8901", "YI\nYusuf Ibrahim\n+234 803 654 0021", "Night Supervisor", "Enabled"], status: "ACTIVE", tone: "success" }
 ];
 
-export const disputeRows: TableRow[] = [
-  { cells: ["#DS-90214", "Incorrect Fueling Charge\nLagos VI Station - Pump #4", "Billing"], status: "PENDING", tone: "pending", action: "View Details" },
-  { cells: ["#DS-89920", "Wallet Sync Delay", "Technical"], status: "UNDER REVIEW", tone: "info", action: "View Details" },
-  { cells: ["#DS-89844", "Fleet Card Activation", "Operations"], status: "RESOLVED", tone: "success", action: "View Details" },
-  { cells: ["#DS-89771", "Invoice Discrepancy", "Billing"], status: "PENDING", tone: "pending", action: "View Details" },
-  { cells: ["#DS-89602", "System Access Issue", "Technical"], status: "RESOLVED", tone: "success", action: "View Details" }
+/**
+ * Carries the same detail fields the live endpoint returns — `subject`,
+ * `description`, `statusRaw`, `amountLabel`, `draftResponse`, `created`, `evidence`.
+ *
+ * They were absent, and `getPartnerDisputes` was typed as returning the base
+ * `PartnerRow`, so the dispute panel had nothing to show and no type error
+ * anywhere to reveal it. Mock mode exercised the least interesting version of the
+ * page: the table rendered and the detail panel could not have been built at all.
+ */
+export const disputeRows: PartnerDispute[] = [
+  {
+    id: "ds-90214",
+    reference: "#DS-90214",
+    cells: ["#DS-90214", "Incorrect Fueling Charge\nLagos VI Station - Pump #4", "Billing"],
+    status: "PENDING",
+    tone: "pending",
+    action: "View Details",
+    subject: "Incorrect Fueling Charge",
+    category: "billing",
+    description: "The pump recorded 52 litres against a card that was only dispensed 40.",
+    statusRaw: "pending",
+    amountLabel: "₦6,220.00",
+    evidence: [],
+    draftResponse: null,
+    created: "Oct 2, 2026"
+  },
+  {
+    id: "ds-89920",
+    reference: "#DS-89920",
+    cells: ["#DS-89920", "Wallet Sync Delay\nIkeja Station - Pump #1", "Technical"],
+    status: "UNDER REVIEW",
+    tone: "info",
+    action: "View Details",
+    subject: "Wallet Sync Delay",
+    category: "technical",
+    description: "Terminal balance lagged behind the backend by several minutes.",
+    statusRaw: "in_review",
+    amountLabel: "₦0.00",
+    evidence: [],
+    draftResponse: "Terminal logs attached; the meter reading matches the recorded litres.",
+    created: "Sep 28, 2026"
+  },
+  {
+    id: "ds-89844",
+    reference: "#DS-89844",
+    cells: ["#DS-89844", "Fleet Card Activation\nApapa Station - Pump #7", "Operations"],
+    status: "RESOLVED",
+    tone: "success",
+    action: "View Details",
+    subject: "Fleet Card Activation",
+    category: "operations",
+    description: "Card was declined at the pump despite an active fleet account.",
+    statusRaw: "resolved",
+    amountLabel: "₦0.00",
+    evidence: [],
+    draftResponse: null,
+    created: "Sep 21, 2026"
+  },
+  {
+    id: "ds-89771",
+    reference: "#DS-89771",
+    cells: ["#DS-89771", "Invoice Discrepancy\nYaba Station - Pump #2", "Billing"],
+    status: "PENDING",
+    tone: "pending",
+    action: "View Details",
+    subject: "Invoice Discrepancy",
+    category: "billing",
+    description: "Monthly invoice shows more litres than the pump total for the period.",
+    statusRaw: "pending",
+    amountLabel: "₦18,400.00",
+    evidence: [],
+    draftResponse: null,
+    created: "Sep 14, 2026"
+  },
+  {
+    id: "ds-89602",
+    reference: "#DS-89602",
+    cells: ["#DS-89602", "System Access Issue\nLagos VI Station", "Technical"],
+    status: "RESOLVED",
+    tone: "success",
+    action: "View Details",
+    subject: "System Access Issue",
+    category: "technical",
+    description: "An attendant could not sign in to the partner dashboard.",
+    statusRaw: "resolved",
+    amountLabel: "₦0.00",
+    evidence: [],
+    draftResponse: null,
+    created: "Sep 3, 2026"
+  }
 ];
 
 export const notificationGroups = [

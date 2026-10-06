@@ -446,3 +446,151 @@ test("it matches the signup verification page's structure", () => {
     assert.ok(signup.includes(token), `signup page is missing "${token}"`);
   }
 });
+// ---------------------------------------------------------------------------
+// Partner API: POS code consumption, payout concurrency, UUID guards, exports
+// ---------------------------------------------------------------------------
+
+test("a POS authorization code is single-use", () => {
+  // It used to be read only. `pos_code_expires_at` is 15 minutes out, so within
+  // that window the same six digits could be presented repeatedly and each
+  // presentation committed another transaction and incremented the card's spend
+  // counters � an unmetered draw on the card's credit limit for whoever held the
+  // code, or read it over a shoulder.
+  const authorize = handler(partnerRoutes, 'router.post("/pos/authorize"');
+  // Claimed by a single conditional UPDATE, which is a row-level compare-and-clear:
+  // the first caller clears it, the second matches nothing.
+  assert.match(authorize, /UPDATE cards SET pos_code = NULL, pos_code_expires_at = NULL/);
+  assert.match(authorize, /WHERE id = \$1 AND pos_code = \$2 AND pos_code_expires_at > now\(\) RETURNING id/);
+  assert.match(authorize, /has already been used/);
+  // And it must happen inside the transaction, before the revenue insert � otherwise
+  // a failure after the insert would leave the code spent with no transaction, or
+  // (checking first, clearing later) leave two concurrent callers both through.
+  const claimAt = authorize.indexOf("UPDATE cards SET pos_code = NULL");
+  const insertAt = authorize.indexOf("INSERT INTO transactions");
+  assert.ok(claimAt > -1, "the code is never claimed");
+  assert.ok(insertAt > -1, "no transaction insert");
+  assert.ok(claimAt < insertAt, "the code is claimed after the revenue is written");
+  // The PIN path is a standing credential, not a single-use authorization.
+  assert.match(authorize, /if \(!viaPin\)/);
+});
+
+test("the payout insert is fenced against a concurrent request", () => {
+  // Check-then-insert with nothing between. Two requests could both read the same
+  // claimable balance and both insert, promising the same settled money twice � the
+  // balance lookup only counts `pending` settlements, and a row that does not exist
+  // yet is not pending, so neither could see the other.
+  const payout = handler(partnerRoutes, 'router.post("/payouts"');
+  assert.match(payout, /pg_advisory_xact_lock\(hashtextextended\(\$1, 0\)\)/);
+  // The affordability check is repeated *inside* the lock. The one before it is only
+  // the first half of the answer; this half is guaranteed fresh.
+  const lockAt = payout.indexOf("pg_advisory_xact_lock");
+  const recheckAt = payout.indexOf("const fresh = await claimableBalanceKobo(orgId)");
+  const insertAt = payout.indexOf("INSERT INTO payouts");
+  assert.ok(lockAt > -1, "no advisory lock");
+  assert.ok(recheckAt > lockAt, "the balance is not re-read inside the lock");
+  assert.ok(insertAt > recheckAt, "the insert is not inside the lock");
+  // Keyed on the org, so unrelated partners stay parallel.
+  assert.match(payout, /\[orgId\]/);
+});
+
+test("every UUID route parameter is validated before it reaches Postgres", () => {
+  // `requireUuid` was defined and never called. An invalid id became a Postgres
+  // cast error � a 500 that leaked a driver message and told the caller nothing.
+  const bare = [...partnerRoutes.matchAll(/req\.params\.(\w+)/g)]
+    .map((m) => m[0])
+    // `index` on the evidence route is a list position, deliberately checked as an
+    // integer rather than a UUID.
+    .filter((ref) => ref !== "req.params.index");
+  assert.ok(bare.length > 0, "expected UUID parameters to audit");
+  for (const ref of bare) {
+    assert.ok(
+      partnerRoutes.includes(`requireUuid(${ref}`),
+      `${ref} is passed to Postgres unvalidated`
+    );
+  }
+});
+
+test("the reports export honours the range the operator selected", () => {
+  // It ignored `range` entirely and returned the network's whole history, so "Last 7
+  // days" on screen and the attached file were different datasets � and the file is
+  // what gets reconciled against a statement.
+const exportRoute = handler(partnerRoutes, 'router.get("/reports/export"');
+  assert.match(exportRoute, /daysForRange\(req\.query\.range\)/);
+  assert.match(exportRoute, /businessTimeZone\(\)/);
+  // The same closed window `/reports` uses, so the file matches the page. Read as
+  // two loose assertions because the window SQL is interpolated, and a single
+  // pattern containing `${...}` is fragile to assert on.
+  assert.match(exportRoute, /created_at >= /);
+  assert.match(exportRoute, /created_at < /);
+  assert.match(exportRoute, /window\.from/);
+  assert.match(exportRoute, /window\.to/);
+});
+
+test("the transactions export honours the search the operator typed", () => {
+  const exportRoute = handler(partnerRoutes, 'router.get("/transactions/export"');
+  assert.match(exportRoute, /const \{ search, status, date \} = req\.query/);
+  assert.match(exportRoute, /ILIKE/);
+});
+
+test("revenue is never printed with a doubled decimal point", () => {
+  // `${naira(today.revenue)}.00`, against a naira() that renders cents only when
+  // they are non-zero: revenue with kobo read "?123.45.00".
+  assert.doesNotMatch(code(partnerRoutes), /\$\{naira\(today\.revenue\)\}\.00/);
+});
+
+test("exports declare a charset", () => {
+  // `text/csv` alone lets a browser guess. The export contains organisation names
+  // and driver names, so a mis-guess renders them as mojibake.
+  for (const route of ["/transactions/export", "/reports/export"]) {
+    assert.match(handler(partnerRoutes, `router.get("${route}"`), /charset=utf-8/);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Auth guard semantics � the empty allow-list
+// ---------------------------------------------------------------------------
+
+test("an empty allowedRoles list denies, it does not allow", () => {
+  // The guard required `allowedRoles.length > 0`, so an empty list read as "no
+  // restriction". `PartnershipShell` passes `[]` for a partner page the API refuses
+  // to a mechanic � the sidebar hides the link, which is not authorisation � so a
+  // mechanic typing /dashboard/fuel-pricing got the full editable price form, and
+  // every submission returned 403.
+  const guard = read(webRoot, "components", "auth", "AuthGuard.tsx");
+  const guardCode = code(guard);
+  assert.ok(!/allowedRoles\.length\s*>\s*0/.test(guardCode), "the empty list is still treated as unrestricted");
+  assert.match(guardCode, /if \(user && allowedRoles\)/);
+  // And nothing is rendered for a disallowed role, so the page cannot flash before
+  // the redirect lands.
+  assert.match(guardCode, /if \(user && allowedRoles && !allowedRoles\.includes\(user\.role\)\) \{\s*return null/);
+});
+
+test("the guard redirect is not skipped by a shared path prefix", () => {
+  // A mechanic's home is `/dashboard`, which prefixes every partner page the API
+  // refuses (`/dashboard/fuel-pricing`, `/dashboard/settlements`, �). Compared with
+  // `startsWith`, the guard decided there was nowhere to send them and rendered the
+  // forbidden page in place.
+  const guard = code(read(webRoot, "components", "auth", "AuthGuard.tsx"));
+  assert.ok(!/startsWith\(correctPath\)/.test(guard), "the redirect still uses startsWith");
+  assert.match(guard, /pathname !== correctPath/);
+});
+
+test("the other shells pass a non-empty role list, so the stricter guard cannot lock them out", () => {
+  // An omitted `allowedRoles` still means "any signed-in role". Only the partner
+  // shell passes an empty list, and it does so deliberately. If any other shell ever
+  // started passing `[]`, this fails rather than quietly locking a whole dashboard.
+const dirs = {
+    CustomerShell: "customer-dashboard",
+    CompanyShell: "company-dashboard",
+    AdminShell: "admin-dashboard"
+  };
+  for (const [file, dir] of Object.entries(dirs)) {
+    const source = read(webRoot, "components", dir, `${file}.tsx`);
+    const match = source.match(/<AuthGuard[^>]*allowedRoles=\{([^}]*)\}/);
+    assert.ok(match, `${file} does not set allowedRoles`);
+    assert.ok(
+      !/\[\s*\]/.test(match[1]),
+      `${file} passes an empty role list and would now be denied everything`
+    );
+  }
+});

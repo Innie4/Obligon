@@ -6,8 +6,7 @@ import { usePathname } from "next/navigation";
 import { Bell, Search } from "lucide-react";
 import { dashboardNav } from "@/lib/mock/dashboard-data";
 import { useSession } from "@/components/shared/AuthContext";
-import { useAsync } from "@/components/shared/useAsync";
-import { api } from "@/lib/services";
+import { usePartnerNotifications } from "./PartnerNotificationsProvider";
 
 function initials(name: string) {
   return name
@@ -26,12 +25,17 @@ export function DashboardHeader() {
   const [searchOpen, setSearchOpen] = React.useState(false);
   const filteredNav = dashboardNav.filter((item) => item.label.toLowerCase().includes(query.trim().toLowerCase()));
 
-  // The unread dot is driven by the real count rather than rendered
+// The unread dot is driven by the real count rather than rendered
   // unconditionally. It was a permanent green badge on every page, including the
   // notifications page itself when there was nothing unread — and "Mark all as
   // read" never removed it, because nothing owned it.
-  const { data: notifications } = useAsync(() => api.getPartnerNotifications(), [pathname === "/dashboard/notifications"]);
-  const unread = notifications?.unreadCount ?? 0;
+  //
+  // The count comes from the shared provider rather than from a fetch of its own.
+  // It used to call `api.getPartnerNotifications()` here, keyed on the pathname, so
+  // it refetched only when entering or leaving the notifications route: reading
+  // everything and pressing "Mark all as read" left this badge showing a count for
+  // notifications that no longer existed, on every other page, until a reload.
+  const { unread } = usePartnerNotifications();
 
   return (
     <header className="sticky top-0 z-30 border-b border-[#e3e4ef] bg-[#f7f7fd]/95 backdrop-blur">
