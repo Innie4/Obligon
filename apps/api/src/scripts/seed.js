@@ -4,17 +4,26 @@ import { supabaseAuthEnabled, supabaseSignUp, LOCAL_AUTH_PLACEHOLDER } from "../
 
 /**
  * Seeds demo data for every role. Idempotent: skips if the admin user exists.
- * Demo credentials (change in production):
- *   admin@obligon.com     | Admin#1234
- *   customer@obligon.com  | Customer#123
- *   fleet@obligon.com     | Company#123
- *   partner@obligon.com   | Partner#123
+ *
+ * One account per role, all five, with a password that satisfies the 8-character
+ * minimum so they can also be typed into the login form by hand:
+ *   admin@obligon.com     | Admin#1234    | Platform admin
+ *   customer@obligon.com  | Customer#123  | Cards, wallet, fuel history
+ *   fleet@obligon.com     | Company#123   | Fleet account
+ *   partner@obligon.com   | Partner#123   | Station partner
+ *   mechanic@obligon.com  | Mechanic#123  | Mechanic, partner dashboard read-only
+ *
+ * These are demo credentials and the seed is development-only — see the guard at the
+ * bottom of `main`. The sign-in page offers them as one-click buttons, which is
+ * why every one of them must exist, be active, and have MFA off: a demo that stops
+ * at a second-factor prompt has stopped being a demo.
  */
 const PASSWORD = {
   admin: "Admin#1234",
   customer: "Customer#123",
   company: "Company#123",
-  partner: "Partner#123"
+  partner: "Partner#123",
+  mechanic: "Mechanic#123"
 };
 
 async function upsertUser({ email, password, name, role, org, tier = "Standard Account", phone = null, verified = true }) {
@@ -37,6 +46,24 @@ async function upsertUser({ email, password, name, role, org, tier = "Standard A
 }
 
 async function main() {
+  // Refuses to run against production.
+  //
+  // The accounts below all have published, weak, shared passwords and no MFA, and
+  // the sign-in page offers them as one-click buttons — so a seed run in production
+  // is an open door to every dashboard. The check is here rather than in the docs
+  // because the docs are not read at 2am by whoever runs the next migration.
+  //
+  // Overridable only with an explicit flag, so a staging environment that is
+  // deliberately `NODE_ENV=production` can still be seeded on purpose.
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEMO_SEED !== "true") {
+    console.error(
+      "Refusing to seed demo accounts: NODE_ENV=production.\n" +
+        "The demo users share published passwords and have no second factor.\n" +
+        "Set ALLOW_DEMO_SEED=true if this is a deliberate throwaway environment."
+    );
+    process.exit(1);
+  }
+
   const existing = await one("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
   if (existing) {
     const jobs = await one("SELECT count(*)::int AS count FROM job_postings");
@@ -54,6 +81,11 @@ async function main() {
   const customerId = await upsertUser({ email: "customer@obligon.com", password: PASSWORD.customer, name: "Femi Balogun", role: "customer", org: "Obligon LTD Enterprise", tier: "Premium Account", phone: "+2348012345678" });
   const companyId = await upsertUser({ email: "fleet@obligon.com", password: PASSWORD.company, name: "Adekunle Smith", role: "company", org: "Haulage Dynamics Ltd", tier: "Enterprise Account" });
   const partnerId = await upsertUser({ email: "partner@obligon.com", password: PASSWORD.partner, name: "Chidi Nwosu", role: "partner", org: "Core Hub Fuel Station", tier: "Verified Partner", phone: "+2348087654321" });
+  // A mechanic works on the partner dashboard but may not change money or pricing:
+  // `mechanicAllowedPaths` in partner.routes.js and the role check in the shell
+  // both limit them to reading. Seeding one means that restriction is visible on
+  // the demo rather than being an untested code path.
+  const mechanicId = await upsertUser({ email: "mechanic@obligon.com", password: PASSWORD.mechanic, name: "Tunde Bakare", role: "mechanic", org: "Core Hub Fuel Station", tier: "Service Technician", phone: "+2348099900111" });
 
   await q("INSERT INTO wallets (user_id, balance_kobo, budget_limit_kobo) VALUES ($1, 48500000, 50000000) ON CONFLICT (user_id) DO NOTHING", [customerId]);
 
@@ -74,8 +106,9 @@ async function main() {
   await q(
     `INSERT INTO memberships (organization_id, user_id, email, role, status) VALUES
       ($1,$2,'fleet@obligon.com','owner','active'),
-      ($3,$4,'partner@obligon.com','owner','active')`,
-    [companyOrgId, companyId, partnerOrgId, partnerId]
+      ($3,$4,'partner@obligon.com','owner','active'),
+      ($3,$5,'mechanic@obligon.com','dispatcher','active')`,
+    [companyOrgId, companyId, partnerOrgId, partnerId, mechanicId]
   );
 
   // Vehicles & drivers

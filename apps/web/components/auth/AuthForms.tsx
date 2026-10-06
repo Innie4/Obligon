@@ -27,6 +27,7 @@ import { routes } from "@/components/site/routes";
 import { useToast } from "@/components/shared/Toast";
 import { DialogFrame } from "@/components/shared/Dialogs";
 import { useSession } from "@/components/shared/AuthContext";
+import { DemoAccountPanel } from "@/components/auth/DemoAccountPanel";
 import { readPersistedSession, readRememberedEmail, writeRememberedEmail } from "@/lib/session-store";
 import { authApi, LIVE_MODE } from "@/lib/services";
 import type { UserRole } from "@/lib/services/types";
@@ -467,6 +468,19 @@ function LoginForm() {
         </div>
       </div>
       </form>
+
+      {/*
+        One click per role, below the form and outside it.
+
+        Outside because the panel's buttons are not a login form, and a section
+        nested in one picks up its styles and its enter-key behaviour for free.
+        It renders nothing unless NEXT_PUBLIC_ENABLE_DEMO_LOGIN=true, so a
+        deployment that has not opted in ships no demo credentials at all. After
+        the real form rather than above it, so the normal path stays primary.
+      */}
+      <div className="px-1">
+        <DemoAccountPanel />
+      </div>
     </>
   );
 }

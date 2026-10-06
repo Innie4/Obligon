@@ -9,6 +9,7 @@
     "migrate": "node --env-file-if-exists=../../.env src/scripts/migrate.js",
     "config:check": "node --env-file-if-exists=../../.env src/scripts/config-check.js",
     "seed": "node --env-file-if-exists=../../.env src/scripts/seed.js",
+    "seed:demo": "node --env-file-if-exists=../../.env src/scripts/demo-accounts.js",
     "cron": "node --env-file-if-exists=../../.env src/scripts/cron.js",
     "test": "node --env-file-if-exists=../../.env --test tests/*.test.mjs",
     "test:money": "node --env-file-if-exists=../../.env --test tests/money.test.mjs",
