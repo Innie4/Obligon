@@ -92,6 +92,7 @@ import type {
   Vehicle,
   PartnerOverview,
   PartnerRow,
+  PartnerDispute,
   PartnerSettlements,
   PartnerPricing,
   PartnerReports,
@@ -285,7 +286,13 @@ export interface ApiClient {
   getPartnerPricing(): Promise<PartnerPricing>;
   getPartnerReports(rangeDays?: number): Promise<PartnerReports>;
   getPartnerStaff(): Promise<PartnerStaff>;
-  getPartnerDisputes(): Promise<PartnerRow[]>;
+  /**
+   * `PartnerDispute`, not `PartnerRow`: the dispute detail panel reads `subject`,
+   * `description`, `statusRaw`, `amountLabel`, `evidence`, `draftResponse` and
+   * `created`, all of which the endpoint returns and the table does not render.
+   * Declared as the base row, those were `any` at every call site.
+   */
+  getPartnerDisputes(): Promise<PartnerDispute[]>;
   getPartnerNotifications(): Promise<PartnerNotifications>;
   getPartnerStation(): Promise<PartnerStation>;
   getPartnerSettings(): Promise<PartnerSettings>;
@@ -304,6 +311,16 @@ export interface ApiClient {
 
   /** Generic transport (used for SSE and any ad-hoc call). */
   request<T>(path: string, init?: RequestInit): Promise<T>;
+  /**
+   * An authenticated file download, returned as a Blob.
+   *
+   * A plain `<a href="/api/partner/.../export">` cannot work here: the session lives
+   * in localStorage and is sent as a Bearer header, and an anchor sends no headers.
+   * The dashboard's two export links were exactly that, so they resolved against the
+   * Next.js origin — where no proxy exists — and produced a 404, or a 401 from the
+   * API if the web and API hosts were ever made the same.
+   */
+  download(path: string, init?: RequestInit): Promise<Blob>;
 }
 
 // ---------------------------------------------------------------------------
@@ -403,6 +420,75 @@ async function http<T>(path: string, init: RequestInit = {}, retried = false, al
   return body as T;
 }
 
+/**
+ * The file-download counterpart of `http`.
+ *
+ * Same authentication and same refresh-on-401, but it resolves to the `Blob` rather
+ * than a parsed body, and it preserves the server's `Content-Disposition` filename —
+ * `http` would have read a CSV as text, which loses the name and mangles binary
+ * output through `toLocaleString`-style decoding.
+ *
+ * A 401 triggers one refresh and one retry, exactly as `http` does. Without the retry
+ * an export issued moments before a token expiry would fail with an error the user
+ * cannot act on, having already been told their session is fine everywhere else.
+ */
+async function download(path: string, init: RequestInit = {}, retried = false): Promise<{ blob: Blob; filename: string }> {
+  if (!API_URL) throw new ApiError(0, "Live backend URL is not configured (NEXT_PUBLIC_API_URL missing).");
+  const headers = new Headers(init.headers);
+  const tokens = readTokens();
+  if (tokens?.accessToken) headers.set("Authorization", `Bearer ${tokens.accessToken}`);
+
+  const res = await fetch(`${API_URL}${path}`, { ...init, headers });
+
+  if (res.status === 401 && !retried && readTokens()) {
+    const ok = await refreshTokens();
+    if (ok) return download(path, init, true);
+    writeTokens(null);
+    writePersistedSession(null);
+    throw new ApiError(401, "Your session has expired. Please sign in again.");
+  }
+
+  if (!res.ok) {
+    // The server sends JSON for refusals and CSV for success, so the body is only
+    // parsed when it actually is JSON. Surfacing the real reason matters: a silently
+    // downloaded "error.csv" is how an operator ends up analysing a file that is not
+    // their ledger.
+    const isJson = res.headers.get("content-type")?.includes("application/json");
+    let message = `Export failed (${res.status})`;
+    if (isJson) {
+      try {
+        const body = await res.json();
+        if (body?.error?.message) message = body.error.message;
+      } catch {
+        /* keep the generic message */
+      }
+    }
+    throw new ApiError(res.status, message);
+  }
+
+  const filename = /filename="?([^";]+)"?/i.exec(res.headers.get("content-disposition") ?? "")?.[1] ?? "export.csv";
+  return { blob: await res.blob(), filename };
+}
+
+/**
+ * Triggers a browser download for a Blob and releases the object URL.
+ *
+ * `URL.revokeObjectURL` is not optional housekeeping: without it the Blob stays
+ * referenced for the life of the document, and a dashboard open all day accumulates
+ * one full ledger export per click.
+ */
+export function saveBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
 // ---------------------------------------------------------------------------
 // LiveApiClient — every read maps to a real endpoint; mutations are typed helpers
 // ---------------------------------------------------------------------------
@@ -410,6 +496,11 @@ async function http<T>(path: string, init: RequestInit = {}, retried = false, al
 class LiveApiClient implements ApiClient {
   async request<T>(path: string, init?: RequestInit): Promise<T> {
     return http<T>(path, init);
+  }
+
+  async download(path: string, init?: RequestInit): Promise<Blob> {
+    const { blob } = await download(path, init);
+    return blob;
   }
 
   async getSession(): Promise<SessionUser | null> {
@@ -580,8 +671,8 @@ class LiveApiClient implements ApiClient {
   async getPartnerStaff(): Promise<PartnerStaff> {
     return http<PartnerStaff>("/api/partner/staff");
   }
-  async getPartnerDisputes(): Promise<PartnerRow[]> {
-    const data = await http<{ disputes: PartnerRow[] }>("/api/partner/disputes");
+  async getPartnerDisputes(): Promise<PartnerDispute[]> {
+    const data = await http<{ disputes: PartnerDispute[] }>("/api/partner/disputes");
     return data.disputes;
   }
   async getPartnerNotifications(): Promise<PartnerNotifications> {
@@ -647,6 +738,15 @@ const simulate = <T>(result: T, ms = 600): Promise<T> =>
 class MockApiClient implements ApiClient {
   async getSession(): Promise<SessionUser | null> {
     return readPersistedSession();
+  }
+
+  /**
+   * A CSV stand-in, so an export in mock mode still produces a real file. It has to
+   * be a Blob rather than a no-op: `saveBlob` is what triggers the download, so
+   * returning nothing would make the button appear to work while saving nothing.
+   */
+  async download(): Promise<Blob> {
+    return new Blob(["reference,amount,status\nMOCK-1,2500,success\n"], { type: "text/csv;charset=utf-8" });
   }
 
   async getCardPlans(): Promise<CardPlan[]> {
@@ -783,8 +883,8 @@ class MockApiClient implements ApiClient {
       stats: { total: staff.length, active: staff.length }
     };
   }
-  async getPartnerDisputes(): Promise<PartnerRow[]> {
-    return partnerDisputeRows as PartnerRow[];
+  async getPartnerDisputes(): Promise<PartnerDispute[]> {
+    return partnerDisputeRows;
   }
   async getPartnerNotifications(): Promise<PartnerNotifications> {
     const groups = partnerNotificationGroups.map((group) => ({

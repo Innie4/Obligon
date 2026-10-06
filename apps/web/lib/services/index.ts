@@ -37,6 +37,7 @@ export {
   publicApi,
   pushApi,
   openRealtimeStream,
+  saveBlob,
   ApiError,
   DEFAULT_NOTIFICATION_PREFS,
   LIVE_MODE
