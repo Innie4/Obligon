@@ -43,6 +43,20 @@ the API, Supabase Auth, and the server-returned role to route customers to
 
 ## Demo accounts (created by seed)
 
+### Temporary deployed partner test login
+
+The API currently provisions `partner.test@obligon.com` with password
+`ObligonPartnerTest!2026` on startup for the requested partner-dashboard testing.
+Use the ordinary `/auth/login` page. It owns a separate **Obligon Partner Testing**
+organization with a zero-balance wallet and seven days of Enterprise access from
+creation. Restarting does not reset the password or extend that period.
+
+To remove access after testing, set `TEMPORARY_PARTNER_ACCOUNT_ENABLED = false`
+in `src/lib/temporaryPartnerAccount.js` and deploy. The next API startup suspends
+this test user, revokes its sessions, and cancels its test subscription. Then the
+bootstrap call and module can be removed. Deleting source alone leaves the
+database account active.
+
 | Role     | Email                 | Password      |
 |----------|-----------------------|---------------|
 | admin    | admin@obligon.com     | Admin#1234    |

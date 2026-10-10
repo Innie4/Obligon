@@ -169,7 +169,7 @@ integration('public inquiry is linked transactionally, visible to admins and rep
  assert.equal(response.status,201);const saved=await response.json();assert.match(saved.reference,/^WEB/);
  const inbox=await request('/support');const ticket=inbox.body.tickets.find(t=>t.reference===saved.reference);assert.ok(ticket);assert.equal(ticket.contact_email,'public@test.invalid');assert.equal(ticket.contact_phone,'+2348000000000');
  assert.equal((await request(`/support/${ticket.id}/messages`,{body:{message:'We are reviewing your request'}})).status,200);
- const emails=await pool.query("SELECT * FROM email_outbox WHERE to_email='public@test.invalid'");assert.equal(emails.rows.length,2);assert.equal(emails.rows[1].body,'We are reviewing your request');
+ const emails=await pool.query("SELECT * FROM email_outbox WHERE to_email='public@test.invalid'");assert.equal(emails.rows.length,2);assert.ok(emails.rows.some(email=>email.body==='We are reviewing your request'));assert.ok(emails.rows.some(email=>email.body.includes(saved.reference)));
 });
 integration('careers rejects invalid and closed role IDs before any upload or application write',async()=>{
  for(const jobId of ['eng-01',randomUUID()]){const r=await originalFetch(base+'/api/public/jobs/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'Test Applicant',email:'applicant@test.invalid',jobId})});assert.equal(r.status,jobId==='eng-01'?400:404);}

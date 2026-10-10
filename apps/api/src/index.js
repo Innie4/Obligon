@@ -3,6 +3,7 @@ import { createApp } from "./app.js";
 import { getPool, q } from "./db.js";
 import { ensureBucket } from "./lib/storage.js";
 import { startScheduler, stopScheduler } from "./lib/scheduler.js";
+import { ensureTemporaryPartnerAccount } from "./lib/temporaryPartnerAccount.js";
 
 function reportConfig() {
   const fatal = configurationIssues();
@@ -42,6 +43,13 @@ async function main() {
     console.error(`✗ Database connection failed: ${err.code ?? ""} ${err.message}`);
     console.error("  Check DATABASE_URL in apps/api/.env — Supabase: Project Settings → Database → Connection string (URI).");
     process.exit(1);
+  }
+
+  try {
+    const account = await ensureTemporaryPartnerAccount();
+    console.log(`Temporary partner test account: ${account.status}`);
+  } catch (err) {
+    console.warn("Temporary partner test account setup failed:", err.message);
   }
 
   try {
