@@ -350,6 +350,8 @@ export interface CustomerSpendProjection {
 }
 
 export interface Station {
+  id?: string;
+  distanceKm?: number | null;
   name: string;
   distance: string;
   address: string;
@@ -357,8 +359,8 @@ export interface Station {
   unleaded: string;
   fuels: string[];
   hours: string;
-  lat: number;
-  lng: number;
+  lat: number | null;
+  lng: number | null;
 }
 
 export interface Vehicle {
@@ -481,7 +483,7 @@ export interface PartnerStation {
     city: string;
     lat: number | null;
     lng: number | null;
-    fuels: string | null;
+    fuels: string[] | null;
     hours: string | null;
     assets: string[];
     status: string;

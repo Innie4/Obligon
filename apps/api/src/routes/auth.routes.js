@@ -371,8 +371,8 @@ router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
       );
       if (role === "partner" && fuelTypes?.length) {
         const station = await t.one(
-          `INSERT INTO stations (partner_org_id, name, status) VALUES ($1,$2,'pending') RETURNING *`,
-          [org.id, orgName]
+          `INSERT INTO stations (partner_org_id, name, address, city, fuels, status) VALUES ($1,$2,$3,$4,$5,'pending') RETURNING *`,
+          [org.id, orgName, address ?? "", city ?? "", fuelTypes]
         );
         for (const fuel of fuelTypes) {
           await t.query(`INSERT INTO fuel_prices (station_id, fuel_type, price_kobo) VALUES ($1,$2,0)`, [station.id, fuel]);

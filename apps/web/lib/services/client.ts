@@ -261,7 +261,7 @@ export interface ApiClient {
   /** Dispenses and wallet movements together, newest first. */
   getCustomerMoneyHistory(): Promise<CustomerMoneyEvent[]>;
   getMobileHistory(): Promise<MobileTransactionGroup[]>;
-  getStations(): Promise<Station[]>;
+  getStations(location?: { lat: number; lng: number }): Promise<Station[]>;
   getVehicles(): Promise<Vehicle[]>;
   getNotifications(): Promise<AppNotification[]>;
   getCustomerVehiclePerformance(): Promise<string[][]>;
@@ -590,8 +590,8 @@ class LiveApiClient implements ApiClient {
     const data = await http<{ groups: MobileTransactionGroup[] }>("/api/customer/transactions/mobile-history");
     return data.groups;
   }
-  async getStations(): Promise<Station[]> {
-    const data = await http<{ stations: Station[] }>("/api/customer/stations");
+  async getStations(location?: { lat: number; lng: number }): Promise<Station[]> {
+    const data = await http<{ stations: Station[] }>(`/api/customer/stations${queryString(location ?? {})}`);
     return data.stations;
   }
   async getVehicles(): Promise<Vehicle[]> {
@@ -836,7 +836,7 @@ class MockApiClient implements ApiClient {
     }));
   }
   async getMobileHistory(): Promise<MobileTransactionGroup[]> { return mobileHistory; }
-  async getStations(): Promise<Station[]> { return stations; }
+  async getStations(location?: { lat: number; lng: number }): Promise<Station[]> { return stations; }
   async getVehicles(): Promise<Vehicle[]> {
     return vehicleRows.map((row) => ({
       plate: row.cells[1],

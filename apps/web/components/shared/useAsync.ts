@@ -95,8 +95,9 @@ export function useAsync<T>(fn: () => Promise<T>, deps: React.DependencyList = [
     return () => {
       active = false;
     };
+    // Cancel any old background response when inputs change (for example location).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [silentNonce]);
+  }, [...deps, nonce, silentNonce]);
 
   return {
     status,

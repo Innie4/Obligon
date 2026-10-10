@@ -23,3 +23,11 @@ Physical delivery, biometric authorization and manual payouts remain explicitly 
 The code review checked authorization boundaries, exact amount/reference/currency verification, replay handling, bank binding, historical accounting preservation and deployment configuration. Code verdict: approve for branch review. Advisory banner: SHIP WITH CAUTION. Live credentials, release environment and production rollback readiness are not assessed; run the shipping workflow before production deployment.
 
 Migration 024 removes the old unique organization destination constraint to preserve immutable bank destinations. Rolling back only application binaries to the previous release can break its old upsert. Keep payment operations paused during coordinated rollout; retain a database snapshot and use a reviewed forward fix or restore plan for rollback.
+
+### Nearby customer stations
+
+Customer Stations accepts a consented device location (updated as it changes) or manual latitude/longitude. The API validates coordinate pairs and ranks all active stations by straight-line distance before returning the nearest 50. Missing customer coordinates produce no guessed distances; stations without usable coordinates follow located stations. The view refreshes every 30 seconds while visible and when focus returns. Search and fuel filters preserve that distance order.
+
+Partner registration retains station address, city and available fuels. Partner Station Profile requires exact latitude/longitude when saving, validates geographic bounds, and saves fuel names as an array. Existing admin approval still activates new stations; pending stations remain unpublished. Migration 025 removes the hardcoded Lagos coordinate defaults and permits unknown locations. Existing coordinates are preserved; entries at the exact former default pair need partner confirmation before distance ranking. Existing stations with missing or unconfirmed coordinates need their partner to complete Location Details.
+
+Regression coverage: nearest-before-limit, new active station visibility, pending station exclusion, changed customer origin, missing location, coordinate validation (including zero), fuel filtering, and cancellation of stale background responses after location changes.

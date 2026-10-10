@@ -647,7 +647,7 @@ router.get("/station", asyncHandler(async (req, res) => {
   res.json({
     station: {
       id: station.id, name: station.name, address: station.address, city: station.city,
-      lat: station.lat, lng: station.lng, fuels: station.fuels, hours: station.hours,
+      lat: station.location_confirmed ? station.lat : null, lng: station.location_confirmed ? station.lng : null, fuels: station.fuels, hours: station.hours,
       assets: station.assets, status: station.status,
       messagingTerminal: station.messaging_terminal
     },
@@ -659,11 +659,13 @@ router.get("/station", asyncHandler(async (req, res) => {
 
 router.put("/station", requireOrgRole("admin"), asyncHandler(async (req, res) => {
   const { name, address, city, lat, lng, hours, fuels } = req.valid ?? req.body ?? {};
+  if ((lat == null || lat === "") !== (lng == null || lng === "")) throw badRequest("Provide latitude and longitude together");
+  if (fuels != null && (!Array.isArray(fuels) || fuels.some(fuel => typeof fuel !== "string" || !fuel.trim()))) throw badRequest("Fuels must be a list of names");
   const station = await one("SELECT id FROM stations WHERE partner_org_id = $1 ORDER BY created_at LIMIT 1", [partnerOrgId(req)]);
   if (!station) throw notFound("No station registered for this partner");
   const updated = await one(
     `UPDATE stations SET name = COALESCE($2, name), address = COALESCE($3, address), city = COALESCE($4, city),
-       lat = COALESCE($5, lat), lng = COALESCE($6, lng), hours = COALESCE($7, hours), fuels = COALESCE($8, fuels)
+       lat = COALESCE($5, lat), lng = COALESCE($6, lng), location_confirmed = CASE WHEN $5::double precision IS NOT NULL AND $6::double precision IS NOT NULL THEN TRUE ELSE location_confirmed END, hours = COALESCE($7, hours), fuels = COALESCE($8, fuels)
      WHERE id = $1 RETURNING *`,
     [station.id, name ?? null, address ?? null, city ?? null, boundedCoordinate(lat, "Latitude", 90), boundedCoordinate(lng, "Longitude", 180), hours ?? null, fuels ?? null]
   );

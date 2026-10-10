@@ -5,7 +5,7 @@ import { q, one, tx } from "../db.js";
 import { asyncHandler, badRequest, notFound, forbidden, conflict, serviceUnavailable, misconfigured } from "../lib/errors.js";
 import { requireAuth } from "../middleware/auth.js";
 import { hashPin, verifyPin, randomToken } from "../lib/security.js";
-import { naira, fmtDate, fmtDateTime, relativeTime, dayGroup, maskPan, maskAccount, distanceLabel, reference, initials } from "../lib/format.js";
+import { naira, fmtDate, fmtDateTime, relativeTime, dayGroup, maskPan, maskAccount, reference, initials } from "../lib/format.js";
 import { customerSavings, monthStart } from "../lib/savings.js";
 import { readSpendProjection, setSpendProjection } from "../lib/spend.js";
 import { settlePendingForUser } from "../lib/reconcile.js";
@@ -1618,25 +1618,46 @@ router.post("/cards", asyncHandler(async (req, res) => {
 // ============ STATIONS ============
 router.get("/stations", asyncHandler(async (req, res) => {
   const { search, fuel, lat, lng } = req.query;
+  let origin = null;
+  if (lat !== undefined || lng !== undefined) {
+    if (typeof lat !== "string" || typeof lng !== "string" || !lat.trim() || !lng.trim() ||
+        !Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng)) || Math.abs(Number(lat)) > 90 || Math.abs(Number(lng)) > 180) {
+      throw badRequest("Provide valid latitude and longitude together");
+    }
+    origin = { lat: Number(lat), lng: Number(lng) };
+  }
   const params = [];
   let where = `s.status = 'active'`;
   if (search) { params.push(`%${search}%`); where += ` AND (s.name ILIKE $${params.length} OR s.address ILIKE $${params.length} OR s.city ILIKE $${params.length})`; }
-  if (fuel) { params.push(`%${fuel}%`); where += ` AND $${params.length} = ANY(s.fuels)`; }
-  const rows = await q(`SELECT s.*, COALESCE(AVG(fp.price_kobo) FILTER (WHERE fp.fuel_type ILIKE '%diesel%'), 0) AS diesel_kobo, COALESCE(AVG(fp.price_kobo) FILTER (WHERE fp.fuel_type ILIKE '%petrol%' OR fp.fuel_type ILIKE '%PMS%'), 0) AS unleaded_kobo FROM stations s LEFT JOIN fuel_prices fp ON fp.station_id = s.id WHERE ${where} GROUP BY s.id ORDER BY s.name LIMIT 50`, params);
-  const userLat = Number(lat) || 6.5244;
-  const userLng = Number(lng) || 3.3792;
+  if (fuel) { params.push(String(fuel)); where += ` AND $${params.length} = ANY(s.fuels)`; }
+  let distanceSql = "NULL::double precision";
+  if (origin) {
+    params.push(origin.lat, origin.lng);
+    distanceSql = `CASE WHEN s.location_confirmed AND s.lat BETWEEN -90 AND 90 AND s.lng BETWEEN -180 AND 180 THEN
+      6371 * acos(LEAST(1.0, GREATEST(-1.0,
+        sin(radians($${params.length - 1}::double precision)) * sin(radians(s.lat)) +
+        cos(radians($${params.length - 1}::double precision)) * cos(radians(s.lat)) *
+        cos(radians(s.lng - $${params.length}::double precision))))) END`;
+  }
+  // Rank the full network before limiting: a nearby station may sort last by name.
+  const rows = await q(`SELECT s.*, ${distanceSql} AS distance_km,
+    COALESCE(AVG(fp.price_kobo) FILTER (WHERE fp.fuel_type ILIKE '%diesel%'), 0) AS diesel_kobo,
+    COALESCE(AVG(fp.price_kobo) FILTER (WHERE fp.fuel_type ILIKE '%petrol%' OR fp.fuel_type ILIKE '%PMS%'), 0) AS unleaded_kobo
+    FROM stations s LEFT JOIN fuel_prices fp ON fp.station_id = s.id WHERE ${where}
+    GROUP BY s.id ORDER BY distance_km ASC NULLS LAST, s.name, s.id LIMIT 50`, params);
   res.json({
     stations: rows.map((s) => ({
       id: s.id,
       name: s.name,
-      distance: distanceLabel(userLat, userLng, s.lat, s.lng),
+      distance: s.distance_km == null ? "Location unavailable" : `${Number(s.distance_km).toFixed(1)} km`,
+      distanceKm: s.distance_km == null ? null : Number(s.distance_km),
       address: `${s.address}${s.city ? `, ${s.city}` : ""}`,
       diesel: s.diesel_kobo ? naira(s.diesel_kobo, { sign: false }).replace("₦", "₦") : "—",
       unleaded: s.unleaded_kobo ? naira(s.unleaded_kobo) : "—",
       fuels: s.fuels,
       hours: s.hours,
-      lat: s.lat,
-      lng: s.lng,
+      lat: s.location_confirmed ? s.lat : null,
+      lng: s.location_confirmed ? s.lng : null,
       rating: Number(s.rating)
     }))
   });

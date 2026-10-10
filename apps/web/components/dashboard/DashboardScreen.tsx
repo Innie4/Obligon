@@ -866,7 +866,7 @@ function DisputesPage() {
 function StationProfilePage() {
   const { success: toastSuccess, error: toastError } = useToast();
 const { status, data, error, reload } = useAsync(() => api.getPartnerStation());
-  const [form, setForm] = React.useState<{ name: string; address: string; city: string; hours: string; fuels: string } | null>(null);
+  const [form, setForm] = React.useState<{ name: string; address: string; city: string; hours: string; fuels: string; lat: string; lng: string } | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [operationsOpen, setOperationsOpen] = React.useState(false);
 
@@ -877,11 +877,13 @@ const { status, data, error, reload } = useAsync(() => api.getPartnerStation());
     address: station.address ?? "",
     city: station.city ?? "",
     hours: station.hours ?? "",
-    fuels: station.fuels ?? ""
+    fuels: Array.isArray(station.fuels) ? station.fuels.join(", ") : station.fuels ?? "",
+    lat: station.lat == null ? "" : String(station.lat),
+    lng: station.lng == null ? "" : String(station.lng)
   } : null);
 
   const setField = (key: keyof NonNullable<typeof fields>, value: string) =>
-    setForm({ ...(fields ?? { name: "", address: "", city: "", hours: "", fuels: "" }), [key]: value });
+    setForm({ ...(fields ?? { name: "", address: "", city: "", hours: "", fuels: "", lat: "", lng: "" }), [key]: value });
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -893,7 +895,9 @@ const { status, data, error, reload } = useAsync(() => api.getPartnerStation());
         address: fields.address,
         city: fields.city,
         hours: fields.hours || null,
-        fuels: fields.fuels || null
+        fuels: fields.fuels.split(",").map(fuel => fuel.trim()).filter(Boolean),
+        lat: Number(fields.lat),
+        lng: Number(fields.lng)
       });
       toastSuccess("Station profile saved.");
       setForm(null);
@@ -955,6 +959,15 @@ const { status, data, error, reload } = useAsync(() => api.getPartnerStation());
                       className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 font-bold text-obligon-navy outline-none focus:border-obligon-green"
                       required={key === "name"}
                     />
+                  </label>
+                ))}
+                <p className="text-sm text-obligon-text">Set the station’s exact coordinates so nearby customers can find it after approval.</p>
+                {(["lat", "lng"] as const).map(key => (
+                  <label key={key} className="block">
+                    <span className="text-xs font-extrabold uppercase text-obligon-text">{key === "lat" ? "Latitude" : "Longitude"}</span>
+                    <input required type="number" step="any" min={key === "lat" ? -90 : -180} max={key === "lat" ? 90 : 180}
+                      value={fields[key]} onChange={e => setField(key, e.target.value)}
+                      className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 font-bold text-obligon-navy" />
                   </label>
                 ))}
                 <label className="block">

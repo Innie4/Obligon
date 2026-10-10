@@ -1479,7 +1479,37 @@ function buildMapUrl(list: Array<{ lat: number; lng: number }>) {
 
 function StationsPage() {
   const router = useRouter();
-  const { status, data: stations, error, reload } = useAsync(() => api.getStations());
+  const [location, setLocation] = React.useState<{ lat: number; lng: number }>();
+  const [locationMessage, setLocationMessage] = React.useState("Share your location to see the closest stations first.");
+  const [coordinates, setCoordinates] = React.useState({ lat: "", lng: "" });
+  const watchId = React.useRef<number | null>(null);
+  const startLocation = React.useCallback(() => {
+    if (!navigator.geolocation) { setLocationMessage("Location is unavailable. Enter coordinates below."); return; }
+    if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current);
+    setLocationMessage("Finding your location…");
+    watchId.current = navigator.geolocation.watchPosition(({ coords }) => {
+      setLocation({ lat: coords.latitude, lng: coords.longitude });
+      setLocationMessage("Closest stations first · distances are in a straight line.");
+    }, () => { setLocation(undefined); setLocationMessage("Location could not be obtained. Enable location access or enter coordinates below."); },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+  }, []);
+  React.useEffect(() => {
+    let active = true;
+    navigator.permissions?.query({ name: "geolocation" }).then(result => {
+      if (active && result.state === "granted") startLocation();
+    }).catch(() => {});
+    return () => { active = false; if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current); };
+  }, [startLocation]);
+  const { status, data: stations, error, reload, refresh } = useAsync(() => api.getStations(location), [location?.lat, location?.lng]);
+  const refreshRef = React.useRef(refresh);
+  refreshRef.current = refresh;
+  React.useEffect(() => {
+    const update = () => { if (document.visibilityState === "visible") refreshRef.current(); };
+    const timer = window.setInterval(update, 30000);
+    window.addEventListener("focus", update);
+    document.addEventListener("visibilitychange", update);
+    return () => { clearInterval(timer); window.removeEventListener("focus", update); document.removeEventListener("visibilitychange", update); };
+  }, []);
   const [query, setQuery] = React.useState("");
   const [fuelsOpen, setFuelsOpen] = React.useState(false);
   const [selectedFuels, setSelectedFuels] = React.useState<string[]>([]);
@@ -1498,6 +1528,24 @@ function StationsPage() {
   }) ?? [];
 
   return (
+    <>
+      <div className="mb-4 rounded-xl border border-[#dbe2d8] bg-white p-4">
+        <p role="status" className="text-sm text-obligon-text">{locationMessage}</p>
+        <button type="button" onClick={startLocation} className="mt-2 font-bold text-obligon-green">Use my location</button>
+        <details className="mt-2 text-sm">
+          <summary>Set location manually</summary>
+          <form className="mt-2 flex flex-wrap gap-2" onSubmit={e => {
+            e.preventDefault();
+            if (watchId.current !== null) { navigator.geolocation.clearWatch(watchId.current); watchId.current = null; }
+            setLocation({ lat: Number(coordinates.lat), lng: Number(coordinates.lng) });
+            setLocationMessage("Closest stations first · using your selected location.");
+          }}>
+            <label>Latitude<input required type="number" step="any" min="-90" max="90" value={coordinates.lat} onChange={e => setCoordinates({ ...coordinates, lat: e.target.value })} className="mx-2 w-36 rounded border p-2" /></label>
+            <label>Longitude<input required type="number" step="any" min="-180" max="180" value={coordinates.lng} onChange={e => setCoordinates({ ...coordinates, lng: e.target.value })} className="mx-2 w-36 rounded border p-2" /></label>
+            <button type="submit" className="font-bold text-obligon-green">Find closest stations</button>
+          </form>
+        </details>
+      </div>
     <AsyncBoundary
       status={status}
       error={error?.message ?? null}
@@ -1552,18 +1600,18 @@ function StationsPage() {
         <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
           <Card className="relative min-h-[500px] overflow-hidden bg-[#dfe8ed]">
             <StationMap
-              points={(stations ?? []).map((st) => ({ id: st.name, name: st.name, lat: st.lat, lng: st.lng }))}
+              points={visible.flatMap(st => st.lat !== null && st.lng !== null ? [{ id: st.id ?? st.name, name: st.name, lat: st.lat, lng: st.lng }] : [])}
               onSelect={(point) => router.push(`/customer/stations?station=${encodeURIComponent(point.name)}`)}
               height="h-[500px]"
             />
           </Card>
           <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
             {visible.map((st) => (
-              <Card key={st.name} className="p-5">
+              <Card key={st.id ?? st.name} className="p-5">
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="font-extrabold text-obligon-navy">{st.name}</h3>
-                    <p className="text-xs font-bold text-obligon-green">{st.distance} away • {st.hours}</p>
+                    <p className="text-xs font-bold text-obligon-green">{st.distanceKm != null ? `${st.distance} away` : "Distance unavailable"} • {st.hours}</p>
                     <p className="text-xs text-obligon-text mt-1">{st.address}</p>
                   </div>
                   <MiniIcon tone="green"><MapPinned size={18} /></MiniIcon>
@@ -1656,6 +1704,7 @@ function StationsPage() {
         ) : null}
       </Canvas>
     </AsyncBoundary>
+    </>
   );
 }
 
