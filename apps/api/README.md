@@ -28,6 +28,12 @@ Render deployment. Create the service from that Blueprint, provide the
 `CORS_ORIGINS` to the final Vercel URL. Render runs migrations before each
 deployment and exposes `/health` for service checks.
 
+Supabase database connections automatically trust Supabase's published production
+CA alongside Node's standard roots, with certificate and hostname verification
+enabled. `DATABASE_CA_CERT` is an optional PEM override (literal `\n` escapes are
+accepted) for a custom database CA; it is not required for standard Supabase
+direct or pooler connections.
+
 In Vercel, set `NEXT_PUBLIC_API_URL` to the deployed API URL, for example
 `https://obligon-api.onrender.com`, and set `NEXT_PUBLIC_APP_URL` to the Vercel
 domain. Keep `NEXT_PUBLIC_ENABLE_MOCK_MODE=false`. Login and signup then use
