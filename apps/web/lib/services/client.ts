@@ -305,7 +305,7 @@ export interface ApiClient {
    */
   getPartnerDisputes(): Promise<PartnerDispute[]>;
   getPartnerNotifications(): Promise<PartnerNotifications>;
-  getPartnerStation(): Promise<PartnerStation>;
+  getPartnerStation(stationId?: string): Promise<PartnerStation>;
   getPartnerSettings(): Promise<PartnerSettings>;
 
   // Admin domain
@@ -723,8 +723,8 @@ class LiveApiClient implements ApiClient {
   async getPartnerNotifications(): Promise<PartnerNotifications> {
     return http<PartnerNotifications>("/api/partner/notifications");
   }
-  async getPartnerStation(): Promise<PartnerStation> {
-    return http<PartnerStation>("/api/partner/station");
+  async getPartnerStation(stationId?: string): Promise<PartnerStation> {
+    return http<PartnerStation>(`/api/partner/station${stationId?`?stationId=${encodeURIComponent(stationId)}`:""}`);
   }
   async getPartnerSettings(): Promise<PartnerSettings> {
     return http<PartnerSettings>("/api/partner/settings");
@@ -945,7 +945,7 @@ class MockApiClient implements ApiClient {
     const notifications = groups.flatMap((group) => group.items);
     return { notifications, groups, unreadCount: notifications.length };
   }
-  async getPartnerStation(): Promise<PartnerStation> {
+  async getPartnerStation(stationId?: string): Promise<PartnerStation> {
     return { station: null, prices: [], logs: [], equipment: [] };
   }
   async getPartnerSettings(): Promise<PartnerSettings> {
@@ -1438,21 +1438,22 @@ export const mutationsApi = {
     if (!LIVE_MODE) { await simulate({}, 700); return { ok: true, simulated: true }; }
     return http<{ ok: boolean }>("/api/partner/station", { method: "PUT", body: JSON.stringify(payload) });
   },
-  async uploadStationAsset(file: File) {
+  async uploadStationAsset(file: File, stationId?: string) {
     if (!LIVE_MODE) { await simulate({}, 900); return { ok: true, path: "local", simulated: true }; }
     const form = new FormData();
     form.append("asset", file);
+    if(stationId) form.append("stationId",stationId);
     return http<{ ok: boolean; path: string }>("/api/partner/station/assets", { method: "POST", body: form });
   },
   async removeStationAsset(path: string) {
     if (!LIVE_MODE) { await simulate({}); return { ok: true }; }
     return http<{ ok: boolean }>("/api/partner/station/assets", { method: "DELETE", body: JSON.stringify({ path }) });
   },
-  async messageTerminal(message: string) {
+  async messageTerminal(message: string, stationId?: string) {
     if (!LIVE_MODE) { await simulate({}); return { ok: true }; }
-    return http<{ ok: boolean }>("/api/partner/station/message-terminal", { method: "POST", body: JSON.stringify({ message }) });
+    return http<{ ok: boolean }>("/api/partner/station/message-terminal", { method: "POST", body: JSON.stringify({ message, stationId }) });
   },
-  async requestResupply(payload: { fuelType: string; litres: number }) {
+  async requestResupply(payload: { fuelType: string; litres: number; stationId?: string }) {
     if (!LIVE_MODE) { await simulate({}); return { ok: true }; }
     return http<{ ok: boolean }>("/api/partner/station/resupply", { method: "POST", body: JSON.stringify(payload) });
   },
@@ -1599,9 +1600,11 @@ export const publicApi = {
     if (!LIVE_MODE) { await simulate({}, 700); return { ok: true, message: "Thanks — we'll be in touch.", simulated: true }; }
     return http<{ ok: boolean; message: string }>("/api/public/leads", { method: "POST", body: JSON.stringify(payload) });
   },
-  async submitContact(payload: Record<string, unknown>) {
-    if (!LIVE_MODE) { await simulate({}, 800); return { ok: true, message: "Message received — we'll respond within a few hours.", simulated: true }; }
-    return http<{ ok: boolean; message: string }>("/api/public/contact", { method: "POST", body: JSON.stringify(payload) });
+  async submitContact(payload: Record<string, unknown>, attachment?: File | null) {
+    const form=new FormData();
+    for(const [key,value] of Object.entries(payload)) if(value != null) form.append(key,String(value));
+    if(attachment) form.append('attachment',attachment);
+    return http<{ok:boolean;message:string;reference:string}>("/api/public/contact",{method:"POST",body:form});
   },
   async getJobs(): Promise<Array<{ id: string; title: string; department: string; location: string; employmentType: string; description: string; requirements: string[] }>> {
     if (!LIVE_MODE) {
@@ -1631,6 +1634,7 @@ export const publicApi = {
   },
   async trackEvent(name: string, props?: Record<string, unknown>) {
     if (!LIVE_MODE) return;
+    try {const prefs=JSON.parse(localStorage.getItem("obligon_cookie_consent")??"{}");if(prefs.analytics!==true||navigator.doNotTrack==="1")return;}catch{return;}
     void http("/api/public/events", { method: "POST", body: JSON.stringify({ name, props }) }).catch(() => undefined);
   }
 };

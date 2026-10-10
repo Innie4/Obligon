@@ -491,6 +491,7 @@ function SignupForm() {
   const { error: toastError, success: toastSuccess } = useToast();
 
   const [topRole, setTopRole] = React.useState<TopRole>("customer");
+  React.useEffect(() => {const params=new URLSearchParams(window.location.search);const role=params.get("role");if(role==="customer"||role==="partner"||role==="company")setTopRole(role);const plan=params.get("plan");if(plan&&/^[a-z0-9_-]{1,40}$/i.test(plan))sessionStorage.setItem("obligon_selected_plan",plan);},[]);
   const [partnerType, setPartnerType] = React.useState<PartnerType>("fuelStation");
   const [signupForm, setSignupForm] = React.useState<Record<string, string>>({});
   const [password, setPassword] = React.useState("");
@@ -601,11 +602,14 @@ function SignupForm() {
           email,
           password,
           fullName: signupForm.contactName ?? signupForm.name ?? email.split("@")[0],
-          role: topRole === "customer" ? "customer" : topRole === "company" ? "company" : topRole === "partner" ? (partnerTypeMap[partnerType] ?? "other") : "customer",
+          role: topRole === "customer" ? "customer" : topRole === "company" ? "company" : topRole === "partner" ? (partnerType === "mechanic" ? "mechanic" : "partner") : "customer",
           partnerType: topRole === "partner" ? (partnerTypeMap[partnerType] ?? "other") : undefined,
           organizationName: orgName,
           phone: signupForm.phone,
           address: signupForm.location,
+          rcNumber: signupForm.rcNumber ?? signupForm.rc,
+          licenseReference: signupForm.license,
+          planCode: topRole === "company" ? (sessionStorage.getItem("obligon_selected_plan") ?? undefined) : undefined,
           fuelTypes: topRole === "partner" && partnerType === "fuelStation" ? selectedCapabilities : undefined
         });
         if (signupResult.user) setUser(signupResult.user);

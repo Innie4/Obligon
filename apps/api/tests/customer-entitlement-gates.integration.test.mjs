@@ -20,7 +20,7 @@ before(async()=>{
  CREATE TABLE wallets(user_id uuid,budget_limit_kobo bigint DEFAULT 50000);
  CREATE TABLE support_tickets(id uuid DEFAULT gen_random_uuid(),reference text,user_id uuid,organization_id uuid,subject text,category text,message text,attachments jsonb,priority text,status text);
  CREATE TABLE ticket_messages(ticket_id uuid,sender_user_id uuid,sender_role text,body text);
- CREATE TABLE notifications(id uuid DEFAULT gen_random_uuid(),user_id uuid,organization_id uuid,title text,body text,category text,action_required boolean,link text,event_key text);
+ CREATE TABLE notifications(id uuid DEFAULT gen_random_uuid(),user_id uuid,organization_id uuid,title text,body text,category text,action_required boolean,link text,in_app_visible boolean DEFAULT TRUE,event_key text);
  CREATE UNIQUE INDEX ON notifications(event_key)WHERE event_key IS NOT NULL;
  CREATE TABLE audit_logs(actor_user_id uuid,actor_role text,action text,entity_type text,entity_id uuid,ip text,metadata jsonb);
  CREATE TABLE card_actions(card_id uuid,user_id uuid,action text,note text);

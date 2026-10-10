@@ -14,6 +14,7 @@ import { providerFetch } from "./http.js";
 const baseUrl = () => env.SUDO_BASE_URL.replace(/\/$/, "");
 
 async function sudoFetch(path, { method = "GET", body } = {}) {
+  if(env.NODE_ENV==='production' && /sandbox/i.test(env.SUDO_BASE_URL))throw misconfigured('SUDO_BASE_URL must be the production issuer endpoint');
   const res = await providerFetch(`${baseUrl()}${path}`, {
     method,
     headers: {

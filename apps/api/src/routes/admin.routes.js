@@ -1,3 +1,4 @@
+import intakeAdminRouter from "./intake-admin.routes.js";
 import supportAdminRouter from "./support-admin.routes.js";
 import discountRouter from "./discount.routes.js";
 import { Router } from "express";
@@ -14,6 +15,10 @@ import { approveCardRequest, providerCardDetails, decryptIdentity, finishReplace
 import { getSudoCard, getSudoCustomer } from "../lib/sudo.js";
 
 const router = Router();
+for(const name of ['id','orgId','memberId'])router.param(name,(req,_res,next,value)=>{
+ if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value))return next(badRequest('Invalid record ID'));
+ next();
+});
 
 router.use(requireAuth, (req, _res, next) => {
   if (req.user.role !== "admin") return next(forbidden("Admin access required"));
@@ -22,6 +27,7 @@ router.use(requireAuth, (req, _res, next) => {
 
 router.use("/discount-requests", discountRouter);
 router.use(supportAdminRouter);
+router.use(intakeAdminRouter);
 
 // Card identity review is explicitly restricted by the admin middleware above.
 router.get("/card-requests", asyncHandler(async (_req,res) => {
@@ -99,7 +105,7 @@ router.get("/companies", asyncHandler(async (req, res) => {
        (SELECT COUNT(*)::int FROM cards c WHERE c.organization_id = o.id AND c.status = 'active') AS active_cards,
        p.name AS plan_name
      FROM organizations o LEFT JOIN pricing_plans p ON p.code = o.plan_code
-     WHERE ${where} ORDER BY o.created_at DESC LIMIT ${Math.min(Number(limit) || 20, 100)} OFFSET ${Number(offset) || 0}`,
+     WHERE ${where} ORDER BY o.created_at DESC LIMIT ${Math.max(1,Math.min(Math.floor(Number(limit)||20),100))} OFFSET ${Math.max(0,Math.floor(Number(offset)||0))}`,
     params
   );
   const total = await one(`SELECT COUNT(*)::int AS count FROM organizations o WHERE ${where}`, params);
@@ -112,14 +118,14 @@ router.get("/companies", asyncHandler(async (req, res) => {
   );
   res.json({
     metrics: [
-      { label: "TOTAL FLEETS", value: metrics.fleets.toLocaleString(), helper: "+12.4%", tone: "green" },
+      { label: "TOTAL FLEETS", value: metrics.fleets.toLocaleString(), tone: "green" },
       { label: "ACTIVE CARDS", value: metrics.active_cards.toLocaleString(), tone: "green" },
-      { label: "CREDIT UTILIZATION", value: `${metrics.credit_pool ? Math.round((rows.reduce((a, r) => a + Number(r.credit_limit_kobo), 0) / metrics.credit_pool) * 100) : 0}%`, helper: "of global limit", tone: "green" }
+      { label: "REGISTERED CREDIT CEILINGS", value: naira(metrics.credit_pool), tone: "green" }
     ],
     companies: rows.map((r) => ({
       id: r.id,
       avatar: initialsOf(r.name),
-      cells: [`${r.name.split(" ")[0]}\n${r.name.split(" ").slice(1).join(" ") || "—"}\n${r.city ?? "NG"}`, r.fleet_id ?? "—", (r.plan_name ?? r.plan_code ?? "basic").toUpperCase(), r.subscription_status === "active" ? String(r.vehicle_count) : "ONBOARDING", naira(r.credit_limit_kobo)],
+      cells: [`${r.name.split(" ")[0]}\n${r.name.split(" ").slice(1).join(" ") || "—"}\n${r.city ?? "NG"}`, r.fleet_id ?? "—", (r.plan_name ?? r.plan_code ?? "basic").toUpperCase(), r.subscription_status === "active" ? String(r.active_cards) : "ONBOARDING", naira(r.credit_limit_kobo)],
       status: r.subscription_status === "active" ? "Active" : r.subscription_status === "canceled" ? "Frozen" : "Pending",
       tone: r.subscription_status === "active" ? "green" : r.subscription_status === "canceled" ? "red" : "amber",
       orgId: r.id, name: r.name, fleetId: r.fleet_id, plan: r.plan_code, creditLimit: r.credit_limit_kobo / 100,
@@ -131,7 +137,7 @@ router.get("/companies", asyncHandler(async (req, res) => {
 
 router.post("/companies", asyncHandler(async (req, res) => {
   const { companyName, adminEmail, adminName, planCode = "growth", creditLimit, city } = req.valid ?? req.body ?? {};
-  if (!companyName || !adminEmail || !adminName) throw badRequest("Company name, admin name and admin email are required");
+  if(typeof companyName!=="string"||!companyName.trim()||companyName.length>200||typeof adminName!=="string"||!adminName.trim()||adminName.length>200||typeof adminEmail!=="string"||adminEmail.length>254||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(adminEmail))throw badRequest("Enter valid company and owner details");
   const existing = await one("SELECT id FROM users WHERE lower(email) = lower($1)", [adminEmail]);
   if (existing) throw badRequest("A user with that email already exists");
   const tempPassword = randomToken(6);
@@ -184,7 +190,7 @@ router.put("/companies/:orgId", asyncHandler(async (req, res) => {
       planCode ?? null, status ?? null, verificationStatus ?? null]
   );
   if (!org) throw notFound("Organization not found");
-  audit({ actorUserId: req.user.id, actorRole: "admin", action: "company.updated", entityId: org.id, metadata: req.body });
+  audit({ actorUserId: req.user.id, actorRole: "admin", action: "company.updated", entityId: org.id, metadata: {creditLimit,settlementLimit,planCode,status,verificationStatus} });
   res.json({ ok: true });
 }));
 
@@ -432,10 +438,10 @@ router.get("/applications", asyncHandler(async (req, res) => {
   const params = [];
   let where = "TRUE";
   if (search) { params.push(`%${search}%`); where += ` AND (business_name ILIKE $${params.length} OR contact_email ILIKE $${params.length} OR reference ILIKE $${params.length})`; }
-  if (status) { params.push(status); where += ` AND status = $${params.length}`; }
+  if (status) { params.push(status); where += ` AND pa.status = $${params.length}`; }
   const rows = await q(
     `SELECT pa.*, u.full_name AS contact_name FROM partner_applications pa LEFT JOIN users u ON u.id = pa.user_id
-     WHERE ${where} ORDER BY pa.created_at DESC LIMIT ${Math.min(Number(limit) || 20, 100)} OFFSET ${Number(offset) || 0}`,
+     WHERE ${where} ORDER BY pa.created_at DESC LIMIT ${Math.max(1,Math.min(Math.floor(Number(limit)||20),100))} OFFSET ${Math.max(0,Math.floor(Number(offset)||0))}`,
     params
   );
   const total = await one(`SELECT COUNT(*)::int AS count FROM partner_applications pa WHERE ${where}`, params);
@@ -485,7 +491,7 @@ router.post("/applications/:id/review", asyncHandler(async (req, res) => {
       );
       await t.query("UPDATE users SET status = 'active' WHERE id = $1", [app.user_id]);
       if (org) {
-        await t.query("UPDATE stations SET status = 'active' WHERE partner_org_id = $1 AND status = 'pending'", [org.id]);
+        // Station publication is a separate review; operator approval never bypasses location checks.
       }
     }
   });
@@ -522,17 +528,17 @@ router.get("/reports", asyncHandler(async (req, res) => {
      WHERE s.status = 'active' GROUP BY s.id ORDER BY revenue DESC LIMIT 20`,
     [String(days)]
   );
-  const maxRevenue = Math.max(...stations.map((s) => Number(s.revenue)), 1);
+  const maxRevenue = Math.max(stations.reduce((sum,s)=>sum+Number(s.revenue),0),1);
   res.json({
     metrics: [
-      { label: "TOTAL NETWORK VOLUME", value: `${(totals.litres / 1_000_000).toFixed(1)}M Ltrs`, helper: `last ${days} days`, tone: "green" },
+      { label: "TOTAL NETWORK VOLUME", value: `${Number(totals.litres).toLocaleString()} Ltrs`, helper: `last ${days} days`, tone: "green" },
       { label: "TOTAL REVENUE", value: totals.revenue >= 1e9 ? `₦${(totals.revenue / 1e11).toFixed(1)}B` : naira(totals.revenue), helper: "platform-wide", tone: "green" },
       { label: "ACTIVE PARTNER STATIONS", value: String(stationCount.count), helper: `${totals.tx_count.toLocaleString()} transactions`, tone: "green" }
     ],
     stations: stations.map((s) => ({
       id: s.name,
       avatar: initialsOf(s.name),
-      cells: [`${s.name.split(" ")[0]}\n- ${s.city ?? "NG"}`, `${s.city ?? "NG"},\nNG`, Math.round(s.litres).toLocaleString(), s.tx_count.toLocaleString(), `+${Math.round(Number(s.revenue) / maxRevenue * 100)}%`],
+      cells: [`${s.name.split(" ")[0]}\n- ${s.city ?? "NG"}`, `${s.city ?? "NG"},\nNG`, Math.round(s.litres).toLocaleString(), s.tx_count.toLocaleString(), `${Math.round(Number(s.revenue) / maxRevenue * 100)}%`],
       status: Number(s.revenue) / maxRevenue > 0.75 ? "PRIME" : "ACTIVE", tone: "green"
     })),
     raw: stations.map((s) => ({ station: s.name, city: s.city, litres: Math.round(s.litres), transactions: s.tx_count, revenueLabel: naira(s.revenue) }))
@@ -583,7 +589,7 @@ router.get("/disputes", asyncHandler(async (req, res) => {
     `SELECT d.*, t.amount_kobo AS tx_amount, so.name AS station_name, so.id AS station_org_id, t.reference AS tx_ref
      FROM disputes d LEFT JOIN transactions t ON t.id = d.transaction_id
      LEFT JOIN organizations so ON so.id = d.station_org_id
-     WHERE ${where} ORDER BY d.created_at DESC LIMIT ${Math.min(Number(limit) || 20, 100)} OFFSET ${Number(offset) || 0}`,
+     WHERE ${where} ORDER BY d.created_at DESC LIMIT ${Math.max(1,Math.min(Math.floor(Number(limit)||20),100))} OFFSET ${Math.max(0,Math.floor(Number(offset)||0))}`,
     params
   );
   const total = await one(`SELECT COUNT(*)::int AS count FROM disputes d WHERE ${where}`, params);
@@ -619,30 +625,9 @@ router.post("/disputes/:id/resolve", asyncHandler(async (req, res) => {
   const dispute = await one("SELECT * FROM disputes WHERE id = $1", [req.params.id]);
   if (!dispute) throw notFound("Dispute not found");
   const statusMap = { resolve: "resolved", refund: "refunded", reject: "rejected", escalate: "escalated" };
-  let refundKobo = 0;
-  if (outcome === "refund") {
-    refundKobo = Math.round(Number(refundAmount ?? 0) * 100);
-    if (refundKobo <= 0) throw badRequest("Refund amount must be greater than zero");
-    // Refund comes out of the station's settlement pool (ledger effect), credits the customer wallet if a customer tx
-    if (dispute.transaction_id) {
-      const t = await one("SELECT * FROM transactions WHERE id = $1", [dispute.transaction_id]);
-      if (t?.customer_user_id) {
-        const wallet = await one("SELECT * FROM wallets WHERE user_id = $1", [t.customer_user_id]);
-        if (wallet) {
-          await tx(async (trx) => {
-            const balance = wallet.balance_kobo + refundKobo;
-            await trx.query("UPDATE wallets SET balance_kobo = $2 WHERE id = $1", [wallet.id, balance]);
-            await trx.query(
-              `INSERT INTO wallet_ledger (wallet_id, direction, amount_kobo, balance_after_kobo, reference, description)
-               VALUES ($1,'credit',$2,$3,$4,$5)`,
-              [wallet.id, refundKobo, balance, dispute.reference, `Dispute refund ${dispute.reference}`]
-            );
-          });
-        }
-      }
-      await q("UPDATE transactions SET status = 'refunded' WHERE id = $1", [dispute.transaction_id]);
-    }
-  }
+  if(outcome==='refund')throw badRequest('Use the original-payment refund workflow in Support & Settlements. A dispute decision cannot create an unbacked wallet credit.');
+  if(typeof note!=='string'||!note.trim()||note.length>2000)throw badRequest('A review note of 1–2000 characters is required');
+  const refundKobo=0;
   await q(
     `UPDATE disputes SET status = $2, resolution_note = $3, refund_amount_kobo = $4, resolved_by = $5, resolved_at = CASE WHEN $6 IN ('resolve','refund','reject') THEN now() ELSE NULL END, updated_at = now() WHERE id = $1`,
     [dispute.id, statusMap[outcome], note ?? null, refundKobo, req.user.id, outcome]
@@ -659,28 +644,31 @@ router.post("/disputes/:id/resolve", asyncHandler(async (req, res) => {
 
 // ============ STAFF ============
 router.get("/staff", asyncHandler(async (req, res) => {
-  const { search, limit = 50 } = req.query;
+  const { search, limit = 20, offset=0 } = req.query;
   const params = [];
   let where = `u.role = 'admin'`;
   if (search) { params.push(`%${search}%`); where += ` AND (u.full_name ILIKE $${params.length} OR u.email ILIKE $${params.length})`; }
   const rows = await q(
-    `SELECT u.*, COALESCE(u.staff_role, m.role, 'controller') AS member_role
-     FROM users u LEFT JOIN memberships m ON m.user_id = u.id
-     WHERE ${where} ORDER BY u.created_at DESC LIMIT ${Math.min(Number(limit) || 50, 200)}`,
+    `SELECT u.*, COALESCE(u.staff_role, 'controller') AS member_role
+     FROM users u
+     WHERE ${where} ORDER BY u.created_at DESC LIMIT ${Math.max(1,Math.min(Math.floor(Number(limit)||20),100))} OFFSET ${Math.max(0,Math.floor(Number(offset)||0))}`,
     params
   );
+  const total=await one(`SELECT count(*)::int count FROM users u WHERE ${where}`,params);
+  const stats=await one("SELECT count(*)::int total,count(*) FILTER(WHERE status='active')::int active,count(DISTINCT COALESCE(staff_role,'controller'))::int roles FROM users WHERE role='admin'");
   const invites = await one(`SELECT COUNT(*)::int AS count FROM invites WHERE status = 'pending'`);
   const lastAudit = await one(`SELECT MAX(created_at) AS last FROM audit_logs WHERE action LIKE 'admin%'`);
   res.json({
     metrics: [
-      { label: "TOTAL INTERNAL STAFF", value: String(rows.length), helper: `${rows.filter((r) => r.status === "active").length} active`, tone: "green" },
-      { label: "ACTIVE ROLES", value: String(new Set(rows.map((r) => r.member_role ?? "controller")).size), tone: "green" },
+      { label: "TOTAL INTERNAL STAFF", value: String(stats.total), helper: `${stats.active} active`, tone: "green" },
+      { label: "ACTIVE ROLES", value: String(stats.roles), tone: "green" },
       { label: "PENDING INVITES", value: String(invites?.count ?? 0), tone: "muted" },
-      { label: "LAST AUDIT", value: lastAudit?.last ? fmtDate(lastAudit.last).toUpperCase() : "—", helper: "System Status: Secure", tone: "muted" }
+      { label: "LAST AUDIT", value: lastAudit?.last ? fmtDate(lastAudit.last).toUpperCase() : "—",  tone: "muted" }
     ],
+    total:total.count,
     staff: rows.map((r) => ({
       id: r.id,
-      cells: [`${r.full_name ?? r.email.split("@")[0]}\n${r.email}`, (r.member_role ?? "controller").replace("_", " ").toUpperCase(), "DASH  BILL  APPR  ADM"],
+      cells: [`${r.full_name ?? r.email.split("@")[0]}\n${r.email}`, (r.member_role ?? "controller").replace("_", " ").toUpperCase(), "Full administrator access"],
       status: r.status === "active" ? "Active" : "Locked",
       tone: r.status === "active" ? "green" : "red",
       staffId: r.id, name: r.full_name, email: r.email, role: r.member_role ?? "controller", statusRaw: r.status
@@ -690,7 +678,7 @@ router.get("/staff", asyncHandler(async (req, res) => {
 
 router.post("/staff", asyncHandler(async (req, res) => {
   const { fullName, email, role = "controller", permissions } = req.valid ?? req.body ?? {};
-  if (!fullName || !email) throw badRequest("Name and email are required");
+  if(typeof fullName!=="string"||!fullName.trim()||fullName.length>200||typeof email!=="string"||email.length>254||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)||typeof role!=="string"||role.length>100)throw badRequest("Enter valid staff details");
   const existing = await one("SELECT id FROM users WHERE lower(email) = lower($1)", [email]);
   if (existing) throw badRequest("A user with that email already exists");
   const tempPassword = randomToken(6);
@@ -713,6 +701,10 @@ router.post("/staff", asyncHandler(async (req, res) => {
 
 router.put("/staff/:id", asyncHandler(async (req, res) => {
   const { role, status, permissions } = req.body ?? {};
+  if(status!==undefined&&!['active','suspended','pending'].includes(status))throw badRequest('Choose a valid staff status');
+  if(role!==undefined&&(typeof role!=='string'||role.length>100))throw badRequest('Choose a valid role label');
+  if(permissions!==undefined&&(!Array.isArray(permissions)||permissions.length>50||permissions.some(p=>typeof p!=='string'||p.length>100)))throw badRequest('Invalid permissions');
+  if(req.params.id===req.user.id&&status&&status!=='active')throw badRequest('Ask another administrator to suspend your account');
   const user = await one(
     `UPDATE users SET
        status = COALESCE($2, status),
@@ -722,7 +714,7 @@ router.put("/staff/:id", asyncHandler(async (req, res) => {
     [req.params.id, status ?? null, role ?? null, permissions ? JSON.stringify(permissions) : null]
   );
   if (!user) throw notFound("Staff member not found");
-  audit({ actorUserId: req.user.id, actorRole: "admin", action: "admin.staff_updated", entityId: user.id, metadata: req.body });
+  audit({ actorUserId: req.user.id, actorRole: "admin", action: "admin.staff_updated", entityId: user.id, metadata: {role,status,permissions} });
   res.json({ ok: true });
 }));
 

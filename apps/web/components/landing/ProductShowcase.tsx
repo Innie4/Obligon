@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { assets } from "./assets";
 
-const benefits = ["Secure EMV Chip", "Multi-Station Access", "Real-time Alerts", "Daily Limits"];
+const benefits = ["Virtual Card Controls", "Multi-Station Access", "Real-time Alerts", "Daily Limits"];
 
 export function ProductShowcase() {
   return (
@@ -22,21 +22,21 @@ export function ProductShowcase() {
             </h2>
             <p className="mt-8 max-w-[475px] text-lg leading-7 text-white/70">
               The FuelVista Card is the standard in Nigerian fleet management. A single, powerful tool to manage
-              spending, track usage, and secure discounts across our vast partner network.
+              spending, track usage, and secure discounts at approved partner stations. Physical cards and delivery are coming soon.
             </p>
 
             <div className="mt-8 flex flex-col gap-6 rounded-3xl border border-white/10 bg-white/5 p-6 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-bold uppercase tracking-[1.4px] text-obligon-lime">Issuance Fee</p>
+                <p className="text-sm font-bold uppercase tracking-[1.4px] text-obligon-lime">Virtual card subscription</p>
                 <p className="mt-1 font-display text-3xl leading-9 text-white">
-                  &#8358;2,000 <span className="font-sans text-lg text-white/40">/ Vehicle</span>
+                  See current plans
                 </p>
               </div>
               <Link
-                href="/auth/signup"
+                href="/#pricing"
                 className="inline-flex h-12 items-center justify-center rounded-lg bg-white px-6 text-base font-bold text-obligon-navy"
               >
-                Order Cards
+                Compare plans
               </Link>
             </div>
 

@@ -53,7 +53,7 @@ before(async () => {
     CREATE TABLE settlements(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), partner_org_id uuid REFERENCES organizations(id), period_start date, period_end date, gross_kobo bigint, fees_kobo bigint, net_kobo bigint, status text, reference text, paid_at timestamptz, created_at timestamptz DEFAULT now());
     CREATE TABLE bank_accounts(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), organization_id uuid, is_default boolean DEFAULT true, verified boolean DEFAULT true, payout_provider text DEFAULT 'flutterwave', beneficiary_id text DEFAULT '1', recipient_code text, bank_name text DEFAULT 'Test bank');
     CREATE TABLE payouts(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), partner_org_id uuid, bank_account_id uuid, amount_kobo bigint, status text, reference text, provider text, transfer_provider text, provider_reference text, created_at timestamptz DEFAULT now(), paid_at timestamptz, failure_reason text);
-    CREATE TABLE notifications(id uuid DEFAULT gen_random_uuid(), user_id uuid, organization_id uuid, title text, body text, category text, action_required boolean, link text, event_key text);
+    CREATE TABLE notifications(id uuid DEFAULT gen_random_uuid(), user_id uuid, organization_id uuid, title text, body text, category text, action_required boolean, link text, in_app_visible boolean DEFAULT TRUE, event_key text);
     CREATE UNIQUE INDEX ON notifications(event_key) WHERE event_key IS NOT NULL;
     CREATE TABLE audit_logs(actor_user_id uuid, actor_role text, action text, entity_type text, entity_id uuid, ip text, metadata jsonb);
   `);

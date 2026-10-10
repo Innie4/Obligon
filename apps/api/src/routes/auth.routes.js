@@ -316,7 +316,7 @@ router.post("/login", authLimiter, asyncHandler(async (req, res) => {
 router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
   const {
     email, password, fullName, role = "customer", partnerType, organizationName,
-    phone, address, city, fuelTypes, planCode
+    phone, address, city, fuelTypes, planCode, rcNumber, licenseReference
   } = req.body ?? {};
   if (!email || !password) throw badRequest("Email and password are required");
   if (password.length < 8) throw badRequest("Password must be at least 8 characters");
@@ -326,6 +326,11 @@ router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
   // captured no phone could only ever verify one of the two — leaving the
   // customer permanently half-identified from their own point of view.
   if (!phone) throw badRequest("A phone number is required so we can verify your account");
+  if(typeof email!=='string'||! /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)||email.length>254)throw badRequest('Enter a valid email address');
+  if(fuelTypes!=null&&(!Array.isArray(fuelTypes)||fuelTypes.length>20||fuelTypes.some(f=>typeof f!=='string'||!f.trim()||f.length>80)))throw badRequest('Choose valid fuel capabilities');
+  if(partnerType!=null&&!['fuel_station','mechanic','other'].includes(partnerType))throw badRequest('Choose a valid partner specialization');
+  if(planCode!=null&&!await one('SELECT code FROM pricing_plans WHERE code=$1 AND active',[planCode]))throw badRequest('Choose an available plan');
+  for(const value of [rcNumber,licenseReference])if(value!=null&&(typeof value!=='string'||value.length>200))throw badRequest('Registration reference is too long');
   const existing = await one("SELECT id FROM users WHERE lower(email) = lower($1)", [email]);
   if (existing) throw conflict("An account with this email already exists");
 
@@ -345,7 +350,7 @@ router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
       `INSERT INTO users (email, password_hash, full_name, role, organization_name, phone, address, city, account_tier, partner_type, supabase_auth_uid)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
       [email.trim(), passwordHash, fullName || email.split("@")[0], role, orgName, phone ?? null, address ?? null, city ?? null,
-        role === "customer" ? "Standard Account" : role === "company" ? "Business Account" : "Verified Partner", partnerType ?? null, supabaseUid]
+        role === "customer" ? "Standard Account" : role === "company" ? "Business Account" : "Partner Review Pending", partnerType ?? null, supabaseUid]
     );
 
     let org = null;
@@ -379,7 +384,9 @@ router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
         }
       }
     }
-    if (role === "company" && org) {
+    if(org)await t.query('UPDATE organizations SET rc_number=$2,address=$3,city=$4 WHERE id=$1',[org.id,rcNumber??null,address??null,city??null]);
+    if(org&&(role==='partner'||role==='mechanic'))await t.query('UPDATE partner_applications SET rc_number=$2,address=$3,city=$4 WHERE user_id=$1',[user.id,licenseReference??rcNumber??null,address??null,city??null]);
+    if (org) {
       await t.query(`INSERT INTO memberships (organization_id, user_id, email, role, status) VALUES ($1,$2,$3,'owner','active')`, [org.id, user.id, email]);
     }
 
@@ -593,6 +600,7 @@ function describeDeliveryFailure(outcome) {
 }
 
 router.post("/verify/send", authLimiter, requireAuth, asyncHandler(async (req, res) => {
+  if (req.user.email_verified && req.user.phone_verified) return res.json({ ok: true, allVerified: true, channels: { email: { sent: false, alreadyVerified: true }, phone: { sent: false, alreadyVerified: true } } });
   const results = {};
 
   for (const channel of ["email", "phone"]) {

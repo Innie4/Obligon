@@ -7,6 +7,8 @@ import { routes } from "@/components/site/routes";
 import { publicApi } from "@/lib/services";
 
 export function CookieConsentBanner() {
+  const [error,setError]=useState("");
+  const [saving,setSaving]=useState(false);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -20,23 +22,15 @@ export function CookieConsentBanner() {
     } catch {}
   }, []);
 
-  function handleAcceptAll() {
-    const prefs = { essential: true, analytics: true, functional: true, marketing: true };
-    try {
-      localStorage.setItem("obligon_cookie_consent", JSON.stringify(prefs));
-    } catch {}
-    void publicApi.saveCookieConsent(prefs, navigator.doNotTrack === "1").catch(() => undefined);
-    setVisible(false);
+  async function save(analytics:boolean){
+    const prefs={essential:true,analytics:analytics&&navigator.doNotTrack!=="1",functional:analytics,marketing:analytics&&navigator.doNotTrack!=="1"};
+    setSaving(true);setError("");
+    try {localStorage.setItem("obligon_cookie_consent",JSON.stringify(prefs));await publicApi.saveCookieConsent(prefs,navigator.doNotTrack==="1");setVisible(false);}
+    catch {setError("Your choice is saved on this device. The server could not record it; retry when connected.");}
+    finally {setSaving(false);}
   }
-
-  function handleEssentialOnly() {
-    const prefs = { essential: true, analytics: false, functional: false, marketing: false };
-    try {
-      localStorage.setItem("obligon_cookie_consent", JSON.stringify(prefs));
-    } catch {}
-    void publicApi.saveCookieConsent(prefs, navigator.doNotTrack === "1").catch(() => undefined);
-    setVisible(false);
-  }
+  const handleAcceptAll=()=>void save(true);
+  const handleEssentialOnly=()=>void save(false);
 
   if (!visible) return null;
 
@@ -45,6 +39,7 @@ export function CookieConsentBanner() {
       aria-label="Cookie Consent"
       className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-3xl rounded-2xl border border-obligon-border bg-white/95 p-5 shadow-hero backdrop-blur-md animate-in fade-in slide-in-from-bottom-4 duration-300"
     >
+      {error&&<p role="alert" className="mb-3 text-sm text-red-800">{error}</p>}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3.5">
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-obligon-lime/20 text-obligon-green">
@@ -63,14 +58,14 @@ export function CookieConsentBanner() {
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <button
             type="button"
-            onClick={handleEssentialOnly}
+            disabled={saving} onClick={handleEssentialOnly}
             className="h-10 rounded-xl border border-obligon-border bg-white px-4 text-xs font-bold text-obligon-navy hover:bg-obligon-mist transition"
           >
             Essential Only
           </button>
           <button
             type="button"
-            onClick={handleAcceptAll}
+            disabled={saving} onClick={handleAcceptAll}
             className="h-10 rounded-xl bg-obligon-green px-5 text-xs font-bold text-white shadow-green hover:bg-obligon-green/90 transition"
           >
             Accept All

@@ -40,7 +40,8 @@ export function subscriptionRouter(kind) {
   router.get('/',asyncHandler(async(req,res)=>{
     const plans = partner ? await q('SELECT code,name,price_kobo,interval,features FROM pricing_plans WHERE active ORDER BY price_kobo') :
       await q('SELECT code,name,amount_kobo AS price_kobo,interval,features FROM card_plans WHERE active ORDER BY sort_order');
-    res.json({...await state(req),plans,renewalMode:'manual',manualPayoutsAvailable:false});
+    const card=partner?true:Boolean(await one("SELECT id FROM cards WHERE owner_user_id=$1 AND status NOT IN('terminated','replaced','pending') LIMIT 1",[req.user.id]));
+    res.json({...await state(req),plans,needsFirstCard:!card,renewalMode:'manual',manualPayoutsAvailable:false});
   }));
   router.post('/checkout',owner,asyncHandler(async(req,res)=>{
     if (!partner) {

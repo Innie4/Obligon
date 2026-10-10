@@ -1,3 +1,4 @@
+import { randomBytes, createHash } from "node:crypto";
 import { fulfillFuelOrder } from "../lib/fuel-checkout.js";
 import { createCollectionSubaccount, listBanks } from "../lib/flutterwave.js";
 import { authorizeWalletFuelSale } from "../lib/fuel-sale.js";
@@ -19,10 +20,14 @@ import { nominateTransferDestination, initiateTransfer, activeProvider } from ".
 import { businessTimeZone, dayWindowSql, daysForRange } from "../lib/time.js";
 import multer from "multer";
 import { approvedDiscount, validateDiscount } from "../lib/discounts.js";
-import { enforcePartnerPlan } from "../lib/subscriptions.js";
+import { enforcePartnerPlan, partnerSubscription } from "../lib/subscriptions.js";
 import { subscriptionRouter } from "./subscription.routes.js";
 
 const router = Router();
+for(const name of ['id','orgId','memberId'])router.param(name,(req,_res,next,value)=>{
+ if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value))return next(badRequest('Invalid record ID'));
+ next();
+});
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 /**
@@ -629,12 +634,30 @@ router.get("/payouts/export", asyncHandler(async (req, res) => {
 }));
 
 // ============ STATION PROFILE ============
+router.get("/stations", asyncHandler(async(req,res)=>{
+ res.json({stations:await q("SELECT id,name,address,city,status,review_note FROM stations WHERE partner_org_id=$1 ORDER BY created_at,id",[partnerOrgId(req)])});
+}));
+router.post("/stations",requireOrgRole("admin"),asyncHandler(async(req,res)=>{
+ const {name,address,city,lat,lng,fuels,hours}=req.body??{};
+ if(!String(name??'').trim()||!String(address??'').trim()||!String(city??'').trim())throw badRequest("Station name, address and city are required");
+ if(String(name).length>200||String(address).length>500||String(city).length>100)throw badRequest("Station details are too long");
+ const latitude=boundedCoordinate(lat,"Latitude",90),longitude=boundedCoordinate(lng,"Longitude",180);
+ if(latitude===null||longitude===null)throw badRequest("Provide the station's exact coordinates");
+ if(!Array.isArray(fuels)||!fuels.length||fuels.length>20||fuels.some(f=>typeof f!=='string'||!f.trim()||f.length>80))throw badRequest("Select at least one valid fuel");
+ const station=await one(`INSERT INTO stations(partner_org_id,name,address,city,lat,lng,fuels,hours,status,location_confirmed,rating)
+ VALUES($1,$2,$3,$4,$5,$6,$7,$8,'pending',TRUE,0) RETURNING id,name,status`,[partnerOrgId(req),name.trim(),address.trim(),city.trim(),latitude,longitude,[...new Set(fuels.map(f=>f.trim()))],String(hours??'Opening hours not provided').slice(0,120)]);
+ await audit({actorUserId:req.user.id,actorRole:req.user.role,action:'station.submitted',entityType:'station',entityId:station.id});
+ emitToRole('admin','station.submitted',station);res.status(201).json({ok:true,station});
+}));
 router.get("/station", asyncHandler(async (req, res) => {
   const stations = await q("SELECT * FROM stations WHERE partner_org_id = $1 ORDER BY created_at", [partnerOrgId(req)]);
   if (!stations.length) {
     return res.json({ station: null, prices: [], logs: [], equipment: [] });
   }
-  const station = stations[0];
+  const selectedId=req.query.stationId;
+  if(selectedId) requireUuid(selectedId,"stationId");
+  const station = selectedId ? stations.find(s=>s.id===selectedId) : stations[0];
+  if(!station) throw notFound("Station not found");
   const [prices, logs, equipment] = await Promise.all([
     q("SELECT * FROM fuel_prices WHERE station_id = $1", [station.id]),
     q(
@@ -658,14 +681,16 @@ router.get("/station", asyncHandler(async (req, res) => {
 }));
 
 router.put("/station", requireOrgRole("admin"), asyncHandler(async (req, res) => {
-  const { name, address, city, lat, lng, hours, fuels } = req.valid ?? req.body ?? {};
+  const { name, address, city, lat, lng, hours, fuels, stationId } = req.valid ?? req.body ?? {};
+  if(stationId) requireUuid(stationId,"stationId");
+  for(const [value,label,max] of [[name,'Name',200],[address,'Address',500],[city,'City',100]])if(value!=null&&(typeof value!=='string'||!value.trim()||value.length>max))throw badRequest(`${label} is required and must be at most ${max} characters`);
   if ((lat == null || lat === "") !== (lng == null || lng === "")) throw badRequest("Provide latitude and longitude together");
-  if (fuels != null && (!Array.isArray(fuels) || fuels.some(fuel => typeof fuel !== "string" || !fuel.trim()))) throw badRequest("Fuels must be a list of names");
-  const station = await one("SELECT id FROM stations WHERE partner_org_id = $1 ORDER BY created_at LIMIT 1", [partnerOrgId(req)]);
+  if (fuels != null && (!Array.isArray(fuels) || !fuels.length || fuels.length>20 || fuels.some(fuel => typeof fuel !== "string" || !fuel.trim()))) throw badRequest("Fuels must be a list of names");
+  const station = await one("SELECT * FROM stations WHERE partner_org_id = $1 AND ($2::uuid IS NULL OR id=$2) ORDER BY created_at LIMIT 1", [partnerOrgId(req),stationId??null]);
   if (!station) throw notFound("No station registered for this partner");
   const updated = await one(
     `UPDATE stations SET name = COALESCE($2, name), address = COALESCE($3, address), city = COALESCE($4, city),
-       lat = COALESCE($5, lat), lng = COALESCE($6, lng), location_confirmed = CASE WHEN $5::double precision IS NOT NULL AND $6::double precision IS NOT NULL THEN TRUE ELSE location_confirmed END, hours = COALESCE($7, hours), fuels = COALESCE($8, fuels)
+       lat = COALESCE($5, lat), lng = COALESCE($6, lng), location_confirmed = CASE WHEN $5::double precision IS NOT NULL AND $6::double precision IS NOT NULL THEN TRUE ELSE location_confirmed END, hours = COALESCE($7, hours), fuels = COALESCE($8, fuels), status=CASE WHEN name IS DISTINCT FROM COALESCE($2,name) OR address IS DISTINCT FROM COALESCE($3,address) OR city IS DISTINCT FROM COALESCE($4,city) OR lat IS DISTINCT FROM COALESCE($5,lat) OR lng IS DISTINCT FROM COALESCE($6,lng) OR fuels IS DISTINCT FROM COALESCE($8,fuels) THEN 'pending' ELSE status END
      WHERE id = $1 RETURNING *`,
     [station.id, name ?? null, address ?? null, city ?? null, boundedCoordinate(lat, "Latitude", 90), boundedCoordinate(lng, "Longitude", 180), hours ?? null, fuels ?? null]
   );
@@ -675,7 +700,7 @@ router.put("/station", requireOrgRole("admin"), asyncHandler(async (req, res) =>
 
 router.post("/station/assets", requireOrgRole("admin"), upload.single("asset"), asyncHandler(async (req, res) => {
   if (!req.file) throw badRequest("Choose an image to upload");
-  const station = await one("SELECT * FROM stations WHERE partner_org_id = $1 ORDER BY created_at LIMIT 1", [partnerOrgId(req)]);
+  const station = await one("SELECT * FROM stations WHERE partner_org_id = $1 AND ($2::uuid IS NULL OR id=$2) ORDER BY created_at LIMIT 1", [partnerOrgId(req),req.body?.stationId ? requireUuid(req.body.stationId,"station") : null]);
   if (!station) throw notFound("No station registered");
   assertUploadAllowed(req.file);
   const path = await uploadFile("asset", req.file.originalname, req.file.buffer, req.file.mimetype);
@@ -686,7 +711,7 @@ router.post("/station/assets", requireOrgRole("admin"), upload.single("asset"), 
 
 router.delete("/station/assets", requireOrgRole("admin"), asyncHandler(async (req, res) => {
   const { path } = req.body ?? {};
-  const station = await one("SELECT * FROM stations WHERE partner_org_id = $1 ORDER BY created_at LIMIT 1", [partnerOrgId(req)]);
+  const station = await one("SELECT * FROM stations WHERE partner_org_id = $1 AND ($2::uuid IS NULL OR id=$2) ORDER BY created_at LIMIT 1", [partnerOrgId(req),req.body?.stationId ? requireUuid(req.body.stationId,"station") : null]);
   if (!station) throw notFound("No station registered");
   const assets = (station.assets ?? []).filter((a) => a !== path);
   await q("UPDATE stations SET assets = $2 WHERE id = $1", [station.id, assets]);
@@ -696,7 +721,7 @@ router.delete("/station/assets", requireOrgRole("admin"), asyncHandler(async (re
 router.post("/station/message-terminal", requireOrgRole("manager"), asyncHandler(async (req, res) => {
   const { message } = req.body ?? {};
   if (!message) throw badRequest("Message is required");
-  const station = await one("SELECT * FROM stations WHERE partner_org_id = $1 ORDER BY created_at LIMIT 1", [partnerOrgId(req)]);
+  const station = await one("SELECT * FROM stations WHERE partner_org_id = $1 AND ($2::uuid IS NULL OR id=$2) ORDER BY created_at LIMIT 1", [partnerOrgId(req),req.body?.stationId ? requireUuid(req.body.stationId,"station") : null]);
   if (!station) throw notFound("No station registered");
   const terminal = { ...(station.messaging_terminal ?? {}), message, updatedAt: new Date().toISOString() };
   await q("UPDATE stations SET messaging_terminal = $2 WHERE id = $1", [station.id, JSON.stringify(terminal)]);
@@ -710,7 +735,7 @@ router.post("/station/resupply", requireOrgRole("dispatcher"), asyncHandler(asyn
   // `!litres` rejected 0 while letting "abc" through to an `INT NOT NULL` column as
   // "NaN" — a 500. A negative resupply order was accepted outright.
   const resupplyLitres = requirePositiveNumber(litres, "Litres", { max: 10_000_000, integer: true });
-  const station = await one("SELECT id FROM stations WHERE partner_org_id = $1 ORDER BY created_at LIMIT 1", [partnerOrgId(req)]);
+  const station = await one("SELECT id FROM stations WHERE partner_org_id = $1 AND ($2::uuid IS NULL OR id=$2) ORDER BY created_at LIMIT 1", [partnerOrgId(req),req.body?.stationId ? requireUuid(req.body.stationId,"station") : null]);
   if (!station) throw notFound("No station registered");
   const order = await one(
     "INSERT INTO resupply_orders (station_id, fuel_type, litres) VALUES ($1,$2,$3) RETURNING *",
@@ -1099,7 +1124,7 @@ router.get("/disputes/:id/evidence/:index", asyncHandler(async (req, res) => {
 // ============ NOTIFICATIONS ============
 router.get("/notifications", asyncHandler(async (req, res) => {
   const rows = await q(
-    "SELECT * FROM notifications WHERE organization_id = $1 OR user_id = $2 ORDER BY created_at DESC LIMIT 60",
+    "SELECT * FROM notifications WHERE in_app_visible=TRUE AND (organization_id = $1 OR user_id = $2) ORDER BY created_at DESC LIMIT 60",
     [partnerOrgId(req), req.user.id]
   );
   const seen = new Set();
@@ -1153,9 +1178,53 @@ router.get("/settings", asyncHandler(async (req, res) => {
   });
 }));
 
+const partnerServices=['Email support','Priority support','Roadside assistance','Dedicated account manager','SLA support'];
+router.get('/settings/service-requests',asyncHandler(async(req,res)=>{
+ const state=await partnerSubscription(partnerOrgId(req));
+ const services=state.active?partnerServices.filter(service=>state.subscription.features.includes(service)):[];
+ const tickets=await q("SELECT id,reference,subject,status FROM support_tickets WHERE organization_id=$1 AND category LIKE 'partner-service:%' ORDER BY created_at DESC LIMIT 100",[partnerOrgId(req)]);res.json({services,tickets});
+}));
+router.post('/settings/service-requests',asyncHandler(async(req,res)=>{
+ const service=req.body?.service,message=String(req.body?.message??'').trim();if(!['General support',...partnerServices].includes(service)||!message||message.length>5000)throw badRequest('Choose a service and describe your requirements');
+ const state=await partnerSubscription(partnerOrgId(req));if(service!=='General support'&&(!state.active||!state.subscription.features.includes(service)))throw forbidden('Your active partner plan does not include this service');
+ const ticket=await tx(async t=>{
+  const row=await t.one(`INSERT INTO support_tickets(reference,user_id,organization_id,subject,category,message,priority,status)VALUES($1,$2,$3,$4,$5,$6,$7,'queued')RETURNING id,reference`,[reference('PSV'),req.user.id,partnerOrgId(req),service,`partner-service:${service}`,message,state.active&&state.entitlements.prioritySupport?'high':'normal']);
+  await t.query("INSERT INTO ticket_messages(ticket_id,sender_user_id,sender_role,body)VALUES($1,$2,'partner',$3)",[row.id,req.user.id,message]);return row;
+ });res.status(201).json({ok:true,reference:ticket.reference});
+}));
+router.get('/settings/service-requests/:id',asyncHandler(async(req,res)=>{
+ const ticket=await one("SELECT id FROM support_tickets WHERE id=$1 AND organization_id=$2 AND category LIKE 'partner-service:%'",[requireUuid(req.params.id,'request'),partnerOrgId(req)]);if(!ticket)throw notFound('Request not found');
+ res.json({messages:await q('SELECT id,sender_role,body FROM ticket_messages WHERE ticket_id=$1 ORDER BY created_at,id',[ticket.id])});
+}));
+
+// Read-only integrations are available only while the catalog's API entitlement is active.
+router.get('/settings/api-keys',requireOrgRole('admin'),asyncHandler(async(req,res)=>{
+ const state=await partnerSubscription(partnerOrgId(req));
+ const keys=await q('SELECT id,label,token_hint,expires_at,revoked_at,created_at FROM partner_api_keys WHERE organization_id=$1 ORDER BY created_at DESC',[partnerOrgId(req)]);
+ res.json({available:state.active&&state.entitlements.apiAccess,keys});
+}));
+router.post('/settings/api-keys',requireOrgRole('admin'),asyncHandler(async(req,res)=>{
+ const state=await partnerSubscription(partnerOrgId(req));if(!state.active||!state.entitlements.apiAccess)throw forbidden('An active plan with API access is required');
+ const label=req.body?.label;if(typeof label!=='string'||!label.trim()||label.length>100)throw badRequest('Enter a label of 1–100 characters');
+ const token=`oblp_${randomBytes(32).toString('hex')}`;
+ const key=await tx(async t=>{
+  await t.one('SELECT id FROM organizations WHERE id=$1 FOR UPDATE',[partnerOrgId(req)]);
+  const count=await t.one('SELECT count(*)::int total FROM partner_api_keys WHERE organization_id=$1 AND revoked_at IS NULL AND expires_at>now()',[partnerOrgId(req)]);
+  if(count.total>=5)throw badRequest('Revoke an existing key before creating another (maximum five active keys)');
+  return t.one(`INSERT INTO partner_api_keys(organization_id,created_by,label,token_hash,token_hint,expires_at)VALUES($1,$2,$3,$4,$5,now()+interval '90 days') RETURNING id,label,token_hint,expires_at`,[partnerOrgId(req),req.user.id,label.trim(),createHash('sha256').update(token).digest('hex'),token.slice(-8)]);
+ });res.set('Cache-Control','no-store').status(201).json({key,token});
+}));
+router.delete('/settings/api-keys/:id',requireOrgRole('admin'),asyncHandler(async(req,res)=>{
+ const key=await one('UPDATE partner_api_keys SET revoked_at=COALESCE(revoked_at,now()) WHERE id=$1 AND organization_id=$2 RETURNING id',[requireUuid(req.params.id,'key'),partnerOrgId(req)]);
+ if(!key)throw notFound('Key not found');res.json({ok:true});
+}));
+
 router.put("/settings", requireOrgRole("admin"), asyncHandler(async (req, res) => {
   const { name, rcNumber, address, city, notificationPrefs } = req.valid ?? req.body ?? {};
-  if (name || rcNumber || address || city) {
+  for (const [field,value] of Object.entries({name,rcNumber,address,city})) {
+    if(value!==undefined&&(typeof value!=='string'||value.length>(field==='address'?500:200)||((field==='name'||field==='city')&&!value.trim())))throw badRequest(`Enter a valid ${field}`);
+  }
+  if (name !== undefined || rcNumber !== undefined || address !== undefined || city !== undefined) {
     await q(
       `UPDATE organizations SET name = COALESCE($2, name), rc_number = COALESCE($3, rc_number), address = COALESCE($4, address), city = COALESCE($5, city), updated_at = now() WHERE id = $1`,
       [partnerOrgId(req), name ?? null, rcNumber ?? null, address ?? null, city ?? null]

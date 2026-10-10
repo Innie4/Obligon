@@ -11,11 +11,11 @@ export default function GenVistaPage() {
           Generator intelligence for <span className="text-obligon-lime">always-on facilities</span>.
         </>
       }
-      body="GenVista helps companies control generator fueling, uptime telemetry, service checks, and energy spend for distributed facilities."
+      body="Contact our team to confirm availability, scope and onboarding requirements. GenVista helps companies control generator fueling, uptime telemetry, service checks, and energy spend for distributed facilities."
       stats={[
-        { value: "99%", label: "Uptime" },
-        { value: "Live", label: "Telemetry" },
-        { value: "Naira", label: "Ledger" }
+        { value: "Discuss", label: "Facility requirements" },
+        { value: "Confirm", label: "Integration scope" },
+        { value: "Plan", label: "Onboarding" }
       ]}
       features={[
         { title: "Runtime Telemetry", body: "Monitor generator status, consumption, and uptime across locations.", icon: "cpu" },

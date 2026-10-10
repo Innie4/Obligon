@@ -2,11 +2,13 @@ import { Router } from 'express';
 import { q,one,tx } from '../db.js';
 import { asyncHandler,badRequest,notFound } from '../lib/errors.js';
 import { audit,notify } from '../lib/notify.js';
+import { queueEmail, flushEmailOutbox } from '../lib/email-outbox.js';
+import { signedUrl } from '../lib/storage.js';
 import { issueRefund } from '../lib/money.js';
 const router=Router();
-const uuid = value=>{if(!/^[a-f0-9-]{36}$/i.test(String(value))) throw badRequest('Invalid ID');return value;};
+const uuid = value=>{if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(String(value))) throw badRequest('Invalid ID');return value;};
 router.get('/support',asyncHandler(async(req,res)=>{
- res.json({tickets:await q(`SELECT t.*,u.full_name FROM support_tickets t JOIN users u ON u.id=t.user_id ORDER BY t.created_at DESC LIMIT 200`)});
+ res.json({tickets:await q(`SELECT t.*,u.full_name FROM support_tickets t LEFT JOIN users u ON u.id=t.user_id ORDER BY t.created_at DESC LIMIT 200`)});
 }));
 router.get('/support/:id/messages',asyncHandler(async(req,res)=>{
  const ticket=await one('SELECT * FROM support_tickets WHERE id=$1',[uuid(req.params.id)]);if(!ticket)throw notFound('Ticket not found');
@@ -15,9 +17,21 @@ router.get('/support/:id/messages',asyncHandler(async(req,res)=>{
 router.post('/support/:id/messages',asyncHandler(async(req,res)=>{
  const message=String(req.body?.message??'').trim();if(!message||message.length>5000)throw badRequest('Message must contain 1–5000 characters');
  const ticket=await one('SELECT * FROM support_tickets WHERE id=$1',[uuid(req.params.id)]);if(!ticket)throw notFound('Ticket not found');
- await tx(async t=>{await t.query("INSERT INTO ticket_messages(ticket_id,sender_user_id,sender_role,body) VALUES($1,$2,'admin',$3)",[ticket.id,req.user.id,message]);await t.query("UPDATE support_tickets SET status='active',updated_at=now() WHERE id=$1",[ticket.id]);});
- await notify({userId:ticket.user_id,title:'Support replied',body:`A support agent replied to ${ticket.reference}.`,category:'support',link:'/customer/support'});
+ await tx(async t=>{const reply=await t.one("INSERT INTO ticket_messages(ticket_id,sender_user_id,sender_role,body) VALUES($1,$2,'admin',$3) RETURNING id",[ticket.id,req.user.id,message]);if(ticket.contact_email) await queueEmail(t,{eventKey:`support-reply:${reply.id}`,to:ticket.contact_email,subject:`Obligon support — ${ticket.reference}`,body:message});await t.query("UPDATE support_tickets SET status='active',updated_at=now() WHERE id=$1",[ticket.id]);});
+ if(ticket.contact_email) void flushEmailOutbox().catch(()=>{});
+ const owner=ticket.user_id?await one('SELECT role FROM users WHERE id=$1',[ticket.user_id]):null;
+ if(ticket.user_id) await notify({userId:ticket.user_id,title:'Support replied',body:`A support agent replied to ${ticket.reference}.`,category:'support',link:owner?.role==='partner'||owner?.role==='mechanic'?'/dashboard/settings':'/customer/support'});
  await audit({actorUserId:req.user.id,actorRole:'admin',action:'support.replied',entityType:'ticket',entityId:ticket.id});res.json({ok:true});
+}));
+router.patch('/support/:id',asyncHandler(async(req,res)=>{
+ const status=req.body?.status;if(!['queued','active','closed'].includes(status))throw badRequest('Choose a valid ticket status');
+ const ticket=await one('UPDATE support_tickets SET status=$2,updated_at=now() WHERE id=$1 RETURNING id',[uuid(req.params.id),status]);if(!ticket)throw notFound('Ticket not found');
+ await audit({actorUserId:req.user.id,actorRole:'admin',action:'support.status_changed',entityId:ticket.id,metadata:{status}});res.json({ok:true});
+}));
+router.get('/support/:id/attachments/:index',asyncHandler(async(req,res)=>{
+ const ticket=await one('SELECT attachments FROM support_tickets WHERE id=$1',[uuid(req.params.id)]);
+ const index=Number(req.params.index);if(!ticket||!Number.isInteger(index)||index<0||!ticket.attachments[index])throw notFound('Attachment not found');
+ res.json({url:await signedUrl(ticket.attachments[index])});
 }));
 router.get('/fuel-review',asyncHandler(async(req,res)=>{
  res.json({orders:await q(`SELECT fo.*,s.name AS station_name,u.full_name FROM fuel_orders fo JOIN stations s ON s.id=fo.station_id

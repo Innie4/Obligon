@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { verifyAccessToken } from "../lib/security.js";
 import { unauthorized, forbidden } from "../lib/errors.js";
 import { one } from "../db.js";
@@ -6,10 +7,37 @@ import { one } from "../db.js";
 export async function attachUser(req, _res, next) {
   const header = req.headers.authorization ?? "";
   // EventSource cannot set headers — accept the access token via ?token= too.
-  const queryToken = req.path === "/api/realtime/stream" && typeof req.query?.token === "string" ? req.query.token : null;
+  const queryToken =
+    req.path === "/api/realtime/stream" && typeof req.query?.token === "string"
+      ? req.query.token
+      : null;
   const token = header.startsWith("Bearer ") ? header.slice(7) : queryToken;
   if (token) {
     try {
+      if (token.startsWith("oblp_")) {
+        const path = req.originalUrl.split("?")[0];
+        const allowed = new Set([
+          "/api/partner/transactions",
+          "/api/partner/transactions/export",
+          "/api/partner/pricing",
+          "/api/partner/stations",
+          "/api/partner/reports",
+          "/api/partner/reports/export",
+        ]);
+        if (req.method !== "GET" || !allowed.has(path)) return next();
+        const user = await one(
+          `SELECT u.*,o.id AS "orgId",o.type AS "orgType" FROM partner_api_keys k
+          JOIN users u ON u.id=k.created_by JOIN organizations o ON o.id=k.organization_id
+          JOIN memberships m ON m.organization_id=o.id AND m.user_id=u.id
+          JOIN subscriptions s ON s.organization_id=o.id JOIN pricing_plans p ON p.code=s.plan_code
+          WHERE k.token_hash=$1 AND k.revoked_at IS NULL AND k.expires_at>now() AND u.status='active'
+          AND m.status='active' AND m.role IN('owner','admin') AND s.status='active'
+          AND s.current_period_start<=now() AND s.current_period_end>now() AND p.active AND p.features @> '["API access"]'::jsonb`,
+          [createHash("sha256").update(token).digest("hex")],
+        );
+        if (user) req.user = user;
+        return next();
+      }
       const payload = verifyAccessToken(token);
       const user = await one(
         payload.sid
@@ -17,11 +45,15 @@ export async function attachUser(req, _res, next) {
              WHERE u.id = $1 AND u.status = 'active' AND s.id = $2
                AND s.revoked_at IS NULL AND s.expires_at > now()`
           : "SELECT * FROM users WHERE id = $1 AND status = 'active'",
-        payload.sid ? [payload.sub, payload.sid] : [payload.sub]
+        payload.sid ? [payload.sub, payload.sid] : [payload.sub],
       );
       if (user) {
         req.auth = payload;
-        req.user = { ...user, orgId: payload.org ?? null, orgType: payload.orgType ?? null };
+        req.user = {
+          ...user,
+          orgId: payload.org ?? null,
+          orgType: payload.orgType ?? null,
+        };
       }
     } catch {
       // invalid/expired token -> anonymous
@@ -40,7 +72,10 @@ export function requireRole(roles) {
   const allowed = Array.isArray(roles) ? roles : [roles];
   return (req, _res, next) => {
     if (!req.user) return next(unauthorized());
-    if (!allowed.includes(req.user.role)) return next(forbidden(`This area requires role: ${allowed.join(" or ")}`));
+    if (!allowed.includes(req.user.role))
+      return next(
+        forbidden(`This area requires role: ${allowed.join(" or ")}`),
+      );
     next();
   };
 }
@@ -70,7 +105,8 @@ export function requireRole(roles) {
 export async function requireOrgMembership(req, _res, next) {
   if (!req.user) return next(unauthorized());
   const orgId = req.user.orgId;
-  if (!orgId) return next(forbidden("No organization is linked to this account"));
+  if (!orgId)
+    return next(forbidden("No organization is linked to this account"));
 
   const membership = await one(
     `SELECT m.id, m.role AS member_role, m.status AS member_status, m.permissions,
@@ -78,14 +114,16 @@ export async function requireOrgMembership(req, _res, next) {
      FROM memberships m
      JOIN organizations o ON o.id = m.organization_id
      WHERE m.organization_id = $1 AND m.user_id = $2`,
-    [orgId, req.user.id]
+    [orgId, req.user.id],
   );
 
   if (!membership) {
     // The token names an org this account is no longer a member of. Access was
     // revoked; say so rather than reporting a generic auth failure.
     return next(
-      forbidden("Your access to this organisation has ended. Sign in again, or ask the account owner to restore your access.")
+      forbidden(
+        "Your access to this organisation has ended. Sign in again, or ask the account owner to restore your access.",
+      ),
     );
   }
   if (membership.member_status !== "active") {
@@ -110,7 +148,8 @@ const ROLE_RANK = { viewer: 0, dispatcher: 1, manager: 2, admin: 3, owner: 4 };
 
 export function requireOrgRole(minimum) {
   const needed = ROLE_RANK[minimum];
-  if (needed === undefined) throw new Error(`requireOrgRole: unknown role "${minimum}"`);
+  if (needed === undefined)
+    throw new Error(`requireOrgRole: unknown role "${minimum}"`);
   return (req, _res, next) => {
     const rank = ROLE_RANK[req.orgRole] ?? -1;
     if (rank < needed) {
@@ -134,19 +173,24 @@ export function requireCapability(capability) {
 export async function requireOrg(req, _res, next) {
   if (!req.user) return next(unauthorized());
   const orgId = req.params.orgId ?? req.user.orgId;
-  if (!orgId) return next(forbidden("No organization is linked to this account"));
+  if (!orgId)
+    return next(forbidden("No organization is linked to this account"));
   const membership = await one(
     `SELECT m.role AS member_role, m.permissions, o.* FROM organizations o
      LEFT JOIN memberships m ON m.organization_id = o.id AND m.user_id = $2
      WHERE o.id = $1`,
-    [orgId, req.user.id]
+    [orgId, req.user.id],
   );
-  if (!membership) return next(forbidden("You do not belong to this organization"));
+  if (!membership)
+    return next(forbidden("You do not belong to this organization"));
   if (membership.owner_user_id !== req.user.id && !membership.member_role) {
     return next(forbidden("You are not a member of this organization"));
   }
   req.org = membership;
-  req.orgRole = membership.owner_user_id === req.user.id ? "owner" : (membership.member_role ?? "viewer");
+  req.orgRole =
+    membership.owner_user_id === req.user.id
+      ? "owner"
+      : (membership.member_role ?? "viewer");
   next();
 }
 

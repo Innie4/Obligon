@@ -19,7 +19,9 @@ before(async () => {
   process.env.DOTENV_CONFIG_PATH = '/dev/null';
   process.env.NODE_ENV = 'test';
   pool = (await import('../src/db.js')).getPool();
-  await pool.query(`CREATE TABLE stations(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),name text,address text DEFAULT '',city text DEFAULT '',lat double precision NOT NULL DEFAULT 6.5244,lng double precision NOT NULL DEFAULT 3.3792,status text DEFAULT 'active',fuels text[] DEFAULT '{Petrol}',hours text DEFAULT '24 hours',rating numeric DEFAULT 0);
+  await pool.query(`CREATE TABLE organizations(id uuid PRIMARY KEY,verification_status text);
+    INSERT INTO organizations VALUES('00000000-0000-4000-8000-000000000001','verified');
+    CREATE TABLE stations(partner_org_id uuid DEFAULT '00000000-0000-4000-8000-000000000001',id uuid PRIMARY KEY DEFAULT gen_random_uuid(),name text,address text DEFAULT '',city text DEFAULT '',lat double precision NOT NULL DEFAULT 6.5244,lng double precision NOT NULL DEFAULT 3.3792,status text DEFAULT 'active',fuels text[] DEFAULT '{Petrol}',hours text DEFAULT '24 hours',rating numeric DEFAULT 0);
     CREATE TABLE fuel_prices(station_id uuid,fuel_type text,price_kobo bigint);`);
   await pool.query("INSERT INTO stations(name) VALUES('Legacy placeholder')");
   await pool.query(await readFile(new URL('../src/migrations/025_station_coordinates.sql', import.meta.url), 'utf8'));
@@ -76,6 +78,8 @@ check('no location never invents a Lagos distance', async () => {
   const rows = await list();
   assert.equal(rows[0].distanceKm, null);
   assert.equal(rows[0].distance, 'Location unavailable');
+  assert.equal(rows[0].diesel, 'Price unavailable');
+  assert.equal(rows[0].unleaded, 'Price unavailable');
 });
 check('invalid, incomplete and repeated coordinates are rejected', async () => {
   for (const query of ['?lat=1', '?lng=1', '?lat=&lng=0', '?lat=NaN&lng=0', '?lat=91&lng=0', '?lat=0&lng=181', '?lat=0&lat=1&lng=0']) {

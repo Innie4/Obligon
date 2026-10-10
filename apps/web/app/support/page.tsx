@@ -16,6 +16,7 @@ export default function SupportPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [requestType, setRequestType] = useState("Enterprise Fleet Onboarding");
+  React.useEffect(()=>{const request=new URLSearchParams(window.location.search).get("request");if(request){setRequestType("Sales / Product Enquiry");setMessage(`I would like to discuss ${request === "sales" ? "a custom requirement" : request}.`);}},[]);
   const [message, setMessage] = useState("");
   const [attachmentName, setAttachmentName] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -30,8 +31,8 @@ export default function SupportPage() {
     }
     setSubmitting(true);
     try {
-      await publicApi.submitContact({ name, email, subject: requestType, message, phone });
-      setTicketRef(`REQ-${Math.floor(10000 + Math.random() * 89999)}`);
+      const result = await publicApi.submitContact({ name, email, subject: requestType, message, phone }, fileInputRef.current?.files?.[0]);
+      setTicketRef(result.reference);
       setSubmitting(false);
       toastSuccess("Support request submitted successfully.");
     } catch (err) {
@@ -48,13 +49,13 @@ export default function SupportPage() {
           <PageIntro
             eyebrow="Direct Enterprise Support"
             title="Contact Obligon LTD"
-            body="Reach our team for enterprise fleet onboarding, partner fuel station verification, API integration, or 24/7 technical dispatch."
+            body="Reach our team for enterprise fleet onboarding, partner fuel station verification, API integration, or technical support."
           />
           <div className="mt-10 grid gap-4 sm:grid-cols-3">
             {[
               { icon: Mail, label: "Official Email", value: "support@obligon.energy" },
-              { icon: Phone, label: "Hotline", value: "+234 800 OBLIGON" },
-              { icon: MapPin, label: "Lagos Hub", value: "14 Marina Rd, Lagos Island" }
+              { icon: Phone, label: "Contact", value: "Contact us using this form" },
+              { icon: MapPin, label: "Service enquiries", value: "Confirm coverage with our team" }
             ].map((item) => (
               <article key={item.label} className="rounded-2xl border border-obligon-border bg-white p-6 shadow-card">
                 <item.icon className="text-obligon-green" size={24} />
@@ -65,11 +66,11 @@ export default function SupportPage() {
           </div>
 
           <div className="mt-10 rounded-2xl bg-obligon-navy p-8 text-white shadow-hero">
-            <h3 className="font-display text-2xl font-extrabold">24/7 Priority Hotline for Active Fleets</h3>
+            <h3 className="font-display text-2xl font-extrabold">Account and transaction support</h3>
             <p className="mt-2 text-sm text-[#b8c4ff] leading-6">
-              If your driver is stuck at a pump or experiencing a fuel card decline, call our emergency operations desk directly.
+              For fuel card declines or payment issues, include the transaction reference in your inquiry. Signed-in customers can follow replies in Support.
             </p>
-            <p className="mt-4 font-mono font-extrabold text-2xl text-obligon-lime">+234 800 625 4466</p>
+            <p className="mt-4 font-mono font-extrabold text-2xl text-obligon-lime">Keep your request reference for follow-up</p>
           </div>
         </div>
 
@@ -83,7 +84,7 @@ export default function SupportPage() {
               Reference: <strong className="font-mono font-extrabold text-obligon-navy text-base">{ticketRef}</strong>
             </p>
             <p className="mt-3 text-xs text-obligon-text leading-5">
-              Thank you, <strong>{name}</strong>. An Obligon representative will review your inquiry and reach out at <strong>{email}</strong> within 2 hours.
+              Thank you, <strong>{name}</strong>. An Obligon representative will review your inquiry and reach out at <strong>{email}</strong> by email.
             </p>
             <button
               type="button"
@@ -106,11 +107,11 @@ export default function SupportPage() {
             <p className="text-xs text-obligon-text">Fill in the details below and we will get back to you promptly.</p>
 
             <div>
-              <label className="text-[11px] font-extrabold uppercase tracking-[1.1px] text-obligon-text block mb-1">
-                Full Name
-              </label>
+              <label htmlFor="contact-name" className="text-[11px] font-extrabold uppercase tracking-[1.1px] text-obligon-text block mb-1">
+Full Name
+</label>
               <input
-                value={name}
+                id="contact-name" value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Adaora Emeka"
                 className="h-12 w-full rounded-xl border border-obligon-border bg-white px-4 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20"
@@ -120,11 +121,11 @@ export default function SupportPage() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-[11px] font-extrabold uppercase tracking-[1.1px] text-obligon-text block mb-1">
-                  Work Email
-                </label>
+                <label htmlFor="contact-email" className="text-[11px] font-extrabold uppercase tracking-[1.1px] text-obligon-text block mb-1">
+Work Email
+</label>
                 <input
-                  value={email}
+                  id="contact-email" value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   type="email"
                   placeholder="adaora@company.ng"
@@ -133,11 +134,11 @@ export default function SupportPage() {
                 />
               </div>
               <div>
-                <label className="text-[11px] font-extrabold uppercase tracking-[1.1px] text-obligon-text block mb-1">
-                  Phone (Optional)
-                </label>
+                <label htmlFor="contact-phone" className="text-[11px] font-extrabold uppercase tracking-[1.1px] text-obligon-text block mb-1">
+Phone (Optional)
+</label>
                 <input
-                  value={phone}
+                  id="contact-phone" value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+234 801 234 5678"
                   className="h-12 w-full rounded-xl border border-obligon-border bg-white px-4 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20"
@@ -150,11 +151,11 @@ export default function SupportPage() {
                 Inquiry Category
               </label>
               <select
-                value={requestType}
+                id="contact-requestType" value={requestType}
                 onChange={(e) => setRequestType(e.target.value)}
                 className="h-12 w-full rounded-xl border border-obligon-border bg-white px-4 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20"
               >
-                <option>Enterprise Fleet Onboarding</option>
+                <option>Enterprise Fleet Onboarding</option><option>Sales / Product Enquiry</option>
                 <option>Partner Fuel Station Integration</option>
                 <option>Driver App &amp; Fuelvista Card Issue</option>
                 <option>Billing &amp; Settlement Reconciliation</option>
@@ -163,11 +164,11 @@ export default function SupportPage() {
             </div>
 
             <div>
-              <label className="text-[11px] font-extrabold uppercase tracking-[1.1px] text-obligon-text block mb-1">
-                Message
-              </label>
+              <label htmlFor="contact-message" className="text-[11px] font-extrabold uppercase tracking-[1.1px] text-obligon-text block mb-1">
+Message
+</label>
               <textarea
-                value={message}
+                id="contact-message" value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 rows={4}
                 placeholder="Describe your fleet size, question, or specific requirement..."

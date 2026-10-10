@@ -143,7 +143,7 @@ function DesktopHeader() {
 
   return (
     <header className="sticky top-0 z-30 hidden h-[74px] items-center justify-between border-b border-[#cfd8cc] bg-[#f7fbf8] px-16 lg:flex">
-      <h1 className="font-display text-2xl font-extrabold tracking-normal text-[#20251f]">{pageTitles[page]}</h1>
+      <h1 className="font-display text-2xl font-extrabold tracking-normal text-[#20251f]">{pathname.includes("/subscription")?"Subscription":pathname.includes("/fuel-checkout")?"Fuel checkout":pageTitles[page]}</h1>
       <div className="flex items-center gap-5">
         <Link href="/customer/notifications" className="text-[#3f463d]" aria-label="Notifications">
           <Bell size={21} />

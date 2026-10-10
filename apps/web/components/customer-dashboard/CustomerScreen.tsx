@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { customerFeatureAvailable, type CustomerEntitlementState } from "@/lib/customer-entitlements";
+import { stationFuelName } from "@/lib/station-fuels";
 import {
   type CustomerPageKey,
   type CustomerTone
@@ -397,6 +398,7 @@ function TransactionsPage() {
   // redraws on the same tick as the wallet and the overview.
   usePolling(refresh, { intervalMs: BALANCE_POLL_MS });
 
+  React.useEffect(() => {if (!history) return;const id=new URLSearchParams(window.location.search).get("id");if(id)setSelectedTxn(history.find(row => row.id===id)??null);},[history]);
   const rows = history ?? [];
   // Filter options come from dispenses only. A top-up has no vehicle and no fuel
   // type, so including them would offer a filter that can only ever return
@@ -799,6 +801,8 @@ function CardPage({
 
   const { status: plansStatus, data: plans } = useAsync(() => api.getCardPlans());
   const [planModalOpen, setPlanModalOpen] = React.useState(false);
+  const [preferredPlan,setPreferredPlan]=React.useState<string>();
+  React.useEffect(()=>{const plan=new URLSearchParams(window.location.search).get("chosenPlan")??sessionStorage.getItem("obligon_selected_plan");if(plan){setPreferredPlan(plan);setPlanModalOpen(true);sessionStorage.removeItem("obligon_selected_plan");}},[]);
   const [busyPlan, setBusyPlan] = React.useState<string | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = React.useState(false);
   const [submittingDetails, setSubmittingDetails] = React.useState(false);
@@ -1158,7 +1162,7 @@ function CardPage({
 
       {planModalOpen ? (
         <CardPlanModal
-          plans={plans ?? []}
+          plans={[...(plans ?? [])].sort((a,b)=>Number(b.code===preferredPlan)-Number(a.code===preferredPlan))}
           loading={plansStatus === "loading"}
           busyPlan={busyPlan}
           onSelect={(plan) => void handleSelectPlan(plan)}
@@ -1516,14 +1520,14 @@ function StationsPage() {
   const [detail, setDetail] = React.useState<{ name: string; address: string; distance: string; hours?: string; diesel?: string; unleaded?: string; fuels?: string[] } | null>(null);
   const [directionTarget, setDirectionTarget] = React.useState<{ name: string; address: string; distance: string } | null>(null);
 
-  const allFuels = Array.from(new Set(stations?.flatMap((station) => station.fuels) ?? []));
+  const allFuels = Array.from(new Set(stations?.flatMap((station) => station.fuels.map(stationFuelName)) ?? []));
 
   const visible = stations?.filter((station) => {
     const matchesQuery =
       query.trim() === "" ||
       station.name.toLowerCase().includes(query.toLowerCase()) ||
       station.address.toLowerCase().includes(query.toLowerCase());
-    const matchesFuel = selectedFuels.length === 0 || selectedFuels.some((fuel) => station.fuels.includes(fuel));
+    const matchesFuel = selectedFuels.length === 0 || station.fuels.some((fuel) => selectedFuels.includes(stationFuelName(fuel)));
     return matchesQuery && matchesFuel;
   }) ?? [];
 
@@ -1601,7 +1605,7 @@ function StationsPage() {
           <Card className="relative min-h-[500px] overflow-hidden bg-[#dfe8ed]">
             <StationMap
               points={visible.flatMap(st => st.lat !== null && st.lng !== null ? [{ id: st.id ?? st.name, name: st.name, lat: st.lat, lng: st.lng }] : [])}
-              onSelect={(point) => router.push(`/customer/stations?station=${encodeURIComponent(point.name)}`)}
+              onSelect={(point) => setDetail(visible.find(st => (st.id ?? st.name) === point.id) ?? null)}
               height="h-[500px]"
             />
           </Card>
@@ -1637,6 +1641,8 @@ function StationsPage() {
           </div>
         </div>
 
+        {fuelsOpen && <ModalFrame onClose={() => setFuelsOpen(false)}><div className="p-6"><h2 className="text-2xl font-bold">Filter by fuel</h2>{allFuels.map(fuel => <label key={fuel} className="flex min-h-12 items-center gap-3"><input type="checkbox" checked={selectedFuels.includes(fuel)} onChange={e => setSelectedFuels(prev => e.target.checked ? [...prev, fuel] : prev.filter(f => f !== fuel))} />{fuel}</label>)}<button type="button" className="mt-4 min-h-12 rounded-lg bg-obligon-green px-6 font-bold text-white" onClick={() => setFuelsOpen(false)}>Show stations</button></div></ModalFrame>}
+        {!visible.length && <p role="status">No stations match your search. Clear the filters to see all available stations.</p>}
         {/* Station Detail Modal */}
         {detail ? (
           <ModalFrame onClose={() => setDetail(null)}>
@@ -1689,10 +1695,10 @@ function StationsPage() {
               <div className="mt-4 rounded-xl bg-[#f7fbf8] p-4 space-y-2 text-sm font-bold text-obligon-navy">
                 <p>📍 Destination: {directionTarget.address}</p>
                 <p>📏 Distance: {directionTarget.distance}</p>
-                <p>⏱️ Estimated arrival: ~8 mins</p>
+                <p>Open the route below for current travel times.</p>
               </div>
               <a
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(directionTarget.address)}`}
+                href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(directionTarget.address)}${location ? `&origin=${location.lat},${location.lng}` : ""}`}
                 target="_blank"
                 rel="noreferrer"
                 className="mt-6 flex h-12 w-full items-center justify-center rounded-lg bg-obligon-green font-extrabold text-white shadow-green"
@@ -1709,6 +1715,8 @@ function StationsPage() {
 }
 
 function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void }) {
+  const {data: services}=useAsync(()=>api.request<{services:Array<{label:string;available:boolean}>;message:string}>("/api/customer/services"));
+  const [serviceReference,setServiceReference]=React.useState("");
   type Ticket = { id: string; reference: string; subject: string; status: string };
   type Message = { id: string; role: string; body: string; time: string; sender: string };
   const { error: toastError } = useToast();
@@ -1779,6 +1787,7 @@ function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void 
 
   return (
     <Canvas>
+      <section className="mb-6 rounded-xl border bg-white p-6"><h2 className="text-2xl font-bold">Request a plan service</h2><p className="mt-2 text-sm text-obligon-text">{services?.message}</p>{services&&<form className="mt-4 space-y-4" onSubmit={async e=>{e.preventDefault();const form=new FormData(e.currentTarget);setSending(true);try{const result=await api.request<{reference:string}>("/api/customer/services",{method:"POST",body:JSON.stringify(Object.fromEntries(form))});setServiceReference(result.reference);await loadTickets();}catch(e){toastError((e as Error).message);}finally{setSending(false);}}}><label className="block">Service<select name="service" required className="mt-2 block min-h-12 w-full rounded border p-3"><option value="">Choose an included service</option>{services.services.map(service=><option key={service.label} disabled={!service.available} value={service.label}>{service.label}{!service.available?" · Not included / active plan required":""}</option>)}</select></label><label className="block">Location and requirements<textarea name="message" required maxLength={5000} className="mt-2 block min-h-28 w-full rounded border p-3"/></label><button disabled={sending||!services.services.some(service=>service.available)} className="min-h-12 rounded bg-obligon-green px-6 font-bold text-white">{sending?"Submitting…":"Request coordination"}</button></form>}{serviceReference&&<p role="status" className="mt-4">Request {serviceReference} recorded. Use Open Support Messages below to follow the response.</p>}</section>
       <div className="mb-8">
         <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Customer Support Center</h1>
         <p className="mt-1 text-obligon-text">Billing, card, and transaction assistance.</p>
@@ -1972,10 +1981,10 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
                 />
               </label>
               <label className="block">
-                <span className="text-xs font-extrabold uppercase text-obligon-text">Email Address</span>
+                <span className="text-xs font-extrabold uppercase text-obligon-text">Email Address</span><p id="profile-email-help" className="text-xs text-obligon-text">Your sign-in email. Contact support to change it securely.</p>
                 <input
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  readOnly aria-describedby="profile-email-help"
                   type="email"
                   className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green"
                   required
@@ -2241,6 +2250,7 @@ function NotificationsPage() {
 
 export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
   const [modal, setModal] = React.useState<CustomerModalType>(null);
+  React.useEffect(() => {if (pageKey === "reportProblem") setModal("report");},[pageKey]);
   const { data: subscription, refresh: refreshSubscription } = useAsync(
     () => api.request<CustomerEntitlementState>("/api/customer/subscription")
   );

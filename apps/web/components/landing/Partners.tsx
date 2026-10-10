@@ -1,18 +1,1 @@
-const partners = ["NNPC", "Mobil", "Oando", "Conoil", "TotalEnergies"];
-
-export function Partners() {
-  return (
-    <section id="partners" className="bg-obligon-mist py-20" data-node-id="2:213">
-      <div className="mx-auto max-w-landing px-5 text-center sm:px-8 lg:px-0">
-        <p className="text-xs font-semibold uppercase tracking-[3.6px] text-obligon-text">Institutional Partners</p>
-        <div className="mt-12 flex flex-wrap items-center justify-center gap-x-12 gap-y-5 opacity-40 lg:gap-x-16">
-          {partners.map((partner) => (
-            <span key={partner} className="text-2xl font-bold leading-8 text-obligon-navy">
-              {partner}
-            </span>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
+export function Partners(){return <section id="partners" className="bg-obligon-mist px-5 py-16 text-center"><div className="mx-auto max-w-3xl"><h2 className="font-display text-3xl font-bold">Build the station network with us.</h2><p className="mt-4 text-obligon-text">Verified operators can publish approved stations, manage pricing and track automatic settlements.</p><a href="/auth/signup?role=partner" className="mt-6 inline-flex min-h-12 items-center rounded-lg bg-obligon-green px-6 font-bold text-white">Become a partner</a></div></section>;}

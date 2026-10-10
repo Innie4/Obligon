@@ -390,7 +390,7 @@ test("it has a 6-digit input, a resend countdown and validation states", () => {
   assert.match(verification, /RESEND_COOLDOWN_SECONDS/);
   assert.match(verification, /role="alert"/);
   assert.match(verification, /aria-invalid=\{stage === "failed"\}/);
-  assert.match(verification, /Code accepted/);
+  assert.match(verification, /Contact details verified/);
 });
 
 test("the countdown is one cleared interval", () => {

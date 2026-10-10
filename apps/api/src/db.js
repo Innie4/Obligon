@@ -7,14 +7,30 @@ let pool;
 
 export function getPool() {
   if (!pool) {
+    const url = new URL(process.env.DATABASE_URL || env.DATABASE_URL);
+    const tls =
+      /supabase\.(co|com)|neon\.tech|render\.com/.test(url.hostname) ||
+      ["require", "verify-ca", "verify-full", "no-verify"].includes(
+        url.searchParams.get("sslmode"),
+      ) ||
+      process.env.DATABASE_SSL === "true";
+    // pg connection-string SSL options must not override certificate verification.
+    if (tls)
+      for (const key of ["sslmode", "sslcert", "sslkey", "sslrootcert"])
+        url.searchParams.delete(key);
     pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: /supabase\.(co|com)|neon\.tech|render\.com/.test(process.env.DATABASE_URL ?? "")
-        ? { rejectUnauthorized: false }
+      connectionString: url.toString(),
+      ssl: tls
+        ? {
+            rejectUnauthorized: true,
+            ...(process.env.DATABASE_CA_CERT
+              ? { ca: process.env.DATABASE_CA_CERT.replaceAll("\\n", "\n") }
+              : {}),
+          }
         : undefined,
       max: env.DATABASE_MAX_CONNECTIONS,
       connectionTimeoutMillis: env.DATABASE_CONNECTION_TIMEOUT_MS,
-      idleTimeoutMillis: env.DATABASE_IDLE_TIMEOUT_MS
+      idleTimeoutMillis: env.DATABASE_IDLE_TIMEOUT_MS,
     });
   }
   return pool;
@@ -24,7 +40,7 @@ export async function claimIdempotency(key) {
   if (!key) return true;
   const rows = await q(
     "INSERT INTO idempotency_keys (key) VALUES ($1) ON CONFLICT (key) DO NOTHING RETURNING key",
-    [key]
+    [key],
   );
   return rows.length > 0;
 }
@@ -47,7 +63,8 @@ export async function tx(fn) {
     await client.query("BEGIN");
     const result = await fn({
       query: async (sql, params = []) => (await client.query(sql, params)).rows,
-      one: async (sql, params = []) => (await client.query(sql, params)).rows[0] ?? null
+      one: async (sql, params = []) =>
+        (await client.query(sql, params)).rows[0] ?? null,
     });
     await client.query("COMMIT");
     return result;
@@ -60,13 +77,25 @@ export async function tx(fn) {
 }
 
 /** Simple cursor-pagination helper. Returns { rows, total } */
-export async function paginate({ table, select = "*", where = "true", params = [], order = "created_at desc", limit = 20, offset = 0, countWhere }) {
+export async function paginate({
+  table,
+  select = "*",
+  where = "true",
+  params = [],
+  order = "created_at desc",
+  limit = 20,
+  offset = 0,
+  countWhere,
+}) {
   const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 100);
   const safeOffset = Math.max(Number(offset) || 0, 0);
   const rows = await q(
     `SELECT ${select} FROM ${table} WHERE ${where} ORDER BY ${order} LIMIT ${safeLimit} OFFSET ${safeOffset}`,
-    params
+    params,
   );
-  const totalRow = await q(`SELECT COUNT(*)::int AS count FROM ${table} WHERE ${countWhere ?? where}`, params);
+  const totalRow = await q(
+    `SELECT COUNT(*)::int AS count FROM ${table} WHERE ${countWhere ?? where}`,
+    params,
+  );
   return { rows, total: totalRow[0]?.count ?? 0 };
 }

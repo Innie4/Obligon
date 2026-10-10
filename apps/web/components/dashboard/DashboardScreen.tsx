@@ -1,4 +1,7 @@
 "use client";
+import Link from "next/link";
+import { PartnerApiKeys } from "./PartnerApiKeys";
+import { PartnerServiceRequests } from "./PartnerServiceRequests";
 
 import * as React from "react";
 import { StationDiscounts } from "./StationDiscounts";
@@ -865,14 +868,17 @@ function DisputesPage() {
 // ============ STATION PROFILE ============
 function StationProfilePage() {
   const { success: toastSuccess, error: toastError } = useToast();
-const { status, data, error, reload } = useAsync(() => api.getPartnerStation());
+const [selectedId, setSelectedId] = React.useState<string>();
+  const [creating, setCreating] = React.useState(false);
+  const { data: stationList, reload: reloadList } = useAsync(() => api.request<{stations:Array<{id:string;name:string;status:string;review_note?:string}>}>("/api/partner/stations"));
+  const { status, data, error, reload } = useAsync(() => api.getPartnerStation(selectedId), [selectedId]);
   const [form, setForm] = React.useState<{ name: string; address: string; city: string; hours: string; fuels: string; lat: string; lng: string } | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [operationsOpen, setOperationsOpen] = React.useState(false);
 
   const station = data?.station ?? null;
   const stationId = String(station?.id ?? "");
-  const fields = form ?? (station ? {
+  const fields = form ?? (creating ? {name:"",address:"",city:"",hours:"",fuels:"Petrol, Diesel",lat:"",lng:""} : station ? {
     name: station.name ?? "",
     address: station.address ?? "",
     city: station.city ?? "",
@@ -890,7 +896,8 @@ const { status, data, error, reload } = useAsync(() => api.getPartnerStation());
     if (!fields) return;
     setSaving(true);
     try {
-      await mutationsApi.updateStation({
+      const payload = {
+        stationId,
         name: fields.name,
         address: fields.address,
         city: fields.city,
@@ -898,8 +905,11 @@ const { status, data, error, reload } = useAsync(() => api.getPartnerStation());
         fuels: fields.fuels.split(",").map(fuel => fuel.trim()).filter(Boolean),
         lat: Number(fields.lat),
         lng: Number(fields.lng)
-      });
-      toastSuccess("Station profile saved.");
+      };
+      const result = creating ? await api.request<{station:{id:string}}>("/api/partner/stations", {method:"POST",body:JSON.stringify(payload)}) : await mutationsApi.updateStation(payload);
+      if (creating && result && "station" in result) setSelectedId(String(result.station.id));
+      setCreating(false); reloadList();
+      toastSuccess("Station saved. New stations and changed locations require admin approval.");
       setForm(null);
       reload();
     } catch (err) {
@@ -916,7 +926,7 @@ const { status, data, error, reload } = useAsync(() => api.getPartnerStation());
           <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Station Profile</h1>
           <p className="mt-1 text-sm text-obligon-text">The details customers see in the station locator.</p>
         </div>
-        {station ? (
+        {station && !creating ? (
           <button
             type="button"
             onClick={() => setOperationsOpen(true)}
@@ -928,6 +938,8 @@ const { status, data, error, reload } = useAsync(() => api.getPartnerStation());
         ) : null}
       </div>
 
+      <div className="mb-6 flex flex-wrap items-end gap-4"><label className="min-w-0 flex-1">Your stations<select aria-label="Select station" className="mt-2 block min-h-12 w-full rounded-lg border bg-white p-3" value={selectedId ?? String(station?.id ?? "")} onChange={e => {setSelectedId(e.target.value);setCreating(false);setForm(null);}}>{stationList?.stations.map(item => <option key={item.id} value={item.id}>{item.name} · {item.status}</option>)}</select></label><button type="button" className="min-h-12 rounded-lg bg-obligon-green px-6 font-bold text-white" onClick={() => {setCreating(true);setForm(null);}}>Add station</button></div>
+      {stationList?.stations.find(item => item.id === stationId)?.review_note && <p className="mb-4 rounded border p-4" role="status">Admin review: {stationList.stations.find(item => item.id === stationId)?.review_note}</p>}
       <AsyncBoundary
         status={status}
         error={error?.message ?? null}
@@ -935,11 +947,11 @@ const { status, data, error, reload } = useAsync(() => api.getPartnerStation());
         loadingLabel="Loading station…"
       >
         {data ? (
-          !station || !fields ? (
+          (!station && !creating) || !fields ? (
             <EmptyState
               icon={Building2}
               title="No station linked yet"
-              message="This account is not linked to a station. Our team can connect one for you."
+              message="Choose Add station to submit your first location for approval."
             />
           ) : (
             <form onSubmit={handleSave} className="grid gap-8 lg:grid-cols-[1fr_360px]">
@@ -957,7 +969,7 @@ const { status, data, error, reload } = useAsync(() => api.getPartnerStation());
                       value={fields[key]}
                       onChange={(e) => setField(key, e.target.value)}
                       className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 font-bold text-obligon-navy outline-none focus:border-obligon-green"
-                      required={key === "name"}
+                      required={key !== "hours"}
                     />
                   </label>
                 ))}
@@ -983,11 +995,11 @@ const { status, data, error, reload } = useAsync(() => api.getPartnerStation());
                   type="submit"
                   className="mt-6 h-12 rounded-xl bg-obligon-green px-8 font-extrabold text-white shadow-green disabled:opacity-50"
                 >
-                  {saving ? <Loader2 size={18} className="animate-spin" /> : "Save Profile"}
+                  {saving ? <Loader2 size={18} className="animate-spin" /> : creating ? "Submit for approval" : "Save Profile"}
                 </button>
               </article>
 
-              <article className="rounded-xl border border-[#d7d8e4] bg-white p-7 shadow-sm">
+              {!creating&&<article className="rounded-xl border border-[#d7d8e4] bg-white p-7 shadow-sm">
                 <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Equipment</h2>
                 {data.equipment.length ? (
                   <ul className="mt-6 space-y-3">
@@ -1017,7 +1029,7 @@ const { status, data, error, reload } = useAsync(() => api.getPartnerStation());
                 ) : (
                   <p className="mt-4 text-sm font-medium text-obligon-text">No dispensing recorded yet.</p>
                 )}
-              </article>
+              </article>}
             </form>
           )
 ) : null}
@@ -1439,6 +1451,8 @@ function StaffPage() {
 
 // ============ SETTINGS ============
 function SettingsPage() {
+  const { success: toastSuccess, error: toastError } = useToast();
+  const [saving,setSaving]=React.useState(false);
   const { status, data, error, reload } = useAsync(() => api.getPartnerSettings());
 
   const rows: Array<[string, string]> = data
@@ -1466,6 +1480,7 @@ function SettingsPage() {
         loadingLabel="Loading settings…"
       >
         {data ? (
+          <div><form className="mb-6 rounded-xl border bg-white p-6" onSubmit={async e=>{e.preventDefault();const form=new FormData(e.currentTarget);setSaving(true);try{await api.request("/api/partner/settings",{method:"PUT",body:JSON.stringify(Object.fromEntries(form))});toastSuccess("Organisation details saved.");reload();}catch(error){toastError((error as Error).message);}finally{setSaving(false);}}}><h2 className="text-xl font-bold">Organisation details</h2>{([['name','Organisation',data.org.name],['rcNumber','RC number',data.org.rcNumber],['address','Address',data.org.address],['city','City',data.org.city]] as const).map(([name,label,value])=><label key={name} className="mt-4 block">{label}<input name={name} defaultValue={value??''} required={name==='name'} maxLength={name==='address'?500:200} className="mt-2 block min-h-12 w-full rounded border p-3"/></label>)}<p className="mt-3 text-sm">Only organisation owners and administrators can save these details.</p><button disabled={saving} className="mt-4 min-h-12 rounded bg-obligon-green px-5 font-bold text-white">{saving?'Saving…':'Save details'}</button></form><Link href="/auth/mfa/setup" className="mb-4 inline-flex min-h-12 items-center font-bold text-obligon-green underline">Manage two-factor authentication</Link><Link href="/forgot-password" className="ml-5 inline-flex min-h-12 items-center font-bold text-obligon-green underline">Reset password</Link>
           <section className="overflow-hidden rounded-xl border border-[#d7d8e4] bg-white shadow-sm">
             <div className="divide-y divide-[#ececf5]">
               {rows.map(([label, value]) => (
@@ -1475,7 +1490,7 @@ function SettingsPage() {
                 </div>
               ))}
             </div>
-          </section>
+          </section><PartnerServiceRequests/><PartnerApiKeys/></div>
         ) : null}
       </AsyncBoundary>
     </DashboardCanvas>
@@ -2111,7 +2126,7 @@ function StationOperationsModal({
     if (!file) return;
     setBusy("asset");
     try {
-      await mutationsApi.uploadStationAsset(file);
+      await mutationsApi.uploadStationAsset(file, stationId);
       toastSuccess("Asset uploaded.");
       onDone();
     } catch (err) {
@@ -2126,7 +2141,7 @@ function StationOperationsModal({
     if (!Number.isFinite(parsed) || parsed <= 0) return;
     setBusy("resupply");
     try {
-      await mutationsApi.requestResupply({ fuelType, litres: parsed });
+      await mutationsApi.requestResupply({ fuelType, litres: parsed, stationId });
       toastSuccess(`Resupply request for ${parsed.toLocaleString()} L of ${fuelType} recorded. A team member will follow up.`);
       setLitres("");
     } catch (err) {
@@ -2140,7 +2155,7 @@ function StationOperationsModal({
     if (message.trim() === "") return;
     setBusy("message");
     try {
-      await mutationsApi.messageTerminal(message.trim());
+      await mutationsApi.messageTerminal(message.trim(), stationId);
       toastSuccess("Message sent to the terminal.");
       setMessage("");
     } catch (err) {

@@ -13,14 +13,14 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { execSync } from "node:child_process";
+import { execSync, execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.join(__dirname, "..", "..", "..");
-const envPath = path.join(repoRoot, ".env");
+const envPath = process.env.OBLIGON_SECRET_SCAN_ENV_PATH || path.join(repoRoot, ".env");
 
 const hasEnv = fs.existsSync(envPath);
 
@@ -124,7 +124,7 @@ test("the webhook secret hash is not committed anywhere in history", { skip: !ha
   if (!hash) return;
   let found = "";
   try {
-    found = execSync(`git log --all -p -S "${hash}" --oneline`, {
+    found = execFileSync("git", ["log", "--all", "-p", "-S", hash, "--oneline"], {
       cwd: repoRoot,
       encoding: "utf8",
       maxBuffer: 64 * 1024 * 1024

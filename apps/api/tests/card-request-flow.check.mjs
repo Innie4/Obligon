@@ -89,7 +89,7 @@ check("a second checkout is rejected", dupe.status === 409, `status=${dupe.statu
 // ------------------------------- step 2: details must wait for payment
 const early = await call("POST", "/api/customer/card-request/details", {
   token,
-  body: { reference, fullName: "Femi Balogun", bvn: "20123456789", address: "1 Test St", city: "Lagos", state: "Lagos" }
+  body: { reference, fullName: "Femi Balogun", bvn: "20123456789", address: "1 Test St", city: "Lagos", state: "Lagos", dateOfBirth: "1990-01-01", postalCode: "100001", phone: "+2348010000000" }
 });
 check("details are rejected before payment", early.status === 409, `status=${early.status}`);
 
@@ -125,7 +125,7 @@ if (simulated) {
   // Identity details must still be blocked while the plan is unpaid.
   const blockedDetails = await call("POST", "/api/customer/card-request/details", {
     token,
-    body: { reference, fullName: "Femi Balogun", bvn: "20123456789", address: "1 Test St", city: "Lagos", state: "Lagos" }
+    body: { reference, fullName: "Femi Balogun", bvn: "20123456789", address: "1 Test St", city: "Lagos", state: "Lagos", dateOfBirth: "1990-01-01", postalCode: "100001", phone: "+2348010000000" }
   });
   check("details are blocked until payment lands", blockedDetails.status === 409, `status=${blockedDetails.status}`);
 
@@ -146,31 +146,31 @@ check("an unknown reference is rejected", unknownRef.status === 404, `status=${u
 // --------------------------------------------- step 3: identity + BVN rules
 const shortName = await call("POST", "/api/customer/card-request/details", {
   token,
-  body: { reference, fullName: "F", bvn: "20123456789", address: "1 Test St", city: "Lagos", state: "Lagos" }
+  body: { reference, fullName: "F", bvn: "20123456789", address: "1 Test St", city: "Lagos", state: "Lagos", dateOfBirth: "1990-01-01", postalCode: "100001", phone: "+2348010000000" }
 });
 check("details reject a too-short name", shortName.status === 400, `status=${shortName.status}`);
 
 const badBvn = await call("POST", "/api/customer/card-request/details", {
   token,
-  body: { reference, fullName: "Femi Balogun", bvn: "12345678901", address: "1 Test St", city: "Lagos", state: "Lagos" }
+  body: { reference, fullName: "Femi Balogun", bvn: "12345678901", address: "1 Test St", city: "Lagos", state: "Lagos", dateOfBirth: "1990-01-01", postalCode: "100001", phone: "+2348010000000" }
 });
 check("details reject a BVN not starting with 2", badBvn.status === 400, `status=${badBvn.status}`);
 
 const shortBvn = await call("POST", "/api/customer/card-request/details", {
   token,
-  body: { reference, fullName: "Femi Balogun", bvn: "2012345678", address: "1 Test St", city: "Lagos", state: "Lagos" }
+  body: { reference, fullName: "Femi Balogun", bvn: "2012345678", address: "1 Test St", city: "Lagos", state: "Lagos", dateOfBirth: "1990-01-01", postalCode: "100001", phone: "+2348010000000" }
 });
 check("details reject a 10-digit BVN", shortBvn.status === 400, `status=${shortBvn.status}`);
 
 const noAddress = await call("POST", "/api/customer/card-request/details", {
   token,
-  body: { reference, fullName: "Femi Balogun", bvn: "20123456789", city: "Lagos", state: "Lagos" }
+  body: { reference, fullName: "Femi Balogun", bvn: "20123456789", city: "Lagos", state: "Lagos", dateOfBirth: "1990-01-01", postalCode: "100001", phone: "+2348010000000" }
 });
 check("details require a delivery address", noAddress.status === 400, `status=${noAddress.status}`);
 
 const submitted = await call("POST", "/api/customer/card-request/details", {
   token,
-  body: { reference, fullName: "Femi Balogun", bvn: "20123456789", address: "1 Test St", city: "Lagos", state: "Lagos" }
+  body: { reference, fullName: "Femi Balogun", bvn: "20123456789", address: "1 Test St", city: "Lagos", state: "Lagos", dateOfBirth: "1990-01-01", postalCode: "100001", phone: "+2348010000000" }
 });
 check("valid details are accepted", submitted.status === 200, `status=${submitted.status} ${JSON.stringify(submitted.data?.error ?? "")}`);
 check("request moves to pending_verification", submitted.data?.request?.status === "pending_verification", submitted.data?.request?.status);
@@ -180,7 +180,7 @@ check("BVN is never returned in full", submitted.data?.request?.bvnLastFour === 
 
 const resubmit = await call("POST", "/api/customer/card-request/details", {
   token,
-  body: { reference, fullName: "Femi Balogun", bvn: "20123456789", address: "1 Test St", city: "Lagos", state: "Lagos" }
+  body: { reference, fullName: "Femi Balogun", bvn: "20123456789", address: "1 Test St", city: "Lagos", state: "Lagos", dateOfBirth: "1990-01-01", postalCode: "100001", phone: "+2348010000000" }
 });
 check("resubmitting is idempotent", resubmit.status === 200 && resubmit.data?.alreadySubmitted === true, `status=${resubmit.status}`);
 

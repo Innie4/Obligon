@@ -23,6 +23,10 @@ import { subscriptionRouter } from "./subscription.routes.js";
 import { requireCustomerPlan, customerSubscription } from "../lib/subscriptions.js";
 
 const router = Router();
+for(const name of ['id','orgId','memberId'])router.param(name,(req,_res,next,value)=>{
+ if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value))return next(badRequest('Invalid record ID'));
+ next();
+});
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 /**
@@ -173,7 +177,7 @@ router.get("/overview", asyncHandler(async (req, res) => {
     ),
     q(
       `SELECT id, title, body, link, created_at FROM notifications
-       WHERE user_id = $1 AND dismissed_at IS NULL
+       WHERE user_id = $1 AND dismissed_at IS NULL AND in_app_visible=TRUE
        ORDER BY created_at DESC LIMIT 6`,
       [userId]
     )
@@ -375,6 +379,7 @@ router.get("/transactions/mobile-history", asyncHandler(async (req, res) => {
 }));
 
 router.get("/transactions/:id/receipt", asyncHandler(async (req, res) => {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.params.id)) throw badRequest("Invalid transaction ID");
   const t = await one(
     `SELECT t.*, s.name AS station_name FROM transactions t LEFT JOIN stations s ON s.id = t.station_id
      WHERE t.id = $1 AND (t.customer_user_id = $2 OR t.organization_id = $3)`,
@@ -1627,7 +1632,7 @@ router.get("/stations", asyncHandler(async (req, res) => {
     origin = { lat: Number(lat), lng: Number(lng) };
   }
   const params = [];
-  let where = `s.status = 'active'`;
+  let where = `s.status = 'active' AND EXISTS(SELECT 1 FROM organizations o WHERE o.id=s.partner_org_id AND o.verification_status='verified')`;
   if (search) { params.push(`%${search}%`); where += ` AND (s.name ILIKE $${params.length} OR s.address ILIKE $${params.length} OR s.city ILIKE $${params.length})`; }
   if (fuel) { params.push(String(fuel)); where += ` AND $${params.length} = ANY(s.fuels)`; }
   let distanceSql = "NULL::double precision";
@@ -1652,8 +1657,8 @@ router.get("/stations", asyncHandler(async (req, res) => {
       distance: s.distance_km == null ? "Location unavailable" : `${Number(s.distance_km).toFixed(1)} km`,
       distanceKm: s.distance_km == null ? null : Number(s.distance_km),
       address: `${s.address}${s.city ? `, ${s.city}` : ""}`,
-      diesel: s.diesel_kobo ? naira(s.diesel_kobo, { sign: false }).replace("₦", "₦") : "—",
-      unleaded: s.unleaded_kobo ? naira(s.unleaded_kobo) : "—",
+      diesel: Number(s.diesel_kobo) > 0 ? naira(s.diesel_kobo, { sign: false }) : "Price unavailable",
+      unleaded: Number(s.unleaded_kobo) > 0 ? naira(s.unleaded_kobo) : "Price unavailable",
       fuels: s.fuels,
       hours: s.hours,
       lat: s.location_confirmed ? s.lat : null,
@@ -1678,17 +1683,19 @@ router.get("/stations/:id", asyncHandler(async (req, res) => {
 
 router.get("/directions", asyncHandler(async (req, res) => {
   const { stationId, lat, lng } = req.query;
-  const station = await one("SELECT * FROM stations WHERE id = $1", [stationId]);
-  if (!station) throw notFound("Station not found");
-  const origin = { lat: Number(lat) || 6.5244, lng: Number(lng) || 3.3792 };
-  const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${station.lat},${station.lng}&travelmode=driving`;
-  res.json({ mapsUrl, lat: station.lat, lng: station.lng });
+  if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(String(stationId??'')))throw badRequest('Choose a valid station');
+  const station=await one("SELECT * FROM stations s WHERE id=$1 AND status='active' AND EXISTS(SELECT 1 FROM organizations o WHERE o.id=s.partner_org_id AND o.verification_status='verified')",[stationId]);
+  if(!station)throw notFound('Station not found');
+  if((lat!==undefined||lng!==undefined)&&(typeof lat!=='string'||typeof lng!=='string'||!lat.trim()||!lng.trim()||!Number.isFinite(Number(lat))||!Number.isFinite(Number(lng))||Math.abs(Number(lat))>90||Math.abs(Number(lng))>180))throw badRequest('Provide valid latitude and longitude together');
+  const destination=station.location_confirmed?`${station.lat},${station.lng}`:station.address;
+  const mapsUrl=`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}${lat!==undefined?`&origin=${Number(lat)},${Number(lng)}`:''}&travelmode=driving`;
+  res.json({mapsUrl,lat:station.location_confirmed?station.lat:null,lng:station.location_confirmed?station.lng:null});
 }));
 
 // ============ NOTIFICATIONS ============
 router.get("/notifications", asyncHandler(async (req, res) => {
   const rows = await q(
-    `SELECT * FROM notifications WHERE user_id = $1 OR (organization_id IS NOT NULL AND organization_id = $2)
+    `SELECT * FROM notifications WHERE in_app_visible=TRUE AND (user_id = $1 OR (organization_id IS NOT NULL AND organization_id = $2))
      ORDER BY created_at DESC LIMIT 50`,
     [req.user.id, req.user.orgId ?? "00000000-0000-0000-0000-000000000000"]
   );
@@ -1823,23 +1830,37 @@ router.get("/profile", asyncHandler(async (req, res) => {
 }));
 
 // ============ SUPPORT / REPORT PROBLEM ============
+const assistedServices=['Partner Mechanics','Generator Repairer','Access to Car Wash','VIP Lounge','Towing Services'];
+router.get('/services',asyncHandler(async(req,res)=>{
+ const state=await customerSubscription(req.user.id);
+ res.json({services:assistedServices.map(label=>({label,available:state.active&&state.features.some(feature=>feature.label===label&&feature.state!=='unavailable')})),message:'Obligon coordinates these services through support. Availability and any quote are confirmed before booking.'});
+}));
+router.post('/services',asyncHandler(async(req,res)=>{
+ const service=req.body?.service,message=String(req.body?.message??'').trim();if(!assistedServices.includes(service)||!message||message.length>5000)throw badRequest('Choose a service and describe your location and requirements');
+ await requireCustomerPlan(req.user.id,service);
+ const ticket=await tx(async t=>{
+  const row=await t.one(`INSERT INTO support_tickets(reference,user_id,subject,category,message,priority,status)VALUES($1,$2,$3,$4,$5,'high','queued')RETURNING id,reference,status`,[reference('SRV'),req.user.id,service,`service:${service}`,message]);
+  await t.query("INSERT INTO ticket_messages(ticket_id,sender_user_id,sender_role,body)VALUES($1,$2,'customer',$3)",[row.id,req.user.id,message]);return row;
+ });await audit({actorUserId:req.user.id,actorRole:'customer',action:'service.requested',entityType:'ticket',entityId:ticket.id,metadata:{service}});
+ res.status(201).json({ok:true,ticketId:ticket.id,reference:ticket.reference,status:ticket.status});
+}));
 router.post("/support/tickets", upload.array("attachments", 4), asyncHandler(async (req, res) => {
   const { subject, category = "general", message } = req.valid ?? req.body ?? {};
   const subscription = await customerSubscription(req.user.id);
   const priorityFeature = subscription.features.find(f => String(f.label ?? f.name ?? "").toLowerCase() === "priority support");
   const priority = subscription.active && priorityFeature && priorityFeature.state !== "unavailable" && priorityFeature.included !== false && ![false,"—","Not included"].includes(priorityFeature.value) ? "high" : "normal";
-  if (!subject || !message) throw badRequest("Subject and message are required");
+  if (typeof subject!=="string"||!subject.trim()||subject.length>200||typeof message!=="string"||!message.trim()||message.length>5000) throw badRequest("Subject (1–200 characters) and message (1–5000 characters) are required");
   const attachments = [];
   for (const file of req.files ?? []) {
+    if(!["application/pdf","image/png","image/jpeg"].includes(file.mimetype))throw badRequest("Attach a PDF, PNG or JPEG file");
     attachments.push(await uploadFile("attachment", file.originalname, file.buffer, file.mimetype));
   }
-  const ticket = await one(
-    `INSERT INTO support_tickets (reference, user_id, organization_id, subject, category, message, attachments, priority, status)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'queued') RETURNING *`,
-    [reference("TKT"), req.user.id, req.user.orgId ?? null, subject, category, message, JSON.stringify(attachments), priority]
-  );
-  await q("INSERT INTO ticket_messages (ticket_id, sender_user_id, sender_role, body) VALUES ($1,$2,$3,$4)", [ticket.id, req.user.id, req.user.role, message]);
-  await notify({ userId: req.user.id, title: "Support request received", body: `Ticket ${ticket.reference} has been queued. We usually respond within a few hours.`, category: "support" });
+  if(typeof category!=='string'||category.length>100)throw badRequest('Choose a valid support category');
+  const ticket=await tx(async t=>{
+    const saved=await t.one(`INSERT INTO support_tickets(reference,user_id,organization_id,subject,category,message,attachments,priority,status)VALUES($1,$2,$3,$4,$5,$6,$7,$8,'queued')RETURNING *`,[reference('TKT'),req.user.id,req.user.orgId??null,subject.trim(),category,message.trim(),JSON.stringify(attachments),priority]);
+    await t.query('INSERT INTO ticket_messages(ticket_id,sender_user_id,sender_role,body)VALUES($1,$2,$3,$4)',[saved.id,req.user.id,req.user.role,message.trim()]);return saved;
+  });
+  await notify({ userId: req.user.id, title: "Support request received", body: `Ticket ${ticket.reference} has been queued. Our team will review your request.`, category: "support" });
   res.json({ ok: true, ticketId: ticket.id, reference: ticket.reference, status: ticket.status });
 }));
 

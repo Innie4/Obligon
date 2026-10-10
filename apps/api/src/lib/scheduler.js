@@ -1,3 +1,4 @@
+import { flushEmailOutbox } from "./email-outbox.js";
 import { q, one, tx } from "../db.js";
 import { env } from "../config/env.js";
 import { reference } from "./format.js";
@@ -239,6 +240,7 @@ export async function runScheduledTasks() {
   const timestamp = new Date().toISOString();
   console.log(`[scheduler] Running scheduled tasks at ${timestamp}...`);
   try {
+    await flushEmailOutbox();
     const purgeStats = await purgeExpiredData();
     // Accrue first: without a pending settlement period there is nothing to pay,
     // and this is what creates them. Answer the processor's verdict on anything
@@ -347,6 +349,7 @@ export function startScheduler(intervalMs = 60 * 60 * 1000) {
         const { runPaymentReconciliation } = await import("./reconcile.js");
         lastReconciliationAt = new Date().toISOString();
         lastReconciliationError = null;
+        await flushEmailOutbox();
         const result = await runPaymentReconciliation();
         if (result?.requiresAttention) {
           console.warn("[scheduler] Payments need attention:", JSON.stringify(result));
