@@ -1,3 +1,4 @@
+import { writeLocalMessage } from "./local-outbox.js";
 import { env } from "../config/env.js";
 import { providerFetch } from "./http.js";
 
@@ -45,14 +46,12 @@ export function classifyTermiiFailure(status, body) {
  * Never true in production — see mailer.js.
  */
 export function smsFallbackAllowed(environment = env.NODE_ENV) {
-  return environment !== "production";
+  return false;
 }
 
 export async function sendSms({ to, message }) {
-  if (!env.TERMII_API_KEY) {
-    console.log(`[sms:dev] to=${to} msg="${message}"`);
-    return { delivered: false, skipped: true };
-  }
+  if (env.SMS_PROVIDER === "local") return writeLocalMessage({channel:"sms",to,message});
+  if (!env.TERMII_API_KEY) return { delivered:false, skipped:true, error:"Delivery provider is not configured" };
   if (!to) return { delivered: false, skipped: false, code: "SMS_NO_NUMBER", error: "no phone number on file" };
   const res = await providerFetch("https://api.ng.termii.com/api/sms/send", {
     method: "POST",

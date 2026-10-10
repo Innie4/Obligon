@@ -167,28 +167,18 @@ test("the reports table dropped its invented columns", () => {
   assert.doesNotMatch(routes, /status: "ACTIVE", tone: "success"\n    \}\)\)/);
 });
 
-test("the payout button is wired, because the endpoint is now safe", () => {
-  // It was left unwired in the previous commit because `POST /payouts` took the
-  // requested amount at face value: ₦50,000,000 against a ₦0 balance was accepted
-  // and written to the payouts table before failing at the transfer. That is fixed
-  // and asserted in payout-balance-guard.test.mjs, so the button can now do what
-  // it says. If the guard is ever removed, this test is what should notice.
-  assert.match(screen, /mutationsApi\.requestPayout\(/);
-  assert.doesNotMatch(screen, /Payout requests are not open yet/);
-  // The balance the page offers is the server's, not a number typed in.
-  assert.match(screen, /claimableKobo/);
-  // And a refusal is shown rather than swallowed into a generic success.
-  assert.match(screen, /toastError\(err instanceof Error \? err\.message/);
+test("manual payout controls are disabled under direct settlement", () => {
+  const settlement = screen.slice(screen.indexOf('function SettlementsPage'), screen.indexOf('function DisputesPage'));
+  assert.match(settlement, /<button type="button" disabled[\s\S]*Payouts — Coming soon/);
+  assert.doesNotMatch(settlement, /onOpenPayout\(|requestPayout\(/);
 });
 
-test("the settlement limit is displayed, not editable", () => {
-  // The partner reads the threshold finance set. Writing it was how a partner
-  // moved their own from ₦500,000 to ₦999,999,999.
-  assert.match(screen, /updatePayoutConfig\(\{\s*autoSettlement/);
-  assert.doesNotMatch(screen, /updatePayoutConfig\(\{[^}]*settlementLimit/);
+test("direct settlement cannot be disabled by a dashboard toggle", () => {
+  const settlement = screen.slice(screen.indexOf('function SettlementsPage'), screen.indexOf('function DisputesPage'));
+  assert.match(settlement, /Automatic direct settlement/);
+  assert.doesNotMatch(settlement, /updatePayoutConfig\(/);
 });
 
-// -------------------------------------------------- buttons that used to lie
 test("no control reports a side effect it does not perform", () => {
   // Each of these fired a toast and nothing else. Comments are stripped because
   // several of these strings survive there, describing what was removed.
@@ -257,18 +247,16 @@ test("the settlement account is the organisation's own", () => {
   assert.doesNotMatch(screen, /0128492014/);
   assert.doesNotMatch(screen, /Guaranty Trust Bank/);
   assert.doesNotMatch(screen, /MAINLAND ENERGY ENTERPRISE/);
-  assert.match(screen, /defaultAccount\.bankName/);
-  assert.match(screen, /defaultAccount\.accountMask/);
+  assert.match(screen, /data\.bankAccounts\.map/);
+  assert.match(screen, /account\.bankName/);
+  assert.match(screen, /account\.accountMask/);
+  assert.match(screen, /account\.isDefault/);
 });
 
 test("the settlements page shows what it claims to", () => {
-  // The bank card advertised a payout while the page never fetched totals.
-  assert.match(screen, /data\.totals\.claimableLabel/);
+  assert.match(screen, /data\.totals\.pendingLabel/);
   assert.match(screen, /data\.totals\.totalSettledLabel/);
-  assert.match(screen, /data\.config\.autoSettlement/);
-  // The ceiling the payout button opens with is the server's figure, so the page
-  // cannot offer more than `POST /payouts` will allow.
-  assert.match(screen, /data\.totals\.claimableKobo/);
+  assert.match(screen, /Recorded provider settlements and historical transfers/);
 });
 
 test("notification read state reaches the database", () => {
@@ -290,8 +278,8 @@ test("the station form saves what the database actually stores", () => {
 
 test("fuel prices are the station's own, and addable", () => {
   // Three fixed fuel types with invented starting values, overwritten on submit.
-  assert.match(screen, /data\?\.prices \?\? \[\]/);
-  assert.match(screen, /mutationsApi\.updatePrices\(updates\)/);
+  assert.match(screen, /data\?\.prices[\s\S]*stationId/);
+  assert.match(screen, /mutationsApi\.updatePrices\(updates,\s*activeStation\)/);
   assert.match(screen, /Add fuel type/);
   assert.doesNotMatch(screen, /useState\("1020"\)/);
   assert.doesNotMatch(screen, /useState\("1180"\)/);
@@ -393,20 +381,32 @@ test("the settlement account can be added from the page that demands one", () =>
   assert.match(screen, /AddBankAccountModal/);
 });
 
-test("a failed payout is retryable and a dispute is answerable", () => {
-  assert.match(screen, /RetryPayoutModal/);
-  // The action is per-row, from the `failed` status the API marks.
-  assert.match(screen, /onAction=\{\(row\) => row && setRetrying\(row\)\}/);
+test("historical payout retries are inactive and disputes remain answerable", () => {
+  const settlement = screen.slice(screen.indexOf('function SettlementsPage'), screen.indexOf('function DisputesPage'));
+  assert.doesNotMatch(settlement, /RetryPayoutModal|setRetrying/);
   assert.match(screen, /DisputeDetailModal/);
 });
 
-test("the payout button checks the destination before opening the modal", () => {
-  // It opened on any claimable balance, then the API refused with "Add a verified
-  // bank account" — an error the partner could only act on by finding a form that
-  // did not exist on the page.
-  assert.match(screen, /payoutBlockedReason/);
-  assert.match(screen, /Your settlement account is still being verified/);
-  assert.match(screen, /disabled=\{payoutBlockedReason !== null\}/);
+test("bank account nomination remains available while manual payouts are inactive", () => {
+  const settlement = screen.slice(screen.indexOf('function SettlementsPage'), screen.indexOf('function DisputesPage'));
+  assert.match(settlement, /Add settlement account/i);
+  assert.match(settlement, /Awaiting admin verification/);
+  assert.match(settlement, /Make default/);
+  assert.match(settlement, /account\.needsRenomination/);
+  assert.match(settlement, /<button type="button" disabled/);
+});
+
+test("bank nomination uses the processor directory and preserves its bank code", () => {
+  const modal = screen.slice(screen.indexOf('function AddBankAccountModal'));
+  assert.match(modal, /\/api\/partner\/bank-accounts\/directory/);
+  assert.match(modal, /<select/);
+  assert.match(modal, /bankCode:bank\?\.code/);
+  assert.match(modal, /bankName:bank\?\.name/);
+  assert.match(modal, /Retry bank directory/);
+  assert.doesNotMatch(modal, /bankCode:\s*"058"/);
+  assert.match(routes, /listBanks\("NG"\)/);
+  assert.match(routes, /Select a bank from the processor bank directory/);
+  assert.match(client, /setDefaultBankAccount/);
 });
 
 test("a successful payout refreshes the balance behind it", () => {

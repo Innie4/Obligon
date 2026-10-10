@@ -1304,7 +1304,7 @@ function ReplaceCardModal({ onClose, blocked }: { onClose: () => void; blocked: 
           </span>
           <h2 className="mt-4 font-display text-3xl font-extrabold text-obligon-navy">Order Replacement Card</h2>
           <p className="mt-2 text-sm text-obligon-text">
-            {blocked ? "Your previous card is blocked. " : ""}Request a new Fuelvista card shipped directly to your fleet address.
+            {blocked ? "Your previous card is blocked. " : ""}Replace your virtual fuel card after withdrawing its balance. Physical cards and delivery are coming soon.
           </p>
 
           <p className="mt-6 text-xs font-extrabold uppercase text-obligon-text mb-2">Reason for Replacement</p>
@@ -1451,7 +1451,7 @@ function LostCardModal({
           </div>
 
           <div className="mt-6 rounded-xl bg-[#fff5f5] border border-[#fecaca] p-4 text-xs text-[#93000a] leading-5">
-            <strong>Warning:</strong> Once blocked, this physical card cannot be unblocked. You will need to order a replacement card.
+            <strong>Warning:</strong> Once blocked, this card remains blocked until reviewed. You can request a virtual replacement after withdrawing its balance.
           </div>
 
           <div className="mt-6 flex gap-3">

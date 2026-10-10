@@ -153,10 +153,12 @@ export function CardDetailsModal({
   defaultName: string;
   defaultPhone: string;
   busy: boolean;
-  onSubmit: (details: { fullName: string; bvn: string; address: string; city: string; state: string }) => void;
+  onSubmit: (details: { fullName: string; bvn: string; address: string; city: string; state: string; dateOfBirth:string;postalCode:string;phone:string }) => void;
   onClose: () => void;
 }) {
   const [fullName, setFullName] = React.useState(defaultName);
+  const [dateOfBirth,setDateOfBirth]=React.useState("");
+  const [postalCode,setPostalCode]=React.useState("");
   const [bvn, setBvn] = React.useState("");
   const [address, setAddress] = React.useState("");
   const [city, setCity] = React.useState("");
@@ -178,7 +180,7 @@ export function CardDetailsModal({
       return;
     }
     if (!address.trim()) {
-      setError("Enter the address your card should be delivered to.");
+      setError("Enter your residential address for identity review.");
       return;
     }
     if (!city.trim()) {
@@ -190,7 +192,7 @@ export function CardDetailsModal({
       return;
     }
     setError("");
-    onSubmit({ fullName: fullName.trim(), bvn, address: address.trim(), city: city.trim(), state });
+    onSubmit({ fullName: fullName.trim(), bvn, address: address.trim(), city: city.trim(), state,dateOfBirth,postalCode,phone });
   }
 
   return (
@@ -199,7 +201,7 @@ export function CardDetailsModal({
         <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Verify your details</h2>
         <p className="mt-2 text-sm leading-6 text-obligon-text">
           We are required to confirm your identity before a fuel card is issued. Your BVN is checked against
-          your name and never shown in full again.
+          your submitted details and stored securely. Authorized administrators can review it.
         </p>
 
         <div className="mt-6 space-y-4">
@@ -215,6 +217,8 @@ export function CardDetailsModal({
             />
           </label>
 
+          <label className="block"><span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Date of birth</span><input type="date" className={field} required value={dateOfBirth} onChange={e=>setDateOfBirth(e.target.value)} max={new Date().toISOString().slice(0,10)}/></label>
+          <label className="block"><span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Postal code</span><input className={field} required inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={postalCode} onChange={e=>setPostalCode(e.target.value.replace(/\D/g,""))}/></label>
           <label className="block">
             <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">BVN</span>
             <input
@@ -232,7 +236,7 @@ export function CardDetailsModal({
           </label>
 
           <label className="block">
-            <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Delivery address</span>
+            <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Residential address</span>
             <input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
@@ -267,12 +271,14 @@ export function CardDetailsModal({
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               type="tel"
+              pattern="[+]234[0-9]{10}"
+              required
               autoComplete="tel"
               className={field}
               placeholder="+234 801 000 0000"
             />
             <span className="mt-1 block text-[11px] text-obligon-text">
-              Used only if we need to reach you about your card.
+              Required by the issuer for card OTPs; use +234 followed by ten digits.
             </span>
           </label>
         </div>
@@ -324,7 +330,7 @@ export function CardSubmittedModal({
 
         <h2 className="mt-5 font-display text-2xl font-extrabold text-obligon-navy">Verification submitted</h2>
         <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-obligon-text">
-          {request?.planName ? `Your ${request.planName} plan is active and ` : "Your plan is active and "}
+          {request?.planName ? `Your ${request.planName} payment is confirmed and ` : "Your payment is confirmed and "}
           we are now verifying your details.
         </p>
 
@@ -337,19 +343,19 @@ export function CardSubmittedModal({
               <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-obligon-green text-[10px] font-extrabold text-white">
                 1
               </span>
-              We verify your name and BVN against national records.
+              An Obligon administrator reviews your submitted identity details.
             </li>
             <li className="flex gap-2.5">
               <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-obligon-green text-[10px] font-extrabold text-white">
                 2
               </span>
-              Your fuel card is produced and activated.
+              After approval, your virtual fuel card is issued and your paid subscription period begins.
             </li>
             <li className="flex gap-2.5">
               <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-obligon-green text-[10px] font-extrabold text-white">
                 3
               </span>
-              It is delivered to the address you provided.
+              Your virtual card appears in this dashboard. Physical cards and delivery are coming soon.
             </li>
           </ol>
         </div>

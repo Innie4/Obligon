@@ -46,8 +46,9 @@ test("only security and boot-critical problems are fatal", () => {
   for (const required of ["DATABASE_URL", "JWT_ACCESS_SECRET", "SUPABASE_AUTH_ENABLED"]) {
     assert.ok(fatal.includes(required), `${required} must remain a fatal check`);
   }
-  // These must not be, because each degrades one integration only.
-  for (const forbidden of ["FLW_SECRET_KEY", "PAYSTACK_SECRET_KEY", "SUDO_SECRET_API_KEY", "RESEND_API_KEY", "TERMII_API_KEY"]) {
+  // Configured card issuing requires its identity encryption key; other missing integrations degrade only their feature.
+  assert.match(fatal, /CARD_IDENTITY_KEY/);
+  for (const forbidden of ["FLW_SECRET_KEY", "PAYSTACK_SECRET_KEY", "RESEND_API_KEY", "TERMII_API_KEY"]) {
     assert.ok(
       !fatal.includes(forbidden),
       `${forbidden} must not abort startup; it should degrade only its own feature`
@@ -88,7 +89,7 @@ test("startup only exits on fatal issues", () => {
 
 test("configuration warnings cover the integrations that fail closed", () => {
   const warnings = envSource.slice(envSource.indexOf("export function configurationWarnings"));
-  for (const provider of ["FLW_SECRET_HASH", "SUDO_SECRET_API_KEY", "RESEND_API_KEY", "TERMII_API_KEY", "WEB_PUSH_VAPID_PRIVATE_KEY"]) {
+  for (const provider of ["FLW_SECRET_HASH", "RESEND_API_KEY", "TERMII_API_KEY", "WEB_PUSH_VAPID_PRIVATE_KEY"]) {
     assert.ok(warnings.includes(provider), `${provider} must produce a warning when unset`);
   }
 });

@@ -39,8 +39,16 @@ const schema = z.object({
   DATABASE_IDLE_TIMEOUT_MS: z.coerce.number().int().positive().max(600000).default(30000),
   DATABASE_MAX_CONNECTIONS: z.coerce.number().int().positive().max(100).default(10),
 
+  ALLOW_PAYMENT_SIMULATION: z.string().default(process.env.NODE_ENV === "test" ? "true" : "false").transform(v=>v==="true"),
+  CARD_IDENTITY_KEY: z.string().default(""),
+  EMAIL_PROVIDER: z.enum(["local", "resend"]).default("resend"),
+  SMS_PROVIDER: z.enum(["local", "termii"]).default("termii"),
+  LOCAL_OUTBOX_PATH: z.string().default("/tmp/obligon-local-outbox.jsonl"),
   // Sudo Africa (virtual card issuing)
-  SUDO_BASE_URL: z.string().default("https://api.sandbox.sudo.africa/v1"),
+  SUDO_BASE_URL: z.string().default("https://api.sandbox.sudo.cards"),
+  SUDO_DEBIT_ACCOUNT_ID: z.string().default(""),
+  SUDO_CREDIT_ACCOUNT_ID: z.string().default(""),
+  SUDO_FUNDING_SOURCE_ID: z.string().default(""),
   SUDO_SECRET_API_KEY: z.string().default(""),
   SUDO_WEBHOOK_SECRET: z.string().default(""),
 
@@ -135,6 +143,9 @@ export function configurationIssues() {
   if (isProd && (env.JWT_ACCESS_SECRET.startsWith("dev-") || env.JWT_REFRESH_SECRET.startsWith("dev-"))) {
     issues.push("JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be replaced with unique production secrets");
   }
+  if (isProd && env.ALLOW_PAYMENT_SIMULATION) issues.push("Payment simulation is prohibited in production");
+  if (isProd && (env.EMAIL_PROVIDER === "local" || env.SMS_PROVIDER === "local")) issues.push("Local OTP delivery is prohibited in production");
+  if (isProd && env.SUDO_SECRET_API_KEY && !/^[a-f0-9]{64}$/i.test(env.CARD_IDENTITY_KEY)) issues.push("CARD_IDENTITY_KEY must be a 32-byte hex encryption key when card issuing is enabled");
   if (isProd && !env.SUPABASE_AUTH_ENABLED) issues.push("SUPABASE_AUTH_ENABLED=true is required in production");
   if (isProd && env.SUPABASE_AUTH_ENABLED && (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY || !env.SUPABASE_ANON_KEY)) {
     issues.push("SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_ANON_KEY are required when Supabase Auth is enabled");
@@ -168,6 +179,7 @@ export function configurationWarnings() {
   if (env.PAYMENT_PROVIDER === "flutterwave" && !env.FLW_SECRET_HASH) {
     warnings.push("FLW_SECRET_HASH is unset — /api/webhooks/flutterwave will reject every event with 401. Reconciliation still recovers payments.");
   }
+  if(env.SUDO_SECRET_API_KEY && (!env.SUDO_DEBIT_ACCOUNT_ID || !env.SUDO_CREDIT_ACCOUNT_ID)) warnings.push("SUDO_DEBIT_ACCOUNT_ID and SUDO_CREDIT_ACCOUNT_ID are required for issuing/replacing cards");
   if (!env.SUDO_SECRET_API_KEY) warnings.push("SUDO_SECRET_API_KEY is unset — card issuing and limits are unavailable");
   if (!env.RESEND_API_KEY) warnings.push("RESEND_API_KEY is unset — no transactional email will be sent");
   if (!env.TERMII_API_KEY) warnings.push("TERMII_API_KEY is unset — SMS OTP is unavailable");

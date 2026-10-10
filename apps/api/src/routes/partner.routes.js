@@ -1,3 +1,6 @@
+import { fulfillFuelOrder } from "../lib/fuel-checkout.js";
+import { createCollectionSubaccount, listBanks } from "../lib/flutterwave.js";
+import { authorizeWalletFuelSale } from "../lib/fuel-sale.js";
 import { Router } from "express";
 import { q, one, tx } from "../db.js";
 import { asyncHandler, badRequest, notFound, forbidden } from "../lib/errors.js";
@@ -12,10 +15,12 @@ import { naira, fmtDate, fmtDateTime, relativeTime, dayGroup, reference, toCsv, 
 import { notify, audit, securityLog } from "../lib/notify.js";
 import { emitToOrg, emitToRole } from "../lib/sse.js";
 import { uploadFile, signedUrl } from "../lib/storage.js";
-import { verifyPin } from "../lib/security.js";
 import { nominateTransferDestination, initiateTransfer, activeProvider } from "../lib/payments.js";
 import { businessTimeZone, dayWindowSql, daysForRange } from "../lib/time.js";
 import multer from "multer";
+import { approvedDiscount, validateDiscount } from "../lib/discounts.js";
+import { enforcePartnerPlan } from "../lib/subscriptions.js";
+import { subscriptionRouter } from "./subscription.routes.js";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -27,7 +32,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
  * slower as drivers were added. Bounded, so the cost of one guess is a known
  * quantity rather than a function of the customer base.
  */
-const POS_PIN_CANDIDATE_LIMIT = 25;
+
 
 /**
  * Image types an upload may be stored as.
@@ -97,6 +102,8 @@ router.use(requireAuth, (req, _res, next) => {
 // takes effect immediately instead of at access-token expiry. See
 // requireOrgMembership for why the JWT's `org` claim alone was not enough.
 router.use(requireOrgMembership);
+router.use("/billing", subscriptionRouter("partner"));
+router.use(enforcePartnerPlan);
 
 const mechanicAllowedPaths = new Set([
   "/overview", "/overview/range", "/transactions", "/transactions/export",
@@ -131,8 +138,8 @@ router.get("/overview", asyncHandler(async (req, res) => {
     [orgId, timeZone, 0]
   );
   const pendingSettlement = await one(
-    `SELECT COALESCE(SUM(net_kobo),0) AS total FROM settlements WHERE partner_org_id = $1 AND status = 'pending'`,
-    [orgId]
+    `SELECT COALESCE(SUM(net_kobo-paid_kobo),0) AS total FROM settlements WHERE partner_org_id = $1 AND status = 'pending' AND NOT reconciliation_required AND period_end <= (date_trunc('month',now() AT TIME ZONE $2))::date`,
+    [orgId,businessTimeZone()]
   );
   // Read once here rather than repeating a lookup further down. The flag decides
   // what the pending card claims about itself, so it has to be the real one.
@@ -263,19 +270,19 @@ router.get("/settlements", asyncHandler(async (req, res) => {
   const orgId = partnerOrgId(req);
   const settlements = await q("SELECT * FROM settlements WHERE partner_org_id = $1 ORDER BY period_end DESC LIMIT 30", [orgId]);
   const payouts = await q("SELECT p.*, b.bank_name, b.account_number_mask FROM payouts p LEFT JOIN bank_accounts b ON b.id = p.bank_account_id WHERE p.partner_org_id = $1 ORDER BY p.created_at DESC LIMIT 30", [orgId]);
-  const accounts = await q("SELECT * FROM bank_accounts WHERE organization_id = $1 ORDER BY is_default DESC", [orgId]);
+  const accounts = await q("SELECT b.*, EXISTS(SELECT 1 FROM settlement_accounts sa WHERE sa.bank_account_id=b.id AND sa.organization_id=b.organization_id AND sa.subaccount_id IS NOT NULL) AS has_bound_destination FROM bank_accounts b WHERE organization_id = $1 ORDER BY is_default DESC", [orgId]);
   const org = await one("SELECT settlement_limit_kobo, auto_settlement FROM organizations WHERE id = $1", [orgId]);
   const totals = await one(
-    `SELECT COALESCE(SUM(net_kobo) FILTER (WHERE status = 'paid'),0) AS total_settled,
-            COALESCE(SUM(net_kobo) FILTER (WHERE status = 'pending'),0) AS pending FROM settlements WHERE partner_org_id = $1`,
-    [orgId]
+    `SELECT COALESCE(SUM(paid_kobo),0) AS total_settled,
+            COALESCE(SUM(net_kobo-paid_kobo) FILTER (WHERE status = 'pending' AND NOT reconciliation_required AND period_end <= (date_trunc('month',now() AT TIME ZONE $2))::date),0) AS pending FROM settlements WHERE partner_org_id = $1`,
+    [orgId,businessTimeZone()]
   );
   // The same figure `POST /payouts` enforces, so the page cannot offer a figure
   // the endpoint will refuse. `pendingLabel` is kept for the pending total.
   const balance = await claimableBalanceKobo(orgId);
   res.json({
     settlements: settlements.map((s) => ({
-      id: s.id,
+      id: s.id,paidKobo:Number(s.paid_kobo),remainingKobo:Number(s.net_kobo)-Number(s.paid_kobo),
       cells: [fmtDate(s.period_start), fmtDate(s.period_end), naira(s.gross_kobo), naira(s.fees_kobo), naira(s.net_kobo)],
       status: s.status.toUpperCase(), tone: s.status === "paid" ? "success" : s.status === "failed" ? "failed" : "pending"
     })),
@@ -283,9 +290,9 @@ router.get("/settlements", asyncHandler(async (req, res) => {
       id: p.id, reference: p.reference,
       cells: [`#${p.reference}`, `${fmtDateTime(p.created_at)} • ${p.paid_at ? fmtDateTime(p.paid_at).split(", ")[1] : "—"}`, naira(p.amount_kobo), p.bank_name ? `${p.bank_name} ${p.account_number_mask ?? ""}` : "Direct Bank"],
       status: p.status.toUpperCase(), tone: p.status === "success" ? "success" : p.status === "failed" ? "failed" : "pending",
-      action: p.status === "failed" ? "RETRY" : undefined
+      action: undefined
     })),
-    bankAccounts: accounts.map((b) => ({ id: b.id, bankName: b.bank_name, accountMask: b.account_number_mask, accountName: b.account_name, isDefault: b.is_default, verified: b.verified })),
+    bankAccounts: accounts.map((b) => ({ id: b.id, bankName: b.bank_name, accountMask: b.account_number_mask, accountName: b.account_name, isDefault: b.is_default, verified: b.verified && b.has_bound_destination, needsRenomination: !b.has_bound_destination })),
     config: { settlementLimitKobo: Number(org.settlement_limit_kobo ?? 0), autoSettlement: org.auto_settlement },
     totals: {
       totalSettledLabel: naira(totals.total_settled),
@@ -296,15 +303,20 @@ router.get("/settlements", asyncHandler(async (req, res) => {
   });
 }));
 
+router.get("/bank-accounts/directory",asyncHandler(async(_req,res)=>res.json({banks:await listBanks("NG")})));
+
 router.post("/bank-accounts", payoutLimiter, requireOrgRole("admin"), asyncHandler(async (req, res) => {
   const { bankName, bankCode, accountNumber, accountName } = req.valid ?? req.body ?? {};
-  if (!bankName || !accountNumber || !accountName) throw badRequest("Bank name, account number and account name are required");
+  if (!bankName || !bankCode || !accountNumber || !accountName) throw badRequest("Bank name, account number and account name are required");
   const orgId = partnerOrgId(req);
+  const bank= (await listBanks("NG")).find(bank=>bank.code===String(bankCode));
+  if(!bank || bank.name.toLowerCase()!==String(bankName).trim().toLowerCase())throw badRequest("Select a bank from the processor bank directory");
   const digits = String(accountNumber).replace(/\D/g, "");
   // Nigerian account numbers are 10 digits. Checked here so the customer gets a
   // clear message rather than a rejection from the processor.
   if (digits.length !== 10) throw badRequest("Nigerian account numbers are 10 digits");
   const provider = activeProvider();
+  if(provider!=="flutterwave")throw badRequest("Direct station settlement requires Flutterwave bank nomination");
   // Nominate the account with the processor once, so later payouts name a handle
   // rather than re-sending the account number. Flutterwave calls this a
   // beneficiary; Paystack a transfer recipient. The number itself is not kept.
@@ -313,19 +325,21 @@ router.post("/bank-accounts", payoutLimiter, requireOrgRole("admin"), asyncHandl
     accountNumber: digits,
     bankCode: bankCode ?? "058"
   });
-  // Stored unverified. The scheduler pays only from an account that is
-  // `verified = TRUE`, and this route set that flag on creation — so adding a
-  // bank account was enough to become the destination for automated settlement.
-  // Verification is a separate, deliberate step.
-  const account = await one(
-    `INSERT INTO bank_accounts (organization_id, bank_name, bank_code, account_number_mask, account_name, recipient_code, beneficiary_id, payout_provider, is_default, verified)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,FALSE) RETURNING *`,
-    [orgId, bankName, bankCode ?? "058", `•••• ${digits.slice(-4)}`, accountName,
-      destination.provider === "paystack" ? destination.beneficiaryId : null,
-      destination.provider === "flutterwave" ? destination.beneficiaryId : null,
-      destination.provider,
-      (await q("SELECT 1 FROM bank_accounts WHERE organization_id = $1", [orgId])).length === 0]
-  );
+  if(!destination.beneficiaryId)throw badRequest("The processor did not return a bank destination");
+  if(!bankCode) throw badRequest("Select the bank's processor code");
+  const org=await one("SELECT name FROM organizations WHERE id=$1",[orgId]);
+  const subaccount=await createCollectionSubaccount({businessName:org.name,email:req.user.email,phone:req.user.phone,accountNumber:digits,bankCode,splitRatioBp:0});
+  if(!subaccount.id) throw badRequest("The processor did not create a settlement subaccount");
+  const account=await tx(async t=>{
+    await t.one("SELECT id FROM organizations WHERE id=$1 FOR UPDATE",[orgId]);
+    const isDefault=!(await t.one("SELECT id FROM bank_accounts WHERE organization_id=$1 AND is_default=TRUE",[orgId]));
+    const bank=await t.one(`INSERT INTO bank_accounts(organization_id,bank_name,bank_code,account_number_mask,account_name,recipient_code,beneficiary_id,payout_provider,is_default,verified)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,FALSE) RETURNING *`,[orgId,bankName,bankCode,`•••• ${digits.slice(-4)}`,accountName,
+      destination.provider==='paystack'?destination.beneficiaryId:null,destination.provider==='flutterwave'?destination.beneficiaryId:null,destination.provider,isDefault]);
+    await t.query(`INSERT INTO settlement_accounts(organization_id,bank_account_id,provider,subaccount_id,status,account_number_mask,bank_name)
+      VALUES($1,$2,'flutterwave',$3,'pending',$4,$5)`,[orgId,bank.id,subaccount.id,bank.account_number_mask,bankName]);
+    return bank;
+  });
   audit({
     actorUserId: req.user.id,
     actorRole: req.user.role,
@@ -338,15 +352,30 @@ router.post("/bank-accounts", payoutLimiter, requireOrgRole("admin"), asyncHandl
 }));
 
 router.delete("/bank-accounts/:id", payoutLimiter, requireOrgRole("admin"), asyncHandler(async (req, res) => {
-  const rows = await q("DELETE FROM bank_accounts WHERE id = $1 AND organization_id = $2 RETURNING id", [requireUuid(req.params.id, "bank account"), partnerOrgId(req)]);
-  if (!rows.length) throw notFound("Bank account not found");
-  res.json({ ok: true });
+  const id=requireUuid(req.params.id,"bank account");const orgId=partnerOrgId(req);
+  await tx(async t=>{
+    await t.one("SELECT id FROM organizations WHERE id=$1 FOR UPDATE",[orgId]);
+    if(await t.one("SELECT id FROM settlement_accounts WHERE bank_account_id=$1",[id])) throw badRequest("This bank has settlement history and must be retained. Choose another default account to stop using it.");
+    const rows=await t.query("DELETE FROM bank_accounts WHERE id=$1 AND organization_id=$2 RETURNING id",[id,orgId]);
+    if(!rows.length)throw notFound("Bank account not found");
+  });
+  res.json({ok:true});
 }));
 
 router.post("/bank-accounts/:id/default", payoutLimiter, requireOrgRole("admin"), asyncHandler(async (req, res) => {
-  await q("UPDATE bank_accounts SET is_default = FALSE WHERE organization_id = $1", [partnerOrgId(req)]);
-  await q("UPDATE bank_accounts SET is_default = TRUE WHERE id = $1 AND organization_id = $2", [requireUuid(req.params.id, "bank account"), partnerOrgId(req)]);
-  res.json({ ok: true });
+ const orgId=partnerOrgId(req);const id=requireUuid(req.params.id,"bank account");
+ await tx(async t=>{
+  await t.one("SELECT id FROM organizations WHERE id=$1 FOR UPDATE",[orgId]);
+  const bank=await t.one("SELECT * FROM bank_accounts WHERE id=$1 AND organization_id=$2 FOR UPDATE",[id,orgId]);
+  if(!bank)throw notFound("Bank account not found");
+  const account=await t.one("SELECT * FROM settlement_accounts WHERE bank_account_id=$1 AND organization_id=$2",[bank.id,orgId]);
+  if(!account?.subaccount_id)throw badRequest("This legacy account must be nominated again before it can receive settlement");
+  await t.query("UPDATE settlement_accounts SET status='suspended',updated_at=now() WHERE organization_id=$1 AND status='active'",[orgId]);
+  await t.query("UPDATE bank_accounts SET is_default=FALSE WHERE organization_id=$1 AND is_default=TRUE",[orgId]);
+  await t.query("UPDATE bank_accounts SET is_default=TRUE WHERE id=$1",[bank.id]);
+  await t.query("UPDATE settlement_accounts SET status=$2,updated_at=now() WHERE id=$1",[account.id,bank.verified?'active':'pending']);
+ });
+ res.json({ok:true});
 }));
 
 // Admin writes `settlement_limit_kobo`; a partner reads it.
@@ -359,7 +388,7 @@ router.post("/bank-accounts/:id/default", payoutLimiter, requireOrgRole("admin")
 // to be paid — is the partner's to set.
 router.put("/settlements/config", requireOrgRole("manager"), asyncHandler(async (req, res) => {
   const { autoSettlement } = req.body ?? {};
-  if (typeof autoSettlement !== "boolean") throw badRequest("autoSettlement must be true or false");
+  if (autoSettlement !== true) throw badRequest("Settlement is automatic. Manual payouts are coming soon.");
   const org = await one(
     `UPDATE organizations SET auto_settlement = $2 WHERE id = $1 RETURNING *`,
     [partnerOrgId(req), autoSettlement]
@@ -394,9 +423,9 @@ router.put("/settlements/config", requireOrgRole("manager"), asyncHandler(async 
 async function claimableBalanceKobo(orgId, { excludePayoutId = null } = {}) {
   const [settled, promised] = await Promise.all([
     one(
-      `SELECT COALESCE(SUM(net_kobo), 0)::bigint AS total FROM settlements
-       WHERE partner_org_id = $1 AND status = 'pending'`,
-      [orgId]
+      `SELECT COALESCE(SUM(net_kobo-paid_kobo), 0)::bigint AS total FROM settlements
+       WHERE partner_org_id = $1 AND status = 'pending' AND NOT reconciliation_required AND period_end <= (date_trunc('month',now() AT TIME ZONE $2))::date`,
+      [orgId,businessTimeZone()]
     ),
     one(
       `SELECT COALESCE(SUM(amount_kobo), 0)::bigint AS total FROM payouts
@@ -406,13 +435,13 @@ async function claimableBalanceKobo(orgId, { excludePayoutId = null } = {}) {
     )
   ]);
   return {
-    claimableKobo: Number(settled?.total ?? 0) - Number(promised?.total ?? 0),
+    claimableKobo: Math.max(0,Number(settled?.total ?? 0) - Number(promised?.total ?? 0)),
     settledKobo: Number(settled?.total ?? 0),
     promisedKobo: Number(promised?.total ?? 0)
   };
 }
 
-router.post("/payouts", payoutLimiter, requireOrgRole("manager"), asyncHandler(async (req, res) => {
+router.post("/payouts", (_req, _res, next) => next(forbidden("Manual payouts are coming soon. Settlement is sent automatically to your registered bank account.")), payoutLimiter, requireOrgRole("manager"), asyncHandler(async (req, res) => {
   const { amount, bankAccountId } = req.valid ?? req.body ?? {};
   // `Number("not-a-number") * 100` is NaN, and NaN is falsy, so this rejected
   // junk — but it also meant `amount: "5"` and `amount: 5` behaved differently
@@ -533,7 +562,7 @@ router.post("/payouts", payoutLimiter, requireOrgRole("manager"), asyncHandler(a
   res.json({ ok: true, reference: ref, status: "processing" });
 }));
 
-router.post("/payouts/:id/retry", payoutLimiter, requireOrgRole("manager"), asyncHandler(async (req, res) => {
+router.post("/payouts/:id/retry", (_req, _res, next) => next(forbidden("Manual payouts are coming soon. Contact support about an automatic settlement.")), payoutLimiter, requireOrgRole("manager"), asyncHandler(async (req, res) => {
   const orgId = partnerOrgId(req);
   const payout = await one("SELECT * FROM payouts WHERE id = $1 AND partner_org_id = $2", [requireUuid(req.params.id, "payout"), orgId]);
   if (!payout) throw notFound("Payout not found");
@@ -622,7 +651,7 @@ router.get("/station", asyncHandler(async (req, res) => {
       assets: station.assets, status: station.status,
       messagingTerminal: station.messaging_terminal
     },
-    prices: prices.map((p) => ({ id: p.id, fuelType: p.fuel_type, price: p.price_kobo / 100, priceLabel: naira(p.price_kobo), updatedAt: fmtDateTime(p.updated_at) })),
+    prices: prices.map((p) => ({ id: p.id, stationId:p.station_id, stationName:p.station_name, fuelType: p.fuel_type, price: p.price_kobo / 100, priceLabel: naira(p.price_kobo), updatedAt: fmtDateTime(p.updated_at) })),
     logs: logs.map((l) => ({ id: l.id, fuelType: l.fuel_type, litres: Number(l.litres), reference: l.tx_reference, time: fmtDateTime(l.created_at) })),
     equipment: equipment.map((e) => ({ id: e.id, name: e.name, kind: e.kind, status: e.status, lastService: e.last_service_at ? fmtDate(e.last_service_at) : null }))
   });
@@ -692,15 +721,18 @@ router.post("/station/resupply", requireOrgRole("dispatcher"), asyncHandler(asyn
 router.get("/pricing", asyncHandler(async (req, res) => {
   const orgId = partnerOrgId(req);
   const prices = await q(
-    `SELECT fp.* FROM fuel_prices fp JOIN stations s ON s.id = fp.station_id WHERE s.partner_org_id = $1 ORDER BY fp.fuel_type`,
+    `SELECT fp.*,s.name AS station_name FROM fuel_prices fp JOIN stations s ON s.id = fp.station_id WHERE s.partner_org_id = $1 ORDER BY fp.fuel_type`,
     [orgId]
   );
   const history = await q(
     `SELECT h.* FROM fuel_price_history h JOIN stations s ON s.id = h.station_id WHERE s.partner_org_id = $1 ORDER BY h.created_at DESC LIMIT 20`,
     [orgId]
   );
-  res.json({
-    prices: prices.map((p) => ({ id: p.id, fuelType: p.fuel_type, price: p.price_kobo / 100, priceLabel: naira(p.price_kobo), updatedAt: fmtDateTime(p.updated_at) })),
+  const stations=await q("SELECT id,name FROM stations WHERE partner_org_id=$1 ORDER BY name",[orgId]);
+  const discounts=await q(`SELECT d.*,r.code AS status FROM station_discount_requests d JOIN discount_review_states r ON r.id=d.review_state_id
+    JOIN stations s ON s.id=d.station_id WHERE s.partner_org_id=$1 ORDER BY d.created_at DESC LIMIT 100`,[orgId]);
+  res.json({stations,discounts,
+    prices: prices.map((p) => ({ id: p.id, stationId:p.station_id, stationName:p.station_name, fuelType: p.fuel_type, price: p.price_kobo / 100, priceLabel: naira(p.price_kobo), updatedAt: fmtDateTime(p.updated_at) })),
     history: history.map((h) => {
       const change = h.old_price_kobo ? ((h.new_price_kobo - h.old_price_kobo) / h.old_price_kobo * 100) : 0;
       return {
@@ -716,13 +748,13 @@ router.post("/pricing", requireOrgRole("manager"), asyncHandler(async (req, res)
   const updates = req.body?.updates ?? [];
   if (!Array.isArray(updates) || !updates.length) throw badRequest("Provide price updates");
   const orgId = partnerOrgId(req);
-  const station = await one("SELECT id FROM stations WHERE partner_org_id = $1 ORDER BY created_at LIMIT 1", [orgId]);
+  const station = await one("SELECT id FROM stations WHERE partner_org_id = $1 AND id=$2", [orgId, requireUuid(req.body?.stationId,"station")]);
   if (!station) throw notFound("No station registered");
   const applied = [];
   for (const u of updates) {
     if (!u.fuelType || u.price == null) continue;
     const priceKobo = Math.round(Number(u.price) * 100);
-    if (priceKobo <= 0) throw badRequest(`${u.fuelType} price must be greater than zero`);
+    if (!Number.isSafeInteger(priceKobo) || priceKobo <= 0) throw badRequest(`${u.fuelType} price must be greater than zero`);
     if (priceKobo > 10000000) throw badRequest(`${u.fuelType} price looks too high (max ₦100,000/L)`);
     const current = await one("SELECT * FROM fuel_prices WHERE station_id = $1 AND fuel_type = $2", [station.id, u.fuelType]);
     await tx(async (t) => {
@@ -911,166 +943,42 @@ router.delete("/staff/:memberId", requireOrgRole("admin"), asyncHandler(async (r
   res.json({ ok: true });
 }));
 
+router.post("/discounts",requireOrgRole("manager"),asyncHandler(async(req,res)=>{
+ const stationId=requireUuid(req.body?.stationId,"station");
+ const station=await one("SELECT id FROM stations WHERE id=$1 AND partner_org_id=$2",[stationId,partnerOrgId(req)]);
+ if(!station) throw notFound("Station not found");
+ const fuelType=String(req.body?.fuelType??"").trim();
+ const price=await one("SELECT id FROM fuel_prices WHERE station_id=$1 AND fuel_type=$2",[stationId,fuelType]);
+ if(!price) throw badRequest("Choose a published station fuel price");
+ const d=validateDiscount(req.body);
+ const request=await one(`INSERT INTO station_discount_requests(station_id,fuel_type,rate_bp,starts_at,ends_at,review_state_id,requested_by)
+ VALUES($1,$2,$3,$4,$5,(SELECT id FROM discount_review_states WHERE code='pending'),$6) RETURNING *`,[stationId,fuelType,d.rateBp,d.startsAt,d.endsAt,req.user.id]);
+ await audit({actorUserId:req.user.id,actorRole:req.user.role,action:"station_discount.requested",entityType:"station_discount",entityId:request.id});
+ emitToRole("admin","discount.requested",{id:request.id,stationId});
+ res.status(201).json({ok:true,request,message:"Discount submitted for admin approval. Existing approved pricing remains effective."});
+}));
+
 // ============ POS TERMINAL ============
 // Role check first, then the limiter. Reversed, an unauthorised caller could
 // spend the shared terminal's rate-limit budget and lock out the operator who is
 // actually using it — a viewer able to deny service to their own manager.
-router.post("/pos/authorize", requireCapability("pos.operate"), sensitiveLimiter, asyncHandler(async (req, res) => {
-  const { code, litres, fuelType } = req.valid ?? req.body ?? {};
-  if (!/^\d{6}$/.test(String(code ?? ""))) throw badRequest("Enter the 6-digit authorization code");
-  const card = await one(
-    `SELECT c.*, v.plate AS vehicle_plate, d.name AS driver_name, o.name AS org_name, o.credit_limit_kobo, o.fleet_id
-     FROM cards c LEFT JOIN vehicles v ON v.id = c.vehicle_id LEFT JOIN drivers d ON d.id = c.driver_id
-     LEFT JOIN organizations o ON o.id = c.organization_id
-     WHERE c.pos_code = $1 AND c.pos_code_expires_at > now()`,
-    [String(code)]
-  );
-  // Fallback: driver PIN as authorization.
-  //
-  // This used to select every driver on the platform with a PIN and run a bcrypt
-  // comparison against each, in a loop, for every attempt. Three problems in one
-  // expression: it read across tenants, so any station account could test a code
-  // against drivers belonging to other fleets; it cost one bcrypt round per
-  // enrolled driver, so the cost grew silently with the customer base; and it sat
-  // behind a 6-digit space with no limiter, which together made it a credential
-  // oracle. At the time of writing there were no driver PINs enrolled, so it cost
-  // nothing — which is exactly why it would have been found the day the first one
-  // was added.
-  //
-  // Scoped to the orgs whose cards this station actually serves, capped so the
-  // work per attempt is bounded, and rate-limited above.
-  let viaPin = false;
-  let target = card;
-  if (!target) {
-    const candidates = await q(
-      `SELECT d.id, d.pin_hash, d.organization_id, o.name AS org_name, o.credit_limit_kobo, o.fleet_id
-       FROM drivers d
-       JOIN cards c ON c.driver_id = d.id AND c.status = 'active'
-       LEFT JOIN organizations o ON o.id = d.organization_id
-       WHERE d.pin_hash IS NOT NULL
-       LIMIT $1`,
-      [POS_PIN_CANDIDATE_LIMIT]
-    );
-    for (const d of candidates) {
-      if (await verifyPin(code, d.pin_hash)) {
-        const cardForDriver = await one(
-          `SELECT c.*, v.plate AS vehicle_plate, d2.name AS driver_name FROM cards c
-           LEFT JOIN vehicles v ON v.id = c.vehicle_id LEFT JOIN drivers d2 ON d2.id = c.driver_id
-           WHERE c.driver_id = $1 AND c.status = 'active' LIMIT 1`,
-          [d.id]
-        );
-        if (cardForDriver) {
-          target = { ...cardForDriver, org_name: d.org_name, credit_limit_kobo: d.credit_limit_kobo, fleet_id: d.fleet_id };
-          viaPin = true;
-          break;
-        }
-      }
-    }
-  }
-  if (!target) {
-    // The credential is not broadcast. The code is a live authorisation secret, and
-  // pushing it to every connected dashboard on the org leaked it to anyone able to
-  // open a stream — including while an attacker was mid-probe. The security log on
-  // the next line deliberately masked the same value.
-  emitToOrg(partnerOrgId(req), "pos.declined", { reason: "INVALID_CODE" });
-    await securityLog({ event: "pos_invalid_code", severity: "warning", metadata: { code: `***${String(code).slice(-2)}`, partner: req.user.organization_name } });
-    throw badRequest("Invalid or expired authorization code");
-  }
-  if (target.status !== "active") {
-    emitToOrg(partnerOrgId(req), "pos.declined", { reason: "CARD_FROZEN", card: target.masked_pan });
-    throw badRequest(`Card is ${target.status} — transaction declined`);
-  }
-  const litresNum = requirePositiveNumber(litres, "Litres", { max: 100_000 });
-  const station = await one(
-    "SELECT * FROM stations WHERE partner_org_id = $1 ORDER BY created_at LIMIT 1",
-    [partnerOrgId(req)]
-  );
-  // A dispenser needs somewhere to dispense from. The fuel log written below has a
-  // `NOT NULL` station_id, so without this check the revenue transaction committed
-  // and the log then threw — the operator saw a failed sale, retried, and a second
-  // revenue row existed.
-  if (!station) throw badRequest("No station is registered for this account yet");
-  const fuelTypeName = String(fuelType ?? "AGO Diesel").trim();
-  const price = await one(
-    `SELECT fp.price_kobo FROM fuel_prices fp JOIN stations s ON s.id = fp.station_id
-     WHERE s.partner_org_id = $1 AND fp.fuel_type ILIKE $2 LIMIT 1`,
-    [partnerOrgId(req), `%${fuelTypeName}%`]
-  );
-  if (!price) {
-    // Previously a silent fallback to a hard-coded 1085 kobo, so a station that had
-    // published no price for that fuel type was charged a rate it never set.
-    throw badRequest(`No published price for ${fuelTypeName}. Set one on Fuel Pricing first.`);
-  }
-  const amountKobo = Math.round(litresNum * Number(price.price_kobo));
-  if (!Number.isFinite(amountKobo) || amountKobo <= 0) throw badRequest("That is not a dispensable amount");
-  if (target.credit_limit_kobo && amountKobo > target.credit_limit_kobo) {
-    emitToOrg(partnerOrgId(req), "pos.declined", { reason: "CREDIT_LIMIT", card: target.masked_pan });
-    throw badRequest(`Amount exceeds the fleet credit limit (${naira(target.credit_limit_kobo)})`);
-  }
-  const txRef = reference("TXN");
-  // One transaction. These were three separate statements on the pool, so a failure
-  // after the first left revenue committed with no fuel log, and a retry produced a
-  // duplicate transaction.
-  const transaction = await tx(async (t) => {
-    // The authorization code is spent here, by an atomic compare-and-clear, before
-    // any of the writes below.
-    //
-    // It used to only ever be read. `pos_code_expires_at` is 15 minutes out, so within
-    // that window one code could be presented repeatedly and each presentation
-    // committed a fresh transaction and incremented the card's spend counters — the
-    // same six digits driving a pump again and again. Whoever held the code, or read
-    // it over a shoulder, had an unmetered draw on the card's credit limit.
-    //
-    // The guard is `UPDATE ... WHERE pos_code = $2 AND pos_code_expires_at > now()`,
-    // which is a single row-level claim: the first caller clears it, the second
-    // matches nothing and is refused. Checking-then-clearing in two statements would
-    // not be safe here — two concurrent authorizations would both observe a live code
-    // and both proceed.
-    //
-    // Skipped on the PIN path: the code there is the driver's PIN, which is a standing
-    // credential, not a single-use authorization, and no `pos_code` was matched.
-    if (!viaPin) {
-      const claimed = await t.one(
-        `UPDATE cards SET pos_code = NULL, pos_code_expires_at = NULL, updated_at = now()
-         WHERE id = $1 AND pos_code = $2 AND pos_code_expires_at > now() RETURNING id`,
-        [target.id, String(code)]
-      );
-      if (!claimed) {
-        // Lost the race, or the code expired between the lookup above and this claim.
-        throw badRequest("That authorization code has already been used");
-      }
-    }
-    const inserted = await t.one(
-      `INSERT INTO transactions (reference, organization_id, station_id, vehicle_id, driver_id, card_id, fuel_type, litres, amount_kobo, status, meta)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'success',$10) RETURNING *`,
-      [txRef, target.organization_id, station.id, target.vehicle_id, target.driver_id, target.id,
-        fuelTypeName, litresNum, amountKobo, `${target.org_name ?? "Fleet"} • POS ${viaPin ? "PIN" : "code"} auth`]
-    );
-    await t.query(
-      "INSERT INTO fueling_logs (station_id, transaction_id, fuel_type, litres) VALUES ($1,$2,$3,$4)",
-      [station.id, inserted.id, fuelTypeName, litresNum]
-    );
-    await t.query(
-      "UPDATE cards SET spend_today_kobo = spend_today_kobo + $2, spend_month_kobo = spend_month_kobo + $2, updated_at = now() WHERE id = $1",
-      [target.id, amountKobo]
-    );
-    return inserted;
-  });
-  emitToOrg(partnerOrgId(req), "pos.approved", { reference: txRef, amountLabel: naira(amountKobo), card: target.masked_pan, vehicle: target.vehicle_plate, time: fmtDateTime(new Date()) });
-  audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "pos.approved", entityType: "transaction", entityId: transaction.id, metadata: { amountKobo, viaPin } });
-  res.json({
-    ok: true,
-    approved: true,
-    reference: txRef,
-    card: target.masked_pan,
-    vehicle: target.vehicle_plate,
-    driver: target.driver_name,
-    fleet: target.org_name,
-    fleetId: target.fleet_id,
-    creditLimitLabel: target.credit_limit_kobo ? naira(target.credit_limit_kobo) : "No limit",
-    amountLabel: naira(amountKobo),
-    time: fmtDateTime(new Date())
-  });
+router.post("/pos/fulfill",requireCapability("pos.operate"),sensitiveLimiter,asyncHandler(async(req,res)=>{
+ const stationId=requireUuid(req.body?.stationId,"station");
+ const order=await fulfillFuelOrder({partnerOrgId:partnerOrgId(req),stationId,code:String(req.body?.code??"")});
+ await audit({actorUserId:req.user.id,actorRole:req.user.role,action:"fuel_order.fulfilled",entityType:"fuel_order",entityId:order.id});
+ res.json({ok:true,reference:order.reference,fuelType:order.fuel_type,litres:Number(order.litres),amountLabel:naira(order.amount_kobo),partnerNetLabel:naira(order.partner_net_kobo)});
+}));
+
+router.post("/pos/authorize",requireCapability("pos.operate"),sensitiveLimiter,asyncHandler(async(req,res)=>{
+ const {code,fuelType,litres,stationId}=req.body??{};
+ if(!/^\d{6}$/.test(String(code??""))) throw badRequest("Enter the 6-digit single-use authorization code");
+ const litresNum=requirePositiveNumber(litres,"Litres",{max:100000});
+ const id=requireUuid(stationId,"station");
+ const txRef=reference("TXN");
+ const result=await tx(t=>authorizeWalletFuelSale(t,{partnerOrgId:partnerOrgId(req),stationId:id,code:String(code),litres:litresNum,fuelType:String(fuelType??"").trim(),reference:txRef}));
+ emitToOrg(partnerOrgId(req),"pos.approved",{reference:txRef,amountLabel:naira(result.amounts.chargedKobo),card:result.card.masked_pan,time:fmtDateTime(new Date())});
+ await audit({actorUserId:req.user.id,actorRole:req.user.role,action:"pos.approved",entityType:"transaction",entityId:result.sale.id,metadata:result.amounts});
+ res.json({ok:true,approved:true,reference:txRef,card:result.card.masked_pan,amountLabel:naira(result.amounts.chargedKobo),partnerNetLabel:naira(result.amounts.partnerNetKobo),time:fmtDateTime(new Date())});
 }));
 
 // ============ DISPUTES ============

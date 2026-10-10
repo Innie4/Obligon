@@ -101,13 +101,13 @@ test("the two are no longer the same column", () => {
 });
 
 test("a top-up credits the wallet under the reference the customer paid with", () => {
-  assert.match(customer, /ledgerReference: topup\.reference/);
+  assert.match(customer, /applyLedgerEntry\(t,[\s\S]*reference:marked\.reference/);
+  assert.match(customer, /idempotencyKey:`topup:/);
 });
 
-// ------------------------------------------------------ the processor's numbers
 test("the processor's transaction id is returned and stored", () => {
   assert.match(flutterwave, /providerTransactionId: data\?\.id != null \? String\(data\.id\) : null/);
-  assert.match(customer, /provider_transaction_id = COALESCE\(provider_transaction_id, \$2\)/);
+  assert.match(customer, /provider_transaction_id=COALESCE\(provider_transaction_id,\$2\)/);
   // A simulated payment has no processor, and says so rather than omitting it.
   assert.match(flutterwave, /providerTransactionId: null,\n      simulated: true/);
 });

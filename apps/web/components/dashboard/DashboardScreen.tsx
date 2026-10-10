@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { StationDiscounts } from "./StationDiscounts";
 import {
   ArrowRight,
   BarChart3,
@@ -18,7 +19,7 @@ import {
   Building2,
   Printer
 } from "lucide-react";
-import { api, mutationsApi, saveBlob } from "@/lib/services";
+import { api, mutationsApi, saveBlob, authenticatedRequest } from "@/lib/services";
 import { AsyncBoundary, EmptyState } from "@/components/shared/States";
 import { useAsync } from "@/components/shared/useAsync";
 import { useToast } from "@/components/shared/Toast";
@@ -292,13 +293,15 @@ function FuelPricingPage() {
   const { success: toastSuccess, error: toastError } = useToast();
   const { status, data, error, reload } = useAsync(() => api.getPartnerPricing());
   const [drafts, setDrafts] = React.useState<PriceDraft[] | null>(null);
+  const [stationId,setStationId]=React.useState("");
+  const activeStation=stationId||data?.stations?.[0]?.id||"";
   const [syncing, setSyncing] = React.useState(false);
 
   // The rows come from the prices the station actually has, rather than three
   // fixed fuel types with made-up starting values. Drafts stay null until the
   // fetch lands so a re-render never briefly shows the previous station's rates.
   const rows: PriceDraft[] =
-    drafts ?? (data?.prices ?? []).map((price) => ({ fuelType: price.fuelType, price: String(price.price) }));
+    drafts ?? (data?.prices ?? []).filter(p=>p.stationId===activeStation).map((price) => ({ fuelType: price.fuelType, price: String(price.price) }));
 
   const setRow = (index: number, patch: Partial<PriceDraft>) =>
     setDrafts(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
@@ -314,7 +317,7 @@ function FuelPricingPage() {
     }
     setSyncing(true);
     try {
-      await mutationsApi.updatePrices(updates);
+      await mutationsApi.updatePrices(updates,activeStation);
       toastSuccess(`${updates.length} price${updates.length === 1 ? "" : "s"} published. They apply to the next authorization.`);
       setDrafts(null);
       reload();
@@ -340,6 +343,7 @@ function FuelPricingPage() {
             remotely would not re-enter a price that failed to reach them. */}
       </div>
 
+      <label className="mb-5 block">Station<select value={activeStation} onChange={e=>{setStationId(e.target.value);setDrafts(null);}} className="ml-3 rounded border p-2">{data?.stations?.map(st=><option key={st.id} value={st.id}>{st.name}</option>)}</select></label>
       <AsyncBoundary
         status={status}
         error={error?.message ?? null}
@@ -414,6 +418,7 @@ function FuelPricingPage() {
           </form>
         ) : null}
       </AsyncBoundary>
+      <StationDiscounts/>
     </DashboardCanvas>
   );
 }
@@ -437,6 +442,8 @@ function FuelPricingPage() {
  */
 function POSTerminalPage() {
   const { success: toastSuccess, error: toastError } = useToast();
+  const [mode,setMode]=React.useState("wallet");
+  const [stationId,setStationId]=React.useState("");
   const [code, setCode] = React.useState("");
   const [fuelType, setFuelType] = React.useState("PMS Petrol");
   const [litres, setLitres] = React.useState("40");
@@ -456,14 +463,16 @@ function POSTerminalPage() {
   const { status: pricingStatus, data: pricing, error: pricingError, reload: reloadPricing } = useAsync(() =>
     api.getPartnerPricing()
   );
+  const activeStation=stationId||pricing?.stations?.[0]?.id||"";
+  const stationPrices=(pricing?.prices??[]).filter(p=>p.stationId===activeStation);
   const pricesLoading = pricingStatus === "loading";
   const pricesFailed = pricingStatus === "error";
   const fuelTypes = React.useMemo(
-    () => (pricing?.prices ?? []).map((p) => p.fuelType).filter(Boolean),
-    [pricing]
+    () => stationPrices.map((p) => p.fuelType).filter(Boolean),
+    [pricing,activeStation]
   );
   const activeFuelType = fuelTypes.includes(fuelType) ? fuelType : (fuelTypes[0] ?? fuelType);
-  const unitPrice = pricing?.prices.find((p) => p.fuelType === activeFuelType)?.price ?? null;
+  const unitPrice = stationPrices.find((p) => p.fuelType === activeFuelType)?.price ?? null;
   const litresNum = Number(litres);
   const litresValid = Number.isFinite(litresNum) && litresNum > 0;
   // What the server will charge, from the price it will use. Shown so the operator
@@ -476,13 +485,14 @@ function POSTerminalPage() {
       toastError("Please enter the complete 6-digit fleet authorization code.");
       return;
     }
-    if (!litresValid) {
+    if (mode==="wallet" && !litresValid) {
       toastError("Enter the litres to dispense.");
       return;
     }
     setVerifying(true);
     try {
-      const result = await mutationsApi.posAuthorize({ code, litres: litresNum, fuelType: activeFuelType });
+      const result = mode==="wallet" ? await mutationsApi.posAuthorize({ stationId:activeStation,code, litres: litresNum, fuelType: activeFuelType }) :
+        await authenticatedRequest<Record<string,unknown>>("/api/partner/pos/fulfill",{method:"POST",body:JSON.stringify({stationId:activeStation,code})});
       // Every field comes from the authorization response. The previous version
       // fell back to "Fleet vehicle", "Fleet driver" and a reference invented with
       // Math.random(), so a declined-looking receipt could still name a transaction
@@ -506,6 +516,8 @@ function POSTerminalPage() {
 
   return (
     <DashboardCanvas>
+      <label className="mb-4 block">Payment type<select className="ml-3 rounded border p-2" value={mode} onChange={e=>setMode(e.target.value)}><option value="wallet">Wallet authorization</option><option value="checkout">Already paid station checkout</option></select></label>
+      <label className="mb-5 block">Station<select value={activeStation} onChange={e=>setStationId(e.target.value)} className="ml-3 rounded border p-2">{pricing?.stations?.map(st=><option key={st.id} value={st.id}>{st.name}</option>)}</select></label>
       <div className="max-w-2xl mx-auto">
 {pricesLoading || pricesFailed ? (
           <div
@@ -703,7 +715,6 @@ function POSTerminalPage() {
 
 // ============ SETTLEMENTS ============
 function SettlementsPage({
-  onOpenPayout,
   onPayoutRequested,
   version
 }: {
@@ -711,40 +722,19 @@ function SettlementsPage({
   onPayoutRequested: () => void;
   version: number;
 }) {
-  const { success: toastSuccess, error: toastError } = useToast();
   const { status, data, error, reload } = useAsync(() => api.getPartnerSettlements(), [version]);
-  const [togglingAuto, setTogglingAuto] = React.useState(false);
   const [addingAccount, setAddingAccount] = React.useState(false);
   const [removingAccount, setRemovingAccount] = React.useState<PartnerBankAccount | null>(null);
-  const [retrying, setRetrying] = React.useState<PartnerRow | null>(null);
 
-  const defaultAccount = data?.bankAccounts.find((account) => account.isDefault) ?? data?.bankAccounts[0];
-  // The endpoint refuses a payout without a verified destination, so the button
-  // checks it first. The page offered the modal regardless and then answered
-  // "Add a verified bank account" — an error the partner could only act on by
-  // guessing at a form that was not on the page.
-  const payoutBlockedReason = !defaultAccount
-    ? "Add a settlement account before requesting a payout."
-    : !defaultAccount.verified
-      ? "Your settlement account is still being verified."
-      : data && data.totals.claimableKobo < 100000
-        ? "Nothing is available to withdraw yet."
-        : null;
-
-  async function toggleAutoSettlement() {
-    if (!data) return;
-    const next = !data.config.autoSettlement;
-    setTogglingAuto(true);
-    try {
-      await mutationsApi.updatePayoutConfig({ autoSettlement: next });
-      toastSuccess(`Auto-settlement turned ${next ? "on" : "off"}.`);
-      reload();
-    } catch (err) {
-      toastError(err instanceof Error ? err.message : "Could not change the auto-settlement setting.");
-    } finally {
-      setTogglingAuto(false);
-    }
+  const {success:toastSuccess,error:toastError}=useToast();
+  const [choosingDefault,setChoosingDefault]=React.useState<string|null>(null);
+  async function chooseDefault(account:PartnerBankAccount) {
+    setChoosingDefault(account.id);
+    try { await mutationsApi.setDefaultBankAccount(account.id);toastSuccess(account.verified?"Settlement destination updated.":"Default account selected. Admin verification is required before collections.");reload();onPayoutRequested(); }
+    catch(error) {toastError(error instanceof Error?error.message:"Unable to choose default account");}
+    finally {setChoosingDefault(null);}
   }
+  const defaultAccount = data?.bankAccounts.find((account) => account.isDefault) ?? data?.bankAccounts[0];
 
   return (
     <DashboardCanvas>
@@ -762,99 +752,37 @@ function SettlementsPage({
                   {defaultAccount ? "Settlement Account" : "No Settlement Account"}
                 </h2>
 
-{defaultAccount ? (
-                  <div className="mt-5 rounded-xl bg-[#f7fbf8] p-4 border border-obligon-border">
-                    <p className="font-extrabold text-obligon-navy">{defaultAccount.bankName}</p>
-                    <p className="mt-1 font-mono text-sm text-obligon-text">{defaultAccount.accountMask}</p>
-                    <p className="mt-1 text-xs font-bold text-obligon-navy">{defaultAccount.accountName}</p>
-                    {!defaultAccount.verified ? (
-                      <p className="mt-2 text-xs font-extrabold text-[#b5162d]">Awaiting verification</p>
-                    ) : null}
-                    {/*
-                      Removal is here because the API asks for it. A payout against an
-                      account nominated before the provider switch is refused with
-                      "Remove it and add it again so it can be registered for
-                      transfers" — advice the page gave no way to follow, since
-                      `removeBankAccount` had no control anywhere.
-                    */}
-                    <button
-                      type="button"
-                      onClick={() => setRemovingAccount(defaultAccount)}
-                      className="mt-3 text-xs font-extrabold text-[#9f1027] underline"
-                    >
-                      Remove this account
-                    </button>
-                  </div>
-                ) : (
-                  <div className="mt-4">
-                    <p className="text-sm font-medium text-obligon-text">
-                      Add a bank account to receive settlements. Payouts cannot be requested without one.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setAddingAccount(true)}
-                      className="mt-3 inline-flex h-10 items-center gap-2 rounded-xl bg-obligon-green px-4 text-xs font-extrabold text-white"
-                    >
-                      <Plus size={14} />
-                      Add Settlement Account
-                    </button>
-                  </div>
-                )}
+                <p className="mt-3 text-sm text-obligon-text">Choose where Flutterwave sends your fuel revenue. A new destination needs admin verification.</p>
+                <div className="mt-4 space-y-3">
+                  {data.bankAccounts.map(account=><div key={account.id} className="rounded-xl border border-obligon-border bg-[#f7fbf8] p-4">
+                    <p className="font-bold text-obligon-navy">{account.bankName} {account.isDefault?<span className="text-xs">· Default</span>:null}</p>
+                    <p className="mt-1 font-mono text-sm">{account.accountMask}</p><p className="text-xs">{account.accountName}</p>
+                    <p className="mt-2 text-xs font-bold">{account.needsRenomination?"Re-add this bank account to register a secure settlement destination, then choose it as default.":account.verified?"Verified destination":"Awaiting admin verification"}</p>
+                    {!account.isDefault&&!account.needsRenomination?<button type="button" disabled={choosingDefault!==null} onClick={()=>void chooseDefault(account)} className="mt-3 rounded-lg border border-obligon-green px-3 py-2 text-xs font-bold disabled:opacity-50">{choosingDefault===account.id?"Updating…":"Make default"}</button>:null}
+                    {account.needsRenomination?<button type="button" onClick={()=>setRemovingAccount(account)} className="mt-3 ml-3 text-xs underline">Remove old nomination</button>:null}
+                  </div>)}
+                </div>
+                <button type="button" onClick={()=>setAddingAccount(true)} className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-obligon-green px-4 text-xs font-bold text-white"><Plus size={14}/>Add settlement account</button>
 
                 <div className="mt-6 rounded-xl border border-obligon-border p-4">
-                  <p className="text-[11px] font-extrabold uppercase tracking-[0.8px] text-obligon-text">Available to withdraw</p>
-                  <p className="mt-1 font-display text-2xl font-extrabold text-obligon-navy">{data.totals.claimableLabel}</p>
+                  <p className="text-[11px] font-extrabold uppercase tracking-[0.8px] text-obligon-text">Pending settlement</p>
+                  <p className="mt-1 font-display text-2xl font-extrabold text-obligon-navy">{data.totals.pendingLabel}</p>
                   <p className="mt-1 text-xs font-medium text-obligon-text">
-                    Settled and not already promised to a payout in progress.
+                    Revenue awaiting provider settlement to your bank account.
                   </p>
                   <p className="mt-4 text-[11px] font-extrabold uppercase tracking-[0.8px] text-obligon-text">Settled to date</p>
                   <p className="mt-1 font-display text-2xl font-extrabold text-obligon-navy">{data.totals.totalSettledLabel}</p>
 
-                  <div className="mt-4 flex items-center justify-between gap-3 border-t border-obligon-border pt-4">
-                    <div>
-                      <p className="text-xs font-extrabold text-obligon-navy">Auto-settlement</p>
-                      <p className="text-xs font-medium text-obligon-text">
-                        {data.config.autoSettlement
-                          ? `Paid out automatically once ${nairaLabel(data.config.settlementLimitKobo)} clears.`
-                          : "Payouts are requested manually."}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={data.config.autoSettlement}
-                      aria-label="Auto-settlement"
-                      disabled={togglingAuto}
-                      onClick={toggleAutoSettlement}
-                      className={`relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-50 ${
-                        data.config.autoSettlement ? "bg-obligon-green" : "bg-[#c9ced9]"
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-1 size-5 rounded-full bg-white transition-all ${
-                          data.config.autoSettlement ? "left-6" : "left-1"
-                        }`}
-                      />
-                    </button>
+                  <div className="mt-4 border-t border-obligon-border pt-4">
+                    <p className="text-xs font-extrabold text-obligon-navy">Automatic direct settlement</p>
+                    <p className="mt-1 text-xs text-obligon-text">Flutterwave sends fuel revenue to your bank account and deducts approved discounts for Obligon. No manual payout request is required.</p>
                   </div>
                 </div>
 
-<button
-                  type="button"
-                  onClick={() =>
-                    onOpenPayout({
-                      claimableKobo: data.totals.claimableKobo,
-                      claimableLabel: data.totals.claimableLabel
-                    })
-                  }
-                  disabled={payoutBlockedReason !== null}
-                  className="mt-6 w-full h-11 rounded-xl bg-obligon-green text-sm font-extrabold text-white shadow-green hover:bg-obligon-green/90 transition disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Request Direct Payout
+<button type="button" disabled className="mt-6 h-11 w-full cursor-not-allowed rounded-xl bg-[#c9ced9] text-sm font-extrabold text-obligon-navy opacity-70">
+                  Payouts — Coming soon
                 </button>
-                {payoutBlockedReason ? (
-                  <p className="mt-2 text-xs font-medium text-obligon-text">{payoutBlockedReason}</p>
-                ) : null}
+                <p className="mt-2 text-xs text-obligon-text">Manual payouts are inactive. Your settlement account receives funds automatically.</p>
               </article>
             </aside>
 
@@ -867,11 +795,10 @@ function SettlementsPage({
               />
 <DataTable
                 title="Payout History"
-                subtitle="Automated NUBAN disbursements and manual payout requests."
+                subtitle="Recorded provider settlements and historical transfers."
                 columns={["Reference", "Requested", "Amount", "Destination"]}
                 rows={data.payouts}
                 rowKey={(row) => row.id ?? row.reference ?? row.cells[0]}
-                onAction={(row) => row && setRetrying(row)}
               />
             </main>
           </div>
@@ -896,16 +823,7 @@ function SettlementsPage({
           }}
         />
       ) : null}
-      {retrying ? (
-        <RetryPayoutModal
-          payout={retrying}
-          onClose={() => setRetrying(null)}
-          onRetried={() => {
-            reload();
-            onPayoutRequested();
-          }}
-        />
-      ) : null}
+
     </DashboardCanvas>
   );
 }
@@ -1695,7 +1613,8 @@ const labelClass = "block text-xs font-extrabold uppercase text-obligon-text";
  */
 function AddBankAccountModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const { success: toastSuccess } = useToast();
-  const [form, setForm] = React.useState({ bankName: "", bankCode: "058", accountNumber: "", accountName: "" });
+  const [form, setForm] = React.useState({ bankName: "", bankCode: "", accountNumber: "", accountName: "" });
+  const {status:banksStatus,data:banks,error:banksError,reload:reloadBanks}=useAsync(()=>api.request<{banks:{code:string;name:string}[]}>("/api/partner/bank-accounts/directory"));
   const [submitting, setSubmitting] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
 
@@ -1709,11 +1628,11 @@ function AddBankAccountModal({ onClose, onSaved }: { onClose: () => void; onSave
     try {
       await mutationsApi.addBankAccount({
         bankName: form.bankName.trim(),
-        bankCode: form.bankCode.trim() || "058",
+        bankCode: form.bankCode.trim(),
         accountNumber: form.accountNumber.replace(/\D/g, ""),
         accountName: form.accountName.trim()
       });
-      toastSuccess("Settlement account added. It will be verified before the next payout.");
+      toastSuccess("Account nominated. Choose it as default, then wait for admin verification.");
       onSaved();
       onClose();
     } catch (err) {
@@ -1726,21 +1645,25 @@ function AddBankAccountModal({ onClose, onSaved }: { onClose: () => void; onSave
   return (
     <Modal
       title="Add Settlement Account"
-      description="Payouts are sent to a verified Nigerian bank account in your name."
+      description="Fuel revenue is settled directly to your verified Nigerian bank account."
       onClose={onClose}
     >
       <form onSubmit={submit}>
         <FormError message={formError} />
-        <label className={`mt-5 ${labelClass}`}>
-          Bank name
-          <input className={fieldClass} value={form.bankName} onChange={set("bankName")} required placeholder="Access Bank" />
+        <label className={`mt-5 ${labelClass}`}>Bank
+          <select className={fieldClass} required disabled={banksStatus!=="success"} value={form.bankCode} onChange={event=>{const bank=banks?.banks.find(bank=>bank.code===event.target.value);setForm(previous=>({...previous,bankCode:bank?.code??"",bankName:bank?.name??""}));}}>
+            <option value="">{banksStatus==="loading"?"Loading banks…":"Select your bank"}</option>{banks?.banks.map(bank=><option key={bank.code} value={bank.code}>{bank.name}</option>)}
+          </select>
         </label>
+        {banksError?<div role="alert" className="mt-2 text-sm text-red-700">{banksError.message}<button type="button" onClick={reloadBanks} className="ml-2 underline">Retry bank directory</button></div>:null}
         <label className={`mt-4 block ${labelClass}`}>
           Account number
           <input
             className={fieldClass}
             value={form.accountNumber}
-            onChange={set("accountNumber")}
+            onChange={event=>setForm(previous=>({...previous,accountNumber:event.target.value.replace(/\D/g,"").slice(0,10)}))}
+            pattern="[0-9]{10}"
+            maxLength={10}
             required
             inputMode="numeric"
             placeholder="10 digits"
@@ -1750,17 +1673,13 @@ function AddBankAccountModal({ onClose, onSaved }: { onClose: () => void; onSave
           Account name
           <input className={fieldClass} value={form.accountName} onChange={set("accountName")} required placeholder="As it appears at your bank" />
         </label>
-        <label className={`mt-4 block ${labelClass}`}>
-          Bank code <span className="font-medium normal-case">(optional, defaults to GTBank 058)</span>
-          <input className={fieldClass} value={form.bankCode} onChange={set("bankCode")} inputMode="numeric" />
-        </label>
         <div className="mt-6 flex gap-3">
           <button type="button" onClick={onClose} className="h-11 flex-1 rounded-xl border border-[#071853] text-sm font-bold">
             Cancel
           </button>
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !form.bankCode || banksStatus!=="success"}
             className="h-11 flex-1 rounded-xl bg-obligon-green text-sm font-extrabold text-white flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {submitting ? <Loader2 size={16} className="animate-spin" /> : "Add Account"}

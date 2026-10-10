@@ -33,16 +33,11 @@ test("the real Termii refusal for an unapproved sender id is recognised", () => 
   assert.equal(result.retryable, false);
 });
 
-test("the fallback is available everywhere except production", () => {
-  // The whole risk of this feature. A refused OTP in production means a real
-  // customer cannot verify; reporting success leaves them waiting for a message
-  // that will never arrive.
-  for (const environment of ["development", "test", "staging"]) {
-    assert.equal(emailFallbackAllowed(environment), true, `${environment} should fall back`);
-    assert.equal(smsFallbackAllowed(environment), true, `${environment} should fall back`);
+test("provider failures never silently fall back; local outbox is explicitly configured", () => {
+  for (const environment of ['development','test','staging','production']) {
+    assert.equal(emailFallbackAllowed(environment), false);
+    assert.equal(smsFallbackAllowed(environment), false);
   }
-  assert.equal(emailFallbackAllowed("production"), false);
-  assert.equal(smsFallbackAllowed("production"), false);
 });
 
 test("a throttle is retryable and a configuration fault is not", () => {

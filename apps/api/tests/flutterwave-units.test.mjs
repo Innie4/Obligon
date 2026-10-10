@@ -19,12 +19,11 @@ test("checkout sends the plan price in naira, not kobo", () => {
   assert.equal(toProviderAmount(PLAN.platinum), 5000);
 });
 
-test("sub-naira amounts are rejected rather than silently rounded", () => {
-  // Rounding a customer's charge silently would mean charging either more or
-  // less than the plan price, so it must be refused.
-  assert.throws(() => toProviderAmount(250_050), /below one naira/);
-  assert.throws(() => toProviderAmount(50), /below one naira/);
+test("fractional naira charges preserve exact kobo without rounding", () => {
+  assert.equal(toProviderAmount(250_050), 2500.5);
+  assert.equal(toProviderAmount(50), 0.5);
   assert.throws(() => toProviderAmount(-100), /negative/);
+  assert.throws(() => toProviderAmount(50.5), /whole|integer|kobo/);
 });
 
 test("a verification reported in naira is recognised", () => {

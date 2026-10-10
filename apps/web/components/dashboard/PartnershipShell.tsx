@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { PartnerSubscriptionGate } from "./PartnerSubscriptionGate";
 import { usePathname } from "next/navigation";
 import { DashboardHeader } from "./DashboardHeader";
 import { PartnershipSidebar } from "./PartnershipSidebar";
@@ -79,7 +80,7 @@ export function PartnershipShell({ children, allowedRoles }: PartnershipShellPro
             </div>
           )}
           <MobileDashboardNav />
-          {children}
+          <PartnerSubscriptionGate>{children}</PartnerSubscriptionGate>
         </div>
       </main>
       </PartnerNotificationsProvider>

@@ -35,12 +35,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = React.useState<SessionStatus>("loading");
   const [user, setUserState] = React.useState<SessionUser | null>(null);
   const [rememberedEmail, setRememberedEmail] = React.useState("");
+  const sessionGeneration = React.useRef(0);
 
   React.useEffect(() => {
     setRememberedEmail(readRememberedEmail());
   }, []);
 
   const setUser = React.useCallback((next: SessionUser | null) => {
+    sessionGeneration.current += 1;
     writePersistedSession(next);
     setUserState(next);
     setStatus(next ? "authenticated" : "unauthenticated");
@@ -67,12 +69,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refresh = React.useCallback(async () => {
+    const generation = ++sessionGeneration.current;
     setStatus("loading");
     try {
       const session = await api.getSession();
+      if (generation !== sessionGeneration.current) return;
       setUserState(session);
       setStatus(session ? "authenticated" : "unauthenticated");
     } catch {
+      if (generation !== sessionGeneration.current) return;
       setUserState(null);
       setStatus("unauthenticated");
     }
@@ -87,8 +92,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!payload.email || !payload.password) {
         throw new Error("Enter your email and password to continue.");
       }
+      sessionGeneration.current += 1;
       // A new login must never inherit the previous account's client state.
-      await authApi.logout();
+      void authApi.logout().catch(() => undefined);
       writePersistedSession(null);
       writeTokens(null);
       setUserState(null);
@@ -121,7 +127,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = React.useCallback(async () => {
-    await authApi.logout();
+    sessionGeneration.current += 1;
+    void authApi.logout().catch(() => undefined);
+    writeTokens(null);
+    writePersistedSession(null);
     setUserState(null);
     setStatus("unauthenticated");
   }, []);

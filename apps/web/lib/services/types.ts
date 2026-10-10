@@ -93,6 +93,8 @@ export interface CardRequest {
   paidAt: string | null;
   fullName: string | null;
   bvnLastFour: string | null;
+  rejectionReason?: string | null;
+  issuanceState?: string;
   verificationStatus: "not_started" | "pending" | "verified" | "rejected";
   verificationEta: string | null;
   requestedAt: string;
@@ -430,6 +432,7 @@ export interface PartnerOverview {
 }
 
 export interface PartnerBankAccount {
+  needsRenomination?: boolean;
   id: string;
   bankName: string;
   accountMask: string;
@@ -454,6 +457,8 @@ export interface PartnerSettlements {
 }
 
 export interface PartnerFuelPrice {
+  stationId?: string;
+  stationName?: string;
   id: string;
   fuelType: string;
   price: number;
@@ -462,6 +467,8 @@ export interface PartnerFuelPrice {
 }
 
 export interface PartnerPricing {
+  stations?: Array<{id:string;name:string}>;
+  discounts?: Array<{id:string;station_id:string;fuel_type:string;rate_bp:number;starts_at:string;ends_at:string;status:string}>;
   prices: PartnerFuelPrice[];
   history: PartnerRow[];
 }

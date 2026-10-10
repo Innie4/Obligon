@@ -20,6 +20,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { env as runtimeEnv } from '../src/config/env.js';
+import { recoverTransferByReference } from '../src/lib/transfer-recovery.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const apiRoot = path.join(__dirname, "..");
@@ -85,8 +87,8 @@ test("a beneficiary stands in for Paystack's recipient code", () => {
 test("both handles are stored, so a processor change needs no re-registration", () => {
   assert.match(migration, /ADD COLUMN IF NOT EXISTS beneficiary_id TEXT/);
   assert.match(migration, /ADD COLUMN IF NOT EXISTS payout_provider TEXT/);
-  assert.match(partner, /recipient_code, beneficiary_id, payout_provider/);
-  assert.match(partner, /destination\.provider === "flutterwave" \? destination\.beneficiaryId : null/);
+  assert.match(partner, /recipient_code,\s*beneficiary_id,\s*payout_provider/);
+  assert.match(partner, /destination\.provider\s*===\s*["\']flutterwave["\']\s*\?\s*destination\.beneficiaryId\s*:\s*null/);
 });
 
 test("the account number itself is never stored", () => {
@@ -105,7 +107,8 @@ test("a transfer amount is converted to the major unit", () => {
   // pays 100x. This is the same trap the checkout path documents.
   assert.match(flw, /amount: toProviderAmount\(amountKobo\)/);
   assert.match(flw, /export function toProviderAmount/);
-  assert.match(flw, /kobo % 100 !== 0/);
+  assert.match(flw, /Number\.isSafeInteger\(kobo\)/);
+  assert.match(flw, /return kobo \/ 100/);
 });
 
 // ------------------------------------------------- queued is not settled
@@ -119,13 +122,9 @@ test("a queued transfer is never reported as paid", () => {
 });
 
 test("the scheduler no longer marks settlements paid on acceptance", () => {
-  // It did `UPDATE settlements SET status = 'paid'` the moment the transfer call
-  // returned. With an async processor that releases the same balance again on the
-  // next tick, because the balance is only marked paid once the money has left.
-  assert.doesNotMatch(scheduler, /SET status = 'paid', paid_at = now\(\) WHERE partner_org_id/);
-  assert.match(scheduler, /Queued is not paid/);
-  // The queued payout is inserted as `processing`, not `success`.
-  assert.match(scheduler, /'processing', \$4, \$5, \$5\) RETURNING \*/);
+  const body = scheduler.slice(scheduler.indexOf('export async function runAutoSettlements'), scheduler.indexOf('export async function reconcilePayouts'));
+  assert.doesNotMatch(body, /UPDATE settlements SET status/);
+  assert.match(body, /VALUES \(\$1,\$2,\$3,'processing',\$4,\$5,\$5\)/);
 });
 
 test("a transfer is settled by asking the processor", () => {
@@ -136,8 +135,9 @@ test("a transfer is settled by asking the processor", () => {
   // Oldest-first, up to the amount transferred — not every pending settlement for
   // the org, which declared unrelated periods disbursed and lost that revenue.
   assert.match(scheduler, /ORDER BY period_start ASC/);
-  assert.match(scheduler, /status = 'paid'/);
-  assert.match(scheduler, /net_kobo = net_kobo - \$2/);
+  assert.match(scheduler, /THEN 'paid' ELSE 'pending' END/);
+  assert.match(scheduler, /paid_kobo = paid_kobo \+ \$2/);
+  assert.doesNotMatch(scheduler, /SET net_kobo = net_kobo -/);
   assert.doesNotMatch(
     scheduler,
     /UPDATE settlements SET status = 'paid', paid_at = now\(\)\s*\n\s*WHERE partner_org_id = \$1 AND status = 'pending'/
@@ -147,12 +147,16 @@ test("a transfer is settled by asking the processor", () => {
   assert.match(scheduler, /status: "processing"/);
 });
 
-test("a payout can never be stranded in processing", () => {
-  // Two ways it used to be: no provider reference at all after a crash between the
-  // insert and the transfer, and no age ceiling so nothing ever expired either way.
-  assert.match(scheduler, /STALE_AFTER_MS/);
-  assert.match(scheduler, /Transfer was never submitted to the processor/);
-  assert.match(scheduler, /summary\.expired/);
+test("an absent provider receipt remains unknown instead of proving a payout failed", async t => {
+  // A connection can drop after bank acceptance. Empty reference lookups cannot
+  // prove no money moved. Reservation retention, audit-once and eventual recovery
+  // are exercised against real PostgreSQL in settlement-accounting.integration.
+  const previous=runtimeEnv.FLW_SECRET_KEY;
+  runtimeEnv.FLW_SECRET_KEY='test-reference-recovery';
+  t.mock.method(globalThis,'fetch',async()=>new Response(JSON.stringify({status:'success',data:[]}),{status:200}));
+  try {
+    assert.equal(await recoverTransferByReference({provider:'flutterwave',reference:'PY-LOST-RESPONSE',amountKobo:4000}),null);
+  } finally {runtimeEnv.FLW_SECRET_KEY=previous;}
 });
 
 test("reconciliation runs before anything new is queued", () => {

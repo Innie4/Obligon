@@ -67,7 +67,7 @@ const organizationPlans: SourcePlan[] = [
 
 const individualFeatureLabels = [
   "Digital Fuel Wallet",
-  "Physical Fuel Card",
+  "Virtual Fuel Card",
   "Fuel Purchase",
   "Digital Receipts",
   "Transaction History",
@@ -102,7 +102,7 @@ const individualPlans: SourcePlan[] = [
       true,
       false,
       false,
-      "25%",
+      "Full station discount",
       false,
       false,
       "30%",
@@ -111,7 +111,7 @@ const individualPlans: SourcePlan[] = [
       false,
       false
     ],
-    cta: "Start Free"
+    cta: "Choose Bronze"
   },
   {
     name: "Gold",
@@ -128,7 +128,7 @@ const individualPlans: SourcePlan[] = [
       true,
       "Advanced",
       "Premium",
-      "50%",
+      "Full station discount",
       false,
       true,
       "60%",
@@ -155,7 +155,7 @@ const individualPlans: SourcePlan[] = [
       true,
       "Advanced",
       "Premium",
-      "75%",
+      "Full station discount",
       true,
       true,
       "100%",

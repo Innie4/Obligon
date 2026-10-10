@@ -74,11 +74,10 @@ test("the wallet is credited the base amount, never the fee", () => {
 });
 
 test("a completed top-up reports whether it moved the row", () => {
-  // A webhook and a reconciliation pass can both see the same payment. The
-  // caller needs to know which one actually did the work before it notifies.
-  const body = customer.slice(customer.indexOf("export async function completeTopUp"));
-  assert.match(body, /if \(!completed\) return false;/);
+  const body = customer.slice(customer.indexOf('export async function completeTopUp'));
+  assert.match(body, /if\(!completed\) return false;/);
   assert.match(body, /return true;/);
+  assert.match(body, /await tx\(async t=>/);
 });
 
 test("a failed pass says why", () => {

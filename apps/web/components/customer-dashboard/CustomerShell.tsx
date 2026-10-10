@@ -19,6 +19,10 @@ import { customerNav, secondaryCustomerNav, pageTitles, type CustomerPageKey } f
 import { useSession } from "@/components/shared/AuthContext";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { LogoutButton } from "@/components/auth/LogoutButton";
+import { api } from "@/lib/services";
+import { useAsync } from "@/components/shared/useAsync";
+import { usePolling } from "@/components/shared/usePolling";
+import { customerAccountLabel, type CustomerEntitlementState } from "@/lib/customer-entitlements";
 
 type CustomerShellProps = {
   children: React.ReactNode;
@@ -53,6 +57,9 @@ function pageForPath(pathname: string): CustomerPageKey {
 function Sidebar() {
   const pathname = usePathname();
   const { user } = useSession();
+  const { data: subscription, refresh: refreshSubscription } = useAsync(() => api.request<CustomerEntitlementState>("/api/customer/subscription"));
+  usePolling(refreshSubscription, { intervalMs: 4000 });
+  const accountLabel = customerAccountLabel(subscription);
   const active = pageForPath(pathname);
   const accountKeys: CustomerPageKey[] = secondaryCustomerNav.map((item) => item.key);
   const [accountOpen, setAccountOpen] = useState(accountKeys.includes(active));
@@ -80,13 +87,15 @@ function Sidebar() {
         <span className="grid size-11 shrink-0 place-items-center rounded-full bg-obligon-lime/30 text-sm font-extrabold text-[#131f00]">{user?.initials ?? "FM"}</span>
         <div className="min-w-0 flex-1">
           <p className="font-extrabold text-obligon-navy truncate text-sm">{user?.name ?? "Customer"}</p>
-          <p className="text-xs text-obligon-text truncate">{user?.organization ?? "Fuelvista Consumer"}</p>
-          <p className="text-[11px] font-bold text-obligon-green mt-0.5">{user?.accountTier ?? "Active Wallet"}</p>
+          <p className="text-xs text-obligon-text truncate">Customer account</p>
+          <p className="text-[11px] font-bold text-obligon-green mt-0.5">{accountLabel}</p>
         </div>
       </div>
 
       <nav className="mt-8 space-y-2 flex-1 overflow-y-auto pr-1">
         {customerNav.map(renderLink)}
+        <Link href="/customer/subscription" className="block rounded-xl px-4 py-3 font-semibold">Subscription</Link>
+        <Link href="/customer/fuel-checkout" className="block rounded-xl px-4 py-3 font-semibold">Buy fuel / authorize card</Link>
 
         <button
           type="button"

@@ -1,3 +1,4 @@
+import { writeLocalMessage } from "./local-outbox.js";
 import { env, isProd } from "../config/env.js";
 import { providerFetch } from "./http.js";
 
@@ -66,16 +67,12 @@ export function classifyResendFailure(status, body) {
  * never arrive — the exact failure this classification exists to end.
  */
 export function emailFallbackAllowed(environment = env.NODE_ENV) {
-  return environment !== "production";
+  return false;
 }
 
 export async function sendEmail({ to, subject, html, text }) {
-  if (!env.RESEND_API_KEY) {
-    // Already the "no credentials" case. Logged so a local flow is still legible.
-    console.log(`[email:dev] to=${to} subject="${subject}"`);
-    if (text) console.log(`[email:dev] body: ${text}`);
-    return { delivered: false, skipped: true };
-  }
+  if (env.EMAIL_PROVIDER === "local") return writeLocalMessage({channel:"email",to,subject,message:text ?? ""});
+  if (!env.RESEND_API_KEY) return { delivered:false, skipped:true, error:"Delivery provider is not configured" };
   const res = await providerFetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {

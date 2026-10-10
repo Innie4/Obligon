@@ -135,6 +135,7 @@ export function PartnershipSidebar() {
       </Link>
 
       <nav className="mt-8 flex-1 overflow-y-auto pb-5">
+        <Link href="/dashboard/billing" className="block rounded-lg px-4 py-3 font-bold">Subscription</Link>
         <div className="space-y-1">
           {visiblePrimaryItems.map(renderLink)}
 

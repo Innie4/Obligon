@@ -14,7 +14,8 @@
     "migrate": "pnpm --filter @obligon/api migrate",
     "config:check": "pnpm --filter @obligon/api config:check",
     "seed": "pnpm --filter @obligon/api seed",
-    "test:api": "pnpm --filter @obligon/api test"
+    "test:api": "pnpm --filter @obligon/api test",
+    "test:web": "pnpm --filter @obligon/web test"
   },
   "workspaces": [
     "apps/*",

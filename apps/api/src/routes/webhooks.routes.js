@@ -1,3 +1,5 @@
+import { confirmFuelOrder } from "../lib/fuel-checkout.js";
+import { confirmSubscriptionPayment } from "./subscription.routes.js";
 import { Router } from "express";
 import { q, one, tx, claimIdempotency } from "../db.js";
 import { webhookLimiter } from "../middleware/security.js";
@@ -152,6 +154,10 @@ router.post("/flutterwave", webhookLimiter, async (req, res) => {
   try {
     if (!parsed.reference) throw new Error("charge.completed payload has no tx_ref");
 
+    const subscriptionPayment=await one("SELECT id FROM subscription_payments WHERE reference=$1",[parsed.reference]);
+    if(subscriptionPayment) await confirmSubscriptionPayment(parsed.reference,parsed.transactionId,false);
+    const fuelOrder=await one("SELECT id FROM fuel_orders WHERE reference=$1",[parsed.reference]);
+    if(fuelOrder) await confirmFuelOrder(parsed.reference,parsed.transactionId,false);
     // Wallet top-up
     const topup = await one("SELECT * FROM top_ups WHERE reference = $1", [parsed.reference]);
     if (topup && topup.status === "pending") {

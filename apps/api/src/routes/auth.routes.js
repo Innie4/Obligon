@@ -709,7 +709,7 @@ router.post("/verify-email/confirm", authLimiter, requireAuth, asyncHandler(asyn
 // ---------- POST /api/auth/verify-phone ----------
 router.post("/verify-phone/send", authLimiter, requireAuth, asyncHandler(async (req, res) => {
   const { phone } = req.body ?? {};
-  if (phone) await q("UPDATE users SET phone = $2 WHERE id = $1", [req.user.id, phone]);
+  if (phone) await q("UPDATE users SET phone_verified = CASE WHEN phone IS DISTINCT FROM $2 THEN FALSE ELSE phone_verified END, phone = $2 WHERE id = $1", [req.user.id, phone]);
   const target = phone ?? req.user.phone;
   if (!target) throw badRequest("Add a phone number first");
   if (req.user.phone_verified && !phone) throw conflict("That phone number is already verified");

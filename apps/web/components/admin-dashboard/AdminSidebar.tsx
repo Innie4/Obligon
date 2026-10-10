@@ -47,7 +47,7 @@ export function AdminSidebar() {
 
           return (
             <Link
-              key={item.key}
+              key={item.href}
               href={item.href}
               className={`relative flex h-[44px] items-center gap-3 rounded-xl px-4 text-[13px] font-bold transition ${
                 active ? "bg-[#061958] text-white shadow-hero" : "text-[#4f5663] hover:bg-[#f2f6fa] hover:text-[#061958]"

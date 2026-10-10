@@ -16,7 +16,7 @@ import { refundCheckout } from "./payments.js";
  *   - balances can never go negative (enforced by the column CHECK as well)
  */
 
-async function applyLedgerEntry(t, { walletId, direction, amountKobo, reference, idempotencyKey = null, description }) {
+export async function applyLedgerEntry(t, { walletId, direction, amountKobo, reference, idempotencyKey = null, description }) {
   const delta = direction === "credit" ? amountKobo : -amountKobo;
   const updated = await t.one(
     `UPDATE wallets SET balance_kobo = balance_kobo + $2
@@ -220,7 +220,7 @@ export async function issueRefund({
     `INSERT INTO payment_refunds (user_id, provider, provider_ref, kind, amount_kobo, reason, idempotency_key, metadata)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
      ON CONFLICT (idempotency_key) DO NOTHING RETURNING *`,
-    [userId, provider, providerRef, kind, amountKobo ?? 0, reason, idempotencyKey, JSON.stringify(metadata)]
+    [userId, provider, providerRef, kind, amountKobo ?? 0, reason, idempotencyKey, JSON.stringify({...metadata,providerTransactionId})]
   );
 
   if (!claim) {
@@ -253,10 +253,9 @@ export async function issueRefund({
     });
     return { ok: true, duplicate: false, refund: updated, providerResult: result };
   } catch (err) {
-    // Record the failure but release the idempotency key so a corrected retry
-    // (for example after fixing a bad transaction id) can succeed.
-    await q("UPDATE payment_refunds SET status = 'failed', reason = $2 WHERE id = $1", [claim.id, err.message]);
-    await q("DELETE FROM payment_refunds WHERE id = $1 AND status = 'failed'", [claim.id]);
+    // A timeout can follow a successful provider debit. Retain the claim so
+    // browser retries cannot send the same refund twice; reconciliation owns it.
+    await q("UPDATE payment_refunds SET status='pending',reason=$2,updated_at=now() WHERE id=$1",[claim.id,"Provider outcome requires reconciliation"]);
     throw err;
   }
 }

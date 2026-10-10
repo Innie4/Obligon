@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { CardApprovalQueue } from "./CardApprovalQueue";
 import {
   AlertTriangle,
   ArrowRight,
@@ -401,6 +402,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
   return (
     <>
       {pages[pageKey]}
+      {pageKey === "applications" ? <CardApprovalQueue /> : null}
       <AdminModals modal={modal} onClose={() => { setModal(null); setSelectedRow(null); }} selectedApplicationId={modal === "partnerReview" ? selectedRow?.applicationId ?? selectedRow?.id : undefined} selectedDisputeId={modal === "resolve" ? selectedRow?.disputeId ?? selectedRow?.id : undefined} />
     </>
   );

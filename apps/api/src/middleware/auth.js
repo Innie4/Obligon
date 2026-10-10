@@ -6,7 +6,7 @@ import { one } from "../db.js";
 export async function attachUser(req, _res, next) {
   const header = req.headers.authorization ?? "";
   // EventSource cannot set headers — accept the access token via ?token= too.
-  const queryToken = typeof req.query?.token === "string" ? req.query.token : null;
+  const queryToken = req.path === "/api/realtime/stream" && typeof req.query?.token === "string" ? req.query.token : null;
   const token = header.startsWith("Bearer ") ? header.slice(7) : queryToken;
   if (token) {
     try {
@@ -20,6 +20,7 @@ export async function attachUser(req, _res, next) {
         payload.sid ? [payload.sub, payload.sid] : [payload.sub]
       );
       if (user) {
+        req.auth = payload;
         req.user = { ...user, orgId: payload.org ?? null, orgType: payload.orgType ?? null };
       }
     } catch {

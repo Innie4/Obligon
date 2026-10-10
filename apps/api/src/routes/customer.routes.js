@@ -1,3 +1,5 @@
+import { customerFuelCheckoutRouter } from "./fuel-checkout.routes.js";
+import { randomInt } from "node:crypto";
 import { Router } from "express";
 import { q, one, tx } from "../db.js";
 import { asyncHandler, badRequest, notFound, forbidden, conflict, serviceUnavailable, misconfigured } from "../lib/errors.js";
@@ -10,12 +12,15 @@ import { settlePendingForUser } from "../lib/reconcile.js";
 import { notify, audit, securityLog } from "../lib/notify.js";
 import { resolveWallet } from "../lib/wallets.js";
 import { startCheckout, verifyCheckout, activeProvider, checkoutIsSimulated, priceWithFee, minimumTopupKobo } from "../lib/payments.js";
-import { sudoEnabled, createSudoCustomer, issueSudoCard, setSudoCardStatus, fundSudoCard, maskFromSudo } from "../lib/sudo.js";
+import { sudoEnabled, createSudoCustomer, issueSudoCard, setSudoCardStatus, fundSudoCard, maskFromSudo, terminateSudoCard } from "../lib/sudo.js";
 import { receiptPdf } from "../lib/pdf.js";
 import { uploadFile, signedUrl } from "../lib/storage.js";
 import { env } from "../config/env.js";
 import { emitToUser } from "../lib/sse.js";
 import multer from "multer";
+import { encryptIdentity, providerCardDetails, replacementFunding, finishReplacement } from "../lib/card-approval.js";
+import { subscriptionRouter } from "./subscription.routes.js";
+import { requireCustomerPlan, customerSubscription } from "../lib/subscriptions.js";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -32,6 +37,8 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 const SETTLE_WAIT_MS = 2500;
 
 router.use(requireAuth);
+router.use("/subscription", subscriptionRouter("customer"));
+router.use("/fuel-checkout",customerFuelCheckoutRouter());
 
 async function getWallet(userId, organizationId = null) {
   return resolveWallet({ userId, organizationId });
@@ -57,6 +64,7 @@ router.get("/spend-projection", asyncHandler(async (req, res) => {
 }));
 
 router.put("/spend-projection", asyncHandler(async (req, res) => {
+  await requireCustomerPlan(req.user.id, "Fuel Budget Management");
   const { projectedSpend } = req.body ?? {};
   if (projectedSpend == null || projectedSpend === "") {
     throw badRequest("Enter the spend you expect for this month");
@@ -620,47 +628,20 @@ router.post("/wallet/topup/confirm", asyncHandler(async (req, res) => {
  * support question about a settled payment could only be answered by guessing.
  */
 export async function completeTopUp(topup, { providerTransactionId = null } = {}) {
-  let completed = false;
-  await tx(async (t) => {
-    // Claim the top-up first. The conditional UPDATE is the idempotency guard:
-    // only the first caller sees a row come back, whether that is a webhook, the
-    // browser redirect, or the reconciliation pass.
-    const marked = await t.query(
-      `UPDATE top_ups SET status = 'success', paid_at = now(),
-              provider_transaction_id = COALESCE(provider_transaction_id, $2),
-              reconcile_attempts = reconcile_attempts + 1, last_reconciled_at = now()
-       WHERE id = $1 AND status = 'pending' RETURNING id`,
-      [topup.id, providerTransactionId]
-    );
-    if (!marked.length) return;
-    completed = true;
+  const { applyLedgerEntry } = await import("../lib/money.js");
+  const completed=await tx(async t=>{
+    const marked=await t.one(`UPDATE top_ups SET status='success',paid_at=now(),provider_transaction_id=COALESCE(provider_transaction_id,$2),
+      reconcile_attempts=reconcile_attempts+1,last_reconciled_at=now() WHERE id=$1 AND status='pending' RETURNING *`,[topup.id,providerTransactionId]);
+    if(!marked) return false;
+    const wallet=marked.wallet_id ? await t.one("SELECT id FROM wallets WHERE id=$1 FOR UPDATE",[marked.wallet_id]) :
+      await t.one("SELECT id FROM wallets WHERE user_id=$1 AND organization_id IS NULL FOR UPDATE",[marked.user_id]);
+    if(!wallet) throw badRequest("No wallet is linked to this account");
+    const existing=await t.one("SELECT id FROM wallet_ledger WHERE idempotency_key=$1",[`topup:${topup.id}`]);
+    if(!existing) await applyLedgerEntry(t,{walletId:wallet.id,direction:"credit",amountKobo:Number(marked.amount_kobo),reference:marked.reference,
+      idempotencyKey:`topup:${topup.id}`,description:`Top-up via ${marked.provider??"payment provider"}`});
+    return true;
   });
-  // Reports whether this caller was the one that moved the row, so a webhook and a
-  // reconciliation pass cannot both claim the same credit.
-  if (!completed) return false;
-
-  // Company accounts settle into the organization wallet, so the wallet this
-  // top-up was raised against must be used rather than "any wallet for this
-  // user". Crediting is keyed on the top-up, so this cannot double-credit.
-  const wallet = topup.wallet_id
-    ? await one("SELECT * FROM wallets WHERE id = $1", [topup.wallet_id])
-    : await one("SELECT * FROM wallets WHERE user_id = $1 AND organization_id IS NULL", [topup.user_id]);
-  if (!wallet) {
-    // Roll the claim back so support can fix the missing wallet and re-run.
-    await q("UPDATE top_ups SET status = 'pending', paid_at = NULL WHERE id = $1 AND status = 'success'", [topup.id]);
-    throw badRequest("No wallet is linked to this account");
-  }
-  const { creditWalletOnce } = await import("../lib/money.js");
-  await creditWalletOnce({
-    walletId: wallet.id,
-    amountKobo: topup.amount_kobo,
-    idempotencyKey: `topup:${topup.id}`,
-    // provider rather than method: a top-up can be settled by a bank transfer or
-    // USSD after being started as a card, so the method recorded at checkout time
-    // is not what was actually used.
-    description: `Top-up via ${topup.provider ?? "payment provider"}`,
-    ledgerReference: topup.reference
-  });
+  if(!completed) return false;
 
   // If this charge carried a split settlement, it has now actually happened.
   await q(
@@ -730,7 +711,9 @@ function serializeCardRequest(row) {
     paymentReference: row.payment_reference ?? null,
     paidAt: row.paid_at ?? null,
     fullName: row.full_name ?? null,
-    bvnLastFour: row.bvn ? `****${row.bvn.slice(-4)}` : null,
+    bvnLastFour: row.bvn_last_four ? `****${row.bvn_last_four}` : null,
+    rejectionReason: row.rejection_reason ?? null,
+    issuanceState: row.issuance_state ?? "not_started",
     verificationStatus: row.verification_status ?? "not_started",
     verificationEta: row.verification_eta ?? null,
     requestedAt: row.created_at
@@ -929,7 +912,7 @@ router.get("/card-request/progress", asyncHandler(async (req, res) => {
       key: "details",
       label: "Identity details submitted",
       description: request.full_name
-        ? `${request.full_name}${request.bvn ? ` · BVN ••••${String(request.bvn).slice(-4)}` : ""}`
+        ? `${request.full_name}${request.bvn_last_four ? ` · BVN ••••${request.bvn_last_four}` : ""}`
         : "Name and BVN not provided yet",
       state: request.full_name
         ? done
@@ -943,7 +926,7 @@ router.get("/card-request/progress", asyncHandler(async (req, res) => {
       label: "Verification",
       description: {
         not_started: request.payment_status === "paid" ? "Waiting for your details" : "Starts after payment and details",
-        pending: "We are checking your name and BVN against national records",
+        pending: "Your submitted identity details are awaiting admin review",
         verified: "Verified",
         rejected: "Could not be verified"
       }[request.verification_status] ?? "Unknown",
@@ -964,7 +947,7 @@ router.get("/card-request/progress", asyncHandler(async (req, res) => {
       label: "Card issued",
       description: card
         ? `${card.label} · ${card.masked_pan} · ${card.status}`
-        : "Produced and activated once verification passes",
+        : "Virtual card issued after admin approval",
       state: card ? done : rejected || abandoned ? failed : waiting,
       at: card?.created_at ?? null
     }
@@ -1138,9 +1121,16 @@ router.post("/card-request/withdraw", asyncHandler(async (req, res) => {
   if (request.payment_status !== "paid") {
     throw conflict("There is no completed payment to withdraw");
   }
+  if (["creating", "provider_created", "review_required", "complete"].includes(request.issuance_state)) throw conflict("Card issuance must be reconciled before requesting a refund");
   if (["approved", "cancelled", "refunded"].includes(request.status)) {
     throw conflict("This card request can no longer be withdrawn");
   }
+
+  // Atomically reserve the request against approval before any outbound refund.
+  const withdrawalClaim = await one(`UPDATE card_requests SET issuance_state='refund_pending',updated_at=now()
+    WHERE id=$1 AND payment_status='paid' AND status NOT IN ('approved','cancelled','withdrawn')
+      AND issuance_state IN ('not_started','refund_pending') RETURNING id`,[request.id]);
+  if(!withdrawalClaim) throw conflict("Card issuance or refund review is already in progress");
 
   // Reclaim any opening balance this request previously put in the wallet, so the
   // customer is not refunded money they have since spent as fuel credit.
@@ -1160,12 +1150,7 @@ router.post("/card-request/withdraw", asyncHandler(async (req, res) => {
       description: "Reversal of plan opening balance on withdrawal"
     });
     if (result.debited) clawbackKobo = Number(historicCredit.amount_kobo);
-    else {
-      // Funds already spent: refuse rather than refund money we cannot reclaim.
-      throw conflict(
-        "Your plan balance has already been spent, so this plan cannot be withdrawn automatically. Please contact support."
-      );
-    }
+
   }
 
   // Refund exactly what was collected, which is the plan price plus any gateway
@@ -1193,7 +1178,7 @@ router.post("/card-request/withdraw", asyncHandler(async (req, res) => {
 
   const updated = await one(
     `UPDATE card_requests SET status = 'withdrawn', payment_status = 'refunded', withdrawn_at = now(),
-       refund_id = $2, updated_at = now()
+       refund_id = $2, issuance_state = 'refunded', updated_at = now()
      WHERE id = $1 AND status = $3 RETURNING *`,
     [request.id, result.refund?.id ?? null, request.status]
   );
@@ -1314,10 +1299,10 @@ router.post("/card-request/verify-payment", asyncHandler(async (req, res) => {
   }
 
   const paid = await one(
-    `UPDATE card_requests SET payment_status = 'paid', paid_at = now(), updated_at = now()
+    `UPDATE card_requests SET payment_status = 'paid', paid_at = now(),provider_transaction_id=COALESCE(provider_transaction_id,$2), updated_at = now()
      WHERE id = $1 AND payment_status <> 'paid'
      RETURNING *`,
-    [request.id]
+    [request.id,verification.providerTransactionId??req.body?.transactionId??null]
   );
   const updated = paid ?? (await one("SELECT * FROM card_requests WHERE id = $1", [request.id]));
 
@@ -1412,10 +1397,16 @@ router.post("/card-request/details", asyncHandler(async (req, res) => {
   const city = String(req.body?.city ?? "").trim();
   const state = String(req.body?.state ?? "").trim();
 
+  const dob=String(req.body?.dateOfBirth??"").trim();
+  const postalCode=String(req.body?.postalCode??"").trim();
+  const phone=String(req.body?.phone??req.user.phone??"").trim().replace(/\s/g,"");
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(dob) || !Number.isFinite(Date.parse(dob)) || new Date(dob).toISOString().slice(0,10)!==dob || new Date(dob)>=new Date()) throw badRequest("Enter a valid date of birth");
+  if(!/^\d{6}$/.test(postalCode)) throw badRequest("Enter your six-digit postal code");
+  if(!/^\+234\d{10}$/.test(phone)) throw badRequest("Enter a valid Nigerian phone number starting +234");
   if (!ref) throw badRequest("reference is required");
   if (fullName.length < 2) throw badRequest("Enter your full legal name as it appears on your ID");
   if (!BVN_RE.test(bvn)) throw badRequest("BVN must be 11 digits starting with 2");
-  if (!address) throw badRequest("Enter your delivery address");
+  if (!address) throw badRequest("Enter your residential address");
   if (!city) throw badRequest("Enter your city");
   if (!state) throw badRequest("Enter your state");
 
@@ -1425,17 +1416,18 @@ router.post("/card-request/details", asyncHandler(async (req, res) => {
   if (request.verification_status === "pending") {
     return res.json({ ok: true, alreadySubmitted: true, request: serializeCardRequest(request) });
   }
-  if (request.status === "approved") throw conflict("Your fuel card has already been approved");
+  if (["approved","rejected","withdrawn","cancelled"].includes(request.status) || request.issuance_state !== "not_started") throw conflict("This identity application cannot be resubmitted; contact support or request a refund");
 
   const updated = await one(
     `UPDATE card_requests SET
-       full_name = $2, bvn = $3, address = $4, city = $5, state = $6,
-       verification_status = 'pending', status = 'pending_verification',
+       full_name = $2, bvn = NULL, bvn_encrypted = $3, bvn_last_four = $8, address = $4, city = $5, state = $6,
+       verification_status = 'pending', status = 'pending_verification', date_of_birth=$9,postal_code=$10,identity_phone=$11,
        verification_eta = COALESCE(verification_eta, $7), updated_at = now()
-     WHERE id = $1 RETURNING *`,
-    [request.id, fullName.slice(0, 120), bvn, address.slice(0, 200), city.slice(0, 80), state.slice(0, 80), VERIFICATION_ETA]
+     WHERE id = $1 AND issuance_state = 'not_started' AND status NOT IN ('approved','rejected','withdrawn','cancelled') RETURNING *`,
+    [request.id, fullName.slice(0, 120), encryptIdentity(bvn), address.slice(0, 200), city.slice(0, 80), state.slice(0, 80), VERIFICATION_ETA, bvn.slice(-4),dob,postalCode,phone]
   );
 
+  if (!updated) throw conflict("This identity application is already under review or being refunded");
   await audit({
     actorUserId: req.user.id,
     actorRole: req.user.role,
@@ -1453,6 +1445,7 @@ router.post("/card-request/details", asyncHandler(async (req, res) => {
     link: "/customer/card"
   });
 
+  await notify({ title: "Card verification approval requested", body: `${fullName} submitted a paid fuel-card application. Review identity details before approving issuance.`, category: "security", actionRequired: true, link: "/admin/applications", eventKey: `card-review:${request.id}` });
   res.json({ ok: true, request: serializeCardRequest(updated), verificationEta: VERIFICATION_ETA });
 }));
 
@@ -1552,23 +1545,42 @@ router.post("/cards/:id/report-lost", asyncHandler(async (req, res) => {
 
 router.post("/cards/:id/replace", asyncHandler(async (req, res) => {
   const card = await loadCard(req.params.id, req);
-  const { reason } = req.body ?? {};
+  const reason = String(req.body?.reason ?? "").trim();
   if (!reason) throw badRequest("A reason is required to replace a card");
-  // Terminate old card (Sudo) and issue a fresh virtual card
-  const sudoCustomer = card.sudo_customer_id ?? (await createSudoCustomer({ firstName: req.user.full_name.split(" ")[0] || "Obligon", lastName: req.user.full_name.split(" ").slice(1).join(" ") || "Customer", email: req.user.email, phoneNumber: req.user.phone })).id;
-  const sudoCard = await issueSudoCard({ customerId: sudoCustomer, type: "naira", currency: "NGN", amount: card.balance_kobo });
-  const newCard = await tx(async (t) => {
-    await t.query("UPDATE cards SET status = 'replaced', updated_at = now() WHERE id = $1", [card.id]);
-    const created = await t.one(
-      `INSERT INTO cards (owner_user_id, organization_id, vehicle_id, driver_id, label, holder_name, masked_pan, brand, expiry, status, daily_limit_kobo, monthly_limit_kobo, balance_kobo, sudo_card_id, sudo_customer_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,'VISA','09/29','active',$8,$9,$10,$11,$12) RETURNING *`,
-      [card.owner_user_id, card.organization_id, card.vehicle_id, card.driver_id, card.label + " (R)", card.holder_name || req.user.full_name,
-        sudoCard.cardNumber ? maskFromSudo(sudoCard) : maskPan(String(Math.floor(Math.random() * 1e16))), card.daily_limit_kobo, card.monthly_limit_kobo, card.balance_kobo, sudoCard.id ?? null, sudoCustomer]
-    );
-    await t.query("INSERT INTO card_actions (card_id, user_id, action, note) VALUES ($1,$2,'replaced',$3)", [created.id, req.user.id, reason]);
-    return created;
+  replacementFunding(card);
+  if (!card.sudo_card_id || !card.sudo_customer_id) throw conflict("This card must be reconciled with the issuer before replacement");
+  await tx(async t => {
+    const locked = await t.one("SELECT * FROM cards WHERE id=$1 FOR UPDATE", [card.id]);
+    replacementFunding(locked);
+    if (locked.replacement_state || ['replaced', 'terminated'].includes(locked.status)) throw conflict("This replacement is already in progress or requires issuer reconciliation");
+    await t.query("UPDATE cards SET replacement_state='creating',updated_at=now() WHERE id=$1", [card.id]);
   });
-  res.json({ ok: true, cardId: newCard.id, maskedPan: newCard.masked_pan });
+  try {
+    await terminateSudoCard(card.sudo_card_id);
+    await q("UPDATE cards SET status='terminated',updated_at=now() WHERE id=$1", [card.id]);
+    const details = providerCardDetails(await issueSudoCard({ customerId: card.sudo_customer_id, currency: "NGN", amount: 0,replacementFor:card.sudo_card_id,replacementReason:reason.toLowerCase().includes("stolen")?"stolen":"lost" }));
+    await q("UPDATE cards SET replacement_card=$2,updated_at=now() WHERE id=$1", [card.id, details]);
+    const created = await finishReplacement(card.id,details,req.user.id,reason);
+    res.json({ ok:true,cardId:created.id,maskedPan:created.masked_pan });
+  } catch(error) {
+    await q("UPDATE cards SET replacement_state='review_required',updated_at=now() WHERE id=$1", [card.id]);
+    throw error;
+  }
+}));
+
+router.post("/cards/:id/pos-code",asyncHandler(async(req,res)=>{
+ const card=await loadCard(req.params.id,req);
+ if(card.organization_id) throw forbidden("Use your company dashboard to authorize a fleet card");
+ await requireCustomerPlan(req.user.id);
+ if(card.status!=="active") throw badRequest("Only an active card can authorize fuel");
+ if(!card.pin_hash || !await verifyPin(String(req.body?.pin??""),card.pin_hash)) throw forbidden("Enter your correct card PIN");
+ let code;
+ for(let attempt=0;attempt<5;attempt++) {
+   code=String(randomInt(100000,1000000));
+   try { await q("UPDATE cards SET pos_code=$2,pos_code_expires_at=now()+interval '5 minutes' WHERE id=$1",[card.id,code]); break; }
+   catch(err) { if(err.code!=="23505"||attempt===4) throw err; }
+ }
+ res.json({ok:true,code,expiresInSeconds:300});
 }));
 
 router.post("/cards/:id/pin", asyncHandler(async (req, res) => {
@@ -1583,6 +1595,7 @@ router.post("/cards/:id/pin", asyncHandler(async (req, res) => {
 
 router.post("/cards/:id/limits", asyncHandler(async (req, res) => {
   const card = await loadCard(req.params.id, req);
+  await requireCustomerPlan(req.user.id, "Spending Limits");
   const { daily, monthly } = req.body ?? {};
   const dailyKobo = Math.round(Number(daily) * 100);
   const monthlyKobo = Math.round(Number(monthly) * 100);
@@ -1593,19 +1606,13 @@ router.post("/cards/:id/limits", asyncHandler(async (req, res) => {
   res.json({ ok: true });
 }));
 
-/** Issue a brand-new card (customer self-service). */
+/** Issuance is exclusively performed after the admin's paid identity review. */
 router.post("/cards", asyncHandler(async (req, res) => {
-  const { label } = req.body ?? {};
-  const sudoCustomer = await createSudoCustomer({ firstName: req.user.full_name.split(" ")[0] || "Obligon", lastName: req.user.full_name.split(" ").slice(1).join(" ") || "Customer", email: req.user.email, phoneNumber: req.user.phone });
-  const sudoCard = await issueSudoCard({ customerId: sudoCustomer.id, type: "naira", currency: "NGN", amount: 0 });
-  const card = await one(
-    `INSERT INTO cards (owner_user_id, label, holder_name, masked_pan, status, sudo_card_id, sudo_customer_id)
-     VALUES ($1,$2,$3,$4,'active',$5,$6) RETURNING *`,
-    [req.user.id, label ?? "Fuel Card", req.user.full_name,
-      sudoCard.cardNumber ? maskFromSudo(sudoCard) : maskPan(String(Math.floor(Math.random() * 1e16))), sudoCard.id ?? null, sudoCustomer.id ?? sudoCustomer]
-  );
-  await cardAction(card, req, "issued", "");
-  res.json({ ok: true, cardId: card.id, maskedPan: card.masked_pan });
+  const request = await one("SELECT issued_card_id FROM card_requests WHERE user_id=$1 AND status='approved' AND verification_status='verified' AND payment_status='paid' ORDER BY created_at DESC LIMIT 1", [req.user.id]);
+  if (!request?.issued_card_id) throw forbidden("Choose a paid plan and submit your identity details for admin approval before card issuance");
+  const card = await one("SELECT id,masked_pan FROM cards WHERE id=$1 AND owner_user_id=$2", [request.issued_card_id,req.user.id]);
+  if (!card) throw conflict("Issued card requires reconciliation");
+  res.json({ok:true,cardId:card.id,maskedPan:card.masked_pan,alreadyIssued:true});
 }));
 
 // ============ STATIONS ============
@@ -1721,9 +1728,12 @@ function sanitizeNotificationPrefs(input) {
 router.put("/profile", asyncHandler(async (req, res) => {
   const { fullName, phone, address, city, notificationPrefs, biometricsEnabled, budgetLimit } = req.body ?? {};
 
+  if (budgetLimit != null && (!Number.isSafeInteger(Math.round(Number(budgetLimit)*100)) || Number(budgetLimit)<0)) throw badRequest("Budget must be a non-negative amount");
+  if (budgetLimit != null) await requireCustomerPlan(req.user.id, "Fuel Budget Management");
   if (biometricsEnabled !== undefined && typeof biometricsEnabled !== "boolean") {
     throw badRequest("biometricsEnabled must be a boolean");
   }
+  if(biometricsEnabled===true) throw badRequest("Biometric approval is coming soon and cannot be enabled yet");
   const prefs = notificationPrefs === undefined || notificationPrefs === null
     ? null
     : sanitizeNotificationPrefs(notificationPrefs);
@@ -1731,11 +1741,12 @@ router.put("/profile", asyncHandler(async (req, res) => {
   const user = await one(
     `UPDATE users SET
        full_name = COALESCE($2, full_name),
+       phone_verified = CASE WHEN $3::text IS NOT NULL AND phone IS DISTINCT FROM $3 THEN FALSE ELSE phone_verified END,
        phone = COALESCE($3, phone),
        address = COALESCE($4, address),
        city = COALESCE($5, city),
        notification_prefs = COALESCE($6, notification_prefs),
-       biometrics_enabled = COALESCE($7, biometrics_enabled),
+       biometrics_enabled = CASE WHEN $7::boolean IS NOT NULL THEN FALSE ELSE FALSE END,
        updated_at = now()
      WHERE id = $1 RETURNING *`,
     [req.user.id, fullName ?? null, phone ?? null, address ?? null, city ?? null,
@@ -1792,7 +1803,10 @@ router.get("/profile", asyncHandler(async (req, res) => {
 
 // ============ SUPPORT / REPORT PROBLEM ============
 router.post("/support/tickets", upload.array("attachments", 4), asyncHandler(async (req, res) => {
-  const { subject, category = "general", message, priority = "normal" } = req.valid ?? req.body ?? {};
+  const { subject, category = "general", message } = req.valid ?? req.body ?? {};
+  const subscription = await customerSubscription(req.user.id);
+  const priorityFeature = subscription.features.find(f => String(f.label ?? f.name ?? "").toLowerCase() === "priority support");
+  const priority = subscription.active && priorityFeature && priorityFeature.state !== "unavailable" && priorityFeature.included !== false && ![false,"—","Not included"].includes(priorityFeature.value) ? "high" : "normal";
   if (!subject || !message) throw badRequest("Subject and message are required");
   const attachments = [];
   for (const file of req.files ?? []) {
