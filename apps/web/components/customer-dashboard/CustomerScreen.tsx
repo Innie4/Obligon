@@ -33,6 +33,8 @@ import {
   type LucideProps
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { customerFeatureAvailable, type CustomerEntitlementState } from "@/lib/customer-entitlements";
+import { stationFuelName } from "@/lib/station-fuels";
 import {
   type CustomerPageKey,
   type CustomerTone
@@ -231,10 +233,12 @@ function greetingHour() {
 
 function OverviewPage({
   balanceRefreshKey,
-  onEditProjection
+  onEditProjection,
+  canEditProjection
 }: {
   balanceRefreshKey: number;
   onEditProjection: () => void;
+  canEditProjection: boolean;
 }) {
   const { user } = useSession();
   const router = useRouter();
@@ -246,6 +250,14 @@ function OverviewPage({
   // changes the balance without touching this page. Polling is what stops the
   // customer concluding their money went missing.
   usePolling(refresh, { intervalMs: BALANCE_POLL_MS });
+  const { data: cardData, status: cardLoadStatus, refresh: refreshCard } = useAsync(
+    () => api.request<{ card: CustomerCard | null }>("/api/customer/card"), [balanceRefreshKey]
+  );
+  usePolling(refreshCard, { intervalMs: BALANCE_POLL_MS });
+  const cardSummary = cardLoadStatus === "loading" ? "Loading card status…"
+    : cardLoadStatus === "error" ? "Card status unavailable"
+    : !cardData?.card ? "No card issued"
+    : `Card ${cardData.card.status}`;
   const firstName = user?.name?.split(" ")[0] ?? "Driver";
   const totalBalance = metricValue(metrics, "Total Account Balance", "₦0.00");
   const mtdSpend = metricValue(metrics, "MTD Spend", "₦0.00");
@@ -302,8 +314,9 @@ function OverviewPage({
             <button
               type="button"
               onClick={onEditProjection}
+              disabled={!canEditProjection}
               className="block w-full rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-obligon-green"
-              aria-label="Set or change your projected spend for this month"
+              aria-label={canEditProjection ? "Set or change your projected spend for this month" : "Budget management requires an active subscription"}
             >
               <div className="flex items-baseline justify-between gap-3">
                 <p className="text-xs font-extrabold uppercase tracking-[0.8px] text-[#3f463d]">MTD Spend</p>
@@ -336,6 +349,7 @@ function OverviewPage({
                 </span>
               </p>
             </button>
+            {!canEditProjection ? <a href="/customer/subscription" className="mt-3 inline-block text-xs font-bold text-obligon-green underline">Subscribe or renew to manage your fuel budget</a> : null}
           </Card>
         </div>
 
@@ -354,7 +368,7 @@ function OverviewPage({
             <ShieldCheck className="text-obligon-green" size={22} />
             <p className="mt-2 text-xs font-bold uppercase text-[#3f463d]">Security Status</p>
             <p className="mt-1 text-sm font-bold text-obligon-navy flex items-center gap-2">
-              <span className="size-2 rounded-full bg-obligon-green" /> All Cards Active
+              <span className={`size-2 rounded-full ${cardData?.card?.status === "active" ? "bg-obligon-green" : "bg-[#939a91]"}`} /> {cardSummary}
             </p>
           </Card>
         </div>
@@ -384,6 +398,7 @@ function TransactionsPage() {
   // redraws on the same tick as the wallet and the overview.
   usePolling(refresh, { intervalMs: BALANCE_POLL_MS });
 
+  React.useEffect(() => {if (!history) return;const id=new URLSearchParams(window.location.search).get("id");if(id)setSelectedTxn(history.find(row => row.id===id)??null);},[history]);
   const rows = history ?? [];
   // Filter options come from dispenses only. A top-up has no vehicle and no fuel
   // type, so including them would offer a filter that can only ever return
@@ -786,6 +801,8 @@ function CardPage({
 
   const { status: plansStatus, data: plans } = useAsync(() => api.getCardPlans());
   const [planModalOpen, setPlanModalOpen] = React.useState(false);
+  const [preferredPlan,setPreferredPlan]=React.useState<string>();
+  React.useEffect(()=>{const plan=new URLSearchParams(window.location.search).get("chosenPlan")??sessionStorage.getItem("obligon_selected_plan");if(plan){setPreferredPlan(plan);setPlanModalOpen(true);sessionStorage.removeItem("obligon_selected_plan");}},[]);
   const [busyPlan, setBusyPlan] = React.useState<string | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = React.useState(false);
   const [submittingDetails, setSubmittingDetails] = React.useState(false);
@@ -1004,6 +1021,7 @@ function CardPage({
     address: string;
     city: string;
     state: string;
+    dateOfBirth:string;postalCode:string;phone:string;
   }) {
     if (!checkout?.reference && !cardRequest?.paymentReference) return;
     setSubmittingDetails(true);
@@ -1035,7 +1053,7 @@ function CardPage({
   const freezeBody = frozen ? "Resume transactions on this card" : "Temporarily lock fuel card";
 
   const cardActions: Array<{ title: string; body: string; Icon: ComponentType<LucideProps>; tone: CustomerTone; modal: CustomerModalType }> = [
-    { title: "Replace Physical Card", body: "Order a replacement card shipped to your address", Icon: CreditCard, tone: "green", modal: "replaceCard" },
+    { title: "Replace Virtual Card", body: "Replace an empty virtual card after issuer termination", Icon: CreditCard, tone: "green", modal: "replaceCard" },
     { title: "Report Lost or Stolen", body: blocked ? "Card already permanently blocked" : "Permanently block card and report fraud", Icon: FileWarning, tone: "red", modal: "lostCard" },
     { title: freezeLabel, body: freezeBody, Icon: Snowflake, tone: "green", modal: "freezeCard" },
     { title: "Update Transaction PIN", body: "Change 4-digit authorization security code", Icon: LockKeyhole, tone: "blue", modal: "changePin" }
@@ -1105,6 +1123,13 @@ function CardPage({
                     Enter verification details
                   </button>
                 </>
+              ) : cardRequest.verificationStatus === "rejected" ? (
+                <>
+                  <p role="alert" className="text-sm font-bold text-red-700">Verification rejected: {cardRequest.rejectionReason ?? "Contact support for the reason"}</p>
+                  <button type="button" className="h-11 rounded-xl border border-obligon-border px-5 font-bold" onClick={async () => {
+                    try { await api.request("/api/customer/card-request/withdraw", { method: "POST", body: JSON.stringify({ reference: cardRequest.paymentReference, reason: "Identity application rejected" }) }); await loadRequest(); toastSuccess("Refund requested. The payment provider will process it."); } catch(e) { toastError(e instanceof Error ? e.message : "Unable to request refund"); }
+                  }}>Withdraw application & request refund</button>
+                </>
               ) : (
                 <>
                   <p className="text-sm font-bold text-obligon-navy">
@@ -1137,7 +1162,7 @@ function CardPage({
 
       {planModalOpen ? (
         <CardPlanModal
-          plans={plans ?? []}
+          plans={[...(plans ?? [])].sort((a,b)=>Number(b.code===preferredPlan)-Number(a.code===preferredPlan))}
           loading={plansStatus === "loading"}
           busyPlan={busyPlan}
           onSelect={(plan) => void handleSelectPlan(plan)}
@@ -1458,25 +1483,73 @@ function buildMapUrl(list: Array<{ lat: number; lng: number }>) {
 
 function StationsPage() {
   const router = useRouter();
-  const { status, data: stations, error, reload } = useAsync(() => api.getStations());
+  const [location, setLocation] = React.useState<{ lat: number; lng: number }>();
+  const [locationMessage, setLocationMessage] = React.useState("Share your location to see the closest stations first.");
+  const [coordinates, setCoordinates] = React.useState({ lat: "", lng: "" });
+  const watchId = React.useRef<number | null>(null);
+  const startLocation = React.useCallback(() => {
+    if (!navigator.geolocation) { setLocationMessage("Location is unavailable. Enter coordinates below."); return; }
+    if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current);
+    setLocationMessage("Finding your location…");
+    watchId.current = navigator.geolocation.watchPosition(({ coords }) => {
+      setLocation({ lat: coords.latitude, lng: coords.longitude });
+      setLocationMessage("Closest stations first · distances are in a straight line.");
+    }, () => { setLocation(undefined); setLocationMessage("Location could not be obtained. Enable location access or enter coordinates below."); },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+  }, []);
+  React.useEffect(() => {
+    let active = true;
+    navigator.permissions?.query({ name: "geolocation" }).then(result => {
+      if (active && result.state === "granted") startLocation();
+    }).catch(() => {});
+    return () => { active = false; if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current); };
+  }, [startLocation]);
+  const { status, data: stations, error, reload, refresh } = useAsync(() => api.getStations(location), [location?.lat, location?.lng]);
+  const refreshRef = React.useRef(refresh);
+  refreshRef.current = refresh;
+  React.useEffect(() => {
+    const update = () => { if (document.visibilityState === "visible") refreshRef.current(); };
+    const timer = window.setInterval(update, 30000);
+    window.addEventListener("focus", update);
+    document.addEventListener("visibilitychange", update);
+    return () => { clearInterval(timer); window.removeEventListener("focus", update); document.removeEventListener("visibilitychange", update); };
+  }, []);
   const [query, setQuery] = React.useState("");
   const [fuelsOpen, setFuelsOpen] = React.useState(false);
   const [selectedFuels, setSelectedFuels] = React.useState<string[]>([]);
   const [detail, setDetail] = React.useState<{ name: string; address: string; distance: string; hours?: string; diesel?: string; unleaded?: string; fuels?: string[] } | null>(null);
   const [directionTarget, setDirectionTarget] = React.useState<{ name: string; address: string; distance: string } | null>(null);
 
-  const allFuels = Array.from(new Set(stations?.flatMap((station) => station.fuels) ?? []));
+  const allFuels = Array.from(new Set(stations?.flatMap((station) => station.fuels.map(stationFuelName)) ?? []));
 
   const visible = stations?.filter((station) => {
     const matchesQuery =
       query.trim() === "" ||
       station.name.toLowerCase().includes(query.toLowerCase()) ||
       station.address.toLowerCase().includes(query.toLowerCase());
-    const matchesFuel = selectedFuels.length === 0 || selectedFuels.some((fuel) => station.fuels.includes(fuel));
+    const matchesFuel = selectedFuels.length === 0 || station.fuels.some((fuel) => selectedFuels.includes(stationFuelName(fuel)));
     return matchesQuery && matchesFuel;
   }) ?? [];
 
   return (
+    <>
+      <div className="mb-4 rounded-xl border border-[#dbe2d8] bg-white p-4">
+        <p role="status" className="text-sm text-obligon-text">{locationMessage}</p>
+        <button type="button" onClick={startLocation} className="mt-2 font-bold text-obligon-green">Use my location</button>
+        <details className="mt-2 text-sm">
+          <summary>Set location manually</summary>
+          <form className="mt-2 flex flex-wrap gap-2" onSubmit={e => {
+            e.preventDefault();
+            if (watchId.current !== null) { navigator.geolocation.clearWatch(watchId.current); watchId.current = null; }
+            setLocation({ lat: Number(coordinates.lat), lng: Number(coordinates.lng) });
+            setLocationMessage("Closest stations first · using your selected location.");
+          }}>
+            <label>Latitude<input required type="number" step="any" min="-90" max="90" value={coordinates.lat} onChange={e => setCoordinates({ ...coordinates, lat: e.target.value })} className="mx-2 w-36 rounded border p-2" /></label>
+            <label>Longitude<input required type="number" step="any" min="-180" max="180" value={coordinates.lng} onChange={e => setCoordinates({ ...coordinates, lng: e.target.value })} className="mx-2 w-36 rounded border p-2" /></label>
+            <button type="submit" className="font-bold text-obligon-green">Find closest stations</button>
+          </form>
+        </details>
+      </div>
     <AsyncBoundary
       status={status}
       error={error?.message ?? null}
@@ -1531,18 +1604,18 @@ function StationsPage() {
         <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
           <Card className="relative min-h-[500px] overflow-hidden bg-[#dfe8ed]">
             <StationMap
-              points={(stations ?? []).map((st) => ({ id: st.name, name: st.name, lat: st.lat, lng: st.lng }))}
-              onSelect={(point) => router.push(`/customer/stations?station=${encodeURIComponent(point.name)}`)}
+              points={visible.flatMap(st => st.lat !== null && st.lng !== null ? [{ id: st.id ?? st.name, name: st.name, lat: st.lat, lng: st.lng }] : [])}
+              onSelect={(point) => setDetail(visible.find(st => (st.id ?? st.name) === point.id) ?? null)}
               height="h-[500px]"
             />
           </Card>
           <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
             {visible.map((st) => (
-              <Card key={st.name} className="p-5">
+              <Card key={st.id ?? st.name} className="p-5">
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="font-extrabold text-obligon-navy">{st.name}</h3>
-                    <p className="text-xs font-bold text-obligon-green">{st.distance} away • {st.hours}</p>
+                    <p className="text-xs font-bold text-obligon-green">{st.distanceKm != null ? `${st.distance} away` : "Distance unavailable"} • {st.hours}</p>
                     <p className="text-xs text-obligon-text mt-1">{st.address}</p>
                   </div>
                   <MiniIcon tone="green"><MapPinned size={18} /></MiniIcon>
@@ -1568,6 +1641,8 @@ function StationsPage() {
           </div>
         </div>
 
+        {fuelsOpen && <ModalFrame onClose={() => setFuelsOpen(false)}><div className="p-6"><h2 className="text-2xl font-bold">Filter by fuel</h2>{allFuels.map(fuel => <label key={fuel} className="flex min-h-12 items-center gap-3"><input type="checkbox" checked={selectedFuels.includes(fuel)} onChange={e => setSelectedFuels(prev => e.target.checked ? [...prev, fuel] : prev.filter(f => f !== fuel))} />{fuel}</label>)}<button type="button" className="mt-4 min-h-12 rounded-lg bg-obligon-green px-6 font-bold text-white" onClick={() => setFuelsOpen(false)}>Show stations</button></div></ModalFrame>}
+        {!visible.length && <p role="status">No stations match your search. Clear the filters to see all available stations.</p>}
         {/* Station Detail Modal */}
         {detail ? (
           <ModalFrame onClose={() => setDetail(null)}>
@@ -1620,10 +1695,10 @@ function StationsPage() {
               <div className="mt-4 rounded-xl bg-[#f7fbf8] p-4 space-y-2 text-sm font-bold text-obligon-navy">
                 <p>📍 Destination: {directionTarget.address}</p>
                 <p>📏 Distance: {directionTarget.distance}</p>
-                <p>⏱️ Estimated arrival: ~8 mins</p>
+                <p>Open the route below for current travel times.</p>
               </div>
               <a
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(directionTarget.address)}`}
+                href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(directionTarget.address)}${location ? `&origin=${location.lat},${location.lng}` : ""}`}
                 target="_blank"
                 rel="noreferrer"
                 className="mt-6 flex h-12 w-full items-center justify-center rounded-lg bg-obligon-green font-extrabold text-white shadow-green"
@@ -1635,94 +1710,131 @@ function StationsPage() {
         ) : null}
       </Canvas>
     </AsyncBoundary>
+    </>
   );
 }
 
 function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void }) {
+  const {data: services}=useAsync(()=>api.request<{services:Array<{label:string;available:boolean}>;message:string}>("/api/customer/services"));
+  const [serviceReference,setServiceReference]=React.useState("");
+  type Ticket = { id: string; reference: string; subject: string; status: string };
+  type Message = { id: string; role: string; body: string; time: string; sender: string };
+  const { error: toastError } = useToast();
   const [chatOpen, setChatOpen] = React.useState(false);
-  const [chatMessages, setChatMessages] = React.useState<Array<{ from: "agent" | "user"; text: string; time: string }>>([
-    { from: "agent", text: "Hello! Welcome to Obligon LTD 24/7 Fleet Support. How can we help you today?", time: "Just now" }
-  ]);
+  const [tickets, setTickets] = React.useState<Ticket[]>([]);
+  const [ticketId, setTicketId] = React.useState("");
+  const [ticketStatus, setTicketStatus] = React.useState("");
+  const [messages, setMessages] = React.useState<Message[]>([]);
   const [inputMsg, setInputMsg] = React.useState("");
+  const [sending, setSending] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
 
-  function handleSendChat(e: React.FormEvent) {
+  const loadTickets = React.useCallback(async () => {
+    const data = await api.request<{ tickets: Ticket[] }>("/api/customer/support/tickets");
+    setTickets(data.tickets);
+    return data.tickets;
+  }, []);
+  React.useEffect(() => {
+    if (!chatOpen) return;
+    setLoading(true);
+    setLoadError(null);
+    void loadTickets().catch((error) => setLoadError(error instanceof Error ? error.message : "Could not load support requests.")).finally(() => setLoading(false));
+  }, [chatOpen, loadTickets]);
+
+  React.useEffect(() => {
+    if (!chatOpen || !ticketId) { setMessages([]); return; }
+    let active = true;
+    async function loadMessages() {
+      try {
+        const data = await api.request<{ messages: Message[]; status: string }>(`/api/customer/support/tickets/${ticketId}/messages`);
+        if (active) { setMessages(data.messages); setTicketStatus(data.status); setLoadError(null); }
+      } catch (error) {
+        if (active) setLoadError(error instanceof Error ? error.message : "Could not load messages.");
+      }
+    }
+    void loadMessages();
+    const timer = setInterval(() => void loadMessages(), 10000);
+    return () => { active = false; clearInterval(timer); };
+  }, [chatOpen, ticketId]);
+
+  async function handleSendChat(e: React.FormEvent) {
     e.preventDefault();
-    if (!inputMsg.trim()) return;
-    const msg = inputMsg;
-    setInputMsg("");
-    setChatMessages((prev) => [...prev, { from: "user", text: msg, time: "Just now" }]);
-    setTimeout(() => {
-      setChatMessages((prev) => [
-        ...prev,
-        { from: "agent", text: "Thank you for reaching out. An operations officer is reviewing your account.", time: "Just now" }
-      ]);
-    }, 1000);
+    const body = inputMsg.trim();
+    if (!body || sending) return;
+    setSending(true);
+    try {
+      let id = ticketId;
+      if (!id) {
+        const result = await api.request<{ ticketId: string; reference: string; status: string }>("/api/customer/support/tickets", {
+          method: "POST", body: JSON.stringify({ subject: body.slice(0, 100), category: "general", message: body })
+        });
+        id = result.ticketId;
+        setTicketId(id);
+        setTicketStatus(result.status);
+      } else {
+        await api.request(`/api/customer/support/tickets/${id}/messages`, { method: "POST", body: JSON.stringify({ body }) });
+      }
+      setInputMsg("");
+      const data = await api.request<{ messages: Message[]; status: string }>(`/api/customer/support/tickets/${id}/messages`);
+      setMessages(data.messages);
+      setTicketStatus(data.status);
+      await loadTickets();
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : "Your message could not be sent. Please try again.");
+    } finally { setSending(false); }
   }
 
   return (
     <Canvas>
+      <section className="mb-6 rounded-xl border bg-white p-6"><h2 className="text-2xl font-bold">Request a plan service</h2><p className="mt-2 text-sm text-obligon-text">{services?.message}</p>{services&&<form className="mt-4 space-y-4" onSubmit={async e=>{e.preventDefault();const form=new FormData(e.currentTarget);setSending(true);try{const result=await api.request<{reference:string}>("/api/customer/services",{method:"POST",body:JSON.stringify(Object.fromEntries(form))});setServiceReference(result.reference);await loadTickets();}catch(e){toastError((e as Error).message);}finally{setSending(false);}}}><label className="block">Service<select name="service" required className="mt-2 block min-h-12 w-full rounded border p-3"><option value="">Choose an included service</option>{services.services.map(service=><option key={service.label} disabled={!service.available} value={service.label}>{service.label}{!service.available?" · Not included / active plan required":""}</option>)}</select></label><label className="block">Location and requirements<textarea name="message" required maxLength={5000} className="mt-2 block min-h-28 w-full rounded border p-3"/></label><button disabled={sending||!services.services.some(service=>service.available)} className="min-h-12 rounded bg-obligon-green px-6 font-bold text-white">{sending?"Submitting…":"Request coordination"}</button></form>}{serviceReference&&<p role="status" className="mt-4">Request {serviceReference} recorded. Use Open Support Messages below to follow the response.</p>}</section>
       <div className="mb-8">
         <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Customer Support Center</h1>
-        <p className="mt-1 text-obligon-text">24/7 technical, billing, and card dispute assistance.</p>
+        <p className="mt-1 text-obligon-text">Billing, card, and transaction assistance.</p>
       </div>
-
       <div className="grid gap-6 sm:grid-cols-2">
         <Card className="p-6">
           <MessageCircle className="text-obligon-green" size={28} />
-          <h2 className="mt-4 font-display text-2xl font-extrabold text-obligon-navy">Live Support Chat</h2>
-          <p className="mt-1 text-sm text-obligon-text">Chat with a dedicated logistics specialist in real time.</p>
-          <button
-            onClick={() => setChatOpen(true)}
-            className="mt-6 h-11 rounded-xl bg-obligon-green px-5 text-sm font-bold text-white shadow-green hover:bg-obligon-green/90 transition"
-            type="button"
-          >
-            Start Live Chat
-          </button>
+          <h2 className="mt-4 font-display text-2xl font-extrabold text-obligon-navy">Support Messages</h2>
+          <p className="mt-1 text-sm text-obligon-text">Send a request and follow real replies from the support team. Messages are saved to your account.</p>
+          <button onClick={() => setChatOpen(true)} className="mt-6 h-11 rounded-xl bg-obligon-green px-5 text-sm font-bold text-white" type="button">Open Support Messages</button>
         </Card>
-
         <Card className="p-6">
           <AlertTriangle className="text-[#c1121f]" size={28} />
           <h2 className="mt-4 font-display text-2xl font-extrabold text-obligon-navy">Transaction Dispute</h2>
           <p className="mt-1 text-sm text-obligon-text">File an official report regarding pump discrepancy or double charges.</p>
-          <button
-            onClick={() => onModal("report")}
-            className="mt-6 h-11 rounded-xl bg-[#20251f] px-5 text-sm font-bold text-white hover:bg-[#323930] transition"
-            type="button"
-          >
-            File Issue Report
-          </button>
+          <button onClick={() => onModal("report")} className="mt-6 h-11 rounded-xl bg-[#20251f] px-5 text-sm font-bold text-white" type="button">File Issue Report</button>
         </Card>
       </div>
-
       {chatOpen ? (
         <ModalFrame onClose={() => setChatOpen(false)}>
-          <div className="flex flex-col h-[520px]">
-            <div className="border-b border-[#eef3ee] p-4 bg-[#f7fbf8] flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="size-3 rounded-full bg-obligon-green animate-pulse" />
-                <span className="text-sm font-extrabold text-obligon-navy">Obligon Support Agent Online</span>
-              </div>
+          <div className="flex h-[560px] flex-col">
+            <div className="border-b border-[#eef3ee] bg-[#f7fbf8] p-4">
+              <h2 className="text-sm font-extrabold text-obligon-navy">Support Messages</h2>
+              <label htmlFor="support-ticket" className="sr-only">Support request</label>
+              <select id="support-ticket" value={ticketId} disabled={sending || loading} onChange={(e) => { setTicketId(e.target.value); setMessages([]); setTicketStatus(""); }} className="mt-2 w-full rounded-lg border p-2 text-sm">
+                <option value="">New support request</option>
+                {tickets.map((ticket) => <option key={ticket.id} value={ticket.id}>{ticket.reference} — {ticket.subject}</option>)}
+              </select>
+              <p className="mt-2 text-xs text-obligon-text">{ticketId ? `Request ${ticketStatus || "loading"}. Replies appear here when the team responds.` : "Your first message opens a support request. The team will reply here."}</p>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {chatMessages.map((msg, i) => (
-                <div key={i} className={`flex ${msg.from === "user" ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[80%] rounded-2xl p-3 text-sm ${msg.from === "user" ? "bg-obligon-green text-white" : "bg-[#f0f4f0] text-obligon-navy"}`}>
-                    <p>{msg.text}</p>
-                    <span className="text-[10px] opacity-70 block mt-1 text-right">{msg.time}</span>
+            <div className="flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite">
+              {loadError ? <p role="alert" className="text-sm text-[#c1121f]">{loadError}</p> : null}
+              {loading ? <p className="text-sm text-obligon-text">Loading requests…</p> : null}
+              {messages.map((message) => (
+                <div key={message.id} className={`flex ${message.role === "customer" ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[80%] rounded-2xl p-3 text-sm ${message.role === "customer" ? "bg-obligon-green text-white" : "bg-[#f0f4f0] text-obligon-navy"}`}>
+                    <p className="mb-1 text-xs font-bold">{message.role === "customer" ? "You" : message.sender}</p>
+                    <p className="whitespace-pre-wrap">{message.body}</p>
+                    <span className="mt-1 block text-right text-[10px] opacity-70">{message.time}</span>
                   </div>
                 </div>
               ))}
             </div>
-            <form onSubmit={handleSendChat} className="border-t border-[#eef3ee] p-3 flex gap-2 bg-white">
-              <input
-                value={inputMsg}
-                onChange={(e) => setInputMsg(e.target.value)}
-                placeholder="Type your message..."
-                className="flex-1 h-11 rounded-xl border border-[#cfd8cc] px-4 text-sm outline-none focus:border-obligon-green"
-              />
-              <button type="submit" className="h-11 px-4 rounded-xl bg-obligon-green text-white font-bold">
-                <Send size={16} />
-              </button>
+            <form onSubmit={handleSendChat} className="flex gap-2 border-t border-[#eef3ee] bg-white p-3">
+              <label htmlFor="support-message" className="sr-only">Message</label>
+              <input id="support-message" value={inputMsg} disabled={sending} maxLength={4000} onChange={(e) => setInputMsg(e.target.value)} placeholder="Type your message…" className="h-11 min-w-0 flex-1 rounded-xl border border-[#cfd8cc] px-4 text-sm" />
+              <button aria-label="Send message" disabled={sending || !inputMsg.trim()} type="submit" className="h-11 rounded-xl bg-obligon-green px-4 font-bold text-white disabled:opacity-50">{sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}</button>
             </form>
           </div>
         </ModalFrame>
@@ -1779,7 +1891,6 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
     };
   }, []);
 
-  const biometrics = Boolean(profile?.user.biometricsEnabled);
   const twoFactor = Boolean(profile?.user.twoFactorEnabled);
 
   async function savePrefs(next: NotificationPrefs, message = "Notification preferences updated.") {
@@ -1844,16 +1955,6 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
     }
   }
 
-  async function handleBiometrics(next: boolean) {
-    try {
-      await mutationsApi.updateProfile({ biometricsEnabled: next });
-      updateProfile({ biometricsEnabled: next });
-      void reload();
-      toastSuccess(next ? "Biometric sign-in enabled." : "Biometric sign-in disabled.");
-    } catch (err) {
-      toastError(err instanceof Error ? err.message : "Could not update biometric sign-in.");
-    }
-  }
 
   return (
     <AsyncBoundary
@@ -1880,10 +1981,10 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
                 />
               </label>
               <label className="block">
-                <span className="text-xs font-extrabold uppercase text-obligon-text">Email Address</span>
+                <span className="text-xs font-extrabold uppercase text-obligon-text">Email Address</span><p id="profile-email-help" className="text-xs text-obligon-text">Your sign-in email. Contact support to change it securely.</p>
                 <input
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  readOnly aria-describedby="profile-email-help"
                   type="email"
                   className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green"
                   required
@@ -2054,16 +2155,8 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
               </button>
 
               <div className="rounded-xl border border-obligon-border p-3.5">
-                <Toggle
-                  label="Biometric Sign-In"
-                  description={
-                    pushSupported()
-                      ? "Use FaceID or fingerprint to approve transactions on this device."
-                      : "Use FaceID or fingerprint to approve transactions on this device."
-                  }
-                  checked={biometrics}
-                  onCheckedChange={(next) => void handleBiometrics(next)}
-                />
+                <p className="text-sm font-bold text-obligon-navy">Biometric Sign-In — Coming soon</p>
+                <p className="mt-1 text-xs text-obligon-text">Biometric transaction approval is not yet available. Use your password, card PIN, and two-factor authentication.</p>
               </div>
             </div>
 
@@ -2157,6 +2250,12 @@ function NotificationsPage() {
 
 export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
   const [modal, setModal] = React.useState<CustomerModalType>(null);
+  React.useEffect(() => {if (pageKey === "reportProblem") setModal("report");},[pageKey]);
+  const { data: subscription, refresh: refreshSubscription } = useAsync(
+    () => api.request<CustomerEntitlementState>("/api/customer/subscription")
+  );
+  usePolling(refreshSubscription, { intervalMs: BALANCE_POLL_MS });
+  const canEditProjection = customerFeatureAvailable(subscription, "Fuel Budget Management");
   const [cardStatus, setCardStatus] = React.useState<string | null>(null);
   const [cardRefreshKey, setCardRefreshKey] = React.useState(0);
   const [balanceRefreshKey, setBalanceRefreshKey] = React.useState(0);
@@ -2174,13 +2273,13 @@ export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
   const [promptedForMonth, setPromptedForMonth] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (!projection?.needsProjection) return;
+    if (!canEditProjection || !projection?.needsProjection) return;
     // Never displace something the customer opened deliberately.
     if (modal) return;
     if (promptedForMonth === projection.month) return;
     setPromptedForMonth(projection.month);
     setModal("spendProjection");
-  }, [projection, modal, promptedForMonth]);
+  }, [projection, modal, promptedForMonth, canEditProjection]);
 
   const handleTopUpSuccess = () => {
     setBalanceRefreshKey((key) => key + 1);
@@ -2199,11 +2298,11 @@ export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
   };
 
   const openSpendProjection = React.useCallback(() => {
-    setModal("spendProjection");
-  }, []);
+    if (canEditProjection) setModal("spendProjection");
+  }, [canEditProjection]);
 
   const pages: Record<CustomerPageKey, React.ReactNode> = {
-    overview: <OverviewPage balanceRefreshKey={balanceRefreshKey} onEditProjection={openSpendProjection} />,
+    overview: <OverviewPage balanceRefreshKey={balanceRefreshKey} onEditProjection={openSpendProjection} canEditProjection={canEditProjection} />,
     transactions: <TransactionsPage />,
     card: <CardPage onModal={setModal} refreshKey={cardRefreshKey} onCardChange={(card) => setCardStatus(card?.status ?? null)} />,
     wallet: <WalletPage onModal={setModal} balanceRefreshKey={balanceRefreshKey} />,
@@ -2219,7 +2318,7 @@ export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
     <>
       {pages[pageKey]}
       <CustomerModals
-        modal={modal}
+        modal={modal === "spendProjection" && !canEditProjection ? null : modal}
         onClose={() => setModal(null)}
         onTwoFactorChange={() => setModal(null)}
         cardFrozen={cardStatus === "frozen"}

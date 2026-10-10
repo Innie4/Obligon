@@ -7,13 +7,10 @@ import { useToast } from "@/components/shared/Toast";
 import { api, authApi, mutationsApi, publicApi, type CustomerSpendProjection, type PaymentConfig, type PaymentFeeSchedule } from "@/lib/services";
 
 /** Resolve the signed-in customer's card id against the live API (null in mock mode). */
-async function resolveCardId(): Promise<string | null> {
-  try {
-    const data = await api.request<{ card: { id?: string } | null }>("/api/customer/card");
-    return data?.card?.id ?? null;
-  } catch {
-    return null;
-  }
+async function resolveCardId(): Promise<string> {
+ const data=await api.request<{card:{id?:string}|null}>('/api/customer/card');
+ if(!data.card?.id)throw new Error('No issued card is available. Complete card verification first.');
+ return data.card.id;
 }
 
 export type CustomerModalType =
@@ -884,7 +881,8 @@ function TopUpModal({
     setSubmitting(true);
     try {
       const result = await mutationsApi.topUpWallet(numericAmount, method);
-      const ref = result?.reference ?? `TOPUP-${Math.floor(100000 + Math.random() * 899999)}`;
+      if(!result?.reference)throw new Error('The server did not return a payment reference. Check your wallet history before retrying.');
+      const ref=result.reference;
       const provider = result?.provider ?? defaultProvider ?? "flutterwave";
 
       if (result?.simulated) {
@@ -1128,8 +1126,11 @@ function ReportProblemModal({ onClose }: { onClose: () => void }) {
     }
     setSubmitting(true);
     try {
-      const result = await mutationsApi.createSupportTicket({ subject: issue, category: "complaint", message: details });
-      const ticketId = result?.reference ?? `TKT-${Math.floor(10000 + Math.random() * 89999)}`;
+      const form=new FormData();form.set('subject',issue);form.set('category','complaint');form.set('message',details);
+      const file=fileInput.current?.files?.[0];if(file)form.append('attachments',file);
+      const result=await api.request<{reference:string}>('/api/customer/support/tickets',{method:'POST',body:form});
+      if(!result.reference)throw new Error('The server did not return a ticket reference.');
+      const ticketId=result.reference;
       setTicketResult({ ticketId, issue });
       setSubmitting(false);
       toastSuccess(`Ticket ${ticketId} created. Support team notified.`);
@@ -1152,7 +1153,7 @@ function ReportProblemModal({ onClose }: { onClose: () => void }) {
             <strong className="text-obligon-navy font-mono font-extrabold text-base">{ticketResult.ticketId}</strong>.
           </p>
           <p className="mt-2 text-xs text-obligon-text">
-            Our 24/7 fleet support dispatch will review your case and update you via email and notification center.
+            Our support team will review your case and update you via email and notification center.
           </p>
           <button
             type="button"
@@ -1165,10 +1166,10 @@ function ReportProblemModal({ onClose }: { onClose: () => void }) {
       ) : (
         <form onSubmit={submit} className="p-6 sm:p-8">
           <span className="rounded-full bg-[#e8fbd7] px-3 py-1 text-[10px] font-extrabold uppercase text-obligon-green">
-            24/7 Dispute &amp; Support
+            Disputes &amp; Support
           </span>
           <h2 className="mt-3 font-display text-3xl font-extrabold text-obligon-navy">Report an Issue</h2>
-          <p className="mt-1 text-sm text-obligon-text">Submit transaction disputes or station issues for immediate review.</p>
+          <p className="mt-1 text-sm text-obligon-text">Submit transaction disputes or station issues for review.</p>
 
           <div className="mt-6">
             <p className="text-xs font-extrabold uppercase text-obligon-text mb-2">Category of Issue</p>
@@ -1215,7 +1216,7 @@ function ReportProblemModal({ onClose }: { onClose: () => void }) {
           <input
             ref={fileInput}
             type="file"
-            accept="image/*,application/pdf"
+            accept="image/png,image/jpeg,application/pdf"
             className="sr-only"
             onChange={(e) => setAttachmentName(e.target.files?.[0]?.name ?? "")}
           />
@@ -1231,7 +1232,7 @@ function ReportProblemModal({ onClose }: { onClose: () => void }) {
             {attachmentName ? (
               <button
                 type="button"
-                onClick={() => setAttachmentName("")}
+                onClick={() => {setAttachmentName("");if(fileInput.current)fileInput.current.value="";}}
                 className="mt-1 text-[11px] font-bold text-[#c1121f] hover:underline"
               >
                 Remove attachment
@@ -1266,29 +1267,25 @@ function ReportProblemModal({ onClose }: { onClose: () => void }) {
 
 function ReplaceCardModal({ onClose, blocked }: { onClose: () => void; blocked: boolean }) {
   const [step, setStep] = React.useState<"form" | "success">("form");
-  const [reason, setReason] = React.useState("Damaged Chip");
-  const [address, setAddress] = React.useState("Obligon LTD Enterprise Fleet, 14 Marina Road, Lagos");
-  const [phone, setPhone] = React.useState("+234 801 234 5678");
+  const [reason, setReason] = React.useState("Card compromised");
   const [reference, setReference] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
   const { success: toastSuccess, error: toastError } = useToast();
 
-  const reasons = ["Damaged Chip / Wear", "Card Expiring Soon", "Stolen / Lost", "Fleet Upgrade to NFC"];
+  const reasons = ["Card compromised", "Card expiring soon", "Lost access", "Other"];
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!address.trim() || !phone.trim()) return;
     setSubmitting(true);
     try {
       const cardId = await resolveCardId();
-      if (cardId) {
-        await mutationsApi.cardAction(cardId, "replace", { reason });
-      }
-      const ref = `RC-${Math.floor(100000 + Math.random() * 899999)}`;
+      const result=await mutationsApi.cardAction(cardId,'replace',{reason});
+      if(typeof result.cardId!=='string')throw new Error('The issuer has not confirmed a replacement. Refresh your card status before retrying.');
+      const ref=result.cardId;
       setReference(ref);
       setSubmitting(false);
       setStep("success");
-      toastSuccess(`Replacement card order ${ref} placed.`);
+      toastSuccess("Virtual replacement card issued.");
     } catch (err) {
       setSubmitting(false);
       toastError(err instanceof Error ? err.message : "Could not place the replacement order. Please try again.");
@@ -1302,9 +1299,9 @@ function ReplaceCardModal({ onClose, blocked }: { onClose: () => void; blocked: 
           <span className="grid size-12 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
             <CreditCard size={22} />
           </span>
-          <h2 className="mt-4 font-display text-3xl font-extrabold text-obligon-navy">Order Replacement Card</h2>
+          <h2 className="mt-4 font-display text-3xl font-extrabold text-obligon-navy">Replace Virtual Card</h2>
           <p className="mt-2 text-sm text-obligon-text">
-            {blocked ? "Your previous card is blocked. " : ""}Request a new Fuelvista card shipped directly to your fleet address.
+            {blocked ? "Your previous card is blocked. " : ""}Replace your virtual fuel card after withdrawing its balance. Physical cards and delivery are coming soon.
           </p>
 
           <p className="mt-6 text-xs font-extrabold uppercase text-obligon-text mb-2">Reason for Replacement</p>
@@ -1325,27 +1322,6 @@ function ReplaceCardModal({ onClose, blocked }: { onClose: () => void; blocked: 
             ))}
           </div>
 
-          <label className="mt-5 block">
-            <span className="text-xs font-extrabold uppercase text-obligon-text">Delivery Address</span>
-            <textarea
-              value={address}
-              onChange={(event) => setAddress(event.target.value)}
-              rows={2}
-              className="mt-1.5 w-full rounded-xl border border-[#cfd8cc] p-3 text-sm font-medium outline-none focus:border-obligon-green"
-              required
-            />
-          </label>
-
-          <label className="mt-3 block">
-            <span className="text-xs font-extrabold uppercase text-obligon-text">Recipient Contact Phone</span>
-            <input
-              value={phone}
-              onChange={(event) => setPhone(event.target.value)}
-              className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 text-sm font-medium outline-none focus:border-obligon-green"
-              required
-            />
-          </label>
-
           <div className="mt-6 flex gap-3">
             <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold text-obligon-navy">
               Cancel
@@ -1355,7 +1331,7 @@ function ReplaceCardModal({ onClose, blocked }: { onClose: () => void; blocked: 
               type="submit"
               className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white shadow-green flex items-center justify-center gap-2"
             >
-              {submitting ? <Loader2 size={18} className="animate-spin" /> : "Confirm Order"}
+              {submitting ? <Loader2 size={18} className="animate-spin" /> : "Replace card"}
             </button>
           </div>
         </form>
@@ -1364,18 +1340,10 @@ function ReplaceCardModal({ onClose, blocked }: { onClose: () => void; blocked: 
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
             <Check size={32} />
           </span>
-          <h2 className="mt-5 font-display text-2xl font-extrabold text-obligon-navy">Replacement Dispatched</h2>
+          <h2 className="mt-5 font-display text-2xl font-extrabold text-obligon-navy">Virtual Card Replaced</h2>
           <p className="mx-auto mt-2 max-w-sm text-sm text-obligon-text">
-            Your replacement Fuelvista card will arrive in 2-3 business days. Tracking Order: <span className="font-mono font-extrabold text-obligon-navy">{reference}</span>.
+            Your virtual replacement is recorded. Refresh your Card page to view it. Card ID: <span className="font-mono font-extrabold text-obligon-navy">{reference}</span>.
           </p>
-          <div className="mx-auto mt-6 max-w-sm space-y-2 text-left">
-            <div className="flex items-center gap-3 rounded-lg bg-[#f7fbf8] p-3 text-xs font-bold text-obligon-navy">
-              <span className="text-obligon-green font-black">âœ“</span> Card embossed and encoded
-            </div>
-            <div className="flex items-center gap-3 rounded-lg bg-[#f7fbf8] p-3 text-xs font-bold text-obligon-navy">
-              <span className="text-obligon-green font-black">âœ“</span> Courier handoff in progress
-            </div>
-          </div>
           <button type="button" onClick={onClose} className="mt-7 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white shadow-green">
             Done
           </button>
@@ -1405,10 +1373,8 @@ function LostCardModal({
     setBlocking(true);
     try {
       const cardId = await resolveCardId();
-      if (cardId) {
-        await mutationsApi.cardAction(cardId, "report-lost", { reason });
-      }
-      const ref = `BL-${Math.floor(100000 + Math.random() * 899999)}`;
+      await mutationsApi.cardAction(cardId,'report-lost',{reason});
+      const ref=cardId;
       setReference(ref);
       onBlockedChange(true);
       setStep("success");
@@ -1451,7 +1417,7 @@ function LostCardModal({
           </div>
 
           <div className="mt-6 rounded-xl bg-[#fff5f5] border border-[#fecaca] p-4 text-xs text-[#93000a] leading-5">
-            <strong>Warning:</strong> Once blocked, this physical card cannot be unblocked. You will need to order a replacement card.
+            <strong>Warning:</strong> Once blocked, this card remains blocked until reviewed. You can request a virtual replacement after withdrawing its balance.
           </div>
 
           <div className="mt-6 flex gap-3">
@@ -1475,7 +1441,7 @@ function LostCardModal({
           </span>
           <h2 className="mt-5 font-display text-2xl font-extrabold text-[#c1121f]">Card Blocked</h2>
           <p className="mx-auto mt-2 max-w-sm text-sm text-obligon-text">
-            The card has been blocked permanently. Fraud reference: <span className="font-mono font-extrabold text-obligon-navy">{reference}</span>.
+            The card has been blocked permanently. Card ID: <span className="font-mono font-extrabold text-obligon-navy">{reference}</span>.
           </p>
           <button type="button" onClick={onClose} className="mt-7 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white shadow-green">
             Done

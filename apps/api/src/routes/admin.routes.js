@@ -1,3 +1,6 @@
+import intakeAdminRouter from "./intake-admin.routes.js";
+import supportAdminRouter from "./support-admin.routes.js";
+import discountRouter from "./discount.routes.js";
 import { Router } from "express";
 import { q, one, tx } from "../db.js";
 import { asyncHandler, badRequest, notFound, forbidden } from "../lib/errors.js";
@@ -8,12 +11,86 @@ import { hashPassword, randomToken } from "../lib/security.js";
 import { reportPdf } from "../lib/pdf.js";
 import { emitToOrg } from "../lib/sse.js";
 
+import { approveCardRequest, providerCardDetails, decryptIdentity, finishReplacement } from "../lib/card-approval.js";
+import { getSudoCard, getSudoCustomer } from "../lib/sudo.js";
+
 const router = Router();
+for(const name of ['id','orgId','memberId'])router.param(name,(req,_res,next,value)=>{
+ if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value))return next(badRequest('Invalid record ID'));
+ next();
+});
 
 router.use(requireAuth, (req, _res, next) => {
   if (req.user.role !== "admin") return next(forbidden("Admin access required"));
   next();
 });
+
+router.use("/discount-requests", discountRouter);
+router.use(supportAdminRouter);
+router.use(intakeAdminRouter);
+
+// Card identity review is explicitly restricted by the admin middleware above.
+router.get("/card-requests", asyncHandler(async (_req,res) => {
+  const requests = await q(`SELECT r.id,r.user_id,r.full_name,r.bvn_last_four,r.date_of_birth,r.postal_code,r.identity_phone,r.address,r.city,r.state,r.plan_code,r.status,r.payment_status,r.verification_status,r.issuance_state,r.rejection_reason,r.created_at,u.email
+    FROM card_requests r JOIN users u ON u.id=r.user_id
+    WHERE r.verification_status IN ('pending','rejected') OR r.issuance_state IN ('review_required','provider_created') ORDER BY r.created_at ASC LIMIT 200`);
+  res.json({requests});
+}));
+router.get("/card-requests/:id/identity",asyncHandler(async(req,res)=>{
+ const request=await one("SELECT bvn_encrypted FROM card_requests WHERE id=$1",[req.params.id]);
+ if(!request?.bvn_encrypted) throw notFound("Secure identity unavailable; ask the customer to resubmit");
+ await audit({actorUserId:req.user.id,actorRole:"admin",action:"card_request.identity_viewed",entityType:"card_request",entityId:req.params.id});
+ res.set("Cache-Control","no-store").json({bvn:decryptIdentity(request.bvn_encrypted)});
+}));
+router.get("/card-replacements",asyncHandler(async(_req,res)=>{
+ res.json({requests:await q("SELECT c.id,c.holder_name,c.sudo_card_id,c.status,c.replacement_state,u.email FROM cards c JOIN users u ON u.id=c.owner_user_id WHERE c.replacement_state='review_required' OR (c.replacement_state='creating' AND c.updated_at<now()-interval '2 minutes') ORDER BY c.updated_at")});
+}));
+router.post("/card-replacements/:id/reconcile",asyncHandler(async(req,res)=>{
+ const card=await one("SELECT c.*,u.email FROM cards c JOIN users u ON u.id=c.owner_user_id WHERE c.id=$1",[req.params.id]);
+ if(!card||(card.replacement_state!=='review_required' && !(card.replacement_state==='creating' && Date.now()-new Date(card.updated_at).getTime()>120000))) throw badRequest("No replacement is awaiting reconciliation");
+ const oldResponse=await getSudoCard(card.sudo_card_id); const old=oldResponse.data??oldResponse;
+ if(!['canceled','terminated','closed'].includes(String(old.status).toLowerCase())) throw badRequest("Confirm old card termination with the issuer first");
+ const response=await getSudoCard(String(req.body?.providerCardId??""));const provider=response.data??response;
+ const customer=typeof provider.customer==='string'?await getSudoCustomer(provider.customer):provider.customer;
+ if((customer?.emailAddress??customer?.email)!==card.email || (provider.id??provider._id)===card.sudo_card_id) throw badRequest("Issuer card must belong to this customer and differ from the terminated card");
+ const details=providerCardDetails(provider);
+ await q("UPDATE cards SET status='terminated',replacement_card=$2 WHERE id=$1",[card.id,details]);
+ res.json({ok:true,card:await finishReplacement(card.id,details,req.user.id)});
+}));
+router.post("/card-requests/:id/approve",asyncHandler(async(req,res)=>{
+  const result=await approveCardRequest(req.params.id,req.user.id);
+  const request=await one("SELECT user_id FROM card_requests WHERE id=$1",[req.params.id]);
+  await audit({actorUserId:req.user.id,actorRole:"admin",action:"card_request.approved",entityType:"card_request",entityId:req.params.id});
+  await notify({userId:request.user_id,title:"Fuel card approved",body:"Your identity request was approved and your virtual fuel card is ready. Physical delivery is not yet available.",link:"/customer/card",eventKey:`card-approved:${req.params.id}`});
+  res.json({ok:true,...result});
+}));
+router.post("/card-requests/:id/reconcile",asyncHandler(async(req,res)=>{
+  const providerId=String(req.body?.providerCardId??"").trim();
+  if (!providerId) throw badRequest("Provider card ID is required");
+  const result=await getSudoCard(providerId);
+  const provider=result.data??result;
+  const details=providerCardDetails(provider);
+  const request=await one("SELECT user_id FROM card_requests WHERE id=$1",[req.params.id]);
+  if (!request) throw notFound("Card request not found");
+  const user=await one("SELECT email FROM users WHERE id=$1",[request.user_id]);
+  const customer=typeof provider.customer==='string'?await getSudoCustomer(provider.customer):provider.customer;
+  if ((customer?.emailAddress??customer?.email)!==user.email) throw badRequest("The issuer must confirm the card customer email matches this application");
+  details.customerId=customer?.id??customer?._id;
+  res.json({ok:true,...await approveCardRequest(req.params.id,req.user.id,details)});
+}));
+router.post("/card-requests/:id/reject",asyncHandler(async(req,res)=>{
+  const reason=String(req.body?.reason??"").trim();
+  if(reason.length<5 || reason.length>500) throw badRequest("Enter a rejection reason between 5 and 500 characters");
+  const request=await tx(async t=>{
+    const r=await t.one("SELECT * FROM card_requests WHERE id=$1 FOR UPDATE",[req.params.id]);
+    if(!r) throw notFound("Card request not found");
+    if(r.issued_card_id||r.issuance_state!=='not_started'||r.verification_status!=='pending') throw badRequest("Only an unissued pending identity application can be rejected");
+    return t.one("UPDATE card_requests SET status='rejected',verification_status='rejected',rejection_reason=$2,reviewed_by=$3,reviewed_at=now(),updated_at=now() WHERE id=$1 RETURNING *",[r.id,reason,req.user.id]);
+  });
+  await notify({userId:request.user_id,title:"Card verification rejected",body:`${reason}. You can withdraw your paid application to request a refund from the card page.`,link:"/customer/card",eventKey:`card-rejected:${request.id}`});
+  await audit({actorUserId:req.user.id,actorRole:"admin",action:"card_request.rejected",entityType:"card_request",entityId:request.id,metadata:{reason}});
+  res.json({ok:true});
+}));
 
 // ============ COMPANIES ============
 router.get("/companies", asyncHandler(async (req, res) => {
@@ -28,7 +105,7 @@ router.get("/companies", asyncHandler(async (req, res) => {
        (SELECT COUNT(*)::int FROM cards c WHERE c.organization_id = o.id AND c.status = 'active') AS active_cards,
        p.name AS plan_name
      FROM organizations o LEFT JOIN pricing_plans p ON p.code = o.plan_code
-     WHERE ${where} ORDER BY o.created_at DESC LIMIT ${Math.min(Number(limit) || 20, 100)} OFFSET ${Number(offset) || 0}`,
+     WHERE ${where} ORDER BY o.created_at DESC LIMIT ${Math.max(1,Math.min(Math.floor(Number(limit)||20),100))} OFFSET ${Math.max(0,Math.floor(Number(offset)||0))}`,
     params
   );
   const total = await one(`SELECT COUNT(*)::int AS count FROM organizations o WHERE ${where}`, params);
@@ -41,14 +118,14 @@ router.get("/companies", asyncHandler(async (req, res) => {
   );
   res.json({
     metrics: [
-      { label: "TOTAL FLEETS", value: metrics.fleets.toLocaleString(), helper: "+12.4%", tone: "green" },
+      { label: "TOTAL FLEETS", value: metrics.fleets.toLocaleString(), tone: "green" },
       { label: "ACTIVE CARDS", value: metrics.active_cards.toLocaleString(), tone: "green" },
-      { label: "CREDIT UTILIZATION", value: `${metrics.credit_pool ? Math.round((rows.reduce((a, r) => a + Number(r.credit_limit_kobo), 0) / metrics.credit_pool) * 100) : 0}%`, helper: "of global limit", tone: "green" }
+      { label: "REGISTERED CREDIT CEILINGS", value: naira(metrics.credit_pool), tone: "green" }
     ],
     companies: rows.map((r) => ({
       id: r.id,
       avatar: initialsOf(r.name),
-      cells: [`${r.name.split(" ")[0]}\n${r.name.split(" ").slice(1).join(" ") || "—"}\n${r.city ?? "NG"}`, r.fleet_id ?? "—", (r.plan_name ?? r.plan_code ?? "basic").toUpperCase(), r.subscription_status === "active" ? String(r.vehicle_count) : "ONBOARDING", naira(r.credit_limit_kobo)],
+      cells: [`${r.name.split(" ")[0]}\n${r.name.split(" ").slice(1).join(" ") || "—"}\n${r.city ?? "NG"}`, r.fleet_id ?? "—", (r.plan_name ?? r.plan_code ?? "basic").toUpperCase(), r.subscription_status === "active" ? String(r.active_cards) : "ONBOARDING", naira(r.credit_limit_kobo)],
       status: r.subscription_status === "active" ? "Active" : r.subscription_status === "canceled" ? "Frozen" : "Pending",
       tone: r.subscription_status === "active" ? "green" : r.subscription_status === "canceled" ? "red" : "amber",
       orgId: r.id, name: r.name, fleetId: r.fleet_id, plan: r.plan_code, creditLimit: r.credit_limit_kobo / 100,
@@ -60,7 +137,7 @@ router.get("/companies", asyncHandler(async (req, res) => {
 
 router.post("/companies", asyncHandler(async (req, res) => {
   const { companyName, adminEmail, adminName, planCode = "growth", creditLimit, city } = req.valid ?? req.body ?? {};
-  if (!companyName || !adminEmail || !adminName) throw badRequest("Company name, admin name and admin email are required");
+  if(typeof companyName!=="string"||!companyName.trim()||companyName.length>200||typeof adminName!=="string"||!adminName.trim()||adminName.length>200||typeof adminEmail!=="string"||adminEmail.length>254||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(adminEmail))throw badRequest("Enter valid company and owner details");
   const existing = await one("SELECT id FROM users WHERE lower(email) = lower($1)", [adminEmail]);
   if (existing) throw badRequest("A user with that email already exists");
   const tempPassword = randomToken(6);
@@ -113,7 +190,7 @@ router.put("/companies/:orgId", asyncHandler(async (req, res) => {
       planCode ?? null, status ?? null, verificationStatus ?? null]
   );
   if (!org) throw notFound("Organization not found");
-  audit({ actorUserId: req.user.id, actorRole: "admin", action: "company.updated", entityId: org.id, metadata: req.body });
+  audit({ actorUserId: req.user.id, actorRole: "admin", action: "company.updated", entityId: org.id, metadata: {creditLimit,settlementLimit,planCode,status,verificationStatus} });
   res.json({ ok: true });
 }));
 
@@ -234,7 +311,8 @@ router.post("/reconcile", asyncHandler(async (req, res) => {
  */
 router.get("/payout-accounts", asyncHandler(async (req, res) => {
   const rows = await q(
-    `SELECT b.*, o.name AS organization_name, o.verification_status
+    `SELECT b.*, o.name AS organization_name, o.verification_status,
+       EXISTS(SELECT 1 FROM settlement_accounts sa WHERE sa.bank_account_id=b.id AND sa.organization_id=b.organization_id AND sa.subaccount_id IS NOT NULL) AS has_bound_destination
      FROM bank_accounts b JOIN organizations o ON o.id = b.organization_id
      ORDER BY b.verified ASC, b.created_at DESC LIMIT 200`
   );
@@ -249,40 +327,36 @@ router.get("/payout-accounts", asyncHandler(async (req, res) => {
       accountMask: b.account_number_mask,
       accountName: b.account_name,
       isDefault: b.is_default,
-      verified: b.verified,
+      verified: b.verified && b.has_bound_destination,
+      needsRenomination: !b.has_bound_destination,
       // An unverified default account is where the scheduler will stop, so it is
       // worth saying plainly rather than leaving it to be discovered.
-      blockedAutoSettlement: b.is_default && !b.verified,
+      blockedAutoSettlement: b.is_default && (!b.verified || !b.has_bound_destination),
       createdAt: fmtDateTime(b.created_at)
     }))
   });
 }));
 
 router.post("/payout-accounts/:id/verify", asyncHandler(async (req, res) => {
-  const { approved } = req.body ?? {};
-  const account = await one("SELECT * FROM bank_accounts WHERE id = $1", [req.params.id]);
-  if (!account) throw notFound("Bank account not found");
-  // Only a default account can be paid automatically, so verifying a spare one is
-  // meaningless and would read as an approval that has no effect.
-  if (approved && !account.is_default) {
-    throw badRequest("Set this as the account's default before verifying it");
-  }
-  if (!account.recipient_code) {
-    throw badRequest("This account has no provider recipient code, so it cannot receive a transfer");
-  }
-  const updated = await one(
-    "UPDATE bank_accounts SET verified = $2 WHERE id = $1 RETURNING *",
-    [account.id, Boolean(approved)]
-  );
-  await audit({
-    actorUserId: req.user.id,
-    actorRole: req.user.role,
-    action: approved ? "bank_account.verified" : "bank_account.verification_revoked",
-    entityType: "bank_account",
-    entityId: account.id,
-    metadata: { organizationId: account.organization_id, bankName: account.bank_name, last4: account.account_number_mask }
-  });
-  res.json({ ok: true, verified: updated.verified });
+ const {approved}=req.body??{};
+ if(typeof approved!=="boolean")throw badRequest("approved must be a boolean");
+ const initial=await one("SELECT organization_id FROM bank_accounts WHERE id=$1",[req.params.id]);
+ if(!initial)throw notFound("Bank account not found");
+ const updated=await tx(async t=>{
+  await t.one("SELECT id FROM organizations WHERE id=$1 FOR UPDATE",[initial.organization_id]);
+  const bank=await t.one("SELECT * FROM bank_accounts WHERE id=$1 FOR UPDATE",[req.params.id]);
+  if(!bank)throw notFound("Bank account not found");
+  if(approved&&!bank.is_default)throw badRequest("Choose this bank as the default before verifying it");
+  if(approved&&!bank.recipient_code&&!bank.beneficiary_id)throw badRequest("This bank has no provider destination");
+  const account=await t.one("SELECT * FROM settlement_accounts WHERE bank_account_id=$1 AND organization_id=$2 FOR UPDATE",[bank.id,bank.organization_id]);
+  if(approved&&!account?.subaccount_id)throw badRequest("Legacy unbound destination requires re-nomination before verification");
+  const result=await t.one("UPDATE bank_accounts SET verified=$2 WHERE id=$1 RETURNING *",[bank.id,approved]);
+  if(approved)await t.query("UPDATE settlement_accounts SET status='suspended',updated_at=now() WHERE organization_id=$1 AND status='active' AND id<>$2",[bank.organization_id,account.id]);
+  await t.query("UPDATE settlement_accounts SET status=$2,updated_at=now() WHERE id=$1",[account.id,approved?'active':'suspended']);
+  return result;
+ });
+ await audit({actorUserId:req.user.id,actorRole:req.user.role,action:approved?"bank_account.verified":"bank_account.verification_revoked",entityType:"bank_account",entityId:updated.id,metadata:{organizationId:updated.organization_id,bankName:updated.bank_name,last4:updated.account_number_mask}});
+ res.json({ok:true,verified:updated.verified});
 }));
 
 router.get("/settlement-accounts", asyncHandler(async (req, res) => {
@@ -308,46 +382,8 @@ router.get("/settlement-accounts", asyncHandler(async (req, res) => {
   });
 }));
 
-router.post("/settlement-accounts", asyncHandler(async (req, res) => {
-  const { organizationId, businessName, email, phone, splitRatioBp, splitPercent, currency } = req.valid ?? req.body ?? {};
-  const org = await one("SELECT id, name, contact_email, contact_phone FROM organizations WHERE id = $1", [organizationId]);
-  if (!org) throw notFound("Organization not found");
-
-  const ratioBp = splitRatioBp != null ? Math.round(Number(splitRatioBp)) : Math.round(Number(splitPercent ?? 0) * 100);
-  if (!Number.isFinite(ratioBp) || ratioBp < 0 || ratioBp > 10000) {
-    throw badRequest("The split ratio must be between 0 and 10000 basis points (0-100%)");
-  }
-
-  const existing = await one("SELECT * FROM settlement_accounts WHERE organization_id = $1", [organizationId]);
-  if (existing?.status === "active") throw badRequest("This organization already has an active settlement account");
-
-  const { createSettlementSubaccount, activeProvider } = await import("../lib/payments.js");
-  const sub = await createSettlementSubaccount(activeProvider(), {
-    businessName: businessName || org.name,
-    email: email || org.contact_email,
-    phone: phone || org.contact_phone,
-    countryCode: (currency || "NGN").slice(0, 2),
-    splitRatioBp: ratioBp
-  });
-  if (!sub.id) throw badRequest("The provider did not return a subaccount id");
-
-  const saved = await one(
-    `INSERT INTO settlement_accounts (organization_id, provider, subaccount_id, account_number, bank_name, currency, split_ratio_bp, status)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,'active')
-     ON CONFLICT (organization_id) DO UPDATE SET provider = $2, subaccount_id = $3, account_number = $4,
-       bank_name = $5, currency = $6, split_ratio_bp = $7, status = 'active', updated_at = now()
-     RETURNING *`,
-    [organizationId, activeProvider(), sub.id, sub.accountNumber, sub.bankName, currency || "NGN", ratioBp]
-  );
-  await audit({
-    actorUserId: req.user.id,
-    actorRole: req.user.role,
-    action: "settlement.subaccount_linked",
-    entityType: "organization",
-    entityId: organizationId,
-    metadata: { subaccountId: sub.id, splitRatioBp: ratioBp }
-  });
-  res.json({ ok: true, account: saved, splitPercent: ratioBp / 100 });
+router.post("/settlement-accounts", asyncHandler(async (_req, _res) => {
+ throw badRequest("Nominate a bank from the partner dashboard and verify its bound settlement destination under payout accounts");
 }));
 
 router.post("/settlement-accounts/:id/splits", asyncHandler(async (req, res) => {
@@ -402,10 +438,10 @@ router.get("/applications", asyncHandler(async (req, res) => {
   const params = [];
   let where = "TRUE";
   if (search) { params.push(`%${search}%`); where += ` AND (business_name ILIKE $${params.length} OR contact_email ILIKE $${params.length} OR reference ILIKE $${params.length})`; }
-  if (status) { params.push(status); where += ` AND status = $${params.length}`; }
+  if (status) { params.push(status); where += ` AND pa.status = $${params.length}`; }
   const rows = await q(
     `SELECT pa.*, u.full_name AS contact_name FROM partner_applications pa LEFT JOIN users u ON u.id = pa.user_id
-     WHERE ${where} ORDER BY pa.created_at DESC LIMIT ${Math.min(Number(limit) || 20, 100)} OFFSET ${Number(offset) || 0}`,
+     WHERE ${where} ORDER BY pa.created_at DESC LIMIT ${Math.max(1,Math.min(Math.floor(Number(limit)||20),100))} OFFSET ${Math.max(0,Math.floor(Number(offset)||0))}`,
     params
   );
   const total = await one(`SELECT COUNT(*)::int AS count FROM partner_applications pa WHERE ${where}`, params);
@@ -455,7 +491,7 @@ router.post("/applications/:id/review", asyncHandler(async (req, res) => {
       );
       await t.query("UPDATE users SET status = 'active' WHERE id = $1", [app.user_id]);
       if (org) {
-        await t.query("UPDATE stations SET status = 'active' WHERE partner_org_id = $1 AND status = 'pending'", [org.id]);
+        // Station publication is a separate review; operator approval never bypasses location checks.
       }
     }
   });
@@ -492,17 +528,17 @@ router.get("/reports", asyncHandler(async (req, res) => {
      WHERE s.status = 'active' GROUP BY s.id ORDER BY revenue DESC LIMIT 20`,
     [String(days)]
   );
-  const maxRevenue = Math.max(...stations.map((s) => Number(s.revenue)), 1);
+  const maxRevenue = Math.max(stations.reduce((sum,s)=>sum+Number(s.revenue),0),1);
   res.json({
     metrics: [
-      { label: "TOTAL NETWORK VOLUME", value: `${(totals.litres / 1_000_000).toFixed(1)}M Ltrs`, helper: `last ${days} days`, tone: "green" },
+      { label: "TOTAL NETWORK VOLUME", value: `${Number(totals.litres).toLocaleString()} Ltrs`, helper: `last ${days} days`, tone: "green" },
       { label: "TOTAL REVENUE", value: totals.revenue >= 1e9 ? `₦${(totals.revenue / 1e11).toFixed(1)}B` : naira(totals.revenue), helper: "platform-wide", tone: "green" },
       { label: "ACTIVE PARTNER STATIONS", value: String(stationCount.count), helper: `${totals.tx_count.toLocaleString()} transactions`, tone: "green" }
     ],
     stations: stations.map((s) => ({
       id: s.name,
       avatar: initialsOf(s.name),
-      cells: [`${s.name.split(" ")[0]}\n- ${s.city ?? "NG"}`, `${s.city ?? "NG"},\nNG`, Math.round(s.litres).toLocaleString(), s.tx_count.toLocaleString(), `+${Math.round(Number(s.revenue) / maxRevenue * 100)}%`],
+      cells: [`${s.name.split(" ")[0]}\n- ${s.city ?? "NG"}`, `${s.city ?? "NG"},\nNG`, Math.round(s.litres).toLocaleString(), s.tx_count.toLocaleString(), `${Math.round(Number(s.revenue) / maxRevenue * 100)}%`],
       status: Number(s.revenue) / maxRevenue > 0.75 ? "PRIME" : "ACTIVE", tone: "green"
     })),
     raw: stations.map((s) => ({ station: s.name, city: s.city, litres: Math.round(s.litres), transactions: s.tx_count, revenueLabel: naira(s.revenue) }))
@@ -553,7 +589,7 @@ router.get("/disputes", asyncHandler(async (req, res) => {
     `SELECT d.*, t.amount_kobo AS tx_amount, so.name AS station_name, so.id AS station_org_id, t.reference AS tx_ref
      FROM disputes d LEFT JOIN transactions t ON t.id = d.transaction_id
      LEFT JOIN organizations so ON so.id = d.station_org_id
-     WHERE ${where} ORDER BY d.created_at DESC LIMIT ${Math.min(Number(limit) || 20, 100)} OFFSET ${Number(offset) || 0}`,
+     WHERE ${where} ORDER BY d.created_at DESC LIMIT ${Math.max(1,Math.min(Math.floor(Number(limit)||20),100))} OFFSET ${Math.max(0,Math.floor(Number(offset)||0))}`,
     params
   );
   const total = await one(`SELECT COUNT(*)::int AS count FROM disputes d WHERE ${where}`, params);
@@ -589,30 +625,9 @@ router.post("/disputes/:id/resolve", asyncHandler(async (req, res) => {
   const dispute = await one("SELECT * FROM disputes WHERE id = $1", [req.params.id]);
   if (!dispute) throw notFound("Dispute not found");
   const statusMap = { resolve: "resolved", refund: "refunded", reject: "rejected", escalate: "escalated" };
-  let refundKobo = 0;
-  if (outcome === "refund") {
-    refundKobo = Math.round(Number(refundAmount ?? 0) * 100);
-    if (refundKobo <= 0) throw badRequest("Refund amount must be greater than zero");
-    // Refund comes out of the station's settlement pool (ledger effect), credits the customer wallet if a customer tx
-    if (dispute.transaction_id) {
-      const t = await one("SELECT * FROM transactions WHERE id = $1", [dispute.transaction_id]);
-      if (t?.customer_user_id) {
-        const wallet = await one("SELECT * FROM wallets WHERE user_id = $1", [t.customer_user_id]);
-        if (wallet) {
-          await tx(async (trx) => {
-            const balance = wallet.balance_kobo + refundKobo;
-            await trx.query("UPDATE wallets SET balance_kobo = $2 WHERE id = $1", [wallet.id, balance]);
-            await trx.query(
-              `INSERT INTO wallet_ledger (wallet_id, direction, amount_kobo, balance_after_kobo, reference, description)
-               VALUES ($1,'credit',$2,$3,$4,$5)`,
-              [wallet.id, refundKobo, balance, dispute.reference, `Dispute refund ${dispute.reference}`]
-            );
-          });
-        }
-      }
-      await q("UPDATE transactions SET status = 'refunded' WHERE id = $1", [dispute.transaction_id]);
-    }
-  }
+  if(outcome==='refund')throw badRequest('Use the original-payment refund workflow in Support & Settlements. A dispute decision cannot create an unbacked wallet credit.');
+  if(typeof note!=='string'||!note.trim()||note.length>2000)throw badRequest('A review note of 1–2000 characters is required');
+  const refundKobo=0;
   await q(
     `UPDATE disputes SET status = $2, resolution_note = $3, refund_amount_kobo = $4, resolved_by = $5, resolved_at = CASE WHEN $6 IN ('resolve','refund','reject') THEN now() ELSE NULL END, updated_at = now() WHERE id = $1`,
     [dispute.id, statusMap[outcome], note ?? null, refundKobo, req.user.id, outcome]
@@ -629,28 +644,31 @@ router.post("/disputes/:id/resolve", asyncHandler(async (req, res) => {
 
 // ============ STAFF ============
 router.get("/staff", asyncHandler(async (req, res) => {
-  const { search, limit = 50 } = req.query;
+  const { search, limit = 20, offset=0 } = req.query;
   const params = [];
   let where = `u.role = 'admin'`;
   if (search) { params.push(`%${search}%`); where += ` AND (u.full_name ILIKE $${params.length} OR u.email ILIKE $${params.length})`; }
   const rows = await q(
-    `SELECT u.*, COALESCE(u.staff_role, m.role, 'controller') AS member_role
-     FROM users u LEFT JOIN memberships m ON m.user_id = u.id
-     WHERE ${where} ORDER BY u.created_at DESC LIMIT ${Math.min(Number(limit) || 50, 200)}`,
+    `SELECT u.*, COALESCE(u.staff_role, 'controller') AS member_role
+     FROM users u
+     WHERE ${where} ORDER BY u.created_at DESC LIMIT ${Math.max(1,Math.min(Math.floor(Number(limit)||20),100))} OFFSET ${Math.max(0,Math.floor(Number(offset)||0))}`,
     params
   );
+  const total=await one(`SELECT count(*)::int count FROM users u WHERE ${where}`,params);
+  const stats=await one("SELECT count(*)::int total,count(*) FILTER(WHERE status='active')::int active,count(DISTINCT COALESCE(staff_role,'controller'))::int roles FROM users WHERE role='admin'");
   const invites = await one(`SELECT COUNT(*)::int AS count FROM invites WHERE status = 'pending'`);
   const lastAudit = await one(`SELECT MAX(created_at) AS last FROM audit_logs WHERE action LIKE 'admin%'`);
   res.json({
     metrics: [
-      { label: "TOTAL INTERNAL STAFF", value: String(rows.length), helper: `${rows.filter((r) => r.status === "active").length} active`, tone: "green" },
-      { label: "ACTIVE ROLES", value: String(new Set(rows.map((r) => r.member_role ?? "controller")).size), tone: "green" },
+      { label: "TOTAL INTERNAL STAFF", value: String(stats.total), helper: `${stats.active} active`, tone: "green" },
+      { label: "ACTIVE ROLES", value: String(stats.roles), tone: "green" },
       { label: "PENDING INVITES", value: String(invites?.count ?? 0), tone: "muted" },
-      { label: "LAST AUDIT", value: lastAudit?.last ? fmtDate(lastAudit.last).toUpperCase() : "—", helper: "System Status: Secure", tone: "muted" }
+      { label: "LAST AUDIT", value: lastAudit?.last ? fmtDate(lastAudit.last).toUpperCase() : "—",  tone: "muted" }
     ],
+    total:total.count,
     staff: rows.map((r) => ({
       id: r.id,
-      cells: [`${r.full_name ?? r.email.split("@")[0]}\n${r.email}`, (r.member_role ?? "controller").replace("_", " ").toUpperCase(), "DASH  BILL  APPR  ADM"],
+      cells: [`${r.full_name ?? r.email.split("@")[0]}\n${r.email}`, (r.member_role ?? "controller").replace("_", " ").toUpperCase(), "Full administrator access"],
       status: r.status === "active" ? "Active" : "Locked",
       tone: r.status === "active" ? "green" : "red",
       staffId: r.id, name: r.full_name, email: r.email, role: r.member_role ?? "controller", statusRaw: r.status
@@ -660,7 +678,7 @@ router.get("/staff", asyncHandler(async (req, res) => {
 
 router.post("/staff", asyncHandler(async (req, res) => {
   const { fullName, email, role = "controller", permissions } = req.valid ?? req.body ?? {};
-  if (!fullName || !email) throw badRequest("Name and email are required");
+  if(typeof fullName!=="string"||!fullName.trim()||fullName.length>200||typeof email!=="string"||email.length>254||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)||typeof role!=="string"||role.length>100)throw badRequest("Enter valid staff details");
   const existing = await one("SELECT id FROM users WHERE lower(email) = lower($1)", [email]);
   if (existing) throw badRequest("A user with that email already exists");
   const tempPassword = randomToken(6);
@@ -683,6 +701,10 @@ router.post("/staff", asyncHandler(async (req, res) => {
 
 router.put("/staff/:id", asyncHandler(async (req, res) => {
   const { role, status, permissions } = req.body ?? {};
+  if(status!==undefined&&!['active','suspended','pending'].includes(status))throw badRequest('Choose a valid staff status');
+  if(role!==undefined&&(typeof role!=='string'||role.length>100))throw badRequest('Choose a valid role label');
+  if(permissions!==undefined&&(!Array.isArray(permissions)||permissions.length>50||permissions.some(p=>typeof p!=='string'||p.length>100)))throw badRequest('Invalid permissions');
+  if(req.params.id===req.user.id&&status&&status!=='active')throw badRequest('Ask another administrator to suspend your account');
   const user = await one(
     `UPDATE users SET
        status = COALESCE($2, status),
@@ -692,7 +714,7 @@ router.put("/staff/:id", asyncHandler(async (req, res) => {
     [req.params.id, status ?? null, role ?? null, permissions ? JSON.stringify(permissions) : null]
   );
   if (!user) throw notFound("Staff member not found");
-  audit({ actorUserId: req.user.id, actorRole: "admin", action: "admin.staff_updated", entityId: user.id, metadata: req.body });
+  audit({ actorUserId: req.user.id, actorRole: "admin", action: "admin.staff_updated", entityId: user.id, metadata: {role,status,permissions} });
   res.json({ ok: true });
 }));
 

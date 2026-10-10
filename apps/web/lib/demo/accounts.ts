@@ -96,7 +96,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
  * anywhere else could produce a panel with no accounts or vice versa.
  */
 export const DEMO_LOGIN_ENABLED =
-  process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGIN === "true";
+  process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGIN === "true";
 
 /** The destination for a signed-in role, mirroring the manual login form. */
 export function destinationForRole(role: UserRole): string {

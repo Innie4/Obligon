@@ -11,11 +11,11 @@ export default function EnergyVistaPage() {
           Intelligent supply planning for <span className="text-obligon-lime">enterprise energy</span>.
         </>
       }
-      body="EnergyVista gives procurement and operations teams a shared view of supply planning, inventory pressure, partner fulfilment, and financial exposure."
+      body="Contact our team to confirm availability, scope and onboarding requirements. EnergyVista gives procurement and operations teams a shared view of supply planning, inventory pressure, partner fulfilment, and financial exposure."
       stats={[
-        { value: "12+", label: "Regions" },
-        { value: "150M+", label: "Litres" },
-        { value: "2-3d", label: "Review" }
+        { value: "Discuss", label: "Supply requirements" },
+        { value: "Confirm", label: "Availability" },
+        { value: "Plan", label: "Onboarding" }
       ]}
       features={[
         { title: "Supply Forecasting", body: "Plan purchase cycles around fleet demand, regional availability, and historical usage.", icon: "gauge" },

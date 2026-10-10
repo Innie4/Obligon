@@ -87,7 +87,7 @@ async function main() {
   // the demo rather than being an untested code path.
   const mechanicId = await upsertUser({ email: "mechanic@obligon.com", password: PASSWORD.mechanic, name: "Tunde Bakare", role: "mechanic", org: "Core Hub Fuel Station", tier: "Service Technician", phone: "+2348099900111" });
 
-  await q("INSERT INTO wallets (user_id, balance_kobo, budget_limit_kobo) VALUES ($1, 48500000, 50000000) ON CONFLICT (user_id) DO NOTHING", [customerId]);
+  await q("INSERT INTO wallets (user_id, balance_kobo, budget_limit_kobo) VALUES ($1, 48500000, 50000000) ON CONFLICT (user_id) WHERE organization_id IS NULL DO NOTHING", [customerId]);
 
   // Organizations
   const companyOrg = await one(

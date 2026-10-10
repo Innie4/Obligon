@@ -72,20 +72,19 @@ export function LegalPage({ active, eyebrow, title, updated, intro, sections }: 
       try {
         localStorage.setItem("obligon_cookie_consent", JSON.stringify(cookiePrefs));
         await publicApi.saveCookieConsent(cookiePrefs, navigator.doNotTrack === "1");
-      } catch {}
+      } catch {setSavingPrefs(false);toastError("Saved on this device; server recording failed. Please retry.");return;}
       setSavingPrefs(false);
       toastSuccess("Cookie preferences saved.");
     })();
   }
 
   function handleAcceptAll() {
-    const all = { essential: true, analytics: true, functional: true, marketing: true };
+    const all = { essential: true, analytics: navigator.doNotTrack!=="1", functional: true, marketing: navigator.doNotTrack!=="1" };
     setCookiePrefs(all);
     try {
       localStorage.setItem("obligon_cookie_consent", JSON.stringify(all));
     } catch {}
-    void publicApi.saveCookieConsent(all, navigator.doNotTrack === "1").catch(() => undefined);
-    toastSuccess("All cookies accepted.");
+    void publicApi.saveCookieConsent(all, navigator.doNotTrack === "1").then(()=>toastSuccess("Cookie preferences saved.")).catch(() => toastError("Saved on this device; server recording failed. Please retry."));
   }
 
   return (

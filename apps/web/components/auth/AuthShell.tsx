@@ -42,19 +42,13 @@ export function AuthShell({ children, compact = false }: AuthShellProps) {
                 Fueling Nigeria&apos;s Infrastructure.
               </h1>
               <p className="mt-5 text-base leading-6 text-white/70">
-                Join over 850+ partner stations across the nation. Manage disbursements, track inventory, and grow your
+                Join the Obligon partner network. Manage disbursements, track inventory, and grow your
                 retail volume.
               </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-              <div className="flex -space-x-3">
-                {["A", "B", "C"].map((item) => (
-                  <span key={item} className="grid size-10 place-items-center rounded-full border-2 border-obligon-blue bg-obligon-lime text-xs font-bold text-obligon-navy">
-                    {item}
-                  </span>
-                ))}
-              </div>
-              <p className="mt-4 text-sm font-semibold text-white">+2k active partners</p>
+
+              <p className="mt-4 text-sm font-semibold text-white">Verified operators. Recorded transactions.</p>
             </div>
           </aside>
           <div className="bg-obligon-panel px-5 py-10 sm:px-8 lg:px-16">{children}</div>

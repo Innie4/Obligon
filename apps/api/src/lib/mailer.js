@@ -1,3 +1,4 @@
+import { writeLocalMessage } from "./local-outbox.js";
 import { env, isProd } from "../config/env.js";
 import { providerFetch } from "./http.js";
 
@@ -66,23 +67,20 @@ export function classifyResendFailure(status, body) {
  * never arrive — the exact failure this classification exists to end.
  */
 export function emailFallbackAllowed(environment = env.NODE_ENV) {
-  return environment !== "production";
+  return false;
 }
 
-export async function sendEmail({ to, subject, html, text }) {
-  if (!env.RESEND_API_KEY) {
-    // Already the "no credentials" case. Logged so a local flow is still legible.
-    console.log(`[email:dev] to=${to} subject="${subject}"`);
-    if (text) console.log(`[email:dev] body: ${text}`);
-    return { delivered: false, skipped: true };
-  }
+export async function sendEmail({ to, subject, html, text, idempotencyKey }) {
+  if (env.EMAIL_PROVIDER === "local") return writeLocalMessage({channel:"email",to,subject,message:text ?? ""});
+  if (!env.RESEND_API_KEY) return { delivered:false, skipped:true, error:"Delivery provider is not configured" };
   const res = await providerFetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${env.RESEND_API_KEY}`,
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {})
     },
-    body: JSON.stringify({ from: env.EMAIL_FROM, to: Array.isArray(to) ? to : [to], subject, html: html ?? `<p>${text ?? ""}</p>`, text: text ?? "" }),
+    body: JSON.stringify({ from: env.EMAIL_FROM, to: Array.isArray(to) ? to : [to], subject, html: html ?? `<p>${String(text ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")}</p>`, text: text ?? "" }),
     safeToRetry: false
   });
   if (!res.ok) {

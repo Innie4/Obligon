@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { env } from "../config/env.js";
-import { badRequest, misconfigured, notFound } from "./errors.js";
+import { badRequest, misconfigured, notFound, serviceUnavailable } from "./errors.js";
 import { providerFetch } from "./http.js";
 
 /**
@@ -26,7 +26,7 @@ const BASE = "https://api.flutterwave.com/v3";
 const enabled = () => Boolean(env.FLW_SECRET_KEY && env.FLW_PUBLIC_KEY);
 
 /** Hosted checkout is simulated outside production so local runs stay usable. */
-export const simulatedCheckoutEnabled = () => env.NODE_ENV !== "production";
+export const simulatedCheckoutEnabled = () => env.NODE_ENV !== "production" && env.ALLOW_PAYMENT_SIMULATION && !env.FLW_SECRET_KEY;
 
 export const flutterwaveEnabled = enabled;
 
@@ -50,13 +50,9 @@ export const flutterwaveEnabled = enabled;
 
 /** Kobo to the major-unit figure Flutterwave expects, as an exact 2dp number. */
 export function toProviderAmount(amountKobo) {
-  const kobo = Math.round(Number(amountKobo) || 0);
+  const kobo = Number(amountKobo);
+  if (!Number.isSafeInteger(kobo)) throw badRequest("Amount must be an integer number of kobo");
   if (kobo < 0) throw badRequest("Amount cannot be negative");
-  if (kobo % 100 !== 0) {
-    throw badRequest(
-      `Amounts below one naira (${kobo} kobo) cannot be charged through Flutterwave hosted checkout`
-    );
-  }
   return kobo / 100;
 }
 
@@ -252,9 +248,8 @@ export async function initializeCheckout({
   // Split settlement is opt-in per organization. Only applied when the caller
   // supplies a verified, active subaccount.
   if (split?.subaccountId) {
-    body.split_subaccounts = [
-      { id: String(split.subaccountId), ratio: Number(split.ratioBp ?? 0), type: "percentage" }
-    ];
+    body.subaccounts = [{id:String(split.subaccountId),transaction_charge_type:"flat",
+      transaction_charge:toProviderAmount(Number(split.platformFeeKobo ?? Math.round(amountKobo*(10000-Number(split.ratioBp??10000))/10000)))}];
   }
 
   const data = await flutterwaveFetch("/payments", { method: "POST", body });
@@ -424,7 +419,7 @@ export async function refundTransaction({ transactionId, amountKobo = null, reas
 /** Fetch the refunds already recorded against a charge. */
 export async function listRefunds(transactionId) {
   if (!enabled() || !transactionId) return [];
-  const data = await flutterwaveFetch(`/transactions/${encodeURIComponent(transactionId)}/refunds`);
+  const data = await flutterwaveFetch(`/refunds?id=${encodeURIComponent(transactionId)}`);
   return Array.isArray(data) ? data : [];
 }
 
@@ -466,7 +461,7 @@ export async function createBeneficiary({ name, accountNumber, bankCode = "058",
     }
   });
   return {
-    id: data?.id != null ? String(data.id) : null,
+    id: data?.subaccount_id ?? (data?.id != null ? String(data.id) : null),
     accountNumber: data?.account_number ?? null,
     bankName: data?.bank_name ?? null
   };
@@ -563,7 +558,7 @@ export async function createCollectionSubaccount({
   email,
   phone,
   countryCode = "NG",
-  splitRatioBp = 0
+  splitRatioBp = 0, accountNumber, bankCode
 }) {
   if (!enabled()) throw misconfigured("Flutterwave is not configured. The deployment is missing its payment credentials.");
   const data = await flutterwaveFetch("/subaccounts", {
@@ -574,11 +569,12 @@ export async function createCollectionSubaccount({
       email,
       phone_number: phone,
       country: countryCode,
-      split_ratio: splitRatioBp
+      account_number: accountNumber, account_bank: bankCode, business_email: email, business_mobile: phone,
+      split_type: "percentage", split_value: splitRatioBp / 10000
     }
   });
   return {
-    id: data?.id != null ? String(data.id) : null,
+    id: data?.subaccount_id != null ? String(data.subaccount_id) : null,
     accountNumber: data?.account_number ?? null,
     bankName: data?.bank_name ?? null,
     status: String(data?.status ?? "pending").toLowerCase()
@@ -590,14 +586,14 @@ export async function createCollectionSubaccount({
 //
 // IMPORTANT, and the reason this is a reconciliation signal rather than a gate:
 // a Flutterwave payment plan is a *recurring subscription* the processor debits on
-// a schedule. Obligon's `card_plans` are one-off purchases — `POST
+// a schedule. Obligon's `card_plans` are one-off purchases â€” `POST
 // /card-request/checkout` calls `startCheckout`, a single hosted charge, and the
 // card is then issued. None of our plan codes exist as Flutterwave plans, so
 // requiring processor membership before taking payment would reject every plan we
 // sell.
 //
 // What this is genuinely good for is telling us when the processor catalogue and
-// ours have drifted — a plan cancelled at the processor, a recurring plan we no
+// ours have drifted â€” a plan cancelled at the processor, a recurring plan we no
 // longer intend to honour, a price that moved. That belongs in reconciliation and
 // on the health endpoint, where it informs a human rather than blocking a
 // customer.
@@ -625,7 +621,7 @@ export function invalidatePaymentPlans() {
  * probe, and the failure mode of getting this wrong is a throttled account.
  *
  * Never throws. A processor that is unreachable or throttling us must not be able
- * to fail the reconciliation sweep that also settles real money — so a failure
+ * to fail the reconciliation sweep that also settles real money â€” so a failure
  * returns the last good list with `stale: true`, or an empty list when there has
  * never been a good one.
  *
@@ -699,4 +695,12 @@ export async function fetchPaymentPlans({ force = false, currency = "NGN" } = {}
   })();
 
   return planFetchInFlight;
+}
+
+/** Official v3 bank directory: https://developer.flutterwave.com/reference/get-all-banks */
+export async function listBanks(country='NG') {
+  if(!enabled())throw misconfigured('Flutterwave bank directory is not configured');
+  const data=await flutterwaveFetch(`/banks/${encodeURIComponent(country)}`);
+  if(!Array.isArray(data))throw serviceUnavailable('The processor bank directory is unavailable');
+  return data.filter(bank=>bank.code!=null&&bank.name).map(bank=>({code:String(bank.code),name:String(bank.name)}));
 }

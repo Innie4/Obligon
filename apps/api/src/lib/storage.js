@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { env } from "../config/env.js";
 import { serviceUnavailable } from "./errors.js";
@@ -42,7 +43,7 @@ export const STORAGE_BUCKET = env.SUPABASE_STORAGE_BUCKET;
 export async function uploadFile(kind, filename, buffer, contentType = "application/octet-stream") {
   const supabase = getClient();
   const folder = FOLDER_BY_KIND[kind] ?? "misc";
-  const safeName = `${Date.now()}-${String(filename).replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+  const safeName = `${randomUUID()}-${String(filename).replace(/[^a-zA-Z0-9._-]/g, "_")}`;
   const path = `${folder}/${safeName}`;
   const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(path, buffer, { contentType, upsert: false });
   if (error) throw serviceUnavailable(`File upload failed: ${error.message}`);

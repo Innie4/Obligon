@@ -1,4 +1,4 @@
-import { q, one } from "../db.js";
+import { q, tx, one } from "../db.js";
 import { audit, notify } from "./notify.js";
 import { verifyCheckout, activeProvider } from "./payments.js";
 import { reconcilePaymentPlans } from "./plans.js";
@@ -143,7 +143,7 @@ async function reconcilePlanCheckouts(limit) {
     `SELECT r.*, p.amount_kobo AS plan_amount_kobo
      FROM card_requests r
      LEFT JOIN card_plans p ON p.code = r.plan_code
-     WHERE r.status = 'awaiting_payment' AND ${ageFilter("r")}
+     WHERE r.status = 'awaiting_payment' AND r.payment_status <> 'paid' AND ${ageFilter("r")}
      ORDER BY r.created_at ASC LIMIT $1`,
     [limit]
   );
@@ -172,9 +172,10 @@ async function reconcilePlanCheckouts(limit) {
       if (verification.paid) {
         const marked = await one(
           `UPDATE card_requests SET payment_status = 'paid', paid_at = now(),
+             provider_transaction_id=COALESCE(provider_transaction_id,$2),
              reconcile_attempts = reconcile_attempts + 1, last_reconciled_at = now()
            WHERE id = $1 AND payment_status <> 'paid' RETURNING *`,
-          [request.id]
+          [request.id, verification.providerTransactionId ?? null]
         );
         if (marked) {
           // The plan fee pays for a card subscription, not fuel, so it is not
@@ -253,11 +254,17 @@ async function reconcileRefunds(limit) {
       // A refund is only ever re-checked, never re-issued: the idempotency key
       // in `issueRefund` guarantees we cannot pay out twice.
       const { listRefunds } = await import("./flutterwave.js");
-      const refunds = await listRefunds(refund.provider_refund_id ?? refund.provider_ref);
-      const mine = refunds.find((r) => refund.provider_refund_id && String(r.id) === String(refund.provider_refund_id));
+      const refunds = await listRefunds(refund.metadata?.providerTransactionId);
+      const candidates=refunds.filter(r=>refund.provider_refund_id ? String(r.id)===String(refund.provider_refund_id) :
+        Math.round(Number(r.amount_refunded)*100)===Number(refund.amount_kobo) && Date.parse(r.created_at)>=Date.parse(refund.created_at)-60000);
+      const mine=candidates.length===1?candidates[0]:null;
       const status = String(mine?.status ?? "").toLowerCase();
       if (status === "successful" || status === "completed") {
-        await q("UPDATE payment_refunds SET status = 'succeeded', settled_at = now() WHERE id = $1", [refund.id]);
+        await q("UPDATE payment_refunds SET status = 'succeeded', settled_at = now() WHERE id = $1 AND status='pending'", [refund.id]);
+        if(refund.metadata?.fuelOrderId) await tx(async t=>{
+          const order=await t.one("UPDATE fuel_orders SET status='refunded',updated_at=now() WHERE id=$1 AND status IN('paid_review','refund_pending') RETURNING transaction_id",[refund.metadata.fuelOrderId]);
+          if(order) await t.query("UPDATE transactions SET status='refunded' WHERE id=$1",[order.transaction_id]);
+        });
         stats.settled += 1;
       } else {
         stats.stillPending += 1;
@@ -267,6 +274,38 @@ async function reconcileRefunds(limit) {
     }
   }
 
+  return stats;
+}
+
+/** Recover purchases whose browser redirect and webhook both failed.
+ * Completion is delegated to the same idempotent transaction owners as those
+ * callbacks. An unavailable provider leaves the paid-attempt record pending.
+ */
+async function reconcilePurchases(kind, limit) {
+  const subscription = kind === "subscriptions";
+  const table = subscription ? "subscription_payments" : "fuel_orders";
+  const status = subscription ? "payment_status='pending'" : "status='awaiting_payment'";
+  const rows = await q(`SELECT * FROM ${table} WHERE ${status} AND ${ageFilter(table)}
+    ORDER BY updated_at ASC,created_at ASC LIMIT $1`, [limit]);
+  const stats = { checked: rows.length, completed: 0, errored: 0, stillPending: 0 };
+  const confirm = subscription
+    ? (await import("../routes/subscription.routes.js")).confirmSubscriptionPayment
+    : (await import("./fuel-checkout.js")).confirmFuelOrder;
+  for (const row of rows) {
+    try {
+      // Never request simulated verification from the scheduled recovery path.
+      const result = await confirm(row.reference, row.provider_transaction_id ?? null, false);
+      if (subscription ? result.payment_status === "paid" : ["paid", "paid_review", "fulfilled"].includes(result.status)) stats.completed += 1;
+      else stats.stillPending += 1;
+    } catch (error) {
+      stats.errored += 1;
+      stats.firstError ??= `${row.reference}: ${error?.message ?? String(error)}`;
+    } finally {
+      // Rotate unresolved attempts through the bounded batch so an old checkout
+      // cannot permanently starve newer confirmed payments. This is not failure.
+      await q(`UPDATE ${table} SET updated_at=now() WHERE id=$1 AND ${status}`, [row.id]);
+    }
+  }
   return stats;
 }
 
@@ -282,14 +321,16 @@ export async function runPaymentReconciliation({ limit = DEFAULT_BATCH } = {}) {
   // charge — our card plans are one-off purchases, not processor subscriptions —
   // but a plan cancelled at the processor is worth knowing about, and the fetch is
   // cached and single-flighted so it costs one request per fifteen minutes.
-  const [topUps, plans, refunds, planCatalogue] = [
+  const [topUps, plans, refunds, subscriptions, fuelOrders, planCatalogue] = [
     await reconcileTopUps(limit),
     await reconcilePlanCheckouts(limit),
     await reconcileRefunds(limit),
+    await reconcilePurchases("subscriptions", limit),
+    await reconcilePurchases("fuelOrders", limit),
     await reconcilePaymentPlans()
   ];
-  const summary = { topUps, plans, refunds, planCatalogue };
-  const requiredAction = topUps.gaveUp + plans.gaveUp;
+  const summary = { topUps, plans, refunds, subscriptions, fuelOrders, planCatalogue };
+  const requiredAction = topUps.gaveUp + plans.gaveUp + subscriptions.errored + fuelOrders.errored;
   if (requiredAction > 0 || planCatalogue.drift.length > 0) {
     await audit({
       action: planCatalogue.drift.length > 0

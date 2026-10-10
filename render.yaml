@@ -108,7 +108,7 @@ services:
       - key: FLW_BANK_TRANSFER_EXPIRY_HOURS
         value: "24"
       - key: SUDO_BASE_URL
-        value: https://api.sandbox.sudo.africa/v1
+        sync: false
       - key: SUDO_SECRET_API_KEY
         sync: false
       - key: SUDO_WEBHOOK_SECRET
@@ -138,3 +138,17 @@ services:
         sync: false
       - key: GOOGLE_MAPS_API_KEY
         sync: false
+      - key: SUDO_DEBIT_ACCOUNT_ID
+        sync: false
+      - key: SUDO_CREDIT_ACCOUNT_ID
+        sync: false
+      - key: SUDO_FUNDING_SOURCE_ID
+        sync: false
+      - key: CARD_IDENTITY_KEY
+        sync: false
+      - key: DATABASE_CA_CERT
+        sync: false
+      - key: EMAIL_PROVIDER
+        value: resend
+      - key: SMS_PROVIDER
+        value: termii

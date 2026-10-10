@@ -23,6 +23,7 @@ function configured(name) {
  * first configured provider is used so adding a key is enough to switch over.
  */
 export function activeProvider() {
+  if(env.PAYMENT_PROVIDER === "flutterwave" && flutterwave.simulatedCheckoutEnabled()) return "flutterwave";
   if (env.PAYMENT_PROVIDER) {
     if (!configured(env.PAYMENT_PROVIDER)) {
       // Exposable: this is the first call a checkout route makes, so its error is

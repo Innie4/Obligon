@@ -31,6 +31,7 @@ export type {
 } from "./types";
 export {
   api,
+  authenticatedRequest,
   createApiClient,
   authApi,
   mutationsApi,

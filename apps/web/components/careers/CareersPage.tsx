@@ -12,59 +12,15 @@ import { routes } from "@/components/site/routes";
 import { useToast } from "@/components/shared/Toast";
 import { publicApi } from "@/lib/services";
 
-const stats = [
-  { value: "150M+", label: "Litres Managed", body: "Powering the backbone of logistics across Nigeria with precision and speed." },
-  { value: "12+", label: "Key Regions", body: "Growing footprint across the continent, tackling complex infrastructure challenges." },
-  { value: "4.8/5", label: "Team Happiness", body: "Voted one of the most innovative and supportive fintech environments in West Africa." }
-];
-
-const roles = [
-  {
-    id: "eng-01",
-    badge: "Engineering",
-    location: "Lagos / Hybrid",
-    title: "Senior Backend Engineer (Go/Node)",
-    body: "Scale our cross-region transaction ledger supporting millions of daily energy interactions and sub-second POS authorization.",
-    urgent: false
-  },
-  {
-    id: "ops-01",
-    badge: "Operations",
-    location: "Lagos / Field",
-    title: "Fleet Operations Manager",
-    body: "Partner with enterprise customers and partner station networks to improve operational velocity and reliability.",
-    urgent: false
-  },
-  {
-    id: "comp-01",
-    badge: "Compliance",
-    location: "Remote / Nigeria",
-    title: "Risk & Compliance Officer",
-    body: "Ensure our fintech-energy hybrid platform meets the highest DPR, CBN, and NDPR regulatory standards.",
-    urgent: true
-  },
-  {
-    id: "prod-01",
-    badge: "Product",
-    location: "Lagos / Hybrid",
-    title: "Product Designer (Fintech)",
-    body: "Craft high-precision, low-latency interfaces for complex industrial fleet management and station operator consoles.",
-    urgent: false
-  },
-  {
-    id: "eng-02",
-    badge: "Engineering",
-    location: "Remote / Nigeria",
-    title: "Mobile App Engineer (React Native / iOS)",
-    body: "Build our driver fleet companion app featuring offline NFC card scanning and biometric transaction authorizations.",
-    urgent: true
-  }
-];
-
+type Role={id:string;badge:string;location:string;title:string;body:string;urgent:boolean};
+const stats=[{value:'Fuel',label:'Physical-world impact',body:'Build tools for drivers, operators and fleets.'},{value:'Nigeria',label:'Connected operations',body:'Support the people moving energy across the country.'},{value:'Teams',label:'Shared ownership',body:'Work across product, engineering and field operations.'}];
 export function CareersPage() {
   const { success: toastSuccess, error: toastError } = useToast();
+  const [roles,setRoles]=useState<Role[]>([]),[jobsError,setJobsError]=useState(''),[loading,setLoading]=useState(true);
+  const loadJobs=React.useCallback(async()=>{setLoading(true);setJobsError('');try{const jobs=await publicApi.getJobs();setRoles(jobs.map(j=>({id:j.id,badge:j.department,location:j.location,title:j.title,body:j.description,urgent:false})));}catch(e){setJobsError((e as Error).message);}finally{setLoading(false);}},[]);
+  React.useEffect(()=>{void loadJobs();},[loadJobs]);
   const [selectedCategory, setSelectedCategory] = useState("All Roles");
-  const [activeRole, setActiveRole] = useState<(typeof roles)[0] | null>(null);
+  const [activeRole, setActiveRole] = useState<Role | null>(null);
   const [applicantName, setApplicantName] = useState("");
   const [applicantEmail, setApplicantEmail] = useState("");
   const [applicantPhone, setApplicantPhone] = useState("");
@@ -74,7 +30,7 @@ export function CareersPage() {
   const [submitted, setSubmitted] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  const categories = ["All Roles", "Engineering", "Operations", "Compliance", "Product"];
+  const categories = ["All Roles", ...new Set(roles.map(r=>r.badge))];
 
   const filteredRoles = roles.filter(
     (role) => selectedCategory === "All Roles" || role.badge === selectedCategory
@@ -95,7 +51,7 @@ export function CareersPage() {
       );
       setSubmitting(false);
       setSubmitted(true);
-      toastSuccess(`Application submitted for ${activeRole?.title}!`);
+      toastSuccess(`Application submitted for ${activeRole?.title}.`);
     } catch (err) {
       setSubmitting(false);
       toastError(err instanceof Error ? err.message : "Could not submit the application. Please try again.");
@@ -175,7 +131,7 @@ export function CareersPage() {
           <article className="rounded-2xl border border-obligon-border bg-white p-8 lg:col-span-3 shadow-card">
             <Sparkles className="text-obligon-green" size={28} />
             <h3 className="mt-8 font-display text-2xl font-bold text-obligon-navy">Radical Accountability</h3>
-            <p className="mt-3 text-sm leading-6 text-obligon-text">Small teams own real outcomes, from station onboarding to sub-second settlement velocity.</p>
+            <p className="mt-3 text-sm leading-6 text-obligon-text">Work on station onboarding, recorded transactions and reliable operational tools.</p>
             <div className="mt-8 overflow-hidden rounded-xl">
               <Image src={assets.fuelvistaCard} width={512} height={341} alt="FuelVista dashboard card" className="w-full" />
             </div>
@@ -184,23 +140,23 @@ export function CareersPage() {
             <Users className="text-obligon-lime" size={28} />
             <h3 className="mt-8 font-display text-2xl font-bold">Unified Logistics</h3>
             <p className="mt-3 text-sm leading-6 text-[#b8c4ff]">
-              Our work spans energy retail, automated financing, compliance, and field operations across a connected national network.
+              Our work connects energy retail, payment tracking, compliance and field operations.
             </p>
           </article>
           <article className="rounded-2xl border border-obligon-border bg-[#e6eeff] p-8 lg:col-span-2 shadow-sm">
             <Wifi className="text-obligon-green" size={28} />
-            <h3 className="mt-6 font-display text-2xl font-bold text-obligon-navy">Remote-First Flexibility</h3>
-            <p className="mt-3 text-sm leading-5 text-obligon-text">Autonomy that empowers you to do your highest impact work from anywhere.</p>
+            <h3 className="mt-6 font-display text-2xl font-bold text-obligon-navy">Role-specific Workplaces</h3>
+            <p className="mt-3 text-sm leading-5 text-obligon-text">See each open role for its location and working arrangement.</p>
           </article>
           <article className="rounded-2xl border border-obligon-border bg-white p-8 lg:col-span-4 shadow-card">
             <div className="grid gap-8 md:grid-cols-[1fr_260px] md:items-center">
               <div>
                 <HeartPulse className="text-obligon-green" size={28} />
-                <h3 className="mt-6 font-display text-2xl font-bold text-obligon-navy">Health &amp; Wellness First</h3>
-                <p className="mt-3 text-base leading-6 text-obligon-text">Comprehensive private HMO insurance, annual mental health stipends, and continuous learning budgets.</p>
+                <h3 className="mt-6 font-display text-2xl font-bold text-obligon-navy">Discuss Your Offer</h3>
+                <p className="mt-3 text-base leading-6 text-obligon-text">Compensation, benefits and working arrangements are confirmed during recruitment and in your written offer.</p>
               </div>
               <div className="grid h-32 place-items-center rounded-xl border border-dashed border-obligon-green bg-obligon-mist text-center text-xs font-bold uppercase tracking-[1.2px] text-obligon-green">
-                Wellness Stipend Included
+                Role-specific Benefits
               </div>
             </div>
           </article>
@@ -211,7 +167,7 @@ export function CareersPage() {
         <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div>
             <h2 className="font-display text-4xl font-extrabold text-obligon-navy">Open Positions</h2>
-            <p className="mt-3 text-sm text-obligon-text">Join us at our Lagos HQ or work remotely from across Nigeria.</p>
+            <p className="mt-3 text-sm text-obligon-text">Browse current roles, locations and departments below.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             {categories.map((cat) => (
@@ -230,6 +186,9 @@ export function CareersPage() {
         </div>
 
         <div className="mt-8 space-y-4">
+          {loading&&<p role="status">Loading open roles…</p>}
+          {jobsError&&<div role="alert"><p>{jobsError}</p><button onClick={()=>void loadJobs()}>Retry</button></div>}
+          {!loading&&!jobsError&&!filteredRoles.length&&<p>No open roles in this department. Check back later.</p>}
           {filteredRoles.map((role) => (
             <article
               key={role.title}

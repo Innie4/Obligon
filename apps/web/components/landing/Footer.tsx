@@ -50,18 +50,7 @@ export function Footer() {
               Obligon LTD is a Nigerian-based energy and technology firm committed to efficiency, transparency, and
               innovation.
             </p>
-            <div className="mt-8 flex gap-4">
-              {[assets.socialGlobe, assets.socialAt].map((icon, index) => (
-                <a
-                  key={icon}
-                  className="flex size-10 items-center justify-center rounded-full border border-white/10 bg-white/5"
-                  href={index === 0 ? "#facebook" : "#linkedin"}
-                  aria-label={index === 0 ? "Facebook" : "LinkedIn"}
-                >
-                  <Image src={icon} width={12} height={12} alt="" />
-                </a>
-              ))}
-            </div>
+
           </div>
 
           {footerColumns.map((column) => (

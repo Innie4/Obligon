@@ -188,13 +188,8 @@ test("a partner cannot write its own dispute verdict", () => {
 });
 
 // --------------------------------------------------------- the POS PIN scan
-test("the PIN fallback no longer scans every driver on the platform", () => {
+test("POS uses single-use card authorization without any driver PIN fallback", () => {
   const body = handler(code(routes), 'router.post("/pos/authorize"');
-  // It selected every driver with a PIN and ran bcrypt per driver, in a loop,
-  // for every attempt — across tenants, and with cost growing per customer.
-  assert.doesNotMatch(body, /FROM drivers d LEFT JOIN organizations o[\s\S]*WHERE d\.pin_hash IS NOT NULL`\)\)\s*\{/);
-  assert.match(body, /POS_PIN_CANDIDATE_LIMIT/);
-  assert.match(routes, /const POS_PIN_CANDIDATE_LIMIT = 25/);
-  // And a driver with no active card is not a candidate at all.
-  assert.match(body, /JOIN cards c ON c\.driver_id = d\.id AND c\.status = 'active'/);
+  assert.doesNotMatch(body, /FROM drivers|pin_hash|bcrypt/);
+  assert.match(body, /authorizeWalletFuelSale/);
 });

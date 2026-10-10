@@ -48,7 +48,8 @@ test("no plan_wallet_credits rows survive, so no wallet is funded by a plan", ()
   // Migration 014 clears the table. A row here would mean a wallet is still
   // holding a plan price as a balance.
   const envPath = path.join(apiRoot, "..", "..", ".env");
-  assert.ok(fs.existsSync(envPath), "expected a database to check");
+  // This is a migration-contract test; a secrets file is not required.
+  // Isolated integration runs receive DATABASE_URL explicitly.
   // The database assertion runs in the integration suite; here we only assert the
   // migration that enforces it exists and is ordered before anything can re-add one.
   const migrations = fs

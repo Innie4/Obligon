@@ -47,6 +47,7 @@ export function StationMap({
 }) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const mapRef = React.useRef<HTMLDivElement | null>(null);
+  const [selected, setSelected] = React.useState<StationMapPoint>();
   const [googleReady, setGoogleReady] = React.useState(false);
 
   // Load the Maps JS script once
@@ -57,7 +58,10 @@ export function StationMap({
       setGoogleReady(true);
       return;
     }
-    if (w.__obligonMapsLoading) return;
+    if (w.__obligonMapsLoading) {
+      const timer = setInterval(() => {if (w.google) setGoogleReady(true);}, 500);
+      return () => clearInterval(timer);
+    }
     w.__obligonMapsLoading = true;
     const script = document.createElement("script");
     script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=marker`;
@@ -94,7 +98,7 @@ export function StationMap({
     }
   }, [apiKey, googleReady, points, onSelect]);
 
-  if (apiKey) {
+  if (apiKey && googleReady) {
     return (
       <div
         ref={mapRef}
@@ -106,12 +110,13 @@ export function StationMap({
   }
 
   return (
-    <iframe
+    <div><iframe
       title="Station map"
-      src={osmEmbedUrl(points)}
+      src={osmEmbedUrl(selected ? [selected] : points)}
       className={`w-full rounded-2xl border border-[#dbe2d8] ${height}`}
       loading="lazy"
       referrerPolicy="no-referrer-when-downgrade"
     />
+    <div className="flex flex-wrap gap-2 bg-white p-3">{points.map(point => <button key={point.id ?? point.name} type="button" aria-pressed={selected?.id === point.id} className="min-h-12 rounded-lg border px-3 text-sm font-bold" onClick={() => {setSelected(point);onSelect?.(point);}}>{point.name}</button>)}{!points.length && <p>No locations available.</p>}</div></div>
   );
 }

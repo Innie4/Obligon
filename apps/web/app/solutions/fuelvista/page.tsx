@@ -13,9 +13,9 @@ export default function FuelVistaPage() {
       }
       body="FuelVista combines card controls, partner-station access, spend limits, and transaction intelligence for Nigerian fleet operators."
       stats={[
-        { value: "850+", label: "Stations" },
-        { value: "24/7", label: "Controls" },
-        { value: "99.9%", label: "Ledger" }
+        { value: "Verified", label: "Station operators" },
+        { value: "Plan-based", label: "Controls" },
+        { value: "Recorded", label: "Transactions" }
       ]}
       features={[
         { title: "Fuel Card Governance", body: "Issue cards, set daily limits, and assign vehicle-specific policies from one control room.", icon: "card" },

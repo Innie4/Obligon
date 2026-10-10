@@ -91,10 +91,11 @@ export function PartnerVerificationUI() {
   const applyResult = React.useCallback(
     (result: { channels?: { email?: VerificationChannelResult; phone?: VerificationChannelResult } }) => {
       setChannels(result.channels ?? {});
+      if (result.channels?.email?.alreadyVerified && result.channels?.phone?.alreadyVerified) { setStage("success"); setCooldown(0); return; }
       const sent = [result.channels?.email?.sent, result.channels?.phone?.sent].filter(Boolean).length;
       const failed = [
-        result.channels?.email?.sent === false ? "email" : null,
-        result.channels?.phone?.sent === false ? "SMS" : null
+        result.channels?.email?.sent === false && !result.channels?.email?.alreadyVerified ? "email" : null,
+        result.channels?.phone?.sent === false && !result.channels?.phone?.alreadyVerified ? "SMS" : null
       ].filter(Boolean);
       if (sent === 0) {
         setError("We could not send a verification code. Please try again in a moment.");
@@ -262,7 +263,7 @@ export function PartnerVerificationUI() {
       {stage === "success" ? (
         <div className="mt-8 flex items-center justify-center gap-2 rounded-xl bg-obligon-lime/20 p-4 text-sm font-extrabold text-obligon-navy">
           <Check size={18} />
-          Code accepted — returning to your dashboard
+          Contact details verified. Use Back to Dashboard to continue.
         </div>
       ) : (
         <form onSubmit={verify} className="mt-8">

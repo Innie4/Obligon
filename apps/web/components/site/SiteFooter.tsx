@@ -114,13 +114,13 @@ export function SiteFooter({ active }: SiteFooterProps) {
               {subscribing ? <Loader2 size={16} className="animate-spin" /> : "Subscribe"}
             </button>
           </form>
-          <p className="mt-3 text-xs leading-4 text-obligon-text">Product updates and fleet insights. Unsubscribe anytime.</p>
+          <p className="mt-3 text-xs leading-4 text-obligon-text">Product updates and fleet insights. Contact Support to manage your request.</p>
         </div>
       </div>
 
       <div className="border-t border-obligon-border">
         <div className="mx-auto flex max-w-[1280px] flex-col gap-4 px-5 py-8 text-sm text-obligon-text sm:px-8 md:flex-row md:items-center md:justify-between lg:px-16">
-          <p>&copy; 2024 Obligon LTD Energy. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Obligon LTD Energy. All rights reserved.</p>
           <div className="flex items-center gap-6">
             <span className="h-px w-16 bg-gradient-to-r from-transparent via-obligon-green to-transparent" />
             <span className="text-xs uppercase tracking-[1.6px] text-obligon-navy">Lagos, Nigeria</span>

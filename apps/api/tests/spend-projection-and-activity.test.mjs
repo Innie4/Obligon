@@ -122,9 +122,11 @@ test("the savings cards are gone from the overview", () => {
   assert.match(customer, /label: "Lifetime Savings"/);
 });
 
-test("the MTD Spend card opens the projection editor", () => {
+test("the MTD Spend card opens the projection editor only with an active entitlement", () => {
   assert.match(screen, /onClick=\{onEditProjection\}/);
-  assert.match(screen, /aria-label="Set or change your projected spend for this month"/);
+  assert.match(screen, /disabled=\{!canEditProjection\}/);
+  assert.match(screen, /aria-label=\{canEditProjection \? "Set or change your projected spend for this month"/);
+  assert.match(screen, /if \(canEditProjection\) setModal\("spendProjection"\);/);
   assert.match(screen, /onEditProjection=\{openSpendProjection\}/);
 });
 
@@ -137,7 +139,7 @@ test("the editor pre-fills the stored figure and can move it either way", () => 
 });
 
 test("the prompt opens once per month, and never over an open modal", () => {
-  assert.match(screen, /if \(!projection\?\.needsProjection\) return;/);
+  assert.match(screen, /if \(!canEditProjection \|\| !projection\?\.needsProjection\) return;/);
   // "Not now" must not be answered by the same dialog on the next navigation.
   assert.match(screen, /if \(promptedForMonth === projection\.month\) return;/);
   // Displacing a modal the customer opened deliberately is worse than waiting.

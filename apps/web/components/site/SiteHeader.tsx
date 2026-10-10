@@ -38,7 +38,7 @@ export function SiteHeader() {
             Login
           </Link>
           <Link
-            href={`${routes.login}#signup`}
+            href={routes.signup}
             className="inline-flex h-10 items-center justify-center rounded-lg bg-obligon-green px-5 text-sm font-bold text-white shadow-green"
           >
             Get Started

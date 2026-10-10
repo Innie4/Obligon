@@ -101,8 +101,8 @@ test("the partner cannot write their own settlement limit", () => {
 test("the config endpoint rejects what it does not accept", () => {
   // `settlementLimit: "not-a-number"` became NaN, and NaN into a BIGINT is a 500.
   const body = handler(code(routes), 'router.put("/settlements/config"');
-  assert.match(body, /if \(typeof autoSettlement !== "boolean"\)/);
-  assert.match(body, /throw badRequest\("autoSettlement must be true or false"\)/);
+  assert.match(body, /if \(autoSettlement !== true\)/);
+  assert.match(body, /throw badRequest\("Settlement is automatic\. Manual payouts are coming soon\."\)/);
   assert.doesNotMatch(body, /Math\.round\(Number\(/);
 });
 
@@ -137,9 +137,11 @@ test("an admin can see and decide on nominated accounts", () => {
   assert.match(adminRoutes, /router\.post\("\/payout-accounts\/:id\/verify"/);
   // Only a default account can be paid automatically, so verifying a spare is
   // meaningless and would read as an approval that does nothing.
-  assert.match(adminRoutes, /Set this as the account's default before verifying it/);
+  assert.match(adminRoutes, /Choose this bank as the default before verifying it/);
   // Without a recipient code there is nothing to transfer to.
-  assert.match(adminRoutes, /no provider recipient code/);
+  assert.match(adminRoutes, /no provider destination/);
+  assert.match(adminRoutes, /bank_account_id=\$1 AND organization_id=\$2 FOR UPDATE/);
+  assert.match(adminRoutes, /Legacy unbound destination requires re-nomination before verification/);
 });
 
 test("an account number is checked before it reaches the provider", () => {
@@ -189,10 +191,8 @@ function helperSource() {
 }
 
 test("nothing here duplicates what the scheduler already gets right", () => {
-  // The scheduler sums pending net_kobo and transfers exactly that. The manual
-  // route now reads the same way, so the two cannot drift apart.
-  assert.match(scheduler, /FROM settlements WHERE partner_org_id = \$1 AND status = 'pending'/);
-  assert.match(scheduler, /verified = TRUE/);
+  assert.match(scheduler, /SUM\(net_kobo - paid_kobo\)/);
+  assert.match(scheduler, /verified=TRUE/);
   assert.match(helperSource(), /FROM settlements/);
   assert.match(helperSource(), /net_kobo/);
 });

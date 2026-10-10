@@ -87,10 +87,11 @@ export function VerificationUI() {
     try {
       const result = await authApi.verifySendBoth();
       setChannels(result.channels ?? {});
+      if(result.channels?.email?.alreadyVerified&&result.channels?.phone?.alreadyVerified){setStage("success");setNotice("Your contact details are already verified.");setCooldown(0);return;}
       const sent = [result.channels?.email?.sent, result.channels?.phone?.sent].filter(Boolean).length;
       const failed = [
-        result.channels?.email?.sent === false ? "email" : null,
-        result.channels?.phone?.sent === false ? "SMS" : null
+        result.channels?.email?.sent === false && !result.channels?.email?.alreadyVerified ? "email" : null,
+        result.channels?.phone?.sent === false && !result.channels?.phone?.alreadyVerified ? "SMS" : null
       ].filter(Boolean);
       if (sent === 0) {
         setError("We could not send a verification code. Please try again in a moment.");
@@ -114,7 +115,7 @@ export function VerificationUI() {
     try {
       const result = await authApi.verifySendBoth();
       setChannels(result.channels ?? {});
-      toastSuccess("A new code has been sent to your email and phone.");
+      if(result.channels?.email?.alreadyVerified&&result.channels?.phone?.alreadyVerified){setStage("success");setNotice("Your contact details are already verified.");}else toastSuccess("Delivery requested for your unverified contact details.");
       setCooldown(30);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not resend the code.";
@@ -143,9 +144,11 @@ export function VerificationUI() {
       await refreshSession().catch(() => undefined);
       setStage("success");
       if (result.allVerified) {
-        setTimeout(() => router.push(routes.customerDashboard), 1200);
+        const plan=sessionStorage.getItem("obligon_selected_plan");
+        const destination=user?.role==='company'?routes.companyDashboard:user?.role==='partner'||user?.role==='mechanic'?'/dashboard/billing':plan?`/customer/card?chosenPlan=${encodeURIComponent(plan)}`:routes.customerDashboard;
+        setTimeout(() => router.push(destination),1200);
       } else {
-        setTimeout(() => router.push(`/customer?verify=${result.remaining?.join(",") ?? ""}`), 1200);
+        setStage("input");setCode("");setNotice(`Code accepted. Enter the code for your remaining ${(result.remaining??[]).join(' and ')} contact.`);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "That code is not correct.");
@@ -242,7 +245,8 @@ export function VerificationUI() {
         {stage === "success" ? (
           <div className="mt-8 flex items-center justify-center gap-2 rounded-xl bg-obligon-lime/20 p-4 text-sm font-extrabold text-obligon-navy">
             <Check size={18} />
-            Code accepted
+            Contact verification complete
+            <button type="button" className="min-h-12 underline" onClick={()=>{const plan=sessionStorage.getItem("obligon_selected_plan");router.push(user?.role==="company"?routes.companyDashboard:user?.role==="partner"||user?.role==="mechanic"?"/dashboard/billing":plan?`/customer/card?chosenPlan=${encodeURIComponent(plan)}`:routes.customerDashboard);}}>Continue to dashboard</button>
           </div>
         ) : (
           <form onSubmit={verify} className="mt-8">

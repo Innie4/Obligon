@@ -1,340 +1,108 @@
 "use client";
-
-import Image from "next/image";
+import * as React from "react";
 import Link from "next/link";
-import { useState } from "react";
-import { assets } from "./assets";
-
-type FeatureCell = true | false | string;
-
-type SourcePlan = {
+import { api } from "@/lib/services";
+type Plan = {
+  code: string;
   name: string;
-  price: string;
-  suffix?: string;
-  features: FeatureCell[];
-  cta: string;
-  recommended?: boolean;
-  dark?: boolean;
+  price_kobo: number;
+  interval: string;
+  features: Array<string | { label: string; state: string }>;
 };
-
-type ResolvedFeature = {
-  label: string;
-  value: string | null;
-  enabled: boolean;
-};
-
-type ResolvedPlan = {
-  name: string;
-  price: string;
-  suffix?: string;
-  features: ResolvedFeature[];
-  cta: string;
-  recommended?: boolean;
-  dark?: boolean;
-};
-
-const organizationPlans: SourcePlan[] = [
-  {
-    name: "Starter",
-    price: "150k",
-    suffix: "/year",
-    features: ["Up to 10 Vehicles", "Basic Reporting", "50 Partner Stations"],
-    cta: "Deploy Now"
-  },
-  {
-    name: "Business",
-    price: "250k",
-    suffix: "/year",
-    features: ["Up to 50 Vehicles", "Advanced Analytics", "250 Partner Stations", "Dedicated Account Exec"],
-    cta: "Scale Faster",
-    recommended: true
-  },
-  {
-    name: "Enterprise",
-    price: "500k",
-    suffix: "/year",
-    features: ["Up to 200 Vehicles", "Custom API Integration", "Full Network Access"],
-    cta: "Contact Sales"
-  },
-  {
-    name: "Organization",
-    price: "Custom",
-    features: ["Unlimited Vehicles", "White-label Options", "Bulk Fuel Management"],
-    cta: "Custom Quote",
-    dark: true
-  }
-];
-
-const individualFeatureLabels = [
-  "Digital Fuel Wallet",
-  "Physical Fuel Card",
-  "Fuel Purchase",
-  "Digital Receipts",
-  "Transaction History",
-  "Fuel Spend Tracking",
-  "Fuel Budget Management",
-  "Spending Limits",
-  "Fuel Consumption Analytics",
-  "Loyalty Rewards",
-  "Partner Discounts",
-  "Partner Mechanics",
-  "Priority Support",
-  "Generator Repairer",
-  "Access to Car Wash",
-  "VIP Lounge",
-  "Intelligence Notifications",
-  "Towing Services"
-];
-
-const individualPlans: SourcePlan[] = [
-  {
-    name: "Bronze",
-    price: "2,500",
-    suffix: "/month",
-    features: [
-      true,
-      true,
-      true,
-      true,
-      true,
-      true,
-      true,
-      true,
-      false,
-      false,
-      "25%",
-      false,
-      false,
-      "30%",
-      false,
-      false,
-      false,
-      false
-    ],
-    cta: "Start Free"
-  },
-  {
-    name: "Gold",
-    price: "3,500",
-    suffix: "/month",
-    features: [
-      true,
-      true,
-      true,
-      true,
-      true,
-      "Advanced",
-      true,
-      true,
-      "Advanced",
-      "Premium",
-      "50%",
-      false,
-      true,
-      "60%",
-      true,
-      false,
-      true,
-      false
-    ],
-    cta: "Go Gold",
-    recommended: true
-  },
-  {
-    name: "Platinum",
-    price: "5,000",
-    suffix: "/month",
-    features: [
-      true,
-      true,
-      true,
-      true,
-      true,
-      "Advanced",
-      true,
-      true,
-      "Advanced",
-      "Premium",
-      "75%",
-      true,
-      true,
-      "100%",
-      true,
-      true,
-      true,
-      true
-    ],
-    cta: "Go Platinum"
-  }
-];
-
-function resolvePlans(source: SourcePlan[], usesSharedLabels: boolean): ResolvedPlan[] {
-  return source.map((plan) => ({
-    ...plan,
-    features: plan.features.map((cell, index) => {
-      if (typeof cell === "string") {
-        return usesSharedLabels
-          ? { label: individualFeatureLabels[index], value: cell, enabled: true }
-          : { label: cell, value: null, enabled: true };
-      }
-
-      return { label: individualFeatureLabels[index], value: null, enabled: cell };
-    })
-  }));
-}
-
 export function Pricing() {
-  const [tab, setTab] = useState<"individual" | "organization">("individual");
-  const plans =
-    tab === "individual" ? resolvePlans(individualPlans, true) : resolvePlans(organizationPlans, false);
-
+  const [kind, setKind] = React.useState<"customer" | "partner" | "company">(
+      "customer",
+    ),
+    [data, setData] = React.useState<{
+      plans: Plan[];
+      customerPlans: Plan[];
+    } | null>(null),
+    [error, setError] = React.useState("");
+  const load = React.useCallback(async () => {
+    try {
+      setData(await api.request("/api/public/plans"));
+      setError("");
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }, []);
+  React.useEffect(() => {
+    void load();
+  }, [load]);
+  const plans = kind === "customer" ? data?.customerPlans : data?.plans;
   return (
-    <section id="pricing" className="bg-obligon-mist py-20 lg:py-32" data-node-id="2:71">
-      <div className="mx-auto w-full max-w-[1216px] min-w-0 px-5 sm:px-8">
-        <div className="mx-auto max-w-[672px] text-center">
-          <p className="text-xs font-semibold uppercase tracking-[2.4px] text-obligon-green">Pricing Strategy</p>
-          <h2 className="mt-4 font-display text-[32px] leading-10 text-obligon-navy sm:text-4xl">
-            Built for Scaling Enterprises
-          </h2>
-          <p className="mt-4 text-base leading-6 text-obligon-text">
-            Choose a plan that matches your fleet&apos;s complexity and geographical footprint.
-          </p>
-        </div>
-
-        <div className="mt-10 flex justify-center">
-          <div className="flex rounded-full border border-[#e5e7eb] bg-[#f3f4f6] p-[5px]">
+    <section id="pricing" className="bg-obligon-mist px-5 py-20 sm:px-8">
+      <div className="mx-auto max-w-6xl">
+        <p className="text-sm font-bold uppercase text-obligon-green">
+          Plans and access
+        </p>
+        <h2 className="mt-3 font-display text-4xl font-extrabold text-obligon-navy">
+          Choose the plan for your journey.
+        </h2>
+        <p className="mt-4 text-obligon-text">
+          Subscription fees are separate from fuel funds. Dashboard access
+          follows the selected plan’s limits.
+        </p>
+        <div className="my-8 flex flex-wrap gap-3">
+          {(["customer", "partner", "company"] as const).map((role) => (
             <button
-              type="button"
-              onClick={() => setTab("individual")}
-              className={`h-[42px] rounded-full px-8 text-sm font-semibold transition ${
-                tab === "individual"
-                  ? "border border-[#e5e7eb] bg-white text-[#060b19] shadow-[0_1px_1px_rgba(0,0,0,0.05)]"
-                  : "text-[#4b5563]"
-              }`}
+              key={role}
+              aria-pressed={kind === role}
+              onClick={() => setKind(role)}
+              className={`min-h-12 rounded-lg border px-6 font-bold ${kind === role ? "bg-obligon-green text-white" : "bg-white text-obligon-navy"}`}
             >
-              Individual
+              {role === "customer"
+                ? "Individual"
+                : role === "partner"
+                  ? "Partner"
+                  : "Organization"}
             </button>
-            <button
-              type="button"
-              onClick={() => setTab("organization")}
-              className={`h-[42px] rounded-full px-8 text-sm font-semibold transition ${
-                tab === "organization"
-                  ? "border border-[#e5e7eb] bg-white text-[#060b19] shadow-[0_1px_1px_rgba(0,0,0,0.05)]"
-                  : "text-[#4b5563]"
-              }`}
-            >
-              Organization
+          ))}
+        </div>
+        {error && (
+          <div role="alert">
+            <p>{error}</p>
+            <button className="min-h-12 underline" onClick={() => void load()}>
+              Retry loading prices
             </button>
           </div>
-        </div>
-
-        <div
-          className={`mt-[52px] grid min-w-0 gap-5 lg:items-start ${
-            plans.length === 4 ? "lg:grid-cols-4" : "lg:grid-cols-3"
-          }`}
-        >
-          {plans.map((plan) => (
+        )}
+        {!data && !error && <p role="status">Loading current plans…</p>}
+        <div className="grid gap-6 md:grid-cols-3">
+          {plans?.map((plan) => (
             <article
-              key={plan.name}
-              className={`relative flex min-h-[384px] min-w-0 flex-col rounded-3xl p-8 ${
-                plan.dark
-                  ? "border border-obligon-blue bg-obligon-blue text-white"
-                  : plan.recommended
-                    ? "z-10 -mt-2 border-2 border-obligon-green bg-white text-obligon-navy shadow-card lg:scale-105"
-                    : "border border-obligon-border bg-white text-obligon-navy"
-              }`}
+              key={plan.code}
+              className="flex flex-col rounded-xl border border-obligon-border bg-white p-6"
             >
-              {plan.recommended ? (
-                <div className="absolute right-0 top-0 rounded-tr-[22px] bg-obligon-green px-4 py-1 text-[10px] font-bold uppercase leading-[15px] text-white">
-                  Recommended
-                </div>
-              ) : null}
-
-              <p
-                className={`text-xs font-bold uppercase tracking-[1.2px] ${
-                  plan.dark ? "text-obligon-lime" : plan.recommended ? "text-obligon-green" : "text-obligon-text"
-                }`}
-              >
-                {plan.name}
+              <h3 className="font-display text-2xl font-bold">{plan.name}</h3>
+              <p className="my-4 text-3xl font-bold">
+                ₦{(Number(plan.price_kobo) / 100).toLocaleString()}
+                <span className="text-sm font-normal"> / {plan.interval}</span>
               </p>
-
-              <div className="mt-3 flex items-end gap-1">
-                {plan.price === "Custom" ? (
-                  <p className="font-display text-3xl leading-9">Custom</p>
-                ) : (
-                  <>
-                    <p className="font-display text-3xl leading-9">&#8358;{plan.price}</p>
-                    <span className={`pb-1 text-sm ${plan.dark ? "text-white/75" : "text-obligon-text"}`}>
-                      {plan.suffix}
-                    </span>
-                  </>
-                )}
-              </div>
-
-              <ul className="mt-8 space-y-3.5">
-                {plan.features.map((feature) => (
-                  <li
-                    key={feature.label}
-                    className={`flex items-start gap-3 text-sm leading-5 ${
-                      !feature.enabled
-                        ? plan.dark
-                          ? "text-white/40"
-                          : "text-obligon-text/50"
-                        : plan.dark
-                          ? "text-white/80"
-                          : plan.recommended
-                            ? "font-medium text-obligon-navy"
-                            : "text-obligon-text"
-                    }`}
-                  >
-                    {feature.enabled ? (
-                      <Image
-                        src={plan.dark ? assets.checkGreen : assets.checkLarge}
-                        width={10}
-                        height={20}
-                        alt=""
-                        className="shrink-0"
-                      />
-                    ) : (
-                      <>
-                        <span
-                          aria-hidden="true"
-                          className="inline-flex w-[10px] shrink-0 translate-y-[3px] justify-center text-xs"
-                        >
-                          &mdash;
-                        </span>
-                        <span className="sr-only">Not included</span>
-                      </>
-                    )}
-                    <span className="min-w-0">
-                      {feature.label}
-                      {feature.value ? (
-                        <span
-                          className={`ml-1.5 font-bold ${plan.dark ? "text-obligon-lime" : "text-obligon-green"}`}
-                        >
-                          {feature.value}
-                        </span>
-                      ) : null}
-                    </span>
+              <ul className="mb-6 space-y-3">
+                {plan.features.map((feature, index) => (
+                  <li key={index} className="text-sm">
+                    {typeof feature === "string"
+                      ? feature
+                      : `${feature.label}: ${feature.state.replaceAll("_", " ")}`}
                   </li>
                 ))}
               </ul>
-
               <Link
-                href="/auth/signup"
-                className={`mt-auto inline-flex h-14 items-center justify-center rounded-lg px-6 text-base font-bold ${
-                  plan.dark
-                    ? "bg-white text-obligon-navy"
-                    : plan.recommended
-                      ? "bg-obligon-green text-white"
-                      : "border border-obligon-navy text-obligon-navy"
-                }`}
+                className="mt-auto flex min-h-12 items-center justify-center rounded-lg bg-obligon-green px-4 font-bold text-white"
+                href={`/auth/signup?role=${kind}&plan=${plan.code}`}
               >
-                {plan.cta}
+                Choose {plan.name}
               </Link>
             </article>
           ))}
         </div>
+        <Link
+          href="/support?request=sales"
+          className="mt-8 inline-flex min-h-12 items-center font-bold text-obligon-green underline"
+        >
+          Contact sales for a custom requirement
+        </Link>
       </div>
     </section>
   );

@@ -1,0 +1,52 @@
+import assert from 'node:assert/strict';
+import { before,after,beforeEach,test } from 'node:test';
+import { randomUUID } from 'node:crypto';
+import pg from 'pg';
+import express from 'express';
+const url=process.env.OBLIGON_TEST_DATABASE_URL;
+if(url)assert.ok(['localhost','127.0.0.1','[::1]'].includes(new URL(url).hostname));
+const schema=`customer_features_${process.pid}_${randomUUID().replaceAll('-','')}`;
+const integration=(name,fn)=>test(name,{skip:!url},fn);
+let admin,pool,server,base,user=randomUUID(),card=randomUUID();
+before(async()=>{
+ if(!url)return;admin=new pg.Pool({connectionString:url});await admin.query(`CREATE SCHEMA ${schema}`);
+ const isolated=new URL(url);isolated.searchParams.set('options',`-c search_path=${schema}`);
+ process.env.DATABASE_URL=isolated.toString();process.env.DOTENV_CONFIG_PATH='/dev/null';process.env.NODE_ENV='test';
+ pool=(await import('../src/db.js')).getPool();
+ await pool.query(`CREATE TABLE card_plans(code text PRIMARY KEY,name text,features jsonb);
+ CREATE TABLE customer_subscriptions(user_id uuid,plan_code text,status text,current_period_start timestamptz,current_period_end timestamptz);
+ CREATE TABLE cards(id uuid,owner_user_id uuid,organization_id uuid,daily_limit_kobo bigint DEFAULT 10000,monthly_limit_kobo bigint DEFAULT 50000,updated_at timestamptz);
+ CREATE TABLE users(id uuid,email text,full_name text,phone text,phone_verified boolean,address text,city text,biometrics_enabled boolean,updated_at timestamptz,notification_prefs jsonb DEFAULT '{"email":false,"sms":false,"push":false}');
+ CREATE TABLE wallets(user_id uuid,budget_limit_kobo bigint DEFAULT 50000);
+ CREATE TABLE support_tickets(id uuid DEFAULT gen_random_uuid(),reference text,user_id uuid,organization_id uuid,subject text,category text,message text,attachments jsonb,priority text,status text);
+ CREATE TABLE ticket_messages(ticket_id uuid,sender_user_id uuid,sender_role text,body text);
+ CREATE TABLE notifications(id uuid DEFAULT gen_random_uuid(),user_id uuid,organization_id uuid,title text,body text,category text,action_required boolean,link text,in_app_visible boolean DEFAULT TRUE,event_key text);
+ CREATE UNIQUE INDEX ON notifications(event_key)WHERE event_key IS NOT NULL;
+ CREATE TABLE audit_logs(actor_user_id uuid,actor_role text,action text,entity_type text,entity_id uuid,ip text,metadata jsonb);
+ CREATE TABLE card_actions(card_id uuid,user_id uuid,action text,note text);
+ CREATE TABLE monthly_spend_projections(user_id uuid,month date,projected_kobo bigint,updated_at timestamptz DEFAULT now(),PRIMARY KEY(user_id,month));
+ `);
+ const app=express();app.use(express.json());app.use((req,res,next)=>{req.user={id:user,role:'customer'};next();});
+ app.use('/api/customer',(await import('../src/routes/customer.routes.js')).default);
+ app.use((error,req,res,next)=>res.status(error.status??500).json({message:error.message}));
+ await new Promise(resolve=>{server=app.listen(0,'127.0.0.1',resolve);});base=`http://127.0.0.1:${server.address().port}`;
+});
+beforeEach(async()=>{if(!url)return;await pool.query('TRUNCATE card_plans,customer_subscriptions,cards,users,support_tickets,ticket_messages,notifications,audit_logs,card_actions,monthly_spend_projections,wallets');await pool.query('INSERT INTO cards(id,owner_user_id)VALUES($1,$2)',[card,user]);await pool.query('INSERT INTO users(id,full_name)VALUES($1,$2)',[user,'Original Name']);await pool.query('INSERT INTO wallets(user_id)VALUES($1)',[user]);});
+after(async()=>{if(!url)return;await new Promise(resolve=>server.close(resolve));await pool.end();await admin.query(`DROP SCHEMA ${schema} CASCADE`);await admin.end();});
+const call=(path,body,method='POST')=>fetch(base+path,{method,headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+async function plan(features,expired=false){await pool.query('INSERT INTO card_plans VALUES($1,$2,$3)',['test','Test',JSON.stringify(features)]);await pool.query(`INSERT INTO customer_subscriptions VALUES($1,'test','active',now()-interval '1 day',now()+interval '${expired?'-1 second':'1 month'}')`,[user]);}
+integration('inactive subscriptions cannot change monthly spend projections',async()=>{const result=await call('/api/customer/spend-projection',{projectedSpend:1000},'PUT');assert.equal(result.status,403);});
+integration('catalog exclusion blocks budget projection despite an active paid period',async()=>{await plan([{label:'Fuel Budget Management',state:'unavailable'}]);const result=await call('/api/customer/spend-projection',{projectedSpend:1000},'PUT');assert.equal(result.status,403);});
+integration('expired subscriptions cannot change card spending limits',async()=>{await plan([{label:'Spending Limits',state:'included'}],true);const result=await call(`/api/customer/cards/${card}/limits`,{daily:200,monthly:1000});assert.equal(result.status,403);});
+integration('catalog exclusion blocks card limits despite an active paid period',async()=>{await plan([{label:'Spending Limits',state:'unavailable'}]);const result=await call(`/api/customer/cards/${card}/limits`,{daily:200,monthly:1000});assert.equal(result.status,403);});
+integration('active included card-limit feature permits safe limit changes',async()=>{await plan([{label:'Spending Limits',state:'included'}]);const result=await call(`/api/customer/cards/${card}/limits`,{daily:200,monthly:1000});assert.equal(result.status,200);const {rows:[saved]}=await pool.query('SELECT daily_limit_kobo FROM cards WHERE id=$1',[card]);assert.equal(Number(saved.daily_limit_kobo),20000);});
+integration('customer supplied priority cannot bypass Bronze support entitlement',async()=>{await plan([{label:'Priority Support',state:'unavailable'}]);const result=await call('/api/customer/support/tickets',{subject:'Help',message:'Test',priority:'urgent'});assert.equal(result.status,200);const {rows:[saved]}=await pool.query('SELECT priority FROM support_tickets');assert.equal(saved.priority,'normal');});
+integration('active Priority Support automatically receives high priority without client selection',async()=>{await plan([{label:'Priority Support',state:'included'}]);const result=await call('/api/customer/support/tickets',{subject:'Help',message:'Test',priority:'normal'});assert.equal(result.status,200);const {rows:[saved]}=await pool.query('SELECT priority FROM support_tickets');assert.equal(saved.priority,'high');});
+integration('expired Priority Support retains ordinary support access without a paid queue',async()=>{await plan([{label:'Priority Support',state:'included'}],true);const result=await call('/api/customer/support/tickets',{subject:'Help',message:'Test',priority:'high'});assert.equal(result.status,200);const {rows:[saved]}=await pool.query('SELECT priority FROM support_tickets');assert.equal(saved.priority,'normal');});
+
+integration('active included budget feature permits projection updates',async()=>{await plan([{label:'Fuel Budget Management',state:'included'}]);const result=await call('/api/customer/spend-projection',{projectedSpend:1000},'PUT');assert.equal(result.status,200);const {rows:[saved]}=await pool.query('SELECT projected_kobo FROM monthly_spend_projections');assert.equal(Number(saved.projected_kobo),100000);});
+
+integration('profile budget changes require an active budget entitlement before any profile mutation',async()=>{const result=await call('/api/customer/profile',{budgetLimit:100,fullName:'Changed'},'PUT');assert.equal(result.status,403);const {rows:[saved]}=await pool.query('SELECT full_name FROM users WHERE id=$1',[user]);assert.equal(saved.full_name,'Original Name');const {rows:[wallet]}=await pool.query('SELECT budget_limit_kobo FROM wallets WHERE user_id=$1',[user]);assert.equal(Number(wallet.budget_limit_kobo),50000);});
+integration('profile budget changes reject a catalog-excluded feature',async()=>{await plan([{label:'Fuel Budget Management',state:'unavailable'}]);const result=await call('/api/customer/profile',{budgetLimit:100},'PUT');assert.equal(result.status,403);});
+integration('active budget entitlement permits profile wallet budget changes',async()=>{await plan([{label:'Fuel Budget Management',state:'included'}]);const result=await call('/api/customer/profile',{budgetLimit:100},'PUT');assert.equal(result.status,200);const {rows:[wallet]}=await pool.query('SELECT budget_limit_kobo FROM wallets WHERE user_id=$1',[user]);assert.equal(Number(wallet.budget_limit_kobo),10000);});
+integration('ordinary profile edits remain available without a subscription',async()=>{const result=await call('/api/customer/profile',{fullName:'Changed'},'PUT');assert.equal(result.status,200);const {rows:[saved]}=await pool.query('SELECT full_name FROM users WHERE id=$1',[user]);assert.equal(saved.full_name,'Changed');});

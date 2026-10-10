@@ -56,7 +56,7 @@ export function SolutionPage({ eyebrow, name, title, body, stats, features, modu
               tone="inverse"
             />
             <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-              <Link href={`${routes.login}#signup`} className="inline-flex h-14 items-center justify-center gap-2 rounded-lg bg-obligon-green px-7 text-sm font-bold text-white shadow-green">
+              <Link href={name==="FuelVista"?routes.signup:`/support?request=${name}` } className="inline-flex h-14 items-center justify-center gap-2 rounded-lg bg-obligon-green px-7 text-sm font-bold text-white shadow-green">
                 Start with {name}
                 <ArrowRight size={16} />
               </Link>
@@ -147,7 +147,7 @@ export function SolutionPage({ eyebrow, name, title, body, stats, features, modu
           <p className="text-xs font-bold uppercase tracking-[1.6px] text-obligon-green">{name} Deployment</p>
           <h2 className="mt-4 font-display text-4xl font-extrabold">Ready to deploy across your network?</h2>
           <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
-            <Link href={`${routes.login}#signup`} className="inline-flex h-14 items-center justify-center rounded-lg bg-obligon-green px-8 text-base font-bold text-white shadow-green">
+            <Link href={name==="FuelVista"?routes.signup:`/support?request=${name}` } className="inline-flex h-14 items-center justify-center rounded-lg bg-obligon-green px-8 text-base font-bold text-white shadow-green">
               Request Onboarding
             </Link>
             <Link href={routes.support} className="inline-flex h-14 items-center justify-center rounded-lg border border-obligon-navy px-8 text-base font-bold text-obligon-navy">

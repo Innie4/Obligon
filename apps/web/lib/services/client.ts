@@ -130,7 +130,7 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
  */
 const PLAN_FEATURE_CATALOGUE = [
   "Digital Fuel Wallet",
-  "Physical Fuel Card",
+  "Virtual Fuel Card",
   "Fuel Purchase",
   "Digital Receipts",
   "Transaction History",
@@ -152,24 +152,35 @@ const PLAN_FEATURE_CATALOGUE = [
 /** Per-plan state for each catalogue entry, keyed by feature label. */
 const PLAN_FEATURE_STATES: Record<string, Record<string, string>> = {
   bronze: {
-    "Partner Discounts": "25%",
-    "Generator Repairer": "30%"
+    "Partner Discounts": "Full approved station discount",
+    "Generator Repairer": "30%",
+    "Fuel Consumption Analytics": "unavailable",
+    "Loyalty Rewards": "unavailable",
+    "Partner Mechanics": "unavailable",
+    "Priority Support": "unavailable",
+    "Access to Car Wash": "unavailable",
+    "VIP Lounge": "unavailable",
+    "Intelligence Notifications": "unavailable",
+    "Towing Services": "unavailable"
   },
   gold: {
     "Fuel Spend Tracking": "Advanced",
     "Fuel Consumption Analytics": "Advanced",
     "Loyalty Rewards": "Premium",
-    "Partner Discounts": "50%",
+    "Partner Discounts": "Full approved station discount",
     "Priority Support": "included",
     "Generator Repairer": "60%",
     "Access to Car Wash": "included",
-    "Intelligence Notifications": "included"
+    "Intelligence Notifications": "included",
+    "Partner Mechanics": "unavailable",
+    "VIP Lounge": "unavailable",
+    "Towing Services": "unavailable"
   },
   platinum: {
     "Fuel Spend Tracking": "Advanced",
     "Fuel Consumption Analytics": "Advanced",
     "Loyalty Rewards": "Premium",
-    "Partner Discounts": "75%",
+    "Partner Discounts": "Full approved station discount",
     "Partner Mechanics": "included",
     "Priority Support": "included",
     "Generator Repairer": "100%",
@@ -250,7 +261,7 @@ export interface ApiClient {
   /** Dispenses and wallet movements together, newest first. */
   getCustomerMoneyHistory(): Promise<CustomerMoneyEvent[]>;
   getMobileHistory(): Promise<MobileTransactionGroup[]>;
-  getStations(): Promise<Station[]>;
+  getStations(location?: { lat: number; lng: number }): Promise<Station[]>;
   getVehicles(): Promise<Vehicle[]>;
   getNotifications(): Promise<AppNotification[]>;
   getCustomerVehiclePerformance(): Promise<string[][]>;
@@ -294,7 +305,7 @@ export interface ApiClient {
    */
   getPartnerDisputes(): Promise<PartnerDispute[]>;
   getPartnerNotifications(): Promise<PartnerNotifications>;
-  getPartnerStation(): Promise<PartnerStation>;
+  getPartnerStation(stationId?: string): Promise<PartnerStation>;
   getPartnerSettings(): Promise<PartnerSettings>;
 
   // Admin domain
@@ -340,21 +351,45 @@ export class ApiError extends Error {
   }
 }
 
+/** Bound all API exchanges, including refresh and exports, so a cold or unavailable server cannot leave controls spinning forever. */
+async function boundedFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  const timeout = AbortSignal.timeout(20000);
+  const signal = init.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
+  try {
+    return await fetch(url, { ...init, signal });
+  } catch (error) {
+    if (timeout.aborted) throw new ApiError(0, "The server took too long to respond. Please try again.");
+    throw error;
+  }
+}
+
+function sessionKey(tokens: AuthTokens | null): string | null {
+  return tokens?.refreshToken ?? tokens?.accessToken ?? null;
+}
 let refreshing: Promise<boolean> | null = null;
+let refreshingSession: string | null = null;
 
 async function refreshTokens(): Promise<boolean> {
+  const requested = readTokens();
+  if (!requested?.refreshToken || !API_URL) return false;
+  if (refreshing && refreshingSession !== sessionKey(requested)) {
+    await refreshing;
+    return refreshTokens();
+  }
   if (!refreshing) {
+    refreshingSession = sessionKey(requested);
     refreshing = (async () => {
       const tokens = readTokens();
       if (!tokens?.refreshToken || !API_URL) return false;
       try {
-        const res = await fetch(`${API_URL}/api/auth/refresh`, {
+        const res = await boundedFetch(`${API_URL}/api/auth/refresh`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ refreshToken: tokens.refreshToken })
         });
         if (!res.ok) return false;
         const data = await res.json();
+        if (sessionKey(readTokens()) !== sessionKey(tokens)) return false;
         writeTokens({ accessToken: data.accessToken, refreshToken: tokens.refreshToken });
         if (data.user) writePersistedSession(data.user);
         return true;
@@ -362,6 +397,7 @@ async function refreshTokens(): Promise<boolean> {
         return false;
       } finally {
         refreshing = null;
+        refreshingSession = null;
       }
     })();
   }
@@ -384,6 +420,8 @@ function queryString(params: Record<string, string | number | undefined>): strin
   return encoded ? `?${encoded}` : "";
 }
 
+export const authenticatedRequest = <T>(path: string, init: RequestInit = {}): Promise<T> => http<T>(path, init);
+
 async function http<T>(path: string, init: RequestInit = {}, retried = false, allowRefresh = true): Promise<T> {
   if (!API_URL) throw new ApiError(0, "Live backend URL is not configured (NEXT_PUBLIC_API_URL missing).");
   const headers = new Headers(init.headers);
@@ -393,11 +431,13 @@ async function http<T>(path: string, init: RequestInit = {}, retried = false, al
   const tokens = readTokens();
   if (tokens?.accessToken) headers.set("Authorization", `Bearer ${tokens.accessToken}`);
 
-  const res = await fetch(`${API_URL}${path}`, { ...init, headers });
+  const res = await boundedFetch(`${API_URL}${path}`, { ...init, headers });
 
   if (res.status === 401 && allowRefresh && !retried && readTokens()) {
+    if (sessionKey(readTokens()) !== sessionKey(tokens)) throw new ApiError(401, "Session changed while this request was in progress.");
     const ok = await refreshTokens();
     if (ok) return http<T>(path, init, true, allowRefresh);
+    if (sessionKey(readTokens()) !== sessionKey(tokens)) throw new ApiError(401, "Session changed while this request was in progress.");
     writeTokens(null);
     writePersistedSession(null);
     throw new ApiError(401, "Your session has expired. Please sign in again.");
@@ -438,11 +478,13 @@ async function download(path: string, init: RequestInit = {}, retried = false): 
   const tokens = readTokens();
   if (tokens?.accessToken) headers.set("Authorization", `Bearer ${tokens.accessToken}`);
 
-  const res = await fetch(`${API_URL}${path}`, { ...init, headers });
+  const res = await boundedFetch(`${API_URL}${path}`, { ...init, headers });
 
   if (res.status === 401 && !retried && readTokens()) {
+    if (sessionKey(readTokens()) !== sessionKey(tokens)) throw new ApiError(401, "Session changed while this request was in progress.");
     const ok = await refreshTokens();
     if (ok) return download(path, init, true);
+    if (sessionKey(readTokens()) !== sessionKey(tokens)) throw new ApiError(401, "Session changed while this request was in progress.");
     writeTokens(null);
     writePersistedSession(null);
     throw new ApiError(401, "Your session has expired. Please sign in again.");
@@ -504,12 +546,15 @@ class LiveApiClient implements ApiClient {
   }
 
   async getSession(): Promise<SessionUser | null> {
-    if (!readTokens()) return null;
+    const requestedSession = sessionKey(readTokens());
+    if (!requestedSession) return null;
     try {
       const data = await http<{ user: SessionUser }>("/api/auth/session");
+      if (sessionKey(readTokens()) !== requestedSession) return null;
       writePersistedSession(data.user);
       return data.user;
     } catch (err) {
+      if (sessionKey(readTokens()) !== requestedSession) return null;
       if (err instanceof ApiError && err.status === 401) {
         writeTokens(null);
         writePersistedSession(null);
@@ -545,8 +590,8 @@ class LiveApiClient implements ApiClient {
     const data = await http<{ groups: MobileTransactionGroup[] }>("/api/customer/transactions/mobile-history");
     return data.groups;
   }
-  async getStations(): Promise<Station[]> {
-    const data = await http<{ stations: Station[] }>("/api/customer/stations");
+  async getStations(location?: { lat: number; lng: number }): Promise<Station[]> {
+    const data = await http<{ stations: Station[] }>(`/api/customer/stations${queryString(location ?? {})}`);
     return data.stations;
   }
   async getVehicles(): Promise<Vehicle[]> {
@@ -678,8 +723,8 @@ class LiveApiClient implements ApiClient {
   async getPartnerNotifications(): Promise<PartnerNotifications> {
     return http<PartnerNotifications>("/api/partner/notifications");
   }
-  async getPartnerStation(): Promise<PartnerStation> {
-    return http<PartnerStation>("/api/partner/station");
+  async getPartnerStation(stationId?: string): Promise<PartnerStation> {
+    return http<PartnerStation>(`/api/partner/station${stationId?`?stationId=${encodeURIComponent(stationId)}`:""}`);
   }
   async getPartnerSettings(): Promise<PartnerSettings> {
     return http<PartnerSettings>("/api/partner/settings");
@@ -791,7 +836,7 @@ class MockApiClient implements ApiClient {
     }));
   }
   async getMobileHistory(): Promise<MobileTransactionGroup[]> { return mobileHistory; }
-  async getStations(): Promise<Station[]> { return stations; }
+  async getStations(location?: { lat: number; lng: number }): Promise<Station[]> { return stations; }
   async getVehicles(): Promise<Vehicle[]> {
     return vehicleRows.map((row) => ({
       plate: row.cells[1],
@@ -900,7 +945,7 @@ class MockApiClient implements ApiClient {
     const notifications = groups.flatMap((group) => group.items);
     return { notifications, groups, unreadCount: notifications.length };
   }
-  async getPartnerStation(): Promise<PartnerStation> {
+  async getPartnerStation(stationId?: string): Promise<PartnerStation> {
     return { station: null, prices: [], logs: [], equipment: [] };
   }
   async getPartnerSettings(): Promise<PartnerSettings> {
@@ -979,12 +1024,17 @@ export const authApi = {
   },
 
   async logout(): Promise<void> {
-    if (LIVE_MODE) {
-      const tokens = readTokens();
-      await http("/api/auth/logout", { method: "POST", body: JSON.stringify({ refreshToken: tokens?.refreshToken }) }).catch(() => undefined);
-    }
+    const tokens = readTokens();
+    // Clear before the remote request: an old logout must never erase a new login.
     writeTokens(null);
     writePersistedSession(null);
+    if (LIVE_MODE && tokens?.accessToken) {
+      await http("/api/auth/logout", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${tokens.accessToken}` },
+        body: JSON.stringify({ refreshToken: tokens.refreshToken })
+      }, false, false).catch(() => undefined);
+    }
   },
 
   async changePassword(payload: { currentPassword: string; newPassword: string }) {
@@ -1241,6 +1291,7 @@ export const mutationsApi = {
     address: string;
     city: string;
     state: string;
+    dateOfBirth:string;postalCode:string;phone:string;
   }): Promise<{ ok: boolean; request: CardRequest; verificationEta?: string }> {
     if (!LIVE_MODE) {
       await simulate({}, 700);
@@ -1387,27 +1438,28 @@ export const mutationsApi = {
     if (!LIVE_MODE) { await simulate({}, 700); return { ok: true, simulated: true }; }
     return http<{ ok: boolean }>("/api/partner/station", { method: "PUT", body: JSON.stringify(payload) });
   },
-  async uploadStationAsset(file: File) {
+  async uploadStationAsset(file: File, stationId?: string) {
     if (!LIVE_MODE) { await simulate({}, 900); return { ok: true, path: "local", simulated: true }; }
     const form = new FormData();
     form.append("asset", file);
+    if(stationId) form.append("stationId",stationId);
     return http<{ ok: boolean; path: string }>("/api/partner/station/assets", { method: "POST", body: form });
   },
   async removeStationAsset(path: string) {
     if (!LIVE_MODE) { await simulate({}); return { ok: true }; }
     return http<{ ok: boolean }>("/api/partner/station/assets", { method: "DELETE", body: JSON.stringify({ path }) });
   },
-  async messageTerminal(message: string) {
+  async messageTerminal(message: string, stationId?: string) {
     if (!LIVE_MODE) { await simulate({}); return { ok: true }; }
-    return http<{ ok: boolean }>("/api/partner/station/message-terminal", { method: "POST", body: JSON.stringify({ message }) });
+    return http<{ ok: boolean }>("/api/partner/station/message-terminal", { method: "POST", body: JSON.stringify({ message, stationId }) });
   },
-  async requestResupply(payload: { fuelType: string; litres: number }) {
+  async requestResupply(payload: { fuelType: string; litres: number; stationId?: string }) {
     if (!LIVE_MODE) { await simulate({}); return { ok: true }; }
     return http<{ ok: boolean }>("/api/partner/station/resupply", { method: "POST", body: JSON.stringify(payload) });
   },
-  async updatePrices(updates: Array<{ fuelType: string; price: number }>) {
+  async updatePrices(updates: Array<{ fuelType: string; price: number }>, stationId: string) {
     if (!LIVE_MODE) { await simulate({}, 900); return { ok: true, simulated: true }; }
-    return http<{ ok: boolean }>("/api/partner/pricing", { method: "POST", body: JSON.stringify({ updates }) });
+    return http<{ ok: boolean }>("/api/partner/pricing", { method: "POST", body: JSON.stringify({ updates,stationId }) });
   },
   async updatePayoutConfig(payload: { settlementLimit?: number; autoSettlement?: boolean }) {
     if (!LIVE_MODE) { await simulate({}); return { ok: true }; }
@@ -1416,6 +1468,9 @@ export const mutationsApi = {
   async addBankAccount(payload: Record<string, unknown>) {
     if (!LIVE_MODE) { await simulate({}, 800); return { ok: true, simulated: true }; }
     return http<{ ok: boolean }>("/api/partner/bank-accounts", { method: "POST", body: JSON.stringify(payload) });
+  },
+  async setDefaultBankAccount(id: string) {
+    return http<{ok:boolean}>(`/api/partner/bank-accounts/${id}/default`,{method:"POST",body:JSON.stringify({})});
   },
   async removeBankAccount(id: string) {
     if (!LIVE_MODE) { await simulate({}); return { ok: true }; }
@@ -1435,7 +1490,7 @@ export const mutationsApi = {
     if (!LIVE_MODE) { await simulate({}, 800); return { ok: true, simulated: true }; }
     return http<{ ok: boolean }>(`/api/partner/payouts/${id}/retry`, { method: "POST" });
   },
-  async posAuthorize(payload: { code: string; litres?: number; fuelType?: string }) {
+  async posAuthorize(payload: { stationId?: string; code: string; litres?: number; fuelType?: string }) {
     if (!LIVE_MODE) {
       await simulate({}, 900);
       return {
@@ -1545,9 +1600,11 @@ export const publicApi = {
     if (!LIVE_MODE) { await simulate({}, 700); return { ok: true, message: "Thanks — we'll be in touch.", simulated: true }; }
     return http<{ ok: boolean; message: string }>("/api/public/leads", { method: "POST", body: JSON.stringify(payload) });
   },
-  async submitContact(payload: Record<string, unknown>) {
-    if (!LIVE_MODE) { await simulate({}, 800); return { ok: true, message: "Message received — we'll respond within a few hours.", simulated: true }; }
-    return http<{ ok: boolean; message: string }>("/api/public/contact", { method: "POST", body: JSON.stringify(payload) });
+  async submitContact(payload: Record<string, unknown>, attachment?: File | null) {
+    const form=new FormData();
+    for(const [key,value] of Object.entries(payload)) if(value != null) form.append(key,String(value));
+    if(attachment) form.append('attachment',attachment);
+    return http<{ok:boolean;message:string;reference:string}>("/api/public/contact",{method:"POST",body:form});
   },
   async getJobs(): Promise<Array<{ id: string; title: string; department: string; location: string; employmentType: string; description: string; requirements: string[] }>> {
     if (!LIVE_MODE) {
@@ -1577,6 +1634,7 @@ export const publicApi = {
   },
   async trackEvent(name: string, props?: Record<string, unknown>) {
     if (!LIVE_MODE) return;
+    try {const prefs=JSON.parse(localStorage.getItem("obligon_cookie_consent")??"{}");if(prefs.analytics!==true||navigator.doNotTrack==="1")return;}catch{return;}
     void http("/api/public/events", { method: "POST", body: JSON.stringify({ name, props }) }).catch(() => undefined);
   }
 };

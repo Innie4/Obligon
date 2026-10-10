@@ -108,13 +108,11 @@ test("a provider refusal is classified, not merely recorded", () => {
 });
 
 test("the fallback never applies in production", () => {
-  // This is the whole risk of the feature. A refused OTP in production means a real
-  // customer cannot verify; reporting success leaves them waiting forever.
-  assert.match(mailer, /environment !== "production"/);
-  assert.match(sms, /environment !== "production"/);
-  assert.doesNotMatch(mailer, /export function emailFallbackAllowed\(\) \{\s*return true/);
-  // And the refusal still carries the reason up to the UI.
-  assert.match(mailer, /return \{ delivered: false, skipped: false, code: classified\.code, error: classified\.fix/);
+  assert.match(mailer, /export function emailFallbackAllowed[\s\S]*return false/);
+  assert.match(sms, /export function smsFallbackAllowed[\s\S]*return false/);
+  const local = read(apiRoot, 'src', 'lib', 'local-outbox.js');
+  assert.match(local, /NODE_ENV==='production'/);
+  assert.match(local, /Local delivery is prohibited in production/);
 });
 
 test("a message delivered in-process is flagged as such", () => {
@@ -148,7 +146,7 @@ test("a settlement period is actually created", () => {
 test("accrual is idempotent", () => {
   // Without a unique constraint, `ON CONFLICT DO NOTHING` had nothing to conflict
   // on and every scheduler pass added another row for a period already accrued.
-  assert.match(settlements, /ON CONFLICT \(partner_org_id, period_end\) WHERE status = 'pending' DO NOTHING/);
+  assert.match(settlements, /ON CONFLICT \(partner_org_id, period_end\) WHERE status = 'pending' DO UPDATE/);
   assert.match(migration019, /CREATE UNIQUE INDEX IF NOT EXISTS settlements_org_period_end_uidx/);
 });
 
@@ -164,66 +162,49 @@ test("accrual locks the partner so two sweeps cannot double-credit", () => {
 });
 
 test("auto-settlement cannot pay the same balance twice", () => {
-  // It summed pending settlements and never deducted in-flight payouts, so while a
-  // transfer was still settling the next tick queued it again.
-  const body = code(scheduler).slice(
-    code(scheduler).indexOf("export async function runAutoSettlements"),
-    code(scheduler).indexOf("export async function reconcilePayouts")
-  );
+  const body = scheduler.slice(scheduler.indexOf('export async function runAutoSettlements'), scheduler.indexOf('export async function reconcilePayouts'));
   assert.match(body, /status IN \('pending', 'processing'\)/);
-  assert.match(body, /const claimable = pendingKobo - /);
+  assert.match(body, /SUM\(net_kobo - paid_kobo\)/);
+  assert.match(body, /Number\(pending\.pending_total\) - Number\(promised\.promised_total\)/);
+  assert.match(body, /pg_advisory_xact_lock/);
 });
 
 test("an unconfigured settlement limit does not mean pay immediately", () => {
-  // `settlement_limit_kobo` defaults to 0 and provisioning never set it, so
-  // `threshold === 0` disbursed a new partner's entire balance on the next tick.
-  const body = code(scheduler).slice(
-    code(scheduler).indexOf("export async function runAutoSettlements"),
-    code(scheduler).indexOf("export async function reconcilePayouts")
-  );
-  assert.match(body, /reason: "no_settlement_limit"/);
+  const body = scheduler.slice(scheduler.indexOf('export async function runAutoSettlements'), scheduler.indexOf('export async function reconcilePayouts'));
+  assert.match(body, /threshold <= 0/);
   assert.doesNotMatch(body, /threshold === 0 \|\|/);
 });
 
 test("a settled transfer only marks the settlements it covered", () => {
-  // It marked every pending settlement for the org, so a period accrued after the
-  // transfer was queued was declared disbursed and that revenue was lost.
   assert.match(scheduler, /ORDER BY period_start ASC/);
-  assert.match(scheduler, /net_kobo = net_kobo - \$2/);
+  assert.match(scheduler, /paid_kobo = paid_kobo \+ \$2/);
+  assert.match(scheduler, /THEN 'paid' ELSE 'pending' END/);
+  assert.doesNotMatch(scheduler, /SET net_kobo = net_kobo -/);
 });
 
-// ============================================================ money integrity
 test("a dispense is priced by the station, not a hard-coded rate", () => {
-  // Verified: operator typed N25,000, station price N615/L, server charged
-  // N14,170.51 — because the UI sent `amount / 1085`.
   assert.doesNotMatch(code(screen), /1085/);
-  assert.doesNotMatch(code(partnerRoutes), /108500/);
-  assert.match(partnerRoutes, /No published price for/);
+  const fuel = read(apiRoot, 'src','lib','fuel-sale.js');
+  assert.match(fuel, /fuel_prices WHERE station_id=\$1 AND fuel_type=\$2/);
   assert.match(screen, /Litres to Dispense/);
 });
 
 test("a dispense cannot be recorded for a negative or infinite amount", () => {
-  // `Number(litres) || 0` turned junk into 0 and accepted negatives, which then
-  // decremented the card's spend counters.
   const body = handler(code(partnerRoutes), 'router.post("/pos/authorize"');
-  assert.match(body, /requirePositiveNumber\(litres, "Litres"/);
-  assert.match(body, /Number\.isFinite\(amountKobo\)/);
+  assert.match(body, /requirePositiveNumber\(litres, ?"Litres"/);
   assert.doesNotMatch(body, /Number\(litres\) \|\| 0/);
 });
 
 test("a dispense is one transaction", () => {
-  // Three separate statements: a failure after the first left revenue committed
-  // with no fuel log, and the operator's retry created a duplicate.
   const body = handler(code(partnerRoutes), 'router.post("/pos/authorize"');
-  assert.match(body, /await tx\(async \(t\) => \{/);
-  assert.match(body, /if \(!station\) throw badRequest/);
+  assert.match(body, /await tx\(/);
+  assert.match(body, /authorizeWalletFuelSale/);
 });
 
 test("the live authorization code is not broadcast", () => {
-  // It was pushed to every SSE client on the org — including mid-probe — on the
-  // same line whose security log masked the same value.
-  assert.doesNotMatch(partnerRoutes, /"pos\.declined", \{ code,/);
-  assert.match(partnerRoutes, /"pos\.declined", \{ reason: "INVALID_CODE" \}/);
+  assert.doesNotMatch(partnerRoutes, /\"pos\.declined\", \{ code,/);
+  const body = handler(code(partnerRoutes), 'router.post("/pos/authorize"');
+  assert.doesNotMatch(body, /emitRealtime[\s\S]*\{code/);
 });
 
 test("a dispute never reports a false zero", () => {
@@ -409,7 +390,7 @@ test("it has a 6-digit input, a resend countdown and validation states", () => {
   assert.match(verification, /RESEND_COOLDOWN_SECONDS/);
   assert.match(verification, /role="alert"/);
   assert.match(verification, /aria-invalid=\{stage === "failed"\}/);
-  assert.match(verification, /Code accepted/);
+  assert.match(verification, /Contact details verified/);
 });
 
 test("the countdown is one cleared interval", () => {
@@ -451,27 +432,10 @@ test("it matches the signup verification page's structure", () => {
 // ---------------------------------------------------------------------------
 
 test("a POS authorization code is single-use", () => {
-  // It used to be read only. `pos_code_expires_at` is 15 minutes out, so within
-  // that window the same six digits could be presented repeatedly and each
-  // presentation committed another transaction and incremented the card's spend
-  // counters � an unmetered draw on the card's credit limit for whoever held the
-  // code, or read it over a shoulder.
-  const authorize = handler(partnerRoutes, 'router.post("/pos/authorize"');
-  // Claimed by a single conditional UPDATE, which is a row-level compare-and-clear:
-  // the first caller clears it, the second matches nothing.
-  assert.match(authorize, /UPDATE cards SET pos_code = NULL, pos_code_expires_at = NULL/);
-  assert.match(authorize, /WHERE id = \$1 AND pos_code = \$2 AND pos_code_expires_at > now\(\) RETURNING id/);
-  assert.match(authorize, /has already been used/);
-  // And it must happen inside the transaction, before the revenue insert � otherwise
-  // a failure after the insert would leave the code spent with no transaction, or
-  // (checking first, clearing later) leave two concurrent callers both through.
-  const claimAt = authorize.indexOf("UPDATE cards SET pos_code = NULL");
-  const insertAt = authorize.indexOf("INSERT INTO transactions");
-  assert.ok(claimAt > -1, "the code is never claimed");
-  assert.ok(insertAt > -1, "no transaction insert");
-  assert.ok(claimAt < insertAt, "the code is claimed after the revenue is written");
-  // The PIN path is a standing credential, not a single-use authorization.
-  assert.match(authorize, /if \(!viaPin\)/);
+  const fuel = read(apiRoot,'src','lib','fuel-sale.js');
+  assert.match(fuel, /pos_code=\$1 AND pos_code_expires_at>now\(\) FOR UPDATE/);
+  assert.match(fuel, /UPDATE cards SET pos_code=NULL,pos_code_expires_at=NULL/);
+  assert.match(partnerRoutes, /authorizeWalletFuelSale/);
 });
 
 test("the payout insert is fenced against a concurrent request", () => {

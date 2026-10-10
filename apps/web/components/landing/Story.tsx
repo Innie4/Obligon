@@ -16,13 +16,13 @@ const storyCards = [
   },
   {
     title: "Bulk Supply",
-    text: "Large-scale energy distribution for industrial and commercial partners with guaranteed availability.",
+    text: "Large-scale energy distribution for industrial and commercial partners with availability confirmed before delivery.",
     icon: assets.linkedin,
     iconSize: "h-[25px] w-[24.4375px]"
   },
   {
     title: "FuelVista Tech",
-    text: "Our proprietary subscription card system powering thousands of vehicle transactions monthly.",
+    text: "Our proprietary subscription card system connecting approved stations, spending controls and recorded fuel transactions.",
     icon: assets.zap,
     iconSize: "h-[25px] w-[22.5px]"
   }
