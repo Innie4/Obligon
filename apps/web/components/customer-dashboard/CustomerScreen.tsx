@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
+import { SubscriptionPanel } from "@/components/shared/SubscriptionPanel";
+import { CustomerFuelCheckout } from "./CustomerFuelCheckout";
 import type { ComponentType } from "react";
 import {
   AlertTriangle,
@@ -231,15 +233,7 @@ function greetingHour() {
   return "Good evening";
 }
 
-function OverviewPage({
-  balanceRefreshKey,
-  onEditProjection,
-  canEditProjection
-}: {
-  balanceRefreshKey: number;
-  onEditProjection: () => void;
-  canEditProjection: boolean;
-}) {
+function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
   const { user } = useSession();
   const router = useRouter();
   const { status, data: metrics, error, reload, refresh } = useAsync(
@@ -262,12 +256,9 @@ function OverviewPage({
   const totalBalance = metricValue(metrics, "Total Account Balance", "₦0.00");
   const mtdSpend = metricValue(metrics, "MTD Spend", "₦0.00");
   const mtdSpendHelper = metricHelper(metrics, "MTD Spend") ?? "";
-  // The projection is what the MTD Spend card is measured against, and it is
-  // also how the customer changes it: the whole card is the control. Showing the
-  // figure and the edit in one place is why the prompt at the start of a month
-  // does not need to explain where to go afterwards.
+  // Overview summarizes spend; subscription access and budget editing live in My Card.
   const projectedSpend = metricValue(metrics, "Projected Spend", "Not set");
-  const projectedHelper = metricHelper(metrics, "Projected Spend") ?? "Tap to set this month";
+  const projectedHelper = "Manage in My Card";
   const budgetUsage = metricValue(metrics, "Budget Usage", "-");
   const budgetLimit = metricHelper(metrics, "Budget Usage") ?? "Not set";
   const litres = metricValue(metrics, "Litres Consumed", "0 L");
@@ -305,18 +296,13 @@ function OverviewPage({
               {totalBalance}
             </p>
           </Card>
-          {/* The whole card is the control for this month's projection. It was a
-              read-only figure before, so the MTD Spend bar was driven by a limit
-              set in a page the customer was never sent to, and read "-"
-              forever. Clicking the card is the affordance, and the label says so
-              rather than leaving it to be discovered. */}
+          {/* Keep the spend summary available to everyone and send edits to My Card. */}
           <Card className="p-6 text-left">
             <button
               type="button"
-              onClick={onEditProjection}
-              disabled={!canEditProjection}
+              onClick={() => router.push("/customer/card")}
               className="block w-full rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-obligon-green"
-              aria-label={canEditProjection ? "Set or change your projected spend for this month" : "Budget management requires an active subscription"}
+              aria-label="Manage your fuel budget in My Card"
             >
               <div className="flex items-baseline justify-between gap-3">
                 <p className="text-xs font-extrabold uppercase tracking-[0.8px] text-[#3f463d]">MTD Spend</p>
@@ -349,7 +335,6 @@ function OverviewPage({
                 </span>
               </p>
             </button>
-            {!canEditProjection ? <a href="/customer/subscription" className="mt-3 inline-block text-xs font-bold text-obligon-green underline">Subscribe or renew to manage your fuel budget</a> : null}
           </Card>
         </div>
 
@@ -787,11 +772,21 @@ interface CustomerCard {
 function CardPage({
   onModal,
   refreshKey,
-  onCardChange
+  onCardChange,
+  subscription,
+  onSubscriptionChange,
+  canEditProjection,
+  projectionLabel,
+  onEditProjection
 }: {
   onModal: (modal: CustomerModalType) => void;
   refreshKey: number;
   onCardChange?: (card: CustomerCard | null) => void;
+  subscription: CustomerEntitlementState | null;
+  onSubscriptionChange: () => void;
+  canEditProjection: boolean;
+  projectionLabel: string;
+  onEditProjection: () => void;
 }) {
   const { success: toastSuccess, error: toastError } = useToast();
   const { user } = useSession();
@@ -802,7 +797,16 @@ function CardPage({
   const { status: plansStatus, data: plans } = useAsync(() => api.getCardPlans());
   const [planModalOpen, setPlanModalOpen] = React.useState(false);
   const [preferredPlan,setPreferredPlan]=React.useState<string>();
-  React.useEffect(()=>{const plan=new URLSearchParams(window.location.search).get("chosenPlan")??sessionStorage.getItem("obligon_selected_plan");if(plan){setPreferredPlan(plan);setPlanModalOpen(true);sessionStorage.removeItem("obligon_selected_plan");}},[]);
+  React.useEffect(() => {
+    const plan = new URLSearchParams(window.location.search).get("chosenPlan") ?? sessionStorage.getItem("obligon_selected_plan");
+    if (plan) {
+      setPreferredPlan(plan);
+      sessionStorage.removeItem("obligon_selected_plan");
+    }
+  }, []);
+  React.useEffect(() => {
+    if (preferredPlan && hasCard === false) setPlanModalOpen(true);
+  }, [preferredPlan, hasCard]);
   const [busyPlan, setBusyPlan] = React.useState<string | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = React.useState(false);
   const [submittingDetails, setSubmittingDetails] = React.useState(false);
@@ -853,7 +857,7 @@ function CardPage({
     // awaiting payment when it has in fact just been paid, so the customer was
     // met with "You have a plan awaiting payment" immediately after paying.
     const params = new URLSearchParams(window.location.search);
-    if (params.get("plan") ?? params.get("tx_ref")) return;
+    if (params.get("plan") ?? params.get("tx_ref") ?? params.get("paymentFlow")) return;
 
     let cancelled = false;
     void mutationsApi.getOpenCardRequest().then((open) => {
@@ -873,6 +877,7 @@ function CardPage({
   // server re-verifies with the provider rather than trusting these parameters.
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    if (params.has("paymentFlow")) return;
     const ref = params.get("plan") ?? params.get("tx_ref");
     if (!ref) return;
     const transactionId = params.get("transaction_id");
@@ -1209,7 +1214,7 @@ function CardPage({
         />
       ) : null}
 
-      {hasCard !== false ? <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
+      {hasCard === true ? <div className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
         <article
           className={`relative min-h-[290px] overflow-hidden rounded-2xl p-8 text-white shadow-xl ${
             blocked
@@ -1266,6 +1271,24 @@ function CardPage({
           })}
         </div>
       </div> : null}
+
+      {hasCard === true ? (
+        <section id="subscription" className="mt-8 scroll-mt-24">
+          <SubscriptionPanel kind="customer" embedded preferredPlan={preferredPlan} onSubscriptionChange={onSubscriptionChange} />
+        </section>
+      ) : null}
+
+      <Card className="mt-8 p-6">
+        <SectionTitle title="Fuel Budget" />
+        <p className="mt-2 text-sm text-obligon-text">Set your projected fuel spend for this month and track it in Overview.</p>
+        <p className="mt-4 text-2xl font-extrabold text-obligon-navy">{projectionLabel}</p>
+        <button type="button" disabled={!canEditProjection} onClick={onEditProjection} className="mt-4 rounded-xl bg-obligon-green px-5 py-3 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50">
+          Set or change projected spend
+        </button>
+        {!canEditProjection ? <p className="mt-3 text-sm text-obligon-text">Choose or renew a plan that includes Fuel Budget Management to use this feature.</p> : null}
+      </Card>
+
+      <CustomerFuelCheckout subscriptionActive={subscription?.active === true} refreshKey={refreshKey} embedded />
     </Canvas>
   );
 }
@@ -2259,10 +2282,8 @@ export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
   const [cardStatus, setCardStatus] = React.useState<string | null>(null);
   const [cardRefreshKey, setCardRefreshKey] = React.useState(0);
   const [balanceRefreshKey, setBalanceRefreshKey] = React.useState(0);
-  // The projection lives here rather than in the overview page because the
-  // prompt has to be able to open from any customer page: a new account lands on
-  // the overview, but someone who signs in straight to their wallet should be
-  // asked there too.
+  // My Card owns projection editing. Shared state lets a saved projection
+  // refresh the Overview summary when the customer returns there.
   const { data: projection, refresh: refreshProjection } = useAsync(
     () => api.getCustomerSpendProjection()
   );
@@ -2273,13 +2294,15 @@ export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
   const [promptedForMonth, setPromptedForMonth] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (!canEditProjection || !projection?.needsProjection) return;
+    if (pageKey !== "card" || !canEditProjection || !projection?.needsProjection) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("chosenPlan") || params.has("plan") || params.has("tx_ref") || params.has("reference")) return;
     // Never displace something the customer opened deliberately.
     if (modal) return;
     if (promptedForMonth === projection.month) return;
     setPromptedForMonth(projection.month);
     setModal("spendProjection");
-  }, [projection, modal, promptedForMonth, canEditProjection]);
+  }, [pageKey, projection, modal, promptedForMonth, canEditProjection]);
 
   const handleTopUpSuccess = () => {
     setBalanceRefreshKey((key) => key + 1);
@@ -2302,9 +2325,9 @@ export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
   }, [canEditProjection]);
 
   const pages: Record<CustomerPageKey, React.ReactNode> = {
-    overview: <OverviewPage balanceRefreshKey={balanceRefreshKey} onEditProjection={openSpendProjection} canEditProjection={canEditProjection} />,
+    overview: <OverviewPage balanceRefreshKey={balanceRefreshKey} />,
     transactions: <TransactionsPage />,
-    card: <CardPage onModal={setModal} refreshKey={cardRefreshKey} onCardChange={(card) => setCardStatus(card?.status ?? null)} />,
+    card: <CardPage onModal={setModal} refreshKey={cardRefreshKey} onCardChange={(card) => setCardStatus(card?.status ?? null)} subscription={subscription} onSubscriptionChange={refreshSubscription} canEditProjection={canEditProjection} projectionLabel={projection?.projectedLabel ?? "Not set"} onEditProjection={openSpendProjection} />,
     wallet: <WalletPage onModal={setModal} balanceRefreshKey={balanceRefreshKey} />,
     stations: <StationsPage />,
     support: <SupportPage onModal={setModal} />,
@@ -2318,7 +2341,7 @@ export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
     <>
       {pages[pageKey]}
       <CustomerModals
-        modal={modal === "spendProjection" && !canEditProjection ? null : modal}
+        modal={modal === "spendProjection" && (pageKey !== "card" || !canEditProjection) ? null : modal}
         onClose={() => setModal(null)}
         onTwoFactorChange={() => setModal(null)}
         cardFrozen={cardStatus === "frozen"}

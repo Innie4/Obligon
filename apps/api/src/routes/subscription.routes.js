@@ -53,7 +53,7 @@ export function subscriptionRouter(kind) {
     const amount=Number(plan.price_kobo ?? plan.amount_kobo); const ref=reference('SUB'); const provider=activeProvider();
     await q(`INSERT INTO subscription_payments(reference,user_id,organization_id,plan_code,amount_kobo,provider) VALUES($1,$2,$3,$4,$5,$6)`,[ref,req.user.id,partner?req.user.orgId:null,plan.code,amount,provider]);
     const checkout=await startCheckout({provider,txRef:ref,amountKobo:amount,email:req.user.email,name:req.user.full_name,
-      redirectUrl:`${env.APP_URL}/${partner?'dashboard/billing':'customer/subscription'}?reference=${encodeURIComponent(ref)}`,
+      redirectUrl:`${env.APP_URL}/${partner?'dashboard/billing?':'customer/card?paymentFlow=subscription&'}reference=${encodeURIComponent(ref)}`,
       title:`${plan.name} subscription — one month`,meta:{kind:'subscription',reference:ref}});
     res.json({...checkout,amountKobo:amount,reference:ref});
   }));

@@ -1,3 +1,6 @@
-import { CustomerShell } from '@/components/customer-dashboard/CustomerShell';
-import { SubscriptionPanel } from '@/components/shared/SubscriptionPanel';
-export default function Page(){return <CustomerShell><SubscriptionPanel kind="customer"/></CustomerShell>}
+import { redirect } from "next/navigation";
+import { customerCardDestination, type CustomerReturnParams } from "@/lib/customer-card-routes";
+
+export default async function Page({ searchParams }: { searchParams: Promise<CustomerReturnParams> }) {
+  redirect(customerCardDestination(await searchParams, "subscription"));
+}

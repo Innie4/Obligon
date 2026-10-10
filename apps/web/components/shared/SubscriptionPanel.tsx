@@ -2,6 +2,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { authenticatedRequest } from "@/lib/services";
+import { customerPaymentReference } from "@/lib/customer-card-routes";
 interface State {
   active: boolean;
   needsFirstCard?: boolean;
@@ -13,17 +14,22 @@ interface State {
     features: Array<string | { label: string; state: string }>;
   }>;
 }
-export function SubscriptionPanel({ kind }: { kind: "partner" | "customer" }) {
+export function SubscriptionPanel({ kind, embedded = false, preferredPlan: selectedPlan, onSubscriptionChange }: {
+  kind: "partner" | "customer";
+  embedded?: boolean;
+  preferredPlan?: string;
+  onSubscriptionChange?: () => void;
+}) {
   const endpoint =
     kind === "partner" ? "/api/partner/billing" : "/api/customer/subscription";
   const [preferredPlan, setPreferredPlan] = React.useState<string>();
   React.useEffect(() => {
-    const plan = sessionStorage.getItem("obligon_selected_plan");
+    const plan = selectedPlan ?? (!embedded ? sessionStorage.getItem("obligon_selected_plan") : null);
     if (plan) {
       setPreferredPlan(plan);
-      sessionStorage.removeItem("obligon_selected_plan");
+      if (!embedded) sessionStorage.removeItem("obligon_selected_plan");
     }
-  }, []);
+  }, [embedded, selectedPlan]);
   const [data, setData] = React.useState<State | null>(null),
     [error, setError] = React.useState(""),
     [busy, setBusy] = React.useState(false);
@@ -38,7 +44,9 @@ export function SubscriptionPanel({ kind }: { kind: "partner" | "customer" }) {
   React.useEffect(() => {
     void refresh();
     const params = new URLSearchParams(window.location.search);
-    const reference = params.get("reference");
+    const reference = kind === "customer"
+      ? customerPaymentReference(window.location.search, "subscription")
+      : params.get("reference");
     if (reference) {
       setBusy(true);
       void authenticatedRequest(endpoint + "/confirm", {
@@ -51,12 +59,15 @@ export function SubscriptionPanel({ kind }: { kind: "partner" | "customer" }) {
       })
         .then(() => {
           window.history.replaceState({}, "", window.location.pathname);
+          onSubscriptionChange?.();
           return refresh();
         })
         .catch((e) => setError(e.message))
         .finally(() => setBusy(false));
     }
-  }, [endpoint, refresh]);
+  // Only a processor return starts confirmation; parent refresh callbacks may change identity.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [endpoint, kind, refresh]);
   async function buy(planCode: string) {
     setBusy(true);
     setError("");
@@ -78,6 +89,7 @@ export function SubscriptionPanel({ kind }: { kind: "partner" | "customer" }) {
           }),
         });
         await refresh();
+        onSubscriptionChange?.();
       } else window.location.assign(result.authorization_url);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Payment could not start");
@@ -86,13 +98,11 @@ export function SubscriptionPanel({ kind }: { kind: "partner" | "customer" }) {
     }
   }
   return (
-    <section className="p-6 sm:p-10">
-      <h1 className="text-3xl font-extrabold">
-        {kind === "partner" ? "Partner" : "Customer"} Subscription
-      </h1>
+    <section className={embedded ? "rounded-2xl border border-obligon-border bg-white p-6" : "p-6 sm:p-10"}>
+      {embedded ? <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Subscription</h2> : <h1 className="text-3xl font-extrabold">{kind === "partner" ? "Partner" : "Customer"} Subscription</h1>}
       <p className="mt-3">
         {data?.active
-          ? `${data.subscription?.name} active until ${new Date(data.subscription!.current_period_end).toLocaleDateString()}`
+          ? `${data.subscription?.name ?? "Your plan"}${data.subscription?.current_period_end ? ` active until ${new Date(data.subscription.current_period_end).toLocaleDateString()}` : " is active"}`
           : "Choose and pay for a plan to activate dashboard features."}
       </p>
       <p className="mt-2 text-sm text-slate-600">

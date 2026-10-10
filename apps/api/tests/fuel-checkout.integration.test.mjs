@@ -64,6 +64,13 @@ integration('station checkout charges 9000 and splits 1000 platform fee and 8000
  assert.deepEqual(fixtures.calls[0].split,{subaccountId:'RS_TEST',platformFeeKobo:1000});
  assert.equal(fixtures.calls[0].amountKobo,9000);
 });
+integration('fuel checkout returns to My Card with its own payment flow and reference',async()=>{
+ const {order}=await service.startFuelOrder(fixtures.user,fixtures.input,payments());
+ const redirect=new URL(fixtures.calls[0].redirectUrl);
+ assert.equal(redirect.pathname,'/customer/card');
+ assert.equal(redirect.searchParams.get('paymentFlow'),'fuel');
+ assert.equal(redirect.searchParams.get('reference'),order.reference);
+});
 integration('the same checkout idempotency key opens one provider payment',async()=>{
  const a=await service.startFuelOrder(fixtures.user,fixtures.input,payments());
  const b=await service.startFuelOrder(fixtures.user,fixtures.input,payments());

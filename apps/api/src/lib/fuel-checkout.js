@@ -63,7 +63,7 @@ export async function startFuelOrder(user,input,payment=providers) {
   const account=await t.one("SELECT subaccount_id FROM settlement_accounts WHERE id=$1 AND status='active'",[locked.settlement_account_id]);
   if(!account?.subaccount_id)throw badRequest('Station settlement is currently unavailable.');
   const checkout=await payment.startCheckout({provider:locked.provider,txRef:locked.reference,amountKobo:Number(locked.amount_kobo),email:user.email,name:user.full_name,phone:user.phone,
-   redirectUrl:`${env.APP_URL}/customer/fuel-checkout?reference=${encodeURIComponent(locked.reference)}`,title:`${locked.litres}L ${locked.fuel_type}`,
+   redirectUrl:`${env.APP_URL}/customer/card?paymentFlow=fuel&reference=${encodeURIComponent(locked.reference)}`,title:`${locked.litres}L ${locked.fuel_type}`,
    meta:{kind:'fuel_order',reference:locked.reference},split:{subaccountId:account.subaccount_id,platformFeeKobo:Number(locked.platform_fee_kobo)}});
   const saved=await t.one('UPDATE fuel_orders SET checkout_url=$2,checkout_simulated=$3,updated_at=now() WHERE id=$1 RETURNING *',[locked.id,checkout.authorization_url,Boolean(checkout.simulated)]);
   return {...checkout,order:saved};

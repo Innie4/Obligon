@@ -122,10 +122,13 @@ test("the savings cards are gone from the overview", () => {
   assert.match(customer, /label: "Lifetime Savings"/);
 });
 
-test("the MTD Spend card opens the projection editor only with an active entitlement", () => {
+test("the Overview budget summary leads to My Card, where the editor requires an active entitlement", () => {
+  const overview = screen.slice(screen.indexOf("function OverviewPage("), screen.indexOf("function TransactionsPage("));
+  assert.match(overview, /onClick=\{\(\) => router\.push\("\/customer\/card"\)\}/);
+  assert.match(overview, /aria-label="Manage your fuel budget in My Card"/);
+  assert.doesNotMatch(overview, /canEditProjection|Subscribe or renew/);
   assert.match(screen, /onClick=\{onEditProjection\}/);
   assert.match(screen, /disabled=\{!canEditProjection\}/);
-  assert.match(screen, /aria-label=\{canEditProjection \? "Set or change your projected spend for this month"/);
   assert.match(screen, /if \(canEditProjection\) setModal\("spendProjection"\);/);
   assert.match(screen, /onEditProjection=\{openSpendProjection\}/);
 });
@@ -138,8 +141,8 @@ test("the editor pre-fills the stored figure and can move it either way", () => 
   assert.match(modals, /mutationsApi\.setSpendProjection\(numericAmount\)/);
 });
 
-test("the prompt opens once per month, and never over an open modal", () => {
-  assert.match(screen, /if \(!canEditProjection \|\| !projection\?\.needsProjection\) return;/);
+test("the prompt opens only in My Card once per month, and never over an open modal", () => {
+  assert.match(screen, /if \(pageKey !== "card" \|\| !canEditProjection \|\| !projection\?\.needsProjection\) return;/);
   // "Not now" must not be answered by the same dialog on the next navigation.
   assert.match(screen, /if \(promptedForMonth === projection\.month\) return;/);
   // Displacing a modal the customer opened deliberately is worse than waiting.
