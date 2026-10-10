@@ -25,8 +25,13 @@ The Next.js frontend can run on Vercel, but the Express API must run as a
 separate public HTTPS service. This repository includes `render.yaml` for a
 Render deployment. Create the service from that Blueprint, provide the
 `sync: false` values in the Render dashboard, and set `APP_URL` and
-`CORS_ORIGINS` to the final Vercel URL. Render runs migrations before each
-deployment and exposes `/health` for service checks.
+`CORS_ORIGINS` to the final Vercel URL. The API runs pending migrations before it
+opens its HTTP listener, including on Render's free plan, which does not support
+pre-deploy commands. A failed migration rolls back and prevents startup; the
+Render logs identify the failed migration. `/health` is exposed after startup.
+The manual `migrate` command uses the same runner. A database advisory lock
+serializes simultaneous deployments and manual runs, and each migration and its
+ledger entry commit together. Restarts skip migrations already recorded.
 
 Supabase database connections automatically trust Supabase's published production
 CA alongside Node's standard roots, with certificate and hostname verification

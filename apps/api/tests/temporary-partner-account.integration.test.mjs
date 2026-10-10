@@ -164,6 +164,45 @@ integration("temporary credentials reject wrong passwords, wrong portal and admi
   assert.equal((await row("SELECT COUNT(*) AS count FROM sessions")).count, "1");
 });
 
+integration("verification without an unverified contact returns an actionable client error without provider calls", async () => {
+  await ensureAccount();
+  const authenticated = await login();
+  assert.equal(authenticated.status, 200);
+  let providerCalls = 0;
+  globalThis.fetch = async () => { providerCalls++; throw new Error("No provider should receive a missing contact"); };
+  const result = await call("/api/auth/verify/send", { token: authenticated.body.accessToken, body: {} });
+  assert.equal(result.status, 400);
+  assert.match(result.body.error.message, /add a phone number/i);
+  assert.equal(result.body.error.details.code, "VERIFICATION_PHONE_REQUIRED");
+  assert.equal(result.body.error.details.channels.email.alreadyVerified, true);
+  assert.equal(result.body.error.details.channels.phone.sent, false);
+  assert.equal(providerCalls, 0);
+  assert.equal((await row("SELECT COUNT(*) AS count FROM verification_codes")).count, "0");
+  assert.equal((await row("SELECT email_verified,phone_verified FROM users WHERE id=$1", [account.userId])).phone_verified, false);
+});
+
+integration("an available phone with a refused SMS delivery still returns 503 and stays unverified", async () => {
+  await ensureAccount();
+  await pool.query("UPDATE users SET phone='+2348000000000' WHERE id=$1", [account.userId]);
+  const authenticated = await login();
+  const previous = { TERMII_API_KEY: env.TERMII_API_KEY, SMS_PROVIDER: env.SMS_PROVIDER, PROVIDER_RETRY_COUNT: env.PROVIDER_RETRY_COUNT };
+  Object.assign(env, { TERMII_API_KEY: "fake-test-termii-key", SMS_PROVIDER: "termii", PROVIDER_RETRY_COUNT: 0 });
+  let providerCalls = 0;
+  globalThis.fetch = async (url) => {
+    assert.equal(new URL(url).origin, "https://api.ng.termii.com");
+    providerCalls++;
+    return Response.json({ message: "SENDER_ID_NOT_APPROVED" }, { status: 422 });
+  };
+  try {
+    const result = await call("/api/auth/verify/send", { token: authenticated.body.accessToken, body: {} });
+    assert.equal(result.status, 503);
+    assert.match(result.body.error.message, /sender.*not (registered|approved)/i);
+    assert.equal(providerCalls, 1);
+    assert.equal((await row("SELECT phone_verified FROM users WHERE id=$1", [account.userId])).phone_verified, false);
+    assert.equal((await row("SELECT COUNT(*) AS count FROM verification_codes WHERE consumed_at IS NULL")).count, "0");
+  } finally { Object.assign(env, previous); }
+});
+
 integration("temporary partner reads remain scoped away from another organization's data", async () => {
   await ensureAccount();
   const owner = await seedUser();

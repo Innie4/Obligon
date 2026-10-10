@@ -601,6 +601,17 @@ function describeDeliveryFailure(outcome) {
 
 router.post("/verify/send", authLimiter, requireAuth, asyncHandler(async (req, res) => {
   if (req.user.email_verified && req.user.phone_verified) return res.json({ ok: true, allVerified: true, channels: { email: { sent: false, alreadyVerified: true }, phone: { sent: false, alreadyVerified: true } } });
+  // A missing account contact is actionable input, not a provider outage. Do
+  // not issue an unsendable code or report the absent phone as verified.
+  if (req.user.email_verified && !req.user.phone?.trim()) {
+    throw badRequest("Add a phone number to your account before requesting a verification code.", {
+      code: "VERIFICATION_PHONE_REQUIRED",
+      channels: {
+        email: { sent: false, alreadyVerified: true },
+        phone: { sent: false, reason: "No phone number is saved for this account." }
+      }
+    });
+  }
   const results = {};
 
   for (const channel of ["email", "phone"]) {

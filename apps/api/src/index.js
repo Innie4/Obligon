@@ -4,6 +4,7 @@ import { getPool, q } from "./db.js";
 import { ensureBucket } from "./lib/storage.js";
 import { startScheduler, stopScheduler } from "./lib/scheduler.js";
 import { ensureTemporaryPartnerAccount } from "./lib/temporaryPartnerAccount.js";
+import { runMigrations } from "./lib/migrations.js";
 
 function reportConfig() {
   const fatal = configurationIssues();
@@ -42,6 +43,16 @@ async function main() {
   } catch (err) {
     console.error(`✗ Database connection failed: ${err.code ?? ""} ${err.message}`);
     console.error("  Check DATABASE_URL in apps/api/.env — Supabase: Project Settings → Database → Connection string (URI).");
+    process.exit(1);
+  }
+
+  // Render's free plan does not run pre-deploy commands. Every launch must
+  // upgrade the schema before account setup, the scheduler, or HTTP requests.
+  try {
+    await runMigrations(getPool());
+  } catch (err) {
+    console.error(`✗ Database migration failed: ${err.code ?? ""} ${err.message}`);
+    await getPool().end();
     process.exit(1);
   }
 

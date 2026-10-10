@@ -114,10 +114,17 @@ test("the scheduler is enabled in production", () => {
 });
 
 test("migrations run before the service starts", () => {
+  const startup = fs.readFileSync(path.join(repoRoot, "apps/api/src/index.js"), "utf8");
+  const migrate = startup.indexOf("await runMigrations(getPool())");
+  assert.ok(migrate >= 0, "API startup must upgrade the database on hosts without pre-deploy commands");
+  assert.ok(migrate < startup.indexOf("await ensureTemporaryPartnerAccount()"));
+  assert.ok(migrate < startup.indexOf("app.listen("));
+  assert.ok(migrate < startup.indexOf("startScheduler()"));
+  assert.doesNotMatch(renderYaml, /preDeployCommand:/, "the free Render service cannot rely on a paid-only pre-deploy command");
   assert.match(
-    renderYaml,
-    /preDeployCommand:.*migrate/,
-    "without a preDeploy migrate the deployed schema falls behind the code"
+    startup.slice(migrate, startup.indexOf("await ensureTemporaryPartnerAccount()")),
+    /catch \(err\)[\s\S]*process\.exit\(1\)/,
+    "a failed migration must prevent the API from serving an outdated schema"
   );
 });
 

@@ -55,7 +55,7 @@ function maskPhone(phone: string) {
 
 export function PartnerVerificationUI() {
   const router = useRouter();
-  const { user, refresh: refreshSession } = useSession();
+  const { user, status: sessionStatus, refresh: refreshSession } = useSession();
   const { success: toastSuccess, error: toastError } = useToast();
 
   // From the session, never the URL. Contact details as `?contact=` query
@@ -63,6 +63,10 @@ export function PartnerVerificationUI() {
   // referrer headers and every proxy log on the way.
   const contactEmail = user?.email ?? "";
   const contactPhone = user?.phone ?? "";
+  const canRequestCode = sessionStatus === "authenticated" && (
+    (Boolean(contactEmail.trim()) && user?.emailVerified !== true) ||
+    (Boolean(contactPhone.trim()) && user?.phoneVerified !== true)
+  );
 
   const [code, setCode] = React.useState("");
   const [stage, setStage] = React.useState<Stage>("input");
@@ -75,6 +79,8 @@ export function PartnerVerificationUI() {
     email?: VerificationChannelResult;
     phone?: VerificationChannelResult;
   }>({});
+  const sendInFlight = React.useRef(false);
+  const autoSendAccount = React.useRef<string | null>(null);
 
   const busy = stage === "verifying";
   const ready = code.length === CODE_LENGTH && !busy;
@@ -91,27 +97,33 @@ export function PartnerVerificationUI() {
   const applyResult = React.useCallback(
     (result: { channels?: { email?: VerificationChannelResult; phone?: VerificationChannelResult } }) => {
       setChannels(result.channels ?? {});
-      if (result.channels?.email?.alreadyVerified && result.channels?.phone?.alreadyVerified) { setStage("success"); setCooldown(0); return; }
-      const sent = [result.channels?.email?.sent, result.channels?.phone?.sent].filter(Boolean).length;
-      const failed = [
-        result.channels?.email?.sent === false && !result.channels?.email?.alreadyVerified ? "email" : null,
-        result.channels?.phone?.sent === false && !result.channels?.phone?.alreadyVerified ? "SMS" : null
-      ].filter(Boolean);
-      if (sent === 0) {
-        setError("We could not send a verification code. Please try again in a moment.");
-      } else if (failed.length) {
-        // Said plainly rather than as a silent half-delivery: an operator who waits
-        // for a text that was never sent has no way to know.
-        setNotice(
-          `We sent your code by ${failed.length === 2 ? "neither channel" : failed[0] === "email" ? "SMS" : "email"} — check your ${failed.join(" and ")}.`
-        );
+      if (result.channels?.email?.alreadyVerified && result.channels?.phone?.alreadyVerified) {
+        setStage("success");
+        setCooldown(0);
+        return "Your contact details are already verified.";
       }
+      const outcomes = [
+        { label: "email", result: result.channels?.email },
+        { label: "SMS", result: result.channels?.phone }
+      ];
+      const sent = outcomes.filter(({ result }) => result?.sent === true).map(({ label }) => label);
+      const failed = outcomes
+        .filter(({ result }) => result?.sent === false && !result.alreadyVerified)
+        .map(({ label, result }) => `${label}: ${result?.reason ?? "the code could not be delivered"}`);
       setCooldown(RESEND_COOLDOWN_SECONDS);
+      if (sent.length === 0) {
+        setError(`We could not send a verification code. ${failed.join(". ") || "Please try again in a moment."}`);
+        return null;
+      }
+      if (failed.length) setNotice(failed.join(". "));
+      return `A new code was sent by ${sent.join(" and ")}.`;
     },
     []
   );
 
   const sendCodes = React.useCallback(async () => {
+    if (!canRequestCode || sendInFlight.current) return;
+    sendInFlight.current = true;
     setSending(true);
     setError(null);
     setNotice(null);
@@ -120,29 +132,49 @@ export function PartnerVerificationUI() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "We could not send a verification code.");
     } finally {
+      sendInFlight.current = false;
       setSending(false);
     }
-  }, [applyResult]);
+  }, [applyResult, canRequestCode]);
 
   // Sent on arrival. A partner arriving here mid-verification was sent here by
   // something that asked them to be verified; making them press Send to receive a
   // code that was already on its way is a step that exists only here.
   React.useEffect(() => {
+    if (sessionStatus !== "authenticated") return;
+    if (user?.emailVerified === true && user?.phoneVerified === true) {
+      setStage("success");
+      return;
+    }
+    if (!canRequestCode) return;
+    const account = user?.id ?? contactEmail;
+    // Session refreshes update verified flags after a code is accepted. Sending
+    // again then would invalidate the code already delivered to the other contact.
+    if (autoSendAccount.current === account) return;
+    autoSendAccount.current = account;
     void sendCodes();
-  }, [sendCodes]);
+  }, [sendCodes, sessionStatus, canRequestCode, user?.id, contactEmail, user?.emailVerified, user?.phoneVerified]);
 
   const resend = async () => {
-    if (cooldown > 0 || sendingCode) return;
+    if (!canRequestCode || cooldown > 0 || sending || sendingCode || sendInFlight.current) return;
+    sendInFlight.current = true;
     setSendingCode(true);
     setError(null);
+    setNotice(null);
+    // A replacement request consumes earlier codes even if delivery fails.
+    setChannels((current) => ({
+      email: current.email?.alreadyVerified ? current.email : undefined,
+      phone: current.phone?.alreadyVerified ? current.phone : undefined
+    }));
     try {
-      applyResult(await authApi.verifySendBoth());
-      toastSuccess("A new code has been sent to your email and phone.");
+      const message = applyResult(await authApi.verifySendBoth());
+      if (message) toastSuccess(message);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not resend the code.";
       setError(message);
       toastError(message);
     } finally {
+      sendInFlight.current = false;
       setSendingCode(false);
     }
   };
@@ -159,12 +191,13 @@ export function PartnerVerificationUI() {
       // that the server already accepted.
       await refreshSession().catch(() => undefined);
       setStage("success");
-      toastSuccess("Your partner account is verified.");
       // Only redirects once every channel is verified. Otherwise this is a dead end
       // with no route back.
       if (result.allVerified) {
+        toastSuccess("Your partner account is verified.");
         setTimeout(() => router.push(routes.dashboard), 1200);
       } else {
+        toastSuccess("The code was accepted. Finish verifying your remaining contact details.");
         setError(
           `Your ${(result.remaining ?? []).join(" and ")} is still unverified. Request a new code and try again.`
         );
@@ -185,8 +218,10 @@ export function PartnerVerificationUI() {
     if (error) setError(null);
   };
 
-  const emailSent = channels.email?.sent === true || channels.email?.alreadyVerified === true;
-  const phoneSent = channels.phone?.sent === true || channels.phone?.alreadyVerified === true;
+  const emailVerified = user?.emailVerified === true || channels.email?.alreadyVerified === true;
+  const phoneVerified = user?.phoneVerified === true || channels.phone?.alreadyVerified === true;
+  const missingPhone = sessionStatus === "authenticated" && !contactPhone.trim() && !phoneVerified;
+  const sentChannels = [channels.email?.sent === true ? "email" : null, channels.phone?.sent === true ? "SMS" : null].filter(Boolean);
 
   return (
     <div className="mx-auto w-full max-w-[440px] px-5 py-10 sm:py-16">
@@ -210,14 +245,16 @@ export function PartnerVerificationUI() {
       <p className="mt-4 text-center text-base leading-6 text-obligon-text">
         {stage === "success"
           ? "Your station account is verified."
-          : "We sent a 6-digit code to your email and phone. Enter whichever one you receive."}
+          : sentChannels.length
+            ? `We sent a 6-digit code by ${sentChannels.join(" and ")}. Enter the code you receive.`
+            : "Verify your contact details with a 6-digit code."}
       </p>
 
       <div className="mt-5 space-y-2">
         {[
-          { label: "Email", Icon: Mail, detail: maskEmail(contactEmail), ok: emailSent },
-          { label: "Phone", Icon: Phone, detail: maskPhone(contactPhone), ok: phoneSent }
-        ].map(({ label, Icon, detail, ok }) => (
+          { label: "Email", Icon: Mail, detail: maskEmail(contactEmail), verified: emailVerified, sent: channels.email?.sent === true },
+          { label: "Phone", Icon: Phone, detail: contactPhone.trim() ? maskPhone(contactPhone) : "No phone number added", verified: phoneVerified, sent: channels.phone?.sent === true }
+        ].map(({ label, Icon, detail, verified, sent }) => (
           <div
             key={label}
             className="flex items-center gap-3 rounded-xl border border-obligon-border bg-[#f7fbf8] px-4 py-3"
@@ -227,9 +264,9 @@ export function PartnerVerificationUI() {
               <p className="text-xs font-extrabold uppercase text-obligon-text">{label}</p>
               <p className="truncate text-sm font-bold text-obligon-navy">{detail}</p>
             </div>
-            {ok ? (
+            {verified || sent ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-obligon-lime/30 px-2.5 py-1 text-[11px] font-extrabold text-obligon-navy">
-                <Check size={12} /> Sent
+                <Check size={12} /> {verified ? "Verified" : "Sent"}
               </span>
             ) : (
               <span className="rounded-full bg-[#fff3d8] px-2.5 py-1 text-[11px] font-extrabold text-[#9a6300]">
@@ -239,6 +276,13 @@ export function PartnerVerificationUI() {
           </div>
         ))}
       </div>
+
+      {missingPhone ? (
+        <p className="mt-5 rounded-lg border border-obligon-border bg-[#fff3d8] p-3 text-sm text-[#9a6300]" role="status">
+          No phone number is saved for this account. Add one before verifying, or{" "}
+          <Link href={routes.support} className="font-bold underline">contact support</Link>.
+        </p>
+      ) : null}
 
       {sending ? (
         <p className="mt-5 text-center text-sm font-semibold text-obligon-text">Sending your code…</p>
@@ -265,7 +309,7 @@ export function PartnerVerificationUI() {
           <Check size={18} />
           Contact details verified. Use Back to Dashboard to continue.
         </div>
-      ) : (
+      ) : canRequestCode ? (
         <form onSubmit={verify} className="mt-8">
           <label htmlFor="partner-otp-code" className="block text-xs font-extrabold uppercase text-obligon-text">
             6-digit code
@@ -302,13 +346,13 @@ export function PartnerVerificationUI() {
             {busy ? "Verifying…" : "Verify station account"}
           </button>
         </form>
-      )}
+      ) : null}
 
       <div className="mt-6 flex items-center justify-between text-sm">
         <button
           type="button"
           onClick={() => void resend()}
-          disabled={cooldown > 0 || sendingCode}
+          disabled={!canRequestCode || stage === "success" || cooldown > 0 || sending || sendingCode}
           className="font-bold text-obligon-green hover:underline disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
         >
           {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}
