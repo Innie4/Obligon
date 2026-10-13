@@ -93,7 +93,7 @@ export function LegalPage({ active, eyebrow, title, updated, intro, sections }: 
       <section className="mx-auto max-w-[1280px] px-5 pb-20 pt-16 sm:px-8 lg:px-16 lg:pb-28">
         <PageIntro eyebrow={eyebrow} title={title} body={`${intro} Last updated ${updated}.`} />
 
-        <div className="mt-14 grid gap-10 lg:grid-cols-[260px_1fr] lg:gap-12">
+        <div className="mt-14 grid min-w-0 grid-cols-1 gap-10 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-12">
           <aside className="hidden lg:block">
             <div className="sticky top-28 space-y-4">
               <p className="pb-2 text-xs font-extrabold uppercase tracking-[1.2px] text-obligon-text">Table of Contents</p>
@@ -109,7 +109,7 @@ export function LegalPage({ active, eyebrow, title, updated, intro, sections }: 
             </div>
           </aside>
 
-          <div className="space-y-12">
+          <div className="min-w-0 space-y-12">
             {sections.map((section) => (
               <section
                 id={section.id}
@@ -147,7 +147,7 @@ export function LegalPage({ active, eyebrow, title, updated, intro, sections }: 
                 ) : null}
 
                 {section.table ? (
-                  <div className="mt-6 overflow-x-auto">
+                  <div className="mt-6 max-w-full overflow-x-auto" role="region" aria-label="Cookie categories and preferences" tabIndex={0}>
                     <table className="min-w-[720px] w-full border-collapse text-left text-sm">
                       <thead className="border-b border-obligon-border text-xs uppercase text-obligon-text font-bold">
                         <tr>
@@ -172,10 +172,15 @@ export function LegalPage({ active, eyebrow, title, updated, intro, sections }: 
                               {row.toggleable ? (
                                 <button
                                   type="button"
+                                  role="switch"
+                                  aria-label={row.category}
+                                  aria-checked={cookiePrefs[row.key]}
                                   onClick={() => setCookiePrefs((p) => ({ ...p, [row.key]: !p[row.key] }))}
-                                  className={`ml-auto flex h-6 w-11 items-center rounded-full p-0.5 transition ${cookiePrefs[row.key] ? "bg-obligon-green" : "bg-[#c6c5d1]"}`}
+                                  className="ml-auto flex min-h-11 w-11 items-center justify-center rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-obligon-green"
                                 >
-                                  <span className={`size-5 rounded-full bg-white transition ${cookiePrefs[row.key] ? "translate-x-5" : ""}`} />
+                                  <span aria-hidden="true" className={`flex h-6 w-11 items-center rounded-full p-0.5 transition ${cookiePrefs[row.key] ? "bg-obligon-green" : "bg-[#c6c5d1]"}`}>
+                                    <span className={`size-5 rounded-full bg-white transition ${cookiePrefs[row.key] ? "translate-x-5" : ""}`} />
+                                  </span>
                                 </button>
                               ) : (
                                 <span className="rounded-full border border-obligon-green/20 bg-obligon-green/10 px-3 py-1 text-[10px] font-extrabold uppercase text-obligon-green">

@@ -54,7 +54,8 @@ export const companyNav: Array<{ key: CompanyPageKey; label: string; href: strin
   { key: "team", label: "Team", href: "/company/team" },
   { key: "notifications", label: "Notifications", href: "/company/notifications" },
   { key: "support", label: "Support", href: "/company/support" },
-  { key: "settings", label: "Settings", href: "/company/settings" }
+  { key: "settings", label: "Settings", href: "/company/settings" },
+  { key: "maintenance", label: "Maintenance", href: "/company/maintenance" }
 ];
 
 export const pageCopy: Record<CompanyPageKey, { title: string; description?: string; search?: string }> = {
@@ -63,9 +64,9 @@ export const pageCopy: Record<CompanyPageKey, { title: string; description?: str
   cards: { title: "Fuelvista Cards", description: "Manage your fleet fuel cards, limits, and assignments.", search: "Search cards..." },
   transactions: { title: "Transactions", description: "View and manage fleet transaction history.", search: "Search transactions..." },
   reports: { title: "Reports & Analytics", search: "Search reports..." },
-  stations: { title: "Partner Stations", description: "Find high-speed diesel and verified Obligon LTD network locations.", search: "Search locations, zip codes..." },
+  stations: { title: "Partner Stations", description: "Find network stations, published fuel prices, and directions.", search: "Search locations, zip codes..." },
   roadside: { title: "Roadside Assistance", description: "Manage and track active emergency requests.", search: "Search..." },
-  billing: { title: "Subscription & Billing", description: "Manage your fleet plan, monitor usage, and view past invoices.", search: "Search Obligon LTD..." },
+  billing: { title: "Contract & Billing", description: "Review recorded billing details and invoices for your company contract.", search: "Search Obligon LTD..." },
   team: { title: "Team & Access Control", description: "Manage permissions and internal access for your organization.", search: "Search staff..." },
   notifications: { title: "Notifications", description: "Alerts & Updates" },
   support: { title: "Help & Support", description: "Manage your support tickets and find answers quickly." },

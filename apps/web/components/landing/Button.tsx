@@ -31,7 +31,7 @@ export function LandingButton({
     <>
       <span>{children}</span>
       {iconSrc ? (
-        <Image src={iconSrc} width={icon === "arrow" ? 16 : 12} height={icon === "arrow" ? 16 : 8} alt="" />
+        <Image src={iconSrc} width={icon === "arrow" ? 16 : 12} height={icon === "arrow" ? 16 : 8} className={icon === "arrow" ? "size-4 shrink-0" : "h-2 w-3 shrink-0"} alt="" />
       ) : null}
     </>
   );

@@ -52,6 +52,7 @@ const item = (key: DashboardPageKey): NavItem => {
 
 const primaryItems: NavItem[] = [
   item("overview"),
+  item("billing"),
   // Shown above the fold: it is the one nav item that changes what the platform will
   // let this partner do, and it is easy to forget it exists.
   item("accountVerification"),
@@ -135,7 +136,6 @@ export function PartnershipSidebar() {
       </Link>
 
       <nav className="mt-8 flex-1 overflow-y-auto pb-5">
-        <Link href="/dashboard/billing" className="block rounded-lg px-4 py-3 font-bold">Subscription</Link>
         <div className="space-y-1">
           {visiblePrimaryItems.map(renderLink)}
 
@@ -180,6 +180,5 @@ export function PartnershipSidebar() {
     </aside>
   );
 }
-
 
 

@@ -102,7 +102,7 @@ export function SubscriptionPanel({ kind, embedded = false, preferredPlan: selec
       {embedded ? <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Subscription</h2> : <h1 className="text-3xl font-extrabold">{kind === "partner" ? "Partner" : "Customer"} Subscription</h1>}
       <p className="mt-3">
         {data?.active
-          ? `${data.subscription?.name ?? "Your plan"}${data.subscription?.current_period_end ? ` active until ${new Date(data.subscription.current_period_end).toLocaleDateString()}` : " is active"}`
+          ? `${data.subscription?.name ?? "Your plan"}${data.subscription?.current_period_end ? ` active until ${new Date(data.subscription.current_period_end).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}` : " is active"}`
           : "Choose and pay for a plan to activate dashboard features."}
       </p>
       <p className="mt-2 text-sm text-slate-600">
@@ -122,12 +122,12 @@ export function SubscriptionPanel({ kind, embedded = false, preferredPlan: selec
               Number(a.code === preferredPlan),
           )
           .map((p) => (
-            <article key={p.code} className="rounded-xl border bg-white p-5">
+            <article key={p.code} className="flex min-w-0 flex-col rounded-xl border bg-white p-5">
               <h2 className="text-xl font-bold">{p.name}</h2>
               <p className="my-3">
                 ₦{(p.price_kobo / 100).toLocaleString()} / month
               </p>
-              <ul className="space-y-2">
+              <ul className="mb-5 flex-1 space-y-2">
                 {p.features.map((f, i) => (
                   <li key={i} className="text-sm">
                     {typeof f === "string" ? f : `${f.label}: ${f.state}`}
@@ -137,7 +137,7 @@ export function SubscriptionPanel({ kind, embedded = false, preferredPlan: selec
               {data?.needsFirstCard ? (
                 <Link
                   href={`/customer/card?chosenPlan=${p.code}`}
-                  className="mt-5 block rounded-lg bg-obligon-green p-3 font-bold text-white"
+                  className="mt-auto block rounded-lg bg-obligon-green p-3 text-center font-bold text-white"
                 >
                   Request your first card
                 </Link>
@@ -145,7 +145,7 @@ export function SubscriptionPanel({ kind, embedded = false, preferredPlan: selec
                 <button
                   disabled={busy}
                   onClick={() => void buy(p.code)}
-                  className="mt-5 rounded-lg bg-obligon-green p-3 font-bold text-white disabled:opacity-50"
+                  className="mt-auto rounded-lg bg-obligon-green p-3 font-bold text-white disabled:opacity-50"
                 >
                   {data?.active ? "Renew / change plan" : "Subscribe"}
                 </button>

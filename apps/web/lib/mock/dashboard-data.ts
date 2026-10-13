@@ -2,6 +2,7 @@ import type { PartnerDispute } from "@/lib/services/types";
 
 export type DashboardPageKey =
   | "overview"
+  | "billing"
   | "settlements"
   | "station"
   | "pricing"
@@ -62,6 +63,7 @@ export type DashboardPageCopy = {
 
 export const dashboardNav: Array<{ key: DashboardPageKey; label: string; href: string; icon: DashboardIcon }> = [
   { key: "overview", label: "Dashboard", href: "/dashboard", icon: "overview" },
+  { key: "billing", label: "Subscription", href: "/dashboard/billing", icon: "wallet" },
   { key: "transactions", label: "Transactions", href: "/dashboard/transactions", icon: "transactions" },
   { key: "station", label: "Fuel Stations", href: "/dashboard/station-profile", icon: "station" },
   { key: "reports", label: "Analytics", href: "/dashboard/reports", icon: "reports" },
@@ -78,6 +80,12 @@ export const dashboardNav: Array<{ key: DashboardPageKey; label: string; href: s
 ];
 
 export const pageCopy: Record<DashboardPageKey, DashboardPageCopy> = {
+  billing: {
+    key: "billing",
+    title: "Partner Subscription",
+    description: "Manage your plan and renew before expiry.",
+    searchPlaceholder: "Search dashboard sections"
+  },
   overview: {
     key: "overview",
     title: "Enterprise Overview",
@@ -379,4 +387,3 @@ export const notificationGroups = [
     items: [["Security Alert: Password Changed", "OCT 22, 09:12 AM", "Your account password was changed from a recognized admin device."]]
   }
 ];
-

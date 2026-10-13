@@ -9,7 +9,7 @@ function load(path, { globals = {}, dependencies = {}, expose = '' } = {}) {
   const code = ts.transpileModule(fs.readFileSync(require.resolve(path), 'utf8') + expose, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true },
   }).outputText;
-  vm.runInNewContext(code, { exports, URLSearchParams, require: name => dependencies[name] ?? {}, ...globals });
+  vm.runInNewContext(code, { exports, URLSearchParams, require: name => dependencies[name] ?? (name === '@/lib/customer-presentation' ? load('../lib/customer-presentation.ts') : {}), ...globals });
   return exports;
 }
 

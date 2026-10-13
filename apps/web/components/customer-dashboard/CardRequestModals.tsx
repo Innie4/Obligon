@@ -58,7 +58,7 @@ export function CardPlanModal({
   onClose: () => void;
 }) {
   return (
-    <ModalFrame onClose={onClose} size="wide">
+    <ModalFrame title="Choose your card plan" onClose={onClose} size="wide">
       <div className="p-6">
         <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Choose your plan</h2>
         <p className="mt-2 text-sm leading-6 text-obligon-text">
@@ -196,7 +196,7 @@ export function CardDetailsModal({
   }
 
   return (
-    <ModalFrame onClose={onClose}>
+    <ModalFrame title="Card verification details" onClose={onClose}>
       <form onSubmit={handleSubmit} className="p-6">
         <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Verify your details</h2>
         <p className="mt-2 text-sm leading-6 text-obligon-text">
@@ -322,7 +322,7 @@ export function CardSubmittedModal({
   }, [request?.verificationStatus]);
 
   return (
-    <ModalFrame onClose={onClose}>
+    <ModalFrame title="Card verification submitted" onClose={onClose}>
       <div className="p-6 text-center">
         <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
           <ShieldCheck size={30} />
@@ -416,7 +416,7 @@ export function CardVerificationProgressModal({
   };
 
   return (
-    <ModalFrame onClose={onClose} size="wide">
+    <ModalFrame title="Card verification progress" onClose={onClose} size="wide">
       <div className="p-6 text-center sm:p-8">
         <span className={`mx-auto grid size-16 place-items-center rounded-full ${tone[outcome ?? "in_progress"]}`}>
           {outcome === "complete" ? (
@@ -586,7 +586,7 @@ export function PendingPaymentModal({
     : true;
 
   return (
-    <ModalFrame onClose={busy ? () => undefined : onClose}>
+    <ModalFrame title="Pending card payment" onClose={busy ? () => undefined : onClose}>
       <div className="p-6 text-center">
         <span className="mx-auto grid size-16 place-items-center rounded-full bg-obligon-lime/30 text-obligon-navy">
           <CreditCard size={28} />

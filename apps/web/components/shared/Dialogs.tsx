@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { AlertTriangle, CheckCircle2, Loader2, LockKeyhole, X } from "lucide-react";
+import { useDialogFocus } from "./useDialogFocus";
 
 export type ActionState = "idle" | "loading" | "success" | "error";
 
@@ -47,12 +48,7 @@ export function ActionFeedback({
 export function DialogFrame({ children, onClose, ariaLabel = "Obligon LTD dialog" }: { children: React.ReactNode; onClose: () => void; ariaLabel?: string }) {
   const dialogRef = React.useRef<HTMLElement>(null);
 
-  React.useEffect(() => {
-    const lastActiveElement = document.activeElement as HTMLElement | null;
-    dialogRef.current?.focus();
-
-    return () => lastActiveElement?.focus();
-  }, []);
+  useDialogFocus(dialogRef, onClose);
 
   return (
     <div
@@ -66,9 +62,6 @@ export function DialogFrame({ children, onClose, ariaLabel = "Obligon LTD dialog
         aria-label={ariaLabel}
         tabIndex={-1}
         onMouseDown={(event) => event.stopPropagation()}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") onClose();
-        }}
         className="max-h-[94vh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-hero outline-none sm:max-w-[560px] sm:rounded-lg"
       >
         <div className="flex items-center justify-between border-b border-[#e0e7de] px-6 py-5">

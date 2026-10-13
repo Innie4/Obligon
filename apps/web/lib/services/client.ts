@@ -92,6 +92,7 @@ import type {
   Vehicle,
   PartnerOverview,
   PartnerRow,
+  PartnerPOSReceipt,
   PartnerDispute,
   PartnerSettlements,
   PartnerPricing,
@@ -1490,16 +1491,19 @@ export const mutationsApi = {
     if (!LIVE_MODE) { await simulate({}, 800); return { ok: true, simulated: true }; }
     return http<{ ok: boolean }>(`/api/partner/payouts/${id}/retry`, { method: "POST" });
   },
-  async posAuthorize(payload: { stationId?: string; code: string; litres?: number; fuelType?: string }) {
+  async posAuthorize(payload: { stationId: string; code: string; litres: number; fuelType: string }): Promise<PartnerPOSReceipt> {
     if (!LIVE_MODE) {
       await simulate({}, 900);
       return {
         approved: true, reference: `TXN-LOCAL-${Date.now()}`, card: "•••• •••• •••• 4242",
-        vehicle: "TRK-084", fleet: "Demo Fleet", creditLimitLabel: "₦500,000",
-        amountLabel: `₦${((payload.litres ?? 40) * 1085).toLocaleString()}`, time: new Date().toLocaleTimeString(), simulated: true
+        vehicle: "TRK-084", litres: payload.litres, fuelType: payload.fuelType,
+        amountLabel: `₦${(payload.litres * 1085).toLocaleString()}`, simulated: true
       };
     }
-    return http<Record<string, unknown>>("/api/partner/pos/authorize", { method: "POST", body: JSON.stringify(payload) });
+    return http<PartnerPOSReceipt>("/api/partner/pos/authorize", { method: "POST", body: JSON.stringify(payload) });
+  },
+  async fulfillFuelCheckout(payload: { stationId: string; code: string }): Promise<PartnerPOSReceipt> {
+    return http<PartnerPOSReceipt>("/api/partner/pos/fulfill", { method: "POST", body: JSON.stringify(payload) });
   },
   async addStaff(payload: Record<string, unknown>) {
     if (!LIVE_MODE) { await simulate({}, 800); return { ok: true, simulated: true }; }

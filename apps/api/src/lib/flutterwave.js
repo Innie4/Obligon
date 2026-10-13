@@ -178,9 +178,19 @@ const PAYMENT_METHODS_BY_CURRENCY = {
 };
 
 /** The default methods for a currency, or Flutterwave's own default if unknown. */
-export function paymentOptionsFor(currency) {
+export function paymentOptionsFor(currency, selectedMethod = null) {
   const key = String(currency ?? "NGN").toUpperCase();
   const configured = env.FLW_PAYMENT_OPTIONS?.trim();
+  if (selectedMethod) {
+    const choices = { cardbank: ["card", "account"], card: ["card"], account: ["account"], banktransfer: ["banktransfer"], ussd: ["ussd"] };
+    const requested = choices[selectedMethod];
+    if (!requested) throw badRequest("Select a supported wallet payment method.");
+    const available = configured ? configured.toLowerCase().split(/[,\s]+/).filter(Boolean) : (PAYMENT_METHODS_BY_CURRENCY[key] ?? ["card", "banktransfer"]);
+    const supported = PAYMENT_METHODS_BY_CURRENCY[key] ?? ["card", "banktransfer"];
+    const methods = requested.filter(method => available.includes(method) && supported.includes(method));
+    if (!methods.length) throw badRequest("The selected payment method is not available. Choose another funding method.");
+    return methods.join(", ");
+  }
   if (configured) return configured;
   const methods = PAYMENT_METHODS_BY_CURRENCY[key];
   // An unknown currency falls back to card and transfer rather than to whatever
@@ -211,6 +221,7 @@ export async function initializeCheckout({
   redirectUrl,
   title,
   meta,
+  paymentMethod,
   sessionMinutes,
   split = null
 }) {
@@ -237,7 +248,7 @@ export async function initializeCheckout({
     // wallets with. Without this the page falls back to whatever the account
     // has enabled, which surfaced PayPal as the only option for an NGN charge
     // that can never be paid that way. PayPal is not an NGN method at all.
-    payment_options: paymentOptionsFor(currency),
+    payment_options: paymentOptionsFor(currency, paymentMethod),
     // A bank transfer is not instant, so the virtual account has to outlive a
     // realistic transfer. Expiry is in seconds.
     bank_transfer_options: { expires: bankTransferExpirySeconds() },

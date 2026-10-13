@@ -92,8 +92,10 @@ export function CareersPage() {
             </a>
           </div>
         </div>
-        <div className="relative">
-          <div className="absolute -inset-5 -rotate-2 rounded-[32px] bg-obligon-lime/20" />
+        <div className="relative min-w-0">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden rounded-[32px]">
+            <div className="absolute inset-2 -rotate-2 rounded-[32px] bg-obligon-lime/20" />
+          </div>
           <div className="relative overflow-hidden rounded-[32px] border border-obligon-border bg-white p-1 shadow-card">
             <Image
               src="/assets/career-hero.jpg"

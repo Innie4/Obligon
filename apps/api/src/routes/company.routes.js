@@ -2,14 +2,15 @@ import { Router } from "express";
 import { q, one, tx } from "../db.js";
 import { asyncHandler, badRequest, notFound, forbidden } from "../lib/errors.js";
 import { requireAuth, requireOrg, requirePermission } from "../middleware/auth.js";
-import { naira, fmtDate, fmtDateTime, relativeTime, dayGroup, maskPan, reference } from "../lib/format.js";
+import { naira, fmtDate, fmtDateTime, relativeTime, reference } from "../lib/format.js";
 import { notify, audit } from "../lib/notify.js";
-import { sudoEnabled, issueSudoCard, createSudoCustomer, setSudoCardStatus, maskFromSudo } from "../lib/sudo.js";
+import { issueSudoCard, createSudoCustomer, setSudoCardStatus } from "../lib/sudo.js";
 import { uploadFile, signedUrl } from "../lib/storage.js";
 import { toCsv } from "../lib/format.js";
-import { reportPdf } from "../lib/pdf.js";
+import { providerCardDetails } from "../lib/card-approval.js";
+import { cardLimits, companyIssuerIdentity, companyReportOptions } from "../lib/company-input.js";
 import { emitToOrg } from "../lib/sse.js";
-import { distanceLabel } from "../lib/format.js";
+import { reportPdf } from "../lib/pdf.js";
 import { env } from "../config/env.js";
 
 const router = Router();
@@ -35,7 +36,7 @@ router.get("/overview", requireOrg, asyncHandler(async (req, res) => {
   const vehicleCount = await one("SELECT COUNT(*)::int AS count FROM vehicles WHERE organization_id = $1", [orgId]);
   const vehicleDelta = await one(
     `SELECT COUNT(*)::int AS count FROM vehicles WHERE organization_id = $1 AND created_at >= $2`,
-    [orgId, new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1)]
+    [orgId, monthStart]
   );
   const spend = await one(
     `SELECT COALESCE(SUM(amount_kobo),0) AS total FROM transactions WHERE organization_id = $1 AND status = 'success' AND created_at >= $2`,
@@ -92,7 +93,7 @@ router.get("/vehicles", requireOrg, asyncHandler(async (req, res) => {
       status: capitalize(v.status),
       tone: v.status === "active" ? "green" : v.status === "maintenance" ? "amber" : "muted",
       plate: v.plate, model: v.model, fuelType: v.fuel_type, statusRaw: v.status,
-      assignedCard: v.card_pan ?? null, cardId: v.card_pan ? null : null,
+      assignedCard: v.card_pan ?? null,
       driverId: v.driver_id ?? null, driverName: v.driver_name ?? null,
       tankCapacity: v.tank_capacity_l
     })),
@@ -182,16 +183,17 @@ router.delete("/drivers/:id", requireOrg, requirePermission("fleet.manage"), asy
 // ============ ASSIGNMENTS (vehicle-card-driver) ============
 router.get("/assignments", requireOrg, asyncHandler(async (req, res) => {
   const cards = await q(
-    `SELECT c.id, c.label, c.masked_pan, c.status, v.plate AS assigned_vehicle, d.name AS assigned_driver
+    `SELECT c.id, c.label, c.masked_pan, c.status, c.vehicle_id, c.driver_id, v.plate AS assigned_vehicle, d.name AS assigned_driver
      FROM cards c LEFT JOIN vehicles v ON v.id = c.vehicle_id LEFT JOIN drivers d ON d.id = c.driver_id
      WHERE c.organization_id = $1 ORDER BY c.created_at DESC`,
     [req.user.orgId]
   );
   const [vehicles, drivers] = await Promise.all([
     q("SELECT id, plate, model FROM vehicles WHERE organization_id = $1", [req.user.orgId]),
-    q("SELECT id, name FROM drivers WHERE organization_id = $1 AND status = 'active'", [req.user.orgId])
+    q(`SELECT id, name, phone, license_no AS "licenseNo" FROM drivers WHERE organization_id = $1 AND status = 'active'`, [req.user.orgId])
   ]);
-  res.json({ cards, vehicles, drivers });
+  const issuerCustomer = await one("SELECT id FROM cards WHERE organization_id = $1 AND sudo_customer_id IS NOT NULL LIMIT 1", [req.user.orgId]);
+  res.json({ cards, vehicles, drivers, issuerCustomerConfigured: Boolean(issuerCustomer), capabilities: { stableDriverFilters: true } });
 }));
 
 router.post("/assignments", requireOrg, requirePermission("fleet.manage"), asyncHandler(async (req, res) => {
@@ -204,12 +206,16 @@ router.post("/assignments", requireOrg, requirePermission("fleet.manage"), async
     if (!vehicle) throw notFound("Vehicle not found");
   }
   if (driverId) {
-    const driver = await one("SELECT * FROM drivers WHERE id = $1 AND organization_id = $2", [driverId, req.user.orgId]);
+    const driver = await one("SELECT * FROM drivers WHERE id = $1 AND organization_id = $2 AND status = 'active'", [driverId, req.user.orgId]);
     if (!driver) throw notFound("Driver not found");
   }
   await tx(async (t) => {
-    if (vehicleId) await t.query("UPDATE cards SET vehicle_id = NULL WHERE vehicle_id = $1", [vehicleId]);
-    await t.query("UPDATE cards SET vehicle_id = $2, driver_id = $3, updated_at = now() WHERE id = $1", [cardId, vehicleId ?? null, driverId ?? null]);
+    await t.query("SELECT id FROM organizations WHERE id = $1 FOR UPDATE", [req.user.orgId]);
+    const ownedCard = await t.one("SELECT id FROM cards WHERE id = $1 AND organization_id = $2 FOR UPDATE", [cardId, req.user.orgId]);
+    if (!ownedCard) throw notFound("Card not found");
+    if (vehicleId) await t.query("SELECT id FROM vehicles WHERE id = $1 AND organization_id = $2 FOR UPDATE", [vehicleId, req.user.orgId]);
+    if (vehicleId) await t.query("UPDATE cards SET vehicle_id = NULL WHERE vehicle_id = $1 AND organization_id = $2", [vehicleId, req.user.orgId]);
+    await t.query("UPDATE cards SET vehicle_id = $2, driver_id = $3, updated_at = now() WHERE id = $1 AND organization_id = $4", [cardId, vehicleId ?? null, driverId ?? null, req.user.orgId]);
   });
   audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "card.assigned", entityType: "card", entityId: cardId, metadata: { vehicleId, driverId } });
   res.json({ ok: true });
@@ -263,22 +269,35 @@ router.get("/cards", requireOrg, asyncHandler(async (req, res) => {
 }));
 
 router.post("/cards", requireOrg, requirePermission("cards.manage"), asyncHandler(async (req, res) => {
-  const { label, holderName, vehicleId, driverId, dailyLimit, monthlyLimit } = req.valid ?? req.body ?? {};
-  if (!label) throw badRequest("Card label is required");
-  const org = await one("SELECT * FROM organizations WHERE id = $1", [req.user.orgId]);
-  const dailyKobo = Math.round((Number(dailyLimit) || 2000) * 100);
-  const monthlyKobo = Math.round((Number(monthlyLimit) || 20000) * 100);
-  if (dailyKobo < 10000) throw badRequest("Daily limit must be at least ₦100");
-  if (monthlyKobo < dailyKobo) throw badRequest("Monthly limit cannot be lower than the daily limit");
-  const sudoCustomer = await createSudoCustomer({ firstName: org.name.split(" ")[0], lastName: org.name.split(" ").slice(1).join(" ") || "Fleet", email: req.user.email, phoneNumber: req.user.phone });
-  const sudoCard = await issueSudoCard({ customerId: sudoCustomer.id, type: "naira", currency: "NGN", amount: 0 });
-  const card = await one(
-    `INSERT INTO cards (organization_id, owner_user_id, vehicle_id, driver_id, label, holder_name, masked_pan, status, daily_limit_kobo, monthly_limit_kobo, sudo_card_id, sudo_customer_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,'active',$8,$9,$10,$11) RETURNING *`,
-    [req.user.orgId, req.user.id, vehicleId ?? null, driverId ?? null, label, holderName ?? org.name,
-      sudoCard.cardNumber ? maskFromSudo(sudoCard) : maskPan(String(Math.floor(Math.random() * 1e16))),
-      dailyKobo, monthlyKobo, sudoCard.id ?? null, sudoCustomer.id ?? sudoCustomer]
+  const { label, vehicleId, driverId, dailyLimit, monthlyLimit, holder } = req.valid ?? req.body ?? {};
+  if (typeof label !== "string" || !label.trim() || label.length > 120) throw badRequest("Card label is required");
+  const { dailyKobo, monthlyKobo } = cardLimits(dailyLimit, monthlyLimit);
+  if (vehicleId && !(await one("SELECT id FROM vehicles WHERE id = $1 AND organization_id = $2", [vehicleId, req.user.orgId]))) throw badRequest("Selected vehicle is not part of this fleet");
+  if (driverId && !(await one("SELECT id FROM drivers WHERE id = $1 AND organization_id = $2 AND status = 'active'", [driverId, req.user.orgId]))) throw badRequest("Selected driver is not active in this fleet");
+  const existingCustomer = await one("SELECT sudo_customer_id, holder_name FROM cards WHERE organization_id = $1 AND sudo_customer_id IS NOT NULL ORDER BY created_at DESC LIMIT 1", [req.user.orgId]);
+  let issuerCustomerId = existingCustomer?.sudo_customer_id;
+  let verifiedHolderName = existingCustomer?.holder_name;
+  if (!issuerCustomerId) {
+    const identity = companyIssuerIdentity(holder, req.user);
+    issuerCustomerId = (await createSudoCustomer(identity)).id;
+    verifiedHolderName = `${identity.firstName} ${identity.lastName}`;
+  }
+  const sudoCard = await issueSudoCard({ customerId: issuerCustomerId, currency: "NGN", amount: 0 });
+  const details = providerCardDetails(sudoCard);
+  const card = await tx(async (t) => {
+    await t.query("SELECT id FROM organizations WHERE id = $1 FOR UPDATE", [req.user.orgId]);
+    if (vehicleId) {
+      await t.query("SELECT id FROM vehicles WHERE id = $1 AND organization_id = $2 FOR UPDATE", [vehicleId, req.user.orgId]);
+      await t.query("UPDATE cards SET vehicle_id = NULL, updated_at = now() WHERE vehicle_id = $1 AND organization_id = $2", [vehicleId, req.user.orgId]);
+    }
+    return t.one(
+    `INSERT INTO cards (organization_id, owner_user_id, vehicle_id, driver_id, label, holder_name, masked_pan, status, daily_limit_kobo, monthly_limit_kobo, sudo_card_id, sudo_customer_id, expiry, brand)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,'active',$8,$9,$10,$11,$12,$13) RETURNING *`,
+    [req.user.orgId, req.user.id, vehicleId ?? null, driverId ?? null, label.trim(), verifiedHolderName ?? req.user.full_name ?? "Company card holder",
+      details.maskedPan,
+      dailyKobo, monthlyKobo, details.providerId, issuerCustomerId, details.expiry, details.brand ?? "Unknown"]
   );
+  });
   audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "card.issued", entityType: "card", entityId: card.id });
   res.json({ ok: true, cardId: card.id, maskedPan: card.masked_pan });
 }));
@@ -307,10 +326,7 @@ router.post("/cards/:id/unfreeze", requireOrg, requirePermission("cards.manage")
 router.put("/cards/:id/limits", requireOrg, requirePermission("cards.manage"), asyncHandler(async (req, res) => {
   const card = await one("SELECT * FROM cards WHERE id = $1 AND organization_id = $2", [req.params.id, req.user.orgId]);
   if (!card) throw notFound("Card not found");
-  const dailyKobo = Math.round(Number(req.body?.daily) * 100);
-  const monthlyKobo = Math.round(Number(req.body?.monthly) * 100);
-  if (dailyKobo < 10000) throw badRequest("Daily limit must be at least ₦100");
-  if (monthlyKobo < dailyKobo) throw badRequest("Monthly limit cannot be lower than daily");
+  const { dailyKobo, monthlyKobo } = cardLimits(req.body?.daily, req.body?.monthly);
   await q("UPDATE cards SET daily_limit_kobo = $2, monthly_limit_kobo = $3, updated_at = now() WHERE id = $1", [card.id, dailyKobo, monthlyKobo]);
   audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "card.limits_updated", entityId: card.id, metadata: { dailyKobo, monthlyKobo } });
   res.json({ ok: true });
@@ -318,13 +334,16 @@ router.put("/cards/:id/limits", requireOrg, requirePermission("cards.manage"), a
 
 // ============ TRANSACTIONS ============
 router.get("/transactions", requireOrg, asyncHandler(async (req, res) => {
-  const { search, date, vehicle, driver, status, limit = 20, offset = 0 } = req.query;
+  const { search, status, limit = 20, offset = 0 } = req.query;
+  const { date, days, vehicle, driver, driverId } = companyReportOptions({ ...req.query, scope: "transactions", format: "csv" });
   const params = [req.user.orgId];
   let where = `t.organization_id = $1`;
   if (search) { params.push(`%${search}%`); where += ` AND (s.name ILIKE $${params.length} OR v.plate ILIKE $${params.length} OR d.name ILIKE $${params.length} OR t.reference ILIKE $${params.length})`; }
-  if (date) { params.push(date); where += ` AND t.created_at::date = $${params.length}`; }
-  if (vehicle) { params.push(`%${vehicle}%`); where += ` AND v.plate ILIKE $${params.length}`; }
-  if (driver) { params.push(`%${driver}%`); where += ` AND d.name ILIKE $${params.length}`; }
+  if (date) { params.push(date); where += ` AND t.created_at::date = $${params.length}::date`; }
+  else if (req.query.range) { params.push(String(days)); where += ` AND t.created_at >= now() - ($${params.length} || ' days')::interval`; }
+  if (vehicle) { params.push(vehicle); where += ` AND v.plate = $${params.length}`; }
+  if (driverId) { params.push(driverId); where += ` AND t.driver_id = $${params.length}::uuid`; }
+  else if (driver) { params.push(driver); where += ` AND d.name = $${params.length}`; }
   if (status) { params.push(status); where += ` AND t.status = $${params.length}`; }
   const rows = await q(
     `SELECT t.*, s.name AS station_name, s.address AS station_address, v.plate AS vehicle_plate, d.name AS driver_name, c.masked_pan
@@ -384,7 +403,7 @@ router.get("/reports", requireOrg, asyncHandler(async (req, res) => {
     [req.user.orgId, String(days)]
   );
   const stationUsage = await q(
-    `SELECT s.name, SUM(t.amount_kobo) AS total, COUNT(*)::int AS visits FROM transactions t
+    `SELECT s.name AS station, SUM(t.amount_kobo) AS total, COUNT(*)::int AS visits FROM transactions t
      LEFT JOIN stations s ON s.id = t.station_id
      WHERE t.organization_id = $1 AND t.status = 'success' AND t.created_at >= now() - ($2 || ' days')::interval
      GROUP BY s.name ORDER BY total DESC LIMIT 10`,
@@ -407,61 +426,57 @@ router.get("/reports", requireOrg, asyncHandler(async (req, res) => {
 }));
 
 router.get("/reports/export", requireOrg, asyncHandler(async (req, res) => {
-  const { format = "csv", range = "30" } = req.query;
-  const days = Math.min(Number(range) || 30, 365);
-  const rows = await q(
-    `SELECT t.created_at, s.name AS station, v.plate AS vehicle, t.fuel_type, t.litres, t.amount_kobo, t.status
-     FROM transactions t LEFT JOIN stations s ON s.id = t.station_id LEFT JOIN vehicles v ON v.id = t.vehicle_id
-     WHERE t.organization_id = $1 AND t.created_at >= now() - ($2 || ' days')::interval ORDER BY t.created_at DESC`,
-    [req.user.orgId, String(days)]
-  );
-  audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "report.exported", metadata: { format, days } });
-  if (format === "pdf") {
-    const pdf = await reportPdf({
-      title: "Fleet Spend Report",
-      subtitle: `Last ${days} days • ${req.user.organization_name}`,
-      columns: [
-        { key: "date", label: "Date", width: 110 },
-        { key: "station", label: "Station", width: 160 },
-        { key: "vehicle", label: "Vehicle", width: 100 },
-        { key: "fuel", label: "Fuel", width: 90 },
-        { key: "litres", label: "Litres", width: 70 },
-        { key: "amount", label: "Amount", width: 110 }
-      ],
-      rows: rows.map((r) => ({ date: fmtDate(r.created_at), station: r.station ?? "", vehicle: r.vehicle ?? "", fuel: r.fuel_type, litres: Math.round(Number(r.litres)), amount: naira(r.amount_kobo) }))
-    });
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="obligon-report-${Date.now()}.pdf"`);
+  const options = companyReportOptions(req.query);
+  const params = [req.user.orgId];
+  let where = 'organization_id = $1';
+  let records;
+  if (options.scope === 'vehicles') {
+    records = await q('SELECT plate, model, vehicle_type, fuel_type, status, tank_capacity_l FROM vehicles WHERE organization_id = $1 ORDER BY plate', params);
+  } else if (options.scope === 'invoices') {
+    records = await q("SELECT number, created_at, amount_kobo, status, description FROM invoices WHERE organization_id = $1 AND created_at >= now() - ($2 || ' days')::interval ORDER BY created_at DESC", [req.user.orgId, String(options.days)]);
+    records = records.map(r => ({ number: r.number, date: fmtDateTime(r.created_at), amount: naira(r.amount_kobo), status: r.status, description: r.description }));
+  } else if (options.scope === 'maintenance') {
+    records = await q("SELECT m.scheduled_date, v.plate, m.service_type, m.cost_kobo, m.status, m.notes FROM maintenance_schedules m LEFT JOIN vehicles v ON v.id = m.vehicle_id WHERE m.organization_id = $1 AND m.scheduled_date >= current_date - $2::int AND m.scheduled_date <= current_date ORDER BY m.scheduled_date DESC", [req.user.orgId, options.days]);
+    records = records.map(r => ({ date: fmtDate(r.scheduled_date), vehicle: r.plate ?? '', service: r.service_type, cost: naira(r.cost_kobo ?? 0), status: r.status, notes: r.notes }));
+  } else {
+    where = 't.organization_id = $1';
+    if (options.date) { params.push(options.date); where += ` AND t.created_at::date = $${params.length}::date`; }
+    else { params.push(String(options.days)); where += ` AND t.created_at >= now() - ($${params.length} || ' days')::interval`; }
+    if (options.vehicle) { params.push(options.vehicle); where += ` AND v.plate = $${params.length}`; }
+    if (options.driverId) { params.push(options.driverId); where += ` AND t.driver_id = $${params.length}::uuid`; }
+    else if (options.driver) { params.push(options.driver); where += ` AND d.name = $${params.length}`; }
+    const rows = await q(`SELECT t.reference, t.created_at, s.name AS station, v.plate AS vehicle, d.name AS driver, t.fuel_type, t.litres, t.amount_kobo, t.status
+      FROM transactions t LEFT JOIN stations s ON s.id = t.station_id LEFT JOIN vehicles v ON v.id = t.vehicle_id LEFT JOIN drivers d ON d.id = t.driver_id
+      WHERE ${where} ORDER BY t.created_at DESC`, params);
+    records = rows.map(r => ({ reference: r.reference, date: fmtDateTime(r.created_at), station: r.station ?? '', vehicle: r.vehicle ?? '', driver: r.driver ?? '', fuel: r.fuel_type, litres: r.litres, amount: naira(r.amount_kobo), status: r.status }));
+  }
+  await audit({ actorUserId: req.user.id, actorRole: req.user.role, action: 'report.exported', metadata: options });
+  if (options.format === 'pdf') {
+    const keys = records.length ? Object.keys(records[0]) : ['date', 'amount', 'status'];
+    const pdf = await reportPdf({ title: `Company ${options.scope} report`, subtitle: `Last ${options.days} days • ${req.org.name}`,
+      columns: keys.map(key => ({ key, label: key.replaceAll('_', ' '), width: Math.max(55, Math.floor((keys.length > 4 ? 740 : 495) / keys.length)) })),
+      rows: records });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="obligon-${options.scope}-${Date.now()}.pdf"`);
     return res.send(pdf);
   }
-  const csv = toCsv(rows.map((r) => ({ date: fmtDateTime(r.created_at), station: r.station ?? "", vehicle: r.vehicle ?? "", fuel: r.fuel_type, litres: r.litres, amount: naira(r.amount_kobo), status: r.status })));
-  res.setHeader("Content-Type", "text/csv");
-  res.setHeader("Content-Disposition", `attachment; filename="obligon-report-${Date.now()}.csv"`);
-  res.send(csv);
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="obligon-${options.scope}-${Date.now()}.csv"`);
+  res.send(toCsv(records));
 }));
 
 // ============ STATIONS (locator) ============
 router.get("/stations", requireOrg, asyncHandler(async (req, res) => {
-  const { search, fuel, lat, lng } = req.query;
+  const { search } = req.query;
   const params = [];
-  let where = `s.status = 'active'`;
-  if (search) { params.push(`%${search}%`); where += ` AND (s.name ILIKE $${params.length} OR s.address ILIKE $${params.length} OR s.city ILIKE $${params.length})`; }
-  if (fuel) { params.push(`%${fuel}%`); where += ` AND $${params.length} = ANY(s.fuels)`; }
-  const rows = await q(
-    `SELECT s.*, COALESCE(AVG(fp.price_kobo),0) AS avg_price FROM stations s
-     LEFT JOIN fuel_prices fp ON fp.station_id = s.id WHERE ${where} GROUP BY s.id ORDER BY s.name LIMIT 50`,
-    params
-  );
-  res.json({
-    stations: rows.map((s) => [
-      s.name,
-      distanceLabel(Number(lat) || 6.5244, Number(lng) || 3.3792, s.lat, s.lng),
-      `${s.address}${s.city ? `, ${s.city}` : ""}`,
-      s.avg_price ? naira(s.avg_price) : "—",
-      s.rating >= 4.7 ? "VERIFIED" : "NETWORK"
-    ]),
-    details: rows.map((s) => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng, address: s.address, city: s.city, fuels: s.fuels, hours: s.hours, rating: Number(s.rating) }))
-  });
+  let where = "s.status = 'active'";
+  if (typeof search === 'string' && search.trim()) { params.push(`%${search.trim()}%`); where += ` AND (s.name ILIKE $1 OR s.address ILIKE $1 OR s.city ILIKE $1)`; }
+  const rows = await q(`SELECT s.*, COALESCE(jsonb_agg(jsonb_build_object('fuel',fp.fuel_type,'priceKobo',fp.price_kobo)) FILTER (WHERE fp.fuel_type IS NOT NULL), '[]'::jsonb) AS prices
+    FROM stations s LEFT JOIN fuel_prices fp ON fp.station_id = s.id WHERE ${where} GROUP BY s.id ORDER BY s.name LIMIT 50`, params);
+  res.json({ details: rows.map(s => ({ id: s.id, name: s.name, address: [s.address, s.city].filter(Boolean).join(', '), city: s.city,
+    lat: s.location_confirmed ? s.lat : null, lng: s.location_confirmed ? s.lng : null, hours: s.hours, fuels: s.fuels,
+    prices: s.prices.map(p => ({ fuel: p.fuel, priceLabel: naira(p.priceKobo) })) })),
+    stations: rows.map(s => [s.name, 'Choose directions for location', [s.address,s.city].filter(Boolean).join(', '), s.prices.length ? 'See published fuel prices' : 'Price unavailable', 'NETWORK']) });
 }));
 
 // ============ ROADSIDE ============
@@ -490,6 +505,7 @@ router.get("/roadside", requireOrg, asyncHandler(async (req, res) => {
 router.post("/roadside", requireOrg, asyncHandler(async (req, res) => {
   const { vehicleId, location, issueType, priority = "normal", details } = req.valid ?? req.body ?? {};
   if (!location || !issueType) throw badRequest("Location and issue type are required");
+  if (vehicleId && !(await one("SELECT id FROM vehicles WHERE id = $1 AND organization_id = $2", [vehicleId, req.user.orgId]))) throw badRequest("Selected vehicle is not part of this fleet");
   const request = await one(
     `INSERT INTO roadside_requests (organization_id, user_id, vehicle_id, location_text, issue_type, priority, details, status)
      VALUES ($1,$2,$3,$4,$5,$6,$7,'received') RETURNING *`,
@@ -849,7 +865,7 @@ router.delete("/team/:memberId", requireOrg, requirePermission("team.manage"), a
 // ============ NOTIFICATIONS ============
 router.get("/notifications", requireOrg, asyncHandler(async (req, res) => {
   const rows = await q(
-    `SELECT * FROM notifications WHERE organization_id = $1 OR user_id = $2 ORDER BY created_at DESC LIMIT 30`,
+    `SELECT * FROM notifications WHERE (organization_id = $1 OR user_id = $2) AND in_app_visible = TRUE ORDER BY created_at DESC LIMIT 30`,
     [req.user.orgId, req.user.id]
   );
   const seen = new Set();
@@ -857,7 +873,7 @@ router.get("/notifications", requireOrg, asyncHandler(async (req, res) => {
     notifications: rows.filter((n) => { if (seen.has(n.id)) return false; seen.add(n.id); return true; }).map((n) => [
       n.title, relativeTime(n.created_at), n.body, n.category.toUpperCase(), n.action_required ? "ACTION REQUIRED" : ""
     ]),
-    detailed: rows.map((n) => ({ id: n.id, title: n.title, body: n.body, time: relativeTime(n.created_at), read: Boolean(n.read_at), actionRequired: n.action_required, link: n.link })),
+    detailed: rows.map((n) => ({ id: n.id, title: n.title, body: n.body, time: relativeTime(n.created_at), read: Boolean(n.read_at), category: n.category, actionRequired: n.action_required, link: n.link })),
     unreadCount: rows.filter((n) => !n.read_at).length
   });
 }));
@@ -913,6 +929,8 @@ router.get("/settings", requireOrg, asyncHandler(async (req, res) => {
 
 router.put("/settings", requireOrg, requirePermission("org.manage"), asyncHandler(async (req, res) => {
   const { name, rcNumber, address, city, website, description } = req.valid ?? req.body ?? {};
+  if (name !== undefined && (typeof name !== "string" || !name.trim() || name.length > 200)) throw badRequest("Enter a valid company name");
+  for (const [field, value] of Object.entries({ rcNumber, address, city, website, description })) { if (value !== undefined && (typeof value !== "string" || value.length > 2000)) throw badRequest(`Invalid ${field}`); }
   const org = await one(
     `UPDATE organizations SET name = COALESCE($2, name), rc_number = COALESCE($3, rc_number), address = COALESCE($4, address),
        city = COALESCE($5, city), website = COALESCE($6, website), description = COALESCE($7, description), updated_at = now()
@@ -951,7 +969,7 @@ router.get("/maintenance", requireOrg, asyncHandler(async (req, res) => {
   res.json({
     schedules: rows.map((m) => ({
       id: m.id,
-      cells: [fmtDate(m.scheduled_date), m.vehicle_plate ?? "—", m.service_type, "Obligon Certified Hub", m.cost_kobo ? naira(m.cost_kobo) : "—"],
+      cells: [fmtDate(m.scheduled_date), m.vehicle_plate ?? "—", m.service_type, m.cost_kobo ? naira(m.cost_kobo) : "—"],
       status: m.status.toUpperCase(), tone: m.status === "completed" ? "green" : m.status === "overdue" ? "red" : m.status === "in_progress" ? "blue" : "amber",
       statusRaw: m.status, notes: m.notes
     })),
@@ -966,6 +984,8 @@ router.get("/maintenance", requireOrg, asyncHandler(async (req, res) => {
 router.post("/maintenance", requireOrg, requirePermission("fleet.manage"), asyncHandler(async (req, res) => {
   const { vehicleId, serviceType, scheduledDate, cost, notes } = req.valid ?? req.body ?? {};
   if (!serviceType || !scheduledDate) throw badRequest("Service type and date are required");
+  companyReportOptions({ date: scheduledDate });
+  if (vehicleId && !(await one("SELECT id FROM vehicles WHERE id = $1 AND organization_id = $2", [vehicleId, req.user.orgId]))) throw badRequest("Selected vehicle is not part of this fleet");
   const schedule = await one(
     `INSERT INTO maintenance_schedules (organization_id, vehicle_id, service_type, scheduled_date, cost_kobo, notes, status)
      VALUES ($1,$2,$3,$4,$5,$6,'scheduled') RETURNING *`,

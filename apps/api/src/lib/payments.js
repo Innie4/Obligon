@@ -1,5 +1,5 @@
 import { env } from "../config/env.js";
-import { misconfigured, serviceUnavailable } from "./errors.js";
+import { badRequest, misconfigured, serviceUnavailable } from "./errors.js";
 import * as paystack from "./paystack.js";
 import * as flutterwave from "./flutterwave.js";
 
@@ -11,6 +11,23 @@ import * as flutterwave from "./flutterwave.js";
  */
 
 export const PAYMENT_PROVIDERS = ["flutterwave", "paystack"];
+
+/** Accept current UI labels and older clients, but never silently change a choice. */
+export function walletFundingMethod(value) {
+  const selected = String(value ?? "Card / Bank").trim().toLowerCase();
+  const methods = {
+    "card / bank": "cardbank", cardbank: "cardbank", card: "card", bank: "account", account: "account",
+    "direct bank transfer": "banktransfer", "bank transfer": "banktransfer", banktransfer: "banktransfer",
+    "ussd / quick bank code": "ussd", ussd: "ussd",
+  };
+  if (!methods[selected]) throw badRequest("Select a supported wallet payment method.");
+  return methods[selected];
+}
+
+export function validateWalletFundingMethod(provider, method) {
+  if (provider === "flutterwave") flutterwave.paymentOptionsFor("NGN", method);
+  else throw misconfigured("Wallet checkout requires Flutterwave.");
+}
 
 function configured(name) {
   if (name === "paystack") return paystack.paystackEnabled();
@@ -199,6 +216,7 @@ export async function startCheckout({
   redirectUrl,
   title,
   meta,
+  paymentMethod,
   split
 }) {
   const name_ = provider ?? activeProvider();
@@ -215,6 +233,7 @@ export async function startCheckout({
       redirectUrl,
       title,
       meta,
+      paymentMethod,
       // Opt-in split settlement: only applied when an organization has a linked,
       // active settlement subaccount. Absent that, the charge settles to the
       // platform account exactly as before.

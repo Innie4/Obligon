@@ -1005,7 +1005,7 @@ router.post("/pos/authorize",requireCapability("pos.operate"),sensitiveLimiter,a
  const result=await tx(t=>authorizeWalletFuelSale(t,{partnerOrgId:partnerOrgId(req),stationId:id,code:String(code),litres:litresNum,fuelType:String(fuelType??"").trim(),reference:txRef}));
  emitToOrg(partnerOrgId(req),"pos.approved",{reference:txRef,amountLabel:naira(result.amounts.chargedKobo),card:result.card.masked_pan,time:fmtDateTime(new Date())});
  await audit({actorUserId:req.user.id,actorRole:req.user.role,action:"pos.approved",entityType:"transaction",entityId:result.sale.id,metadata:result.amounts});
- res.json({ok:true,approved:true,reference:txRef,card:result.card.masked_pan,amountLabel:naira(result.amounts.chargedKobo),partnerNetLabel:naira(result.amounts.partnerNetKobo),time:fmtDateTime(new Date())});
+ res.json({ok:true,approved:true,reference:txRef,card:result.card.masked_pan,fuelType:result.sale.fuel_type,litres:Number(result.sale.litres),amountLabel:naira(result.amounts.chargedKobo),partnerNetLabel:naira(result.amounts.partnerNetKobo),time:fmtDateTime(new Date())});
 }));
 
 // ============ DISPUTES ============

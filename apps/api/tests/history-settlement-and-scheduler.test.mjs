@@ -26,6 +26,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import vm from "node:vm";
+import ts from "typescript";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -155,7 +157,19 @@ test("a fuel filter cannot match a bank transfer", () => {
 });
 
 test("the receipt does not invent a station for a top-up", () => {
-  assert.match(screen, /selectedTxn\.kind === "dispense" \? \([\s\S]*?\) : \(/);
+  const source = read(webRoot, "lib", "customer-presentation.ts");
+  const exports = {};
+  vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, { exports });
+  const event = { id: "movement:record-id", kind: "topup", reference: null, station: "", amount: "+₦100.00", status: "credited", subtitle: "Added to your fuel wallet" };
+  const rows = exports.customerReceiptRows(event);
+  assert.ok(!rows.some(([label]) => ["Merchant / Station", "Vehicle ID", "Fuel Type", "Card Number", "Volume", "Timestamp"].includes(label)), "absent metadata must stay absent");
+  assert.match(exports.customerReceiptText(event), /Type: Wallet top-up/);
+  assert.match(exports.customerReceiptText(event), /Status: CREDITED/);
+  const knownWallet = exports.customerReceiptRows({ ...event, station: "Obligon Wallet" });
+  assert.equal(knownWallet.find(([label]) => label === "Merchant / Station")[1], "Obligon Wallet");
+  assert.match(screen, /customerReceiptRows\(selectedTxn\)/);
+  assert.match(screen, /customerReceiptText\(txn\)/);
+  assert.doesNotMatch(source + screen, /4092|POS-OBL-0842|FLT-8492|Premium Diesel|APPROVED \/ SETTLED/);
 });
 
 // ------------------------------------------------------ the processor's figure

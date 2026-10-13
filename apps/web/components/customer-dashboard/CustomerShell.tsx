@@ -122,14 +122,26 @@ function Sidebar() {
 }
 
 function MobileHeader() {
+  const [accountOpen, setAccountOpen] = useState(false);
   return (
-    <header className="flex h-[84px] items-center justify-between border-b border-[#e0e7de] bg-[#f7fbf8] px-8 lg:hidden">
+    <header className="relative flex h-[84px] items-center justify-between border-b border-[#e0e7de] bg-[#f7fbf8] px-5 lg:hidden">
       <Link href="/customer" className="block" aria-label="Obligon LTD customer dashboard">
-        <DashboardLogo width={132} priority />
+        <DashboardLogo width={112} priority />
       </Link>
-      <Link href="/customer/notifications" className="text-obligon-green" aria-label="Notifications">
+      <div className="flex items-center gap-2">
+      <Link href="/customer/notifications" className="grid size-11 place-items-center text-obligon-green" aria-label="Notifications">
         <Bell size={22} fill="currentColor" />
       </Link>
+      <button type="button" aria-expanded={accountOpen} aria-controls="customer-mobile-account" onClick={() => setAccountOpen(open => !open)} className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-obligon-border bg-white px-3 text-sm font-bold text-obligon-green">
+        Account <ChevronDown size={16} />
+      </button>
+      </div>
+      {accountOpen ? <nav id="customer-mobile-account" aria-label="Customer account" className="absolute right-5 top-[72px] z-40 w-[min(270px,calc(100vw-40px))] rounded-xl border border-obligon-border bg-white p-2 shadow-xl">
+        {secondaryCustomerNav.map(item => <Link key={item.key} href={item.href} onClick={() => setAccountOpen(false)} className="flex min-h-12 items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-obligon-navy hover:bg-obligon-mist">
+          {iconMap[item.key]} {item.label}
+        </Link>)}
+        <LogoutButton className="min-h-12 w-full justify-start rounded-lg px-3 text-sm text-obligon-navy hover:bg-obligon-mist" />
+      </nav> : null}
     </header>
   );
 }
@@ -192,4 +204,3 @@ export function CustomerShell({ children }: CustomerShellProps) {
     </AuthGuard>
   );
 }
-

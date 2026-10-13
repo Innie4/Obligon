@@ -26,6 +26,7 @@ import { api, mutationsApi, saveBlob, authenticatedRequest } from "@/lib/service
 import { AsyncBoundary, EmptyState } from "@/components/shared/States";
 import { useAsync } from "@/components/shared/useAsync";
 import { useToast } from "@/components/shared/Toast";
+import { useDialogFocus } from "@/components/shared/useDialogFocus";
 import type {
   PartnerBankAccount,
   PartnerDispute,
@@ -445,14 +446,14 @@ function FuelPricingPage() {
  */
 function POSTerminalPage() {
   const { success: toastSuccess, error: toastError } = useToast();
-  const [mode,setMode]=React.useState("wallet");
+  const [mode,setMode]=React.useState<"wallet" | "checkout">("wallet");
   const [stationId,setStationId]=React.useState("");
   const [code, setCode] = React.useState("");
   const [fuelType, setFuelType] = React.useState("PMS Petrol");
-  const [litres, setLitres] = React.useState("40");
+  const [litres, setLitres] = React.useState("");
   const [verifying, setVerifying] = React.useState(false);
   const [authReceipt, setAuthReceipt] = React.useState<{
-    reference: string; vehicle: string; amount: string; driver: string; card: string; litres: string; fuelType: string;
+    reference: string; vehicle?: string; amount: string; driver?: string; card?: string; litres: string; fuelType: string; mode: "wallet" | "checkout";
   } | null>(null);
 
 // The fuel types this station has actually published a price for. Hard-coded
@@ -470,10 +471,7 @@ function POSTerminalPage() {
   const stationPrices=(pricing?.prices??[]).filter(p=>p.stationId===activeStation);
   const pricesLoading = pricingStatus === "loading";
   const pricesFailed = pricingStatus === "error";
-  const fuelTypes = React.useMemo(
-    () => stationPrices.map((p) => p.fuelType).filter(Boolean),
-    [pricing,activeStation]
-  );
+  const fuelTypes = stationPrices.map((p) => p.fuelType).filter(Boolean);
   const activeFuelType = fuelTypes.includes(fuelType) ? fuelType : (fuelTypes[0] ?? fuelType);
   const unitPrice = stationPrices.find((p) => p.fuelType === activeFuelType)?.price ?? null;
   const litresNum = Number(litres);
@@ -484,32 +482,42 @@ function POSTerminalPage() {
 
   async function handleAuthorize(e: React.FormEvent) {
     e.preventDefault();
-    if (code.length < 6) {
-      toastError("Please enter the complete 6-digit fleet authorization code.");
+    if (verifying) return;
+    if (!/^\d{6}$/.test(code)) {
+      toastError(mode === "checkout" ? "Enter the customer's complete 6-digit paid fuel code." : "Enter the complete 6-digit driver authorization code.");
+      return;
+    }
+    if (!activeStation) {
+      toastError("Choose the station accepting this fuel purchase.");
       return;
     }
     if (mode==="wallet" && !litresValid) {
       toastError("Enter the litres to dispense.");
       return;
     }
+    if (mode === "wallet" && (pricesLoading || pricesFailed || !fuelTypes.length)) {
+      toastError("Load this station's published fuel prices before authorizing a wallet purchase.");
+      return;
+    }
     setVerifying(true);
     try {
       const result = mode==="wallet" ? await mutationsApi.posAuthorize({ stationId:activeStation,code, litres: litresNum, fuelType: activeFuelType }) :
-        await authenticatedRequest<Record<string,unknown>>("/api/partner/pos/fulfill",{method:"POST",body:JSON.stringify({stationId:activeStation,code})});
+        await mutationsApi.fulfillFuelCheckout({stationId:activeStation,code});
       // Every field comes from the authorization response. The previous version
       // fell back to "Fleet vehicle", "Fleet driver" and a reference invented with
       // Math.random(), so a declined-looking receipt could still name a transaction
       // that never existed.
       setAuthReceipt({
         reference: String(result?.reference ?? "—"),
-        vehicle: String(result?.vehicle ?? "—"),
+        vehicle: result?.vehicle ? String(result.vehicle) : undefined,
         amount: String(result?.amountLabel ?? "—"),
-        driver: String(result?.driver ?? "—"),
-        card: String(result?.card ?? "—"),
-        litres,
-        fuelType: activeFuelType
+        driver: result?.driver ? String(result.driver) : undefined,
+        card: result?.card ? String(result.card) : undefined,
+        litres: result?.litres == null ? "—" : String(result.litres),
+        fuelType: result?.fuelType ? String(result.fuelType) : "—",
+        mode
       });
-      toastSuccess(`Authorization ${result?.reference} approved and recorded.`);
+      toastSuccess(mode === "checkout" ? `Paid fuel order ${result?.reference} fulfilled and recorded.` : `Authorization ${result?.reference} approved and recorded.`);
     } catch (err) {
       toastError(err instanceof Error ? err.message : "Authorization declined. Check the code and try again.");
     } finally {
@@ -519,8 +527,16 @@ function POSTerminalPage() {
 
   return (
     <DashboardCanvas>
-      <label className="mb-4 block">Payment type<select className="ml-3 rounded border p-2" value={mode} onChange={e=>setMode(e.target.value)}><option value="wallet">Wallet authorization</option><option value="checkout">Already paid station checkout</option></select></label>
-      <label className="mb-5 block">Station<select value={activeStation} onChange={e=>setStationId(e.target.value)} className="ml-3 rounded border p-2">{pricing?.stations?.map(st=><option key={st.id} value={st.id}>{st.name}</option>)}</select></label>
+      <div className="mb-5 grid min-w-0 gap-4 sm:grid-cols-2">
+        <div>
+          <label htmlFor="pos-payment-type" className="mb-2 block text-sm font-bold">Payment type</label>
+          <select id="pos-payment-type" className="w-full min-w-0 rounded-lg border p-3" value={mode} disabled={verifying} onChange={e=>{setMode(e.target.value as "wallet" | "checkout");setAuthReceipt(null);setCode("");}}><option value="wallet">Wallet authorization</option><option value="checkout">Already paid station checkout</option></select>
+        </div>
+        <div>
+          <label htmlFor="pos-station" className="mb-2 block text-sm font-bold">Station</label>
+          <select id="pos-station" value={activeStation} disabled={verifying || !pricing?.stations?.length} onChange={e=>{setStationId(e.target.value);setAuthReceipt(null);setCode("");}} className="w-full min-w-0 rounded-lg border p-3">{pricing?.stations?.length ? pricing.stations.map(st=><option key={st.id} value={st.id}>{st.name}</option>) : <option value="">No stations available</option>}</select>
+        </div>
+      </div>
       <div className="max-w-2xl mx-auto">
 {pricesLoading || pricesFailed ? (
           <div
@@ -538,10 +554,10 @@ function POSTerminalPage() {
             )}
             <div>
               {pricesLoading ? (
-                <p>Loading your published prices…</p>
+                <p>{mode === "wallet" ? "Loading your published prices…" : "Loading your stations…"}</p>
               ) : (
                 <>
-                  <p>Prices could not be loaded: {pricingError?.message ?? "the request failed"}</p>
+                  <p>{mode === "wallet" ? "Prices could not be loaded" : "Stations could not be loaded"}: {pricingError?.message ?? "the request failed"}</p>
                   {/*
                     A retry, and wording that does not blame the operator. Without this
                     the page said "Publish a price on Fuel Pricing first", which sends
@@ -561,7 +577,7 @@ function POSTerminalPage() {
             </div>
           </div>
         ) : null}
-        {pricingStatus === "success" && !fuelTypes.length ? (
+        {mode === "wallet" && pricingStatus === "success" && !fuelTypes.length ? (
           <p className="mb-5 rounded-xl border border-obligon-border bg-[#f7f7fd] px-4 py-3 text-sm font-bold text-obligon-text">
             No prices are published for this station yet, so a dispense cannot be authorised.
           </p>
@@ -569,7 +585,7 @@ function POSTerminalPage() {
         <div className="mb-8 text-center">
           <h1 className="font-display text-3xl font-extrabold text-obligon-navy">POS Authorization Terminal</h1>
           <p className="mt-1 text-sm text-obligon-text">
-            Enter a driver&apos;s 6-digit authorization code to record an approved dispense.
+            {mode === "checkout" ? "Enter the customer's paid fuel code. The paid order supplies the fuel, litres and amount." : "Enter a driver's 6-digit authorization code and the litres to record a wallet purchase."}
           </p>
         </div>
 
@@ -578,13 +594,12 @@ function POSTerminalPage() {
             <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
               <Check size={32} />
             </span>
-            <h2 className="mt-5 font-display text-3xl font-extrabold text-obligon-navy">Authorization Recorded</h2>
+            <h2 className="mt-5 font-display text-3xl font-extrabold text-obligon-navy">{authReceipt.mode === "checkout" ? "Paid Fuel Order Fulfilled" : "Authorization Recorded"}</h2>
             <p className="mt-1 text-sm text-obligon-text">
               Reference: <strong className="font-mono font-extrabold text-obligon-navy">{authReceipt.reference}</strong>
             </p>
             <p className="mt-3 rounded-lg bg-[#fff3d8] px-4 py-3 text-left text-sm font-bold text-[#9a6300]">
-              This records the authorization for your accounts. Dispensing at the pump is
-              still done at the dispenser.
+              {authReceipt.mode === "checkout" ? "This records fulfillment of the existing paid order. No additional wallet charge is made. Dispensing at the pump is still done at the dispenser." : "This records the authorization for your accounts. Dispensing at the pump is still done at the dispenser."}
             </p>
 
             <div className="mt-6 rounded-xl bg-[#f7fbf8] p-5 border border-obligon-border space-y-2 text-left text-sm">
@@ -594,8 +609,8 @@ function POSTerminalPage() {
                 ["Driver", authReceipt.driver],
                 ["Fuel Type", authReceipt.fuelType],
                 ["Litres", authReceipt.litres],
-                ["Amount Charged", authReceipt.amount]
-              ].map(([label, value]) => (
+                [authReceipt.mode === "checkout" ? "Amount Already Paid" : "Amount Charged", authReceipt.amount]
+              ].filter(([, value]) => value !== undefined).map(([label, value]) => (
                 <div key={label} className="flex justify-between gap-4">
                   <span className="text-obligon-text">{label}</span>
                   <span className="text-right font-bold text-obligon-navy">{value}</span>
@@ -603,7 +618,7 @@ function POSTerminalPage() {
               ))}
             </div>
 
-            <div className="mt-6 flex gap-3">
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               {/*
                 There is no printer integration. This used to claim a receipt had
                 been sent to a thermal printer when nothing was sent, so it now
@@ -630,29 +645,31 @@ function POSTerminalPage() {
             </div>
           </div>
         ) : (
-          <form onSubmit={handleAuthorize} className="rounded-2xl border border-obligon-border bg-white p-8 shadow-card space-y-5">
+          <form onSubmit={handleAuthorize} className="rounded-2xl border border-obligon-border bg-white p-5 shadow-card space-y-5 sm:p-8">
             <div>
-              <label className="text-xs font-extrabold uppercase text-obligon-text block mb-2">
-                6-Digit Driver Authorization Code
+              <label htmlFor="pos-code" className="text-xs font-extrabold uppercase text-obligon-text block mb-2">
+                {mode === "checkout" ? "6-Digit Paid Fuel Code" : "6-Digit Driver Authorization Code"}
               </label>
               <input
+                id="pos-code"
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 maxLength={6}
                 inputMode="numeric"
                 placeholder="• • • • • •"
-                className="h-16 w-full rounded-xl border border-[#cfd8cc] bg-[#f7fbf8] text-center font-mono text-3xl font-extrabold tracking-[14px] text-obligon-navy outline-none focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20"
+                className="h-16 w-full min-w-0 rounded-xl border border-[#cfd8cc] bg-[#f7fbf8] text-center font-mono text-2xl font-extrabold tracking-[6px] text-obligon-navy outline-none focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20 sm:text-3xl sm:tracking-[14px]"
                 required
                 autoFocus
               />
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            {mode === "wallet" ? <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-xs font-extrabold uppercase text-obligon-text block mb-1.5">
+                <label htmlFor="pos-fuel-type" className="text-xs font-extrabold uppercase text-obligon-text block mb-1.5">
                   Fuel Type
                 </label>
                 <select
+                  id="pos-fuel-type"
                   value={activeFuelType}
                   onChange={(e) => setFuelType(e.target.value)}
                   disabled={!fuelTypes.length}
@@ -671,10 +688,11 @@ function POSTerminalPage() {
                 ) : null}
               </div>
               <div>
-                <label className="text-xs font-extrabold uppercase text-obligon-text block mb-1.5">
+                <label htmlFor="pos-litres" className="text-xs font-extrabold uppercase text-obligon-text block mb-1.5">
                   Litres to Dispense
                 </label>
                 <input
+                  id="pos-litres"
                   value={litres}
                   onChange={(e) => setLitres(e.target.value.replace(/[^\d.]/g, ""))}
                   inputMode="decimal"
@@ -700,14 +718,14 @@ function POSTerminalPage() {
                   </p>
                 ) : null}
               </div>
-            </div>
+            </div> : <p className="rounded-xl bg-obligon-mist p-4 text-sm text-obligon-text">Use the code from the customer’s paid station checkout. This order has already been priced and paid; confirm it at the station before dispensing.</p>}
 
             <button
-              disabled={verifying || code.length < 6 || !litresValid || !fuelTypes.length || pricesLoading || pricesFailed}
+              disabled={verifying || !/^\d{6}$/.test(code) || !activeStation || (mode === "wallet" && (!litresValid || !fuelTypes.length || pricesLoading || pricesFailed))}
               type="submit"
               className="mt-4 h-14 w-full rounded-xl bg-obligon-green font-extrabold text-white text-base shadow-green hover:bg-obligon-green/90 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {verifying ? <Loader2 size={20} className="animate-spin" /> : "Authorize Dispense"}
+              {verifying ? <Loader2 size={20} className="animate-spin" /> : mode === "checkout" ? "Record Paid Fuel Fulfillment" : "Authorize Dispense"}
             </button>
           </form>
         )}
@@ -1581,18 +1599,11 @@ function Modal({
 }) {
   const panel = React.useRef<HTMLDivElement>(null);
 
-  React.useEffect(() => {
-    panel.current?.focus();
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  useDialogFocus(panel, onClose);
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-[#071853]/65 px-5 backdrop-blur-sm"
+      className="fixed inset-0 z-50 grid min-w-0 place-items-center overflow-y-auto bg-[#071853]/65 p-4 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -1603,7 +1614,7 @@ function Modal({
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-hero outline-none"
+        className="max-h-[calc(100dvh-2rem)] w-full min-w-0 max-w-md overflow-y-auto rounded-2xl bg-white p-5 shadow-hero outline-none sm:p-6"
       >
         <h2 className="font-display text-2xl font-extrabold text-obligon-navy">{title}</h2>
         {description ? <p className="mt-1 text-sm font-medium text-obligon-text">{description}</p> : null}
@@ -2175,12 +2186,13 @@ function StationOperationsModal({
         <p className="mt-1 text-xs font-medium text-obligon-text">
           An image of the site, equipment or dispenser. Images only.
         </p>
-        <div className="mt-2 flex gap-2">
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
           <input
             type="file"
             accept="image/png,image/jpeg,image/webp"
             onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-            className="block w-full text-xs font-bold text-obligon-text file:mr-3 file:rounded-lg file:border-0 file:bg-[#f0f4e8] file:px-3 file:py-2 file:text-xs file:font-extrabold file:text-obligon-green"
+            aria-label="Station image"
+            className="block min-w-0 w-full text-xs font-bold text-obligon-text file:mr-3 file:rounded-lg file:border-0 file:bg-[#f0f4e8] file:px-3 file:py-2 file:text-xs file:font-extrabold file:text-obligon-green"
           />
           <button
             type="button"
@@ -2195,12 +2207,12 @@ function StationOperationsModal({
 
       <section className="mt-6 border-t border-obligon-border pt-5">
         <h3 className={labelClass}>Request resupply</h3>
-        <div className="mt-2 flex gap-2">
+        <div className="mt-2 grid min-w-0 grid-cols-2 gap-2 sm:flex">
           <select
             value={fuelType}
             onChange={(event) => setFuelType(event.target.value)}
             aria-label="Fuel type"
-            className="h-10 flex-1 rounded-xl border border-[#cfd8cc] px-3 text-xs font-bold text-obligon-navy"
+            className="h-10 min-w-0 w-full sm:flex-1 rounded-xl border border-[#cfd8cc] px-3 text-xs font-bold text-obligon-navy"
           >
             <option>AGO Diesel</option>
             <option>PMS</option>
@@ -2212,13 +2224,13 @@ function StationOperationsModal({
             inputMode="decimal"
             placeholder="Litres"
             aria-label="Litres"
-            className="h-10 w-28 rounded-xl border border-[#cfd8cc] px-3 text-xs font-bold text-obligon-navy"
+            className="h-10 min-w-0 w-full sm:w-24 rounded-xl border border-[#cfd8cc] px-3 text-xs font-bold text-obligon-navy"
           />
           <button
             type="button"
             onClick={requestResupply}
             disabled={busy !== null || litres.trim() === ""}
-            className="h-10 shrink-0 rounded-xl bg-obligon-green px-4 text-xs font-extrabold text-white disabled:opacity-40"
+            className="col-span-2 h-10 shrink-0 rounded-xl bg-obligon-green px-4 text-xs font-extrabold text-white disabled:opacity-40"
           >
             {spinner("resupply") ?? "Request"}
           </button>
@@ -2227,13 +2239,13 @@ function StationOperationsModal({
 
       <section className="mt-6 border-t border-obligon-border pt-5">
         <h3 className={labelClass}>Message the terminal</h3>
-        <div className="mt-2 flex gap-2">
+        <div className="mt-2 flex min-w-0 flex-col gap-2 sm:flex-row">
           <input
             value={message}
             onChange={(event) => setMessage(event.target.value)}
             placeholder="Display message for the terminal"
             aria-label="Terminal message"
-            className="h-10 flex-1 rounded-xl border border-[#cfd8cc] px-3 text-xs font-bold text-obligon-navy"
+            className="h-10 min-w-0 w-full flex-1 rounded-xl border border-[#cfd8cc] px-3 text-xs font-bold text-obligon-navy"
           />
           <button
             type="button"

@@ -51,12 +51,12 @@ export function AdminHeader({ onOpenMenu }: { onOpenMenu: () => void }) {
                 }
               }}
               className="w-full bg-transparent text-sm font-medium outline-none placeholder:text-[#7d8293]"
-              placeholder={page.search}
+              placeholder="Search dashboard sections"
               role="combobox"
               aria-expanded={searchOpen}
               aria-controls="admin-search-results"
               aria-autocomplete="list"
-              aria-label={page.search}
+              aria-label="Search dashboard sections"
             />
           </label>
           {searchOpen ? (
@@ -107,4 +107,3 @@ export function AdminHeader({ onOpenMenu }: { onOpenMenu: () => void }) {
     </header>
   );
 }
-

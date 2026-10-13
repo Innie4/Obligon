@@ -11,7 +11,7 @@ const navItems = [
   { label: "Home", href: "/" },
   { label: "Product", href: "/solutions/fuelvista" },
   { label: "Pricing", href: "/#pricing" },
-  { label: "About Us", href: "/#get-started" },
+  { label: "About Us", href: "/#about-us" },
   { label: "Partners", href: "/#partners" }
 ];
 

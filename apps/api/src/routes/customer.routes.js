@@ -11,7 +11,7 @@ import { readSpendProjection, setSpendProjection } from "../lib/spend.js";
 import { settlePendingForUser } from "../lib/reconcile.js";
 import { notify, audit, securityLog } from "../lib/notify.js";
 import { resolveWallet } from "../lib/wallets.js";
-import { startCheckout, verifyCheckout, activeProvider, checkoutIsSimulated, priceWithFee, minimumTopupKobo } from "../lib/payments.js";
+import { startCheckout, verifyCheckout, activeProvider, checkoutIsSimulated, priceWithFee, minimumTopupKobo, walletFundingMethod, validateWalletFundingMethod } from "../lib/payments.js";
 import { sudoEnabled, createSudoCustomer, issueSudoCard, setSudoCardStatus, fundSudoCard, maskFromSudo, terminateSudoCard } from "../lib/sudo.js";
 import { receiptPdf } from "../lib/pdf.js";
 import { uploadFile, signedUrl } from "../lib/storage.js";
@@ -289,10 +289,11 @@ router.get("/transactions/all", asyncHandler(async (req, res) => {
   const [dispenses, movements] = await Promise.all([
     q(
       `SELECT t.id, t.reference, t.amount_kobo, t.litres, t.fuel_type, t.status, t.created_at,
-              s.name AS station_name, v.plate AS vehicle_plate
+              s.name AS station_name, v.plate AS vehicle_plate, c.masked_pan
        FROM transactions t
        LEFT JOIN stations s ON s.id = t.station_id
        LEFT JOIN vehicles v ON v.id = t.vehicle_id
+       LEFT JOIN cards c ON c.id = t.card_id
        WHERE t.customer_user_id = $1
        ORDER BY t.created_at DESC LIMIT 100`,
       [req.user.id]
@@ -319,6 +320,8 @@ router.get("/transactions/all", asyncHandler(async (req, res) => {
       station: t.station_name ?? "Obligon Network",
       vehicle: t.vehicle_plate ?? undefined,
       fuel: t.fuel_type,
+      maskedPan: t.masked_pan ?? undefined,
+      litres: t.litres == null ? undefined : Number(t.litres),
       // A dispense is money leaving, so it is shown as a reduction. Signed here
       // rather than in the client so every consumer agrees on the direction.
       amount: `-${naira(t.amount_kobo)}`,
@@ -513,6 +516,7 @@ router.get("/wallet", asyncHandler(async (req, res) => {
 
 router.post("/wallet/topup", asyncHandler(async (req, res) => {
   const { amount, method } = req.body ?? {};
+  const paymentMethod = walletFundingMethod(method);
   const amountKobo = Math.round(Number(amount) * 100);
   const minimum = minimumTopupKobo();
   if (!Number.isFinite(Number(amount)) || !amountKobo || amountKobo < minimum) {
@@ -522,6 +526,7 @@ router.post("/wallet/topup", asyncHandler(async (req, res) => {
 
   const provider = activeProvider();
   if (!provider) throw misconfigured("No payment provider is configured. The deployment is missing its payment credentials.");
+  validateWalletFundingMethod(provider, paymentMethod);
 
   const wallet = await getWallet(req.user.id, req.user.orgId ?? null);
   const ref = reference("TRX");
@@ -532,7 +537,7 @@ router.post("/wallet/topup", asyncHandler(async (req, res) => {
   const topup = await one(
     `INSERT INTO top_ups (user_id, reference, amount_kobo, fee_kobo, charged_kobo, method, status, provider, wallet_id)
      VALUES ($1,$2,$3,$4,$5,$6,'pending',$7,$8) RETURNING *`,
-    [req.user.id, ref, price.baseKobo, price.feeKobo, price.totalKobo, method ?? "card", provider, wallet.id]
+    [req.user.id, ref, price.baseKobo, price.feeKobo, price.totalKobo, paymentMethod, provider, wallet.id]
   );
 
   const init = await startCheckout({
@@ -544,6 +549,7 @@ router.post("/wallet/topup", asyncHandler(async (req, res) => {
     phone: req.user.phone ?? undefined,
     redirectUrl: `${env.APP_URL}/customer/wallet?topup=${encodeURIComponent(ref)}`,
     title: "Obligon LTD Wallet Top-up",
+    paymentMethod,
     meta: { userId: req.user.id, kind: "wallet_topup" }
   });
 

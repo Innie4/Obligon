@@ -5,6 +5,7 @@ import type { ComponentType } from "react";
 import { AlertTriangle, Building2, Check, CreditCard, FileWarning, Fingerprint, LockKeyhole, ShieldCheck, Snowflake, Upload, X, Loader2, ArrowRight, type LucideProps } from "lucide-react";
 import { useToast } from "@/components/shared/Toast";
 import { api, authApi, mutationsApi, publicApi, type CustomerSpendProjection, type PaymentConfig, type PaymentFeeSchedule } from "@/lib/services";
+import { useDialogFocus } from "@/components/shared/useDialogFocus";
 
 /** Resolve the signed-in customer's card id against the live API (null in mock mode). */
 async function resolveCardId(): Promise<string> {
@@ -52,16 +53,25 @@ type CustomerModalsProps = {
 export function ModalFrame({
   children,
   onClose,
+  title = "Customer account",
   size = "default"
 }: {
   children: React.ReactNode;
   onClose: () => void;
+  title?: string;
   /** `wide` is for comparison layouts that place cards side by side. */
   size?: "default" | "wide";
 }) {
+  const dialogRef = React.useRef<HTMLElement>(null);
+  useDialogFocus(dialogRef, onClose);
   return (
     <div className="fixed inset-0 z-50 grid place-items-end bg-[#20251f]/55 px-0 backdrop-blur-sm sm:place-items-center sm:px-5">
       <section
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        tabIndex={-1}
         className={`max-h-[94vh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-hero sm:rounded-2xl ${
           size === "wide" ? "sm:max-w-[1040px]" : "sm:max-w-[560px]"
         }`}
@@ -232,7 +242,7 @@ function SpendProjectionModal({
   };
 
   return (
-    <ModalFrame onClose={onClose}>
+    <ModalFrame title="Projected fuel spend" onClose={onClose}>
       <form onSubmit={submit} className="p-6">
         <h2 className="font-display text-2xl font-extrabold text-obligon-navy">
           {isRevision ? "Change your projected spend" : "Set your projected spend"}
@@ -379,7 +389,7 @@ function ChangePinModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <ModalFrame onClose={onClose}>
+    <ModalFrame title="Change transaction PIN" onClose={onClose}>
       {step === "form" ? (
         <form onSubmit={handleSubmit} className="p-6">
           <span className="grid size-12 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
@@ -469,7 +479,7 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
     "mt-1.5 h-12 w-full rounded-lg border border-obligon-border px-4 text-sm text-obligon-navy outline-none focus:border-obligon-green";
 
   return (
-    <ModalFrame onClose={onClose}>
+    <ModalFrame title="Change password" onClose={onClose}>
       {done ? (
         <div className="p-6 text-center">
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
@@ -631,7 +641,7 @@ function TwoFactorModal({
   }
 
   return (
-    <ModalFrame onClose={onClose}>
+    <ModalFrame title="Two-factor authentication" onClose={onClose}>
       {step === "choose" ? (
         <div className="p-6">
           <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Two-Factor Authentication</h2>
@@ -856,8 +866,8 @@ function TopUpModal({
 
   const paymentMethods = [
     { title: "Card / Bank", body: "Pay securely through our payment provider", Icon: CreditCard },
-    { title: "Direct Bank Transfer", body: "Instant funding via dedicated virtual NUBAN", Icon: Building2 },
-    { title: "USSD / Quick Bank Code", body: "*737# or *894# direct checkout", Icon: ArrowRight },
+    { title: "Direct Bank Transfer", body: "Transfer to the temporary account shown at secure checkout", Icon: Building2 },
+    { title: "USSD / Quick Bank Code", body: "Follow your bank's USSD instructions at secure checkout", Icon: ArrowRight },
   ];
 
   const numericAmount = Number(amount.replace(/[^0-9.]/g, ""));
@@ -913,7 +923,7 @@ function TopUpModal({
   }
 
   return (
-    <ModalFrame onClose={onClose}>
+    <ModalFrame title="Wallet funding" onClose={onClose}>
       {successData ? (
         <div className="p-8 text-center">
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
@@ -968,10 +978,10 @@ function TopUpModal({
       ) : (
         <form onSubmit={submit} className="p-6 sm:p-8">
           <span className="rounded-full bg-[#e8fbd7] px-3 py-1 text-[10px] font-extrabold uppercase text-obligon-green">
-            Instant Wallet Recharge
+            Secure Wallet Funding
           </span>
-          <h2 className="mt-3 font-display text-3xl font-extrabold text-obligon-navy">Top Up Fleet Wallet</h2>
-          <p className="mt-1 text-sm text-obligon-text">Select an amount and payment method to instantly fund your account.</p>
+          <h2 className="mt-3 font-display text-3xl font-extrabold text-obligon-navy">Top Up Your Wallet</h2>
+          <p className="mt-1 text-sm text-obligon-text">Select an amount and payment method. Your wallet is credited after the provider confirms payment.</p>
 
           <div className="mt-6">
             <div className="mb-2 flex items-baseline justify-between gap-2">
@@ -1031,6 +1041,7 @@ function TopUpModal({
                   <button
                     key={title}
                     type="button"
+                    aria-pressed={selected}
                     onClick={() => setMethod(title)}
                     className={`flex w-full items-center gap-3.5 rounded-xl border p-3.5 text-left transition ${
                       selected ? "border-obligon-green bg-[#f3ffe8] ring-2 ring-obligon-green/20" : "border-[#cfd8cc] bg-white hover:bg-[#f7fbf8]"
@@ -1141,7 +1152,7 @@ function ReportProblemModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <ModalFrame onClose={onClose}>
+    <ModalFrame title="Report a problem" onClose={onClose}>
       {ticketResult ? (
         <div className="p-8 text-center">
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
@@ -1293,7 +1304,7 @@ function ReplaceCardModal({ onClose, blocked }: { onClose: () => void; blocked: 
   }
 
   return (
-    <ModalFrame onClose={onClose}>
+    <ModalFrame title="Replace virtual card" onClose={onClose}>
       {step === "form" ? (
         <form onSubmit={handleSubmit} className="p-6 sm:p-8">
           <span className="grid size-12 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
@@ -1387,7 +1398,7 @@ function LostCardModal({
   }
 
   return (
-    <ModalFrame onClose={onClose}>
+    <ModalFrame title="Report lost or stolen card" onClose={onClose}>
       {step === "confirm" ? (
         <div className="p-6 sm:p-8">
           <span className="grid size-12 place-items-center rounded-full bg-[#ffe8e8] text-[#c1121f]">
@@ -1483,7 +1494,7 @@ function FreezeCardModal({
   }
 
   return (
-    <ModalFrame onClose={onClose}>
+    <ModalFrame title="Freeze or unfreeze card" onClose={onClose}>
       <div className="p-6 sm:p-8 text-center">
         <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#eef3ff] text-obligon-blue">
           <Snowflake size={32} />

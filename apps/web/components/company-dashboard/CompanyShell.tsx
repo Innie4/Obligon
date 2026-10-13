@@ -3,7 +3,8 @@
 import { DashboardLogo } from "@/components/shared/DashboardLogo";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useDialogFocus } from "@/components/shared/useDialogFocus";
 import {
   BarChart3,
   Bell,
@@ -22,7 +23,7 @@ import {
   Wrench,
   X
 } from "lucide-react";
-import { companyNav, pageCopy, type CompanyPageKey } from "@/lib/mock/company-data";
+import { companyNav, type CompanyPageKey } from "@/lib/mock/company-data";
 import { useSession } from "@/components/shared/AuthContext";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { LogoutButton } from "@/components/auth/LogoutButton";
@@ -86,19 +87,10 @@ function CompanySidebar() {
             <span>{item.label}</span>
           </Link>
         ))}
-        <Link
-          href="/company/maintenance"
-          className={`flex h-11 items-center gap-3 rounded-lg px-4 text-sm font-bold ${
-            active === "maintenance" ? "bg-obligon-green text-white" : "text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green"
-          }`}
-        >
-          {iconMap.maintenance}
-          Maintenance
-        </Link>
       </nav>
       <div className="mt-6 rounded-lg bg-[#f2f6f2] p-4">
-        <p className="text-sm font-extrabold text-[#07162f]">{user?.organization ?? "Obligon LTD Logistics Inc."}</p>
-        <p className="mt-1 text-xs text-obligon-text">{user?.accountTier ?? "Enterprise Fleet"}</p>
+        <p className="text-sm font-extrabold text-[#07162f]">{user?.organization || "Your company"}</p>
+        <p className="mt-1 text-xs text-obligon-text">Company account</p>
       </div>
       <LogoutButton className="mt-3 w-full justify-start" />
     </aside>
@@ -107,7 +99,7 @@ function CompanySidebar() {
 
 function CompanyTopbar({ onOpenMenu }: { onOpenMenu: () => void }) {
   const pathname = usePathname();
-  const page = pageCopy[activePage(pathname)];
+  const { user } = useSession();
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const filteredNav = companyNav.filter((item) => item.label.toLowerCase().includes(query.trim().toLowerCase()));
@@ -137,12 +129,12 @@ function CompanyTopbar({ onOpenMenu }: { onOpenMenu: () => void }) {
                 }
               }}
               className="w-full bg-transparent text-sm outline-none placeholder:text-[#808793]"
-              placeholder={page.search ?? "Search Obligon LTD..."}
+              placeholder="Search dashboard sections"
               role="combobox"
               aria-expanded={searchOpen}
               aria-controls="company-search-results"
               aria-autocomplete="list"
-              aria-label={page.search ?? "Search Obligon LTD..."}
+              aria-label="Search dashboard sections"
             />
           </label>
           {searchOpen ? (
@@ -172,10 +164,9 @@ function CompanyTopbar({ onOpenMenu }: { onOpenMenu: () => void }) {
         <div className="ml-auto flex items-center gap-4">
           <Link href="/company/notifications" aria-label="Notifications" className="relative grid size-10 place-items-center rounded-lg border border-[#dfe5ec] bg-white">
             <Bell size={18} />
-            <span className="absolute right-2 top-2 size-2 rounded-full bg-[#c1121f]" />
           </Link>
           <Link href="/company/settings" className="hidden text-right sm:block">
-            <p className="text-sm font-extrabold text-[#07162f]">Fleet Admin</p>
+            <p className="text-sm font-extrabold text-[#07162f]">{user?.name || "Your account"}</p>
             <p className="text-xs text-obligon-text">Obligon LTD Dashboard</p>
           </Link>
         </div>
@@ -186,12 +177,20 @@ function CompanyTopbar({ onOpenMenu }: { onOpenMenu: () => void }) {
 
 export function CompanyShell({ children }: CompanyShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLElement>(null);
+  useDialogFocus(mobileMenuRef, () => setMobileMenuOpen(false), mobileMenuOpen);
+  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const closeOnDesktop = () => { if (desktop.matches) setMobileMenuOpen(false); };
+    desktop.addEventListener("change", closeOnDesktop);
+    return () => desktop.removeEventListener("change", closeOnDesktop);
+  }, []);
 
   return (
     <AuthGuard allowedRoles={["company"]}>
       <main className="min-h-screen bg-[#f8fafc] text-[#07162f]">
         <CompanySidebar />
-      {mobileMenuOpen ? <div className="fixed inset-0 z-50 bg-[#07162f]/55 lg:hidden" onMouseDown={() => setMobileMenuOpen(false)}><aside role="dialog" aria-modal="true" aria-label="Company navigation" onMouseDown={(event) => event.stopPropagation()} className="h-full w-[280px] overflow-y-auto bg-white p-5 shadow-hero"><div className="flex items-center justify-between"><p className="font-display text-xl font-extrabold">Menu</p><button type="button" onClick={() => setMobileMenuOpen(false)} className="grid size-10 place-items-center rounded-lg bg-[#f2f6fa]" aria-label="Close company menu"><X size={20} /></button></div><nav className="mt-7 space-y-1">{companyNav.map((item) => <Link key={item.key} href={item.href} onClick={() => setMobileMenuOpen(false)} className="flex h-11 items-center gap-3 rounded-lg px-4 text-sm font-bold text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green">{iconMap[item.key]}<span>{item.label}</span></Link>)}<Link href="/company/maintenance" onClick={() => setMobileMenuOpen(false)} className="flex h-11 items-center gap-3 rounded-lg px-4 text-sm font-bold text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green">{iconMap.maintenance}<span>Maintenance</span></Link></nav></aside></div> : null}
+      {mobileMenuOpen ? <div className="fixed inset-0 z-50 bg-[#07162f]/55 lg:hidden" onMouseDown={() => setMobileMenuOpen(false)}><aside ref={mobileMenuRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Company navigation" onMouseDown={(event) => event.stopPropagation()} className="h-full w-[280px] max-w-[90vw] overflow-y-auto bg-white p-5 shadow-hero"><div className="flex items-center justify-between"><p className="font-display text-xl font-extrabold">Menu</p><button type="button" onClick={() => setMobileMenuOpen(false)} className="grid size-10 place-items-center rounded-lg bg-[#f2f6fa]" aria-label="Close company menu"><X size={20} /></button></div><nav className="mt-7 space-y-1">{companyNav.map((item) => <Link key={item.key} href={item.href} onClick={() => setMobileMenuOpen(false)} className="flex h-11 items-center gap-3 rounded-lg px-4 text-sm font-bold text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green">{iconMap[item.key]}<span>{item.label}</span></Link>)}</nav><LogoutButton className="mt-6 w-full justify-start" /></aside></div> : null}
       <div className="lg:pl-[280px]">
         <CompanyTopbar onOpenMenu={() => setMobileMenuOpen(true)} />
         {children}

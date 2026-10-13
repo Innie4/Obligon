@@ -37,6 +37,7 @@ import {
 import { useRouter } from "next/navigation";
 import { customerFeatureAvailable, type CustomerEntitlementState } from "@/lib/customer-entitlements";
 import { stationFuelName } from "@/lib/station-fuels";
+import { customerCardPresentation, customerReceiptRows, customerReceiptText, customerWalletHint } from "@/lib/customer-presentation";
 import {
   type CustomerPageKey,
   type CustomerTone
@@ -186,10 +187,11 @@ function ActivityList({ desktop = false }: { desktop?: boolean }) {
         </div>
         <div className="divide-y divide-[#eef3ee]">
           {(recentActivity ?? []).map((item) => (
-            <div
+            <button
               key={item.id}
+              type="button"
               onClick={() => router.push(item.link || "/customer/transactions")}
-              className="flex items-center gap-4 px-6 py-4 hover:bg-[#f7fbf8] transition cursor-pointer"
+              className="flex w-full items-center gap-4 px-6 py-4 text-left hover:bg-[#f7fbf8] transition"
             >
               <MiniIcon tone={item.kind === "notification" ? "blue" : "muted"}>
                 {item.kind === "notification" ? <Bell size={18} /> : <Fuel size={18} />}
@@ -210,7 +212,7 @@ function ActivityList({ desktop = false }: { desktop?: boolean }) {
               {item.amount ? (
                 <p className="shrink-0 font-extrabold text-obligon-green">{item.amount}</p>
               ) : null}
-            </div>
+            </button>
           ))}
         </div>
       </Card>
@@ -408,38 +410,22 @@ function TransactionsPage() {
 
   function handleDownloadReceipt(txn: CustomerMoneyEvent) {
     setDownloadingReceipt(true);
-    setTimeout(() => {
-      const ref = txn.reference ?? `TXN-${Math.abs(hashString(txn.title + (txn.time ?? ""))).toString().slice(0, 8)}`;
-      const receiptContent = `====================================================
-               OBLIGON LTD OFFICIAL RECEIPT
-====================================================
-Reference:     ${ref}
-Station:       ${txn.station}
-Location:      ${txn.subtitle ?? "Main Station Hub"}
-Vehicle ID:    ${txn.vehicle ?? "FLT-8492"}
-Fuel Type:     ${txn.fuel ?? "Premium Diesel"}
-Amount Paid:   ${txn.amount}
-Timestamp:     ${txn.time ?? new Date().toLocaleString()}
-Status:        APPROVED / SETTLED
-Payment Card:  •••• •••• •••• 4092
-Terminal ID:   POS-OBL-0842
-====================================================
-Thank you for powering with Obligon LTD Network.
-Support: support@obligon.energy | +234 800 OBLIGON
-====================================================`;
-
-      const blob = new Blob([receiptContent], { type: "text/plain" });
+    try {
+      const blob = new Blob([customerReceiptText(txn)], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `Obligon_Receipt_${ref}.txt`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `Obligon_Receipt_${(txn.reference || txn.id).replace(/[^a-zA-Z0-9_-]/g, "_")}.txt`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
       URL.revokeObjectURL(url);
+      toastSuccess("Receipt downloaded.");
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : "Could not download this receipt.");
+    } finally {
       setDownloadingReceipt(false);
-      toastSuccess(`Receipt downloaded for ${ref}`);
-    }, 600);
+    }
   }
 
   function Select({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) {
@@ -608,7 +594,7 @@ Support: support@obligon.energy | +234 800 OBLIGON
 
         {/* Filter Modal */}
         {filtersOpen ? (
-          <ModalFrame onClose={() => setFiltersOpen(false)}>
+          <ModalFrame title="Filter transactions" onClose={() => setFiltersOpen(false)}>
             <div className="p-6">
               <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Filter Transactions</h2>
               <p className="mt-1 text-sm text-obligon-text">Narrow your transaction history by station, vehicle, or fuel type.</p>
@@ -663,7 +649,7 @@ Support: support@obligon.energy | +234 800 OBLIGON
 
         {/* Transaction Detail & Receipt Modal */}
         {selectedTxn ? (
-          <ModalFrame onClose={() => setSelectedTxn(null)}>
+          <ModalFrame title="Transaction receipt" onClose={() => setSelectedTxn(null)}>
             <div className="p-6 sm:p-8">
               <div className="flex items-center justify-between">
                 <span className="grid size-12 place-items-center rounded-full bg-[#eef3ff] text-obligon-blue">
@@ -676,39 +662,25 @@ Support: support@obligon.energy | +234 800 OBLIGON
                       ? "bg-[#fff3d8] text-[#9a6300]"
                       : "bg-[#e8fbd7] text-obligon-green"
                 }`}>
-                  {selectedTxn.status ? selectedTxn.status.toUpperCase() : "APPROVED"}
+                  {selectedTxn.status ? selectedTxn.status.toUpperCase() : "UNKNOWN"}
                 </span>
               </div>
               <h2 className="mt-4 font-display text-3xl font-extrabold text-obligon-navy">Transaction Receipt</h2>
               <p className="mt-1 text-xs text-obligon-text">
-                Reference: <span className="font-mono font-extrabold text-obligon-navy">
-                  {selectedTxn.reference ?? `TXN-${Math.abs(hashString(selectedTxn.station + (selectedTxn.time ?? ""))).toString().slice(0, 8)}`}
+                {selectedTxn.reference ? "Reference" : "Record ID"}: <span className="font-mono font-extrabold text-obligon-navy">
+                  {selectedTxn.reference ?? selectedTxn.id}
                 </span>
               </p>
 
               <div className="mt-6 rounded-2xl bg-[#f7fbf8] p-5 border border-obligon-border">
-                <p className="text-xs font-bold uppercase text-obligon-text">Amount Settled</p>
+                <p className="text-xs font-bold uppercase text-obligon-text">Recorded Amount</p>
                 <p className="mt-1 font-display text-4xl font-extrabold text-obligon-green">{selectedTxn.amount}</p>
               </div>
 
               <div className="mt-5 space-y-3.5 text-sm divide-y divide-[#eef3ee]">
-<DetailRow label="Type" value={selectedTxn.kind === "dispense" ? "Fuel purchase" : "Wallet top-up"} />
-                <DetailRow label="Merchant / Station" value={selectedTxn.station} />
-                {/* Only meaningful for a purchase. Showing "Main Highway Hub" beside
-                    a bank transfer would be a fabricated place of business. */}
-                {selectedTxn.kind === "dispense" ? (
-                  <>
-                    <DetailRow label="Vehicle ID" value={selectedTxn.vehicle ?? "FLT-8492"} />
-                    <DetailRow label="Fuel Type" value={selectedTxn.fuel ?? "Premium Diesel"} />
-                  </>
-                ) : (
-                  <DetailRow label="Description" value={selectedTxn.subtitle ?? "Credited to fuel wallet"} />
-                )}
-                <DetailRow label="Timestamp" value={selectedTxn.time ?? "Oct 24, 14:32"} />
-                {selectedTxn.balanceAfterLabel ? (
-                  <DetailRow label="Balance After" value={selectedTxn.balanceAfterLabel} />
-                ) : null}
-                {selectedTxn.kind === "dispense" ? <DetailRow label="Card Number" value="•••• •••• •••• 4092" /> : null}
+                {customerReceiptRows(selectedTxn)
+                  .filter(([label]) => !["Record ID", "Reference", "Status", "Amount"].includes(label))
+                  .map(([label, value]) => <DetailRow key={label} label={label} value={value} />)}
               </div>
 
               <div className="mt-7 flex gap-3">
@@ -744,15 +716,6 @@ function DetailRow({ label, value }: { label: string; value: string }) {
       <span className="text-right text-sm font-extrabold text-obligon-navy">{value}</span>
     </div>
   );
-}
-
-function hashString(input: string) {
-  let hash = 0;
-  for (let index = 0; index < input.length; index += 1) {
-    hash = (hash << 5) - hash + input.charCodeAt(index);
-    hash |= 0;
-  }
-  return hash;
 }
 
 interface CustomerCard {
@@ -1048,11 +1011,11 @@ function CardPage({
   const frozen = card?.status === "frozen";
   const blocked = card?.status === "blocked";
 
-  const status = blocked
-    ? { label: "BLOCKED", className: "bg-[#ffe8e8] px-3 py-1 text-xs font-extrabold text-[#c1121f]" }
-    : frozen
-      ? { label: "FROZEN", className: "bg-[#fff3d8] px-3 py-1 text-xs font-extrabold text-[#9a6300]" }
-      : { label: "ACTIVE STATUS", className: "bg-[#e8fbd7] px-3 py-1 text-xs font-extrabold text-obligon-green" };
+  const cardPresentation = customerCardPresentation(card?.status);
+  const status = {
+    label: cardPresentation.label,
+    className: `px-3 py-1 text-xs font-extrabold ${toneClasses[cardPresentation.tone as CustomerTone]}`,
+  };
 
   const freezeLabel = frozen ? "Unfreeze Card" : "Freeze Card";
   const freezeBody = frozen ? "Resume transactions on this card" : "Temporarily lock fuel card";
@@ -1068,7 +1031,7 @@ function CardPage({
     <Canvas>
       <div className="mb-8">
         <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Card Management</h1>
-        <p className="mt-1 text-obligon-text">View and manage your active Fuelvista fleet subscription card.</p>
+        <p className="mt-1 text-obligon-text">View your Fuelvista card status and manage your subscription.</p>
       </div>
 
       {hasCard === false ? (
@@ -1248,7 +1211,10 @@ function CardPage({
 
         <div className="space-y-3.5">
           {cardActions.map(({ title, body, Icon, tone, modal }) => {
-            const disabled = modal === "lostCard" && blocked;
+            const disabled = modal === "freezeCard" ? !cardPresentation.canFreeze
+              : modal === "changePin" ? !cardPresentation.canChangePin
+              : modal === "lostCard" ? !cardPresentation.canReportLost
+              : modal === "replaceCard" ? !cardPresentation.canReplace : false;
             return (
               <button
                 key={title}
@@ -1357,8 +1323,8 @@ function WalletPage({
         </button>
       </div>
 
-      <Card className="mt-8 p-8">
-        <div className="flex justify-between items-center">
+      <Card className="mt-8 p-5 sm:p-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs font-extrabold uppercase text-obligon-text">Available Fuel Balance</p>
           {/* The real budget, not a claim about auto-recharging. The previous
               copy asserted an auto-recharge threshold that no code implemented,
@@ -1370,11 +1336,11 @@ function WalletPage({
             </span>
           ) : null}
         </div>
-        <p className="mt-3 font-display text-5xl font-extrabold text-obligon-navy">
+        <p className="mt-3 break-words font-display text-[clamp(1.5rem,7vw,3rem)] font-extrabold leading-tight text-obligon-navy sm:text-5xl">
           {totalBalance}
         </p>
         <p className="mt-3 text-sm font-bold text-obligon-green">
-          {hasHistory ? "Fund your wallet to keep paying for fuel anywhere on the network." : "Add funds to start paying for fuel."}
+          {customerWalletHint(wallet?.balanceKobo)}
         </p>
         {/* What the processor says about the last payment, next to our figure.
             A customer who is told a transaction succeeded and sees nothing change
@@ -1664,11 +1630,11 @@ function StationsPage() {
           </div>
         </div>
 
-        {fuelsOpen && <ModalFrame onClose={() => setFuelsOpen(false)}><div className="p-6"><h2 className="text-2xl font-bold">Filter by fuel</h2>{allFuels.map(fuel => <label key={fuel} className="flex min-h-12 items-center gap-3"><input type="checkbox" checked={selectedFuels.includes(fuel)} onChange={e => setSelectedFuels(prev => e.target.checked ? [...prev, fuel] : prev.filter(f => f !== fuel))} />{fuel}</label>)}<button type="button" className="mt-4 min-h-12 rounded-lg bg-obligon-green px-6 font-bold text-white" onClick={() => setFuelsOpen(false)}>Show stations</button></div></ModalFrame>}
+        {fuelsOpen && <ModalFrame title="Filter stations by fuel" onClose={() => setFuelsOpen(false)}><div className="p-6"><h2 className="text-2xl font-bold">Filter by fuel</h2>{allFuels.map(fuel => <label key={fuel} className="flex min-h-12 items-center gap-3"><input type="checkbox" checked={selectedFuels.includes(fuel)} onChange={e => setSelectedFuels(prev => e.target.checked ? [...prev, fuel] : prev.filter(f => f !== fuel))} />{fuel}</label>)}<button type="button" className="mt-4 min-h-12 rounded-lg bg-obligon-green px-6 font-bold text-white" onClick={() => setFuelsOpen(false)}>Show stations</button></div></ModalFrame>}
         {!visible.length && <p role="status">No stations match your search. Clear the filters to see all available stations.</p>}
         {/* Station Detail Modal */}
         {detail ? (
-          <ModalFrame onClose={() => setDetail(null)}>
+          <ModalFrame title="Station details" onClose={() => setDetail(null)}>
             <div className="p-6 sm:p-8">
               <h2 className="font-display text-3xl font-extrabold text-obligon-navy">{detail.name}</h2>
               <p className="mt-1 text-sm text-obligon-text">{detail.address}</p>
@@ -1711,7 +1677,7 @@ function StationsPage() {
 
         {/* Directions Modal */}
         {directionTarget ? (
-          <ModalFrame onClose={() => setDirectionTarget(null)}>
+          <ModalFrame title="Station directions" onClose={() => setDirectionTarget(null)}>
             <div className="p-6 sm:p-8">
               <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Route Directions</h2>
               <p className="mt-1 text-sm text-obligon-text">Navigating to {directionTarget.name}</p>
@@ -1830,7 +1796,7 @@ function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void 
         </Card>
       </div>
       {chatOpen ? (
-        <ModalFrame onClose={() => setChatOpen(false)}>
+        <ModalFrame title="Support chat" onClose={() => setChatOpen(false)}>
           <div className="flex h-[560px] flex-col">
             <div className="border-b border-[#eef3ee] bg-[#f7fbf8] p-4">
               <h2 className="text-sm font-extrabold text-obligon-navy">Support Messages</h2>
@@ -2209,14 +2175,35 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
 }
 
 function NotificationsPage() {
-  const { status, data: notifications, error, reload } = useAsync(() => api.getNotifications());
+  const { status, data: notifications, error, reload, refresh } = useAsync(() => api.getNotifications());
   const { success: toastSuccess, error: toastError } = useToast();
   const [readItems, setReadItems] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
+  usePolling(refresh, { intervalMs: BALANCE_POLL_MS });
 
-  function handleMarkAll() {
-    const all = new Set((notifications ?? []).map((n) => n.title));
-    setReadItems(all);
-    toastSuccess("All notifications marked as read.");
+  async function handleMarkAll() {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await mutationsApi.markAllNotificationsRead();
+      setReadItems(new Set((notifications ?? []).flatMap(n => n.id ? [n.id] : [])));
+      refresh();
+      toastSuccess("All notifications marked as read.");
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : "Could not mark notifications as read.");
+    } finally { setSaving(false); }
+  }
+
+  async function handleRead(id: string) {
+    if (saving || readItems.has(id)) return;
+    setSaving(true);
+    try {
+      await mutationsApi.markNotificationRead(id);
+      setReadItems(previous => new Set(previous).add(id));
+      refresh();
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : "Could not mark this notification as read.");
+    } finally { setSaving(false); }
   }
 
   return (
@@ -2236,6 +2223,7 @@ function NotificationsPage() {
           </div>
           <button
             onClick={handleMarkAll}
+            disabled={saving || !(notifications ?? []).some(n => !n.read && (!n.id || !readItems.has(n.id)))}
             className="h-10 rounded-xl border border-obligon-border bg-white px-4 text-xs font-bold text-obligon-green hover:bg-obligon-mist transition"
             type="button"
           >
@@ -2245,24 +2233,28 @@ function NotificationsPage() {
 
         <Card className="overflow-hidden divide-y divide-[#eef3ee]">
           {(notifications ?? []).map((n) => {
-            const isRead = readItems.has(n.title);
+            const isRead = Boolean(n.read || (n.id && readItems.has(n.id)));
             return (
-              <article
-                key={n.title}
-                onClick={() => setReadItems((prev) => new Set(prev).add(n.title))}
-                className={`flex items-start gap-4 p-5 transition cursor-pointer ${isRead ? "bg-white opacity-70" : "bg-[#f7fbf8]"}`}
+              <button
+                key={n.id ?? `${n.title}:${n.time}`}
+                type="button"
+                disabled={saving || isRead || !n.id}
+                onClick={() => n.id && void handleRead(n.id)}
+                aria-label={`${isRead ? "Read notification" : "Mark notification as read"}: ${n.title}`}
+                aria-describedby={n.id ? `customer-notification-description-${n.id}` : undefined}
+                className={`flex w-full items-start gap-4 p-5 text-left transition ${isRead ? "bg-white opacity-70" : "bg-[#f7fbf8]"}`}
               >
                 <MiniIcon tone={n.title.includes("Security") ? "red" : "green"}>
                   <Bell size={18} />
                 </MiniIcon>
-                <div className="min-w-0 flex-1">
+                <div id={n.id ? `customer-notification-description-${n.id}` : undefined} className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
                     <h2 className="text-sm font-extrabold text-obligon-navy">{n.title}</h2>
                     <span className="text-xs text-obligon-text">{n.time}</span>
                   </div>
                   <p className="text-xs text-obligon-text mt-1">{n.body}</p>
                 </div>
-              </article>
+              </button>
             );
           })}
         </Card>

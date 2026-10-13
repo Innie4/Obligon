@@ -291,6 +291,8 @@ export interface CustomerMoneyEvent {
   station: string;
   vehicle?: string;
   fuel?: string;
+  maskedPan?: string;
+  litres?: number;
   /** Signed and formatted, e.g. "+₦100.00" or "-₦4,500.00". */
   amount: string;
   signedKobo: number;
@@ -424,6 +426,19 @@ export interface PartnerRow {
   status?: string;
   tone?: PartnerTone;
   action?: string;
+}
+
+/** Recorded quantities returned by wallet authorization or paid-order fulfillment. */
+export interface PartnerPOSReceipt {
+  reference: string;
+  fuelType: string;
+  litres: number;
+  amountLabel: string;
+  card?: string;
+  vehicle?: string;
+  driver?: string;
+  approved?: boolean;
+  simulated?: boolean;
 }
 
 /** One GET /api/partner/overview. Previously three methods, three round trips. */

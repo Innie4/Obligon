@@ -1,8 +1,12 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Bell, CircleHelp } from "lucide-react";
 import { assets } from "@/components/landing/assets";
 import { routes } from "@/components/site/routes";
+import { useSession } from "@/components/shared/AuthContext";
+import { notificationPathForRole } from "@/lib/customer-presentation";
 
 type AuthShellProps = {
   children: React.ReactNode;
@@ -10,6 +14,8 @@ type AuthShellProps = {
 };
 
 export function AuthShell({ children, compact = false }: AuthShellProps) {
+  const { user, status } = useSession();
+  const notificationPath = status === "authenticated" ? notificationPathForRole(user?.role) : null;
   return (
     <main className="min-h-screen bg-obligon-mist text-obligon-navy">
       <header className="flex h-16 items-center justify-between border-b border-obligon-border bg-white px-5 sm:px-8 lg:px-16">
@@ -20,9 +26,9 @@ export function AuthShell({ children, compact = false }: AuthShellProps) {
           <Link href={routes.support} className="inline-flex size-9 items-center justify-center rounded-lg border border-obligon-border bg-white" aria-label="Help">
             <CircleHelp size={17} />
           </Link>
-          <Link href={routes.notifications} className="inline-flex size-9 items-center justify-center rounded-lg border border-obligon-border bg-white" aria-label="Notifications">
+          {notificationPath ? <Link href={notificationPath} className="inline-flex size-9 items-center justify-center rounded-lg border border-obligon-border bg-white" aria-label="Notifications">
             <Bell size={17} />
-          </Link>
+          </Link> : null}
         </div>
       </header>
 
@@ -42,8 +48,8 @@ export function AuthShell({ children, compact = false }: AuthShellProps) {
                 Fueling Nigeria&apos;s Infrastructure.
               </h1>
               <p className="mt-5 text-base leading-6 text-white/70">
-                Join the Obligon partner network. Manage disbursements, track inventory, and grow your
-                retail volume.
+                Manage personal fuel spending, organize your company fleet, or run your station
+                operations with Obligon.
               </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
