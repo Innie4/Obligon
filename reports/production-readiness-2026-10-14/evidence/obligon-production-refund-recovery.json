@@ -1,0 +1,122 @@
+{
+  "task": "FIN09 and verified overpayment recovery",
+  "timestampUTC": "2026-10-14T15:16:07.992143+00:00",
+  "branch": "codex/production-readiness-2026-10-14",
+  "outcome": "Scoped implementation and local focused proof complete; independent review and provider sandbox acceptance outstanding; no release claim",
+  "invariants": [
+    "Purchase settlement and exact excess refund intent commit or roll back together",
+    "One provider POST per durable queued claim across retries, workers and timeouts",
+    "Unknown outcomes stay pending and claimed; never automatically reissued",
+    "Only matching refund id, charge id, reference when present, exact amount and currency may settle",
+    "Flutterwave completed remains pending; only documented disbursement terminal states settle; Paystack processed settles",
+    "Fractional or subminimum Flutterwave refunds stay explicit review-required; never round",
+    "Full refund amount must be known and positive"
+  ],
+  "sourceSHA256": {
+    "apps/api/src/lib/money.js": "d35e9a08c46d7f8605e29b0d13d5bfac254c139b789d5caa2f7effcfe89636d4",
+    "apps/api/src/lib/reconcile.js": "793b970b04c62b9fd5d019cf11d5648775260b623e8700f0f327df3df1bd595b",
+    "apps/api/src/lib/payments.js": "7148ad755f6afd03288f233c284239032d74522dc22b2cc8c57864a8b9c5df46",
+    "apps/api/src/lib/paystack.js": "cfc9401713912f8641d311b29da6340556066c5986c11aa27f8780d3ee6e2ab1",
+    "apps/api/src/lib/flutterwave.js": "31fb11b9d525d830878f74c1f77e2ff34007744a413299ddccf64b48f4677025",
+    "apps/api/src/lib/fuel-checkout.js": "52c059d8ed289be47612bcbbdcd4ab1523bd228a3baef2e2b5725b59b1ea43b9",
+    "apps/api/src/routes/subscription.routes.js": "3894e22e9463bc57e054672ad7dfe21156db6cb021ac8442d71eab610becc4eb",
+    "apps/api/src/routes/customer.routes.js": "d64940df45d3f21f40263ecb5fb8566bce9ad8dd42ad0834b009b2bb0d79c36d",
+    "apps/api/src/routes/webhooks.routes.js": "2376a6898a29efe1eea4a0a2dd4650dce6b332602288481bd5bcb75541c8ef98",
+    "apps/api/tests/refund-recovery.integration.test.mjs": "2087e3ee1d9271fa3714b2737fb572655a1aba195ea50eedfe35b121748fee29",
+    "apps/api/tests/fuel-checkout.integration.test.mjs": "cba27f7c25fd70bf314c8e1418893c8db2b23ca18210be09778a1e521f132611",
+    "apps/api/tests/admin-support.integration.test.mjs": "04323425954f196b5ba620d5a197c21d185aac524a2273ca4a7a2c5b804cf6c5"
+  },
+  "scope": {
+    "money.js": "queueRefund, dispatchRefund, issueRefund only; company allocation and ledger untouched by this agent",
+    "reconcile.js": "reconcileRefunds only",
+    "payments.js": "refund state and exact lookup functions plus amount parser import",
+    "paystack.js": "fetchRefund only; parent owns partial refund change",
+    "flutterwave.js": "fetchRefund only; parent owns exact amount changes",
+    "customer.routes.js": "completeTopUp exact excess queue/newoptions/postcommit dispatch; card payment manual quote and same-TX settlement/refund block",
+    "webhooks.routes.js": "card excess queue inside processEvent(t), postcommit dispatch only",
+    "subscription.routes.js": "confirmed subscription quote lock and same-TX excess intent",
+    "fuel-checkout.js": "confirmed fuel quote lock and same-TX excess intent"
+  },
+  "contracts": {
+    "queueRefund": "queueRefund(t,{provider,providerRef,providerTransactionId,userId,amountKobo,kind,reason,metadata,simulated}) -> {duplicate,refund}. Uses caller DB TX; provider POST absent. Required positive exact amount; one excess per charge bound to owner/amount/transaction; advisory lock safely adopts historical amount-keyed excess claims.",
+    "dispatchRefund": "dispatchRefund(refundId,{actorUserId,actorRole,ip}={}) -> {ok,duplicate,refund,providerResult?}. Atomically queued -> claimed before one provider POST. Claimed/submitted/review_required never automatically POST again.",
+    "completeTopUp": "verifiedAmountKobo and simulated options; all owner callers must pass fresh provider verified amount. Transaction:t defers dispatch to refund reconciler; external standalone settlement dispatches only after commit.",
+    "lookupRefund": "known refund ID required. Every returned refund must match refund ID, original charge ID, exact NGN amount/currency, reference if supplied. Uncorrelated evidence is reviewRequired.",
+    "Flutterwave": "POST /v3/transactions/{transactionID}/refund exact whole naira amount >= NGN100; GET /v3/refunds/{refundID}. completed = pending. Final = completed-bank-transfer/completed-momo/completed-mpgs/completed-offline/completed-preauth.",
+    "Paystack": "GET /refund/{refundID}; exact integer minor-unit amount; transaction original ID or embedded object; processed = final. Parent implementation POST /refund exact partial amount retained."
+  },
+  "impact": {
+    "callers": [
+      "customer/company wallet confirmation",
+      "payment webhooks",
+      "reconciliation workers",
+      "card plan payment confirmation",
+      "fuel checkout confirmation",
+      "subscription confirmation",
+      "admin/support refund requests"
+    ],
+    "persistence": "Existing payment_refunds only; metadata refundDispatch states queued/claimed/submitted/review_required; no migrations or new dependency",
+    "publicContract": "Provider acceptance leaves pending until correlated final disbursement; overpaid valid purchases activate their original quote and record exact excess",
+    "concurrency": "DB transaction purchase+intent and advisory/refund row claim enforce crossworker uniqueness; process locks absent",
+    "recovery": "Killed worker after queue commit is dispatchable; killed worker after claim/provider acceptance is pending review and never resend",
+    "reversibility": "Code reversible; preserve live refund metadata/claims on rollback; do not revert to blind POST or completed=settled behavior"
+  },
+  "verification": [
+    {
+      "command": "OBLIGON_TEST_DATABASE_URL=<isolatedlocalhost> node --test apps/api/tests/refund-recovery.integration.test.mjs apps/api/tests/refund-ambiguity.integration.test.mjs apps/api/tests/fuel-checkout.integration.test.mjs",
+      "log": "/tmp/obligon-refund-recovery-focused-final.log",
+      "pass": 48,
+      "fail": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "command": "OBLIGON_TEST_DATABASE_URL=<isolatedlocalhost> node --test --test-name-pattern=paid_review refund|pending refund replay|concurrent exception refund|support, fuel refund apps/api/tests/admin-support.integration.test.mjs",
+      "log": "/tmp/obligon-refund-admin-focused-final.log",
+      "pass": 4,
+      "fail": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "command": "node --check nine scoped source modules; git diff --check",
+      "exit": 0
+    },
+    {
+      "log": "/tmp/obligon-refund-recovery-red.log",
+      "before": "14 missing/newbehavior failures; one existing unknownamount guard passed"
+    },
+    {
+      "log": "/tmp/obligon-refund-fuel-red.log",
+      "before": "overpaid fuel confirmation rejected verified overpayment"
+    },
+    {
+      "log": "/tmp/obligon-refund-subscription-red.log",
+      "before": "original HEAD subscription confirms exact only, rejects verified overpayment"
+    },
+    {
+      "log": "/tmp/obligon-refund-excess-identity-red.log",
+      "before": "changed exact excess amount created a second claim"
+    },
+    {
+      "log": "/tmp/obligon-refund-recovery-final.log",
+      "broadResult": "80 total,73 passed,7 failed,0 skips. All refund checks pass; unrelated partner auth fixtures return403 for bank default/nomination/station/API-key operations. Root notified; not changed by refund agent."
+    }
+  ],
+  "limitations": [
+    "No live money or provider sandbox calls performed",
+    "Flutterwave official example omits currency; such lookup requires explicit manual/provider evidence until sandbox verifies a canonical currency-bearing response",
+    "Missing provider refund ID cannot be correlated safely and remains pending review; no amount/time inference",
+    "Subminimum NGN100 and fractional Flutterwave refund debts remain pending review_required with exact amount; no rounding or wallet substitution",
+    "Unknown original full refund amount rejected; historical card payment quote missing charged_kobo needs support review",
+    "Existing partial refunds use provider/ref/kind/amount identity, so two distinct intentional same-amount partial requests collapse; retain compatibility and require caller-specific intent design before broader partial refund workflow",
+    "Old incorrectly succeeded refunds are not automatically rewritten; manual reconciliation of historic completed-only records required",
+    "Qualified human review of money flows and provider sandbox acceptance required before real-money production release",
+    "Root owns learning breakdown and topup/card webhook end-to-end checks; parent must integrate those results"
+  ],
+  "officialSources": [
+    "https://developer.flutterwave.com/docs/refunds",
+    "https://developer.flutterwave.com/reference/get-transaction-refunds",
+    "https://paystack.com/docs/api/refund/"
+  ]
+}

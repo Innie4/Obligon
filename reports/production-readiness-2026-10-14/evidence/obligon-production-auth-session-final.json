@@ -1,0 +1,112 @@
+{
+  "date": "2026-10-14",
+  "frozenAt": "2026-10-14T15:58:22.762592+00:00",
+  "branch": "codex/production-readiness-2026-10-14",
+  "scope": "Final bounded session-token correction; security signer, normal access JWT middleware, two production issuer paths, focused tests. No commits, pushes, deployment, dependencies, CI, migrations, frontend edits or Learn.",
+  "findings": [
+    {
+      "id": "AUTH-REFRESH-LIFETIME-01",
+      "disposition": "Corrected in frozen source; independent recheck and qualified production review remain required",
+      "before": "Remembered durable session expiry is 30 days but signRefreshToken always emits the default 7-day JWT. Company-context reissuance recomputes default lifetime relative to switching time.",
+      "after": "Refresh signer requires a supplied durable expiresAt and emits numeric exp equal to its floor in seconds. Initial session issuance signs the expiry returned by INSERT RETURNING. Context selection/return signs the original locked session expires_at without extending or shortening its durable lifetime.",
+      "redEvidence": [
+        "remembered token exp differs from durable by 23 days",
+        "actual HTTP refresh on simulated day8 returns401 for a still-live remembered session",
+        "context switch token exp differs from original durable expiry"
+      ],
+      "greenEvidence": [
+        "ordinary/remembered JWT exp equals stored session expiry",
+        "real HTTP remembered refresh works on simulated day8 and rejects at stored expiry",
+        "selection and personal context return retain durable expiry and session identity",
+        "revoked/database-expired session rejects an otherwise unexpired remembered JWT"
+      ]
+    },
+    {
+      "id": "AUTH-SIDLESS-ACCESS-01",
+      "disposition": "Corrected in frozen source; independent recheck and qualified production review remain required",
+      "before": "Valid normal access JWT without SID uses a users-only lookup and bypasses durable session revocation/expiry.",
+      "after": "Normal access JWT requires a nonempty string SID and a live unrevoked unexpired session for its subject. Session validity is checked against clock_timestamp(). Separate existing scoped partner API-key branch is preserved.",
+      "redEvidence": [
+        "actual HTTP /api/auth/session accepts a sessionless signed JWT with200 instead of401"
+      ],
+      "greenEvidence": [
+        "sidless JWT rejects before and after logout while valid bound JWT succeeds before logout",
+        "missing, wrong-account, revoked and expired session IDs reject"
+      ]
+    }
+  ],
+  "issuerAudit": {
+    "accessProduction": [
+      "issueSession (login/inline MFA/standalone MFA/signup) passes sessionId",
+      "/refresh passes loaded session.id",
+      "/company-context passes verified refresh proof.sid matching authenticated live durable session"
+    ],
+    "refreshProduction": [
+      "issueSession passes expires_at from persisted INSERT RETURNING",
+      "/company-context passes original session expires_at from locked current session"
+    ],
+    "testCallers": [
+      "company-invitations session helper updated to supply inserted expires_at"
+    ],
+    "verification": "rg -n signRefreshToken/signAccessToken across apps/api/src and apps/api/tests; final signRefreshToken call-site search found no unconverted production/test callers",
+    "libraryGrounding": "Installed jsonwebtoken README supports direct numeric exp payload and prohibits combining it with expiresIn; no library change needed"
+  },
+  "verification": {
+    "red": {
+      "command": "node --test tests/auth-session-lifetime.integration.test.mjs",
+      "cwd": "/home/inimfon-udoh/Obligon/checkout/apps/api",
+      "exitCode": 1,
+      "tests": 7,
+      "pass": 3,
+      "fail": 4,
+      "skipped": 0,
+      "log": "/tmp/obligon-production-auth-session-final-red.log"
+    },
+    "green": {
+      "command": "node --test tests/auth-session-lifetime.integration.test.mjs tests/mfa-password-proof.integration.test.mjs tests/password-reset-claim.integration.test.mjs tests/company-invitations.integration.test.mjs tests/unit.test.mjs tests/partner-authorization.test.mjs",
+      "cwd": "/home/inimfon-udoh/Obligon/checkout/apps/api",
+      "exitCode": 0,
+      "tests": 111,
+      "pass": 111,
+      "fail": 0,
+      "skipped": 0,
+      "log": "/tmp/obligon-production-auth-session-final-green.log"
+    },
+    "environment": {
+      "database": "[redacted local connection]",
+      "isolation": "Unique temporary PostgreSQL schema cloned from public schema, with isolated synthetic records; cleaned after each process",
+      "otherEnv": {
+        "OBLIGON_TEST_DATABASE_URL": "isolated loopback database URL",
+        "TEST_DATABASE_URL": "isolated loopback database URL",
+        "DOTENV_CONFIG_PATH": "/dev/null",
+        "NODE_ENV": "test",
+        "DATABASE_SSL": "false"
+      },
+      "execution": "require_escalated actual Node --test and real loopback HTTP. No fake database/request wrappers. Date.now is temporarily advanced only within serialized isolated lifetime tests to exercise JWT expiry through HTTP; restored in finally/cleanup."
+    },
+    "diffCheck": {
+      "command": "git diff --check -- [five final auth source/test files]",
+      "exitCode": 0
+    },
+    "outputRead": "Full red and green output read. Green synthetic insert/write/provider errors are expected failure-case checks, not unresolved test failures."
+  },
+  "limits": [
+    "No application-security or production-readiness claim; qualified human review remains required for authentication changes.",
+    "Previously issued JWTs keep their embedded expiration until replacement; no migration or retroactive token modification was performed. Existing sidless access JWTs now require reauthentication.",
+    "JWT exp uses standard integer seconds, so a token may expire less than one second before the millisecond durable expiry.",
+    "Actual provider staging/live Supabase, real browser/cross-tab behavior and full financial/API suite remain outside this increment.",
+    "Prior AUTH03 artifact auth.routes hash is superseded by this final snapshot; earlier focused behavior was rechecked by the green affected-auth run.",
+    "Other agents may modify unrelated root-owned code; hashes bind only the listed final auth files and evidence logs."
+  ],
+  "hashes": {
+    "apps/api/src/lib/security.js": "61afaf50419e91565fec007e0e137fdd6d40a4f6da2c40f364cc2d3204820c5a",
+    "apps/api/src/middleware/auth.js": "7ae64685ca5957c0ba4cbc7da3e6d0fc1b440402d894892c70ee50fbe8cabf07",
+    "apps/api/src/routes/auth.routes.js": "6752c6fea7599ca3d1627b7e362801e6663fb6c0134f4a765c2b1542ba31f307",
+    "apps/api/tests/auth-session-lifetime.integration.test.mjs": "66852ea08e421148eb747141d6b96b408eb64d4e6330c1d0e9db3707b4c98571",
+    "apps/api/tests/company-invitations.integration.test.mjs": "d5a11a075fe607e5c0052187015a0d5a14fa8f4956ea8d231d61af617cff9b6c"
+  },
+  "evidenceHashes": {
+    "/tmp/obligon-production-auth-session-final-red.log": "4b01457a62d718a05df144a98de98914575a521e2d62fa7e6b0f711975ea3ba4",
+    "/tmp/obligon-production-auth-session-final-green.log": "2632cd8a60d76c4d0e1f4941483682afcc319b5fbeff1f0d2ee432d8ee74c98a"
+  }
+}

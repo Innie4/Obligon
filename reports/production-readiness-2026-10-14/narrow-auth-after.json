@@ -1,0 +1,123 @@
+{
+  "date": "2026-10-14",
+  "environment": "isolated loopback application; no provider effects",
+  "observations": [
+    {
+      "alerts": [
+        "Your sign-in challenge is missing or expired. Sign in with your password again."
+      ],
+      "client": 320,
+      "heading": "Two-Factor Authentication Required",
+      "inputs": [
+        {
+          "autocomplete": "one-time-code",
+          "disabled": true,
+          "label": "Digit 1",
+          "width": 45.000003814697266
+        },
+        {
+          "autocomplete": "one-time-code",
+          "disabled": true,
+          "label": "Digit 2",
+          "width": 45.000003814697266
+        },
+        {
+          "autocomplete": "one-time-code",
+          "disabled": true,
+          "label": "Digit 3",
+          "width": 45.00868225097656
+        },
+        {
+          "autocomplete": "one-time-code",
+          "disabled": true,
+          "label": "Digit 4",
+          "width": 45.000003814697266
+        },
+        {
+          "autocomplete": "one-time-code",
+          "disabled": true,
+          "label": "Digit 5",
+          "width": 45.000003814697266
+        },
+        {
+          "autocomplete": "one-time-code",
+          "disabled": true,
+          "label": "Digit 6",
+          "width": 45.00868225097656
+        }
+      ],
+      "scroll": 320,
+      "url": "/auth/mfa/challenge",
+      "width": 320
+    },
+    {
+      "alerts": [],
+      "client": 303,
+      "heading": "Authentication Failed",
+      "headingSize": "24px",
+      "scroll": 303,
+      "url": "/auth/failure",
+      "width": 320
+    },
+    {
+      "alerts": [],
+      "client": 303,
+      "heading": "Authentication Failed",
+      "scroll": 303,
+      "sessionFailure": true,
+      "url": "/auth/in-progress",
+      "width": 320
+    },
+    {
+      "alerts": [
+        "Your sign-in challenge is missing or expired. Sign in with your password again."
+      ],
+      "client": 1280,
+      "inputs": [
+        {
+          "label": "Digit 1",
+          "width": 47.99479293823242
+        },
+        {
+          "label": "Digit 2",
+          "width": 47.99479293823242
+        },
+        {
+          "label": "Digit 3",
+          "width": 47.99479293823242
+        },
+        {
+          "label": "Digit 4",
+          "width": 47.99479293823242
+        },
+        {
+          "label": "Digit 5",
+          "width": 47.99479293823242
+        },
+        {
+          "label": "Digit 6",
+          "width": 47.99479293823242
+        }
+      ],
+      "rowDisplay": "flex",
+      "scroll": 1280,
+      "url": "/auth/mfa/challenge",
+      "width": 1280
+    },
+    {
+      "alerts": [],
+      "client": 1280,
+      "heading": "Authentication Failed",
+      "headingSize": "30px",
+      "scroll": 1280,
+      "url": "/auth/failure",
+      "width": 1280
+    }
+  ],
+  "passed": true,
+  "notes": [
+    "Missing-password-step challenge is expected to disable MFA controls.",
+    "No OTP, new credential, contract or financial submission was made.",
+    "Measured CSS viewport widths are recorded rather than inferred from physical viewport override."
+  ]
+}

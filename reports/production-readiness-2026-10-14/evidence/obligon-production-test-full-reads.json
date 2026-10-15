@@ -1,0 +1,1331 @@
+{
+  "generatedAt": "2026-10-14T16:55:05.727373+00:00",
+  "reviewer": "/root/fix_partner_audit",
+  "root": "/home/inimfon-udoh/Obligon/checkout",
+  "scope": "Exact 65 reserved baseline test sources; full actual source reads, current hashes, no repeated test execution, source edits or provider/production calls.",
+  "summary": {
+    "files": 65,
+    "fullyReadCurrentFiles": 63,
+    "initialChunks": 70,
+    "changedFilesReread": 4,
+    "testRuns": 0,
+    "currentAfterChangedRegionRechecks": 6,
+    "currentHashRecords": 63,
+    "stalePriorFullReadsPendingAuditorMerge": 2
+  },
+  "records": [
+    {
+      "path": "apps/api/tests/activity-balance-and-otp.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/activity-balance-and-otp.test.mjs",
+      "sha256": "609d7ba228b833d0ac6fb1567873d04bd341dc5453e5eb55b4ad420dfe5c9c17",
+      "currentSHA256": "609d7ba228b833d0ac6fb1567873d04bd341dc5453e5eb55b4ad420dfe5c9c17",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 199,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 199
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/admin-support.integration.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/admin-support.integration.test.mjs",
+      "sha256": "1a3d0fb7946e6fa90bfa9584297183e48a0b5ddae8ff844dadf405e56383e5f9",
+      "currentSHA256": "1a3d0fb7946e6fa90bfa9584297183e48a0b5ddae8ff844dadf405e56383e5f9",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 400,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 400
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Initial complete source read, followed by complete current diff/changed-region review against baseline HEAD; unchanged source provenance is retained by previousCompleteReadSha256. All current changed lines read; exact current hash verified.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Current admin recovery region inspected after prior complete read: provisioning zero wallet, approved legacy zero restoration, existing funded preservation and atomic audit rollback. Actual root finalAPI proof1018total1016pass0fail2envskips includes these cases.",
+      "previousCompleteReadSha256": "9c6f4e5784fcfdf36c92a9d4771d4738408c7a501b18b70ee68d773ad12efe8b",
+      "recheckProvenance": "Complete original/earlier current full read plus all latest changed regions; not a claimed second complete whole-file reread.",
+      "previousChangedRegionSha256": "f81c5dc97672edffe3b7627b94608d46acfbe10fa7e4ee9f884fc473ef20a6d5"
+    },
+    {
+      "path": "apps/api/tests/api.smoke.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/api.smoke.test.mjs",
+      "sha256": "501bc244d697b7c7cb93132c5b1d2e4e9f8d91cf6187f0763c38393f98657001",
+      "currentSHA256": "501bc244d697b7c7cb93132c5b1d2e4e9f8d91cf6187f0763c38393f98657001",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 368,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 368
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/card-approval.integration.check.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/card-approval.integration.check.mjs",
+      "sha256": "e7ac0d80cc715b373694d7497408f5ec1f97efc01d0a48c607538b52bed994bc",
+      "currentSHA256": "e7ac0d80cc715b373694d7497408f5ec1f97efc01d0a48c607538b52bed994bc",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 50,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 50
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Manual local/provider-dependent diagnostic; read fully, not executed or counted in automatic suite totals. Its configured environment and writes require a disposable approved test setup."
+    },
+    {
+      "path": "apps/api/tests/card-approval.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/card-approval.test.mjs",
+      "sha256": "6c1c5b15737b16574b33492cf76fc4d708618e11d355c7b8e3e1a29654dbaf48",
+      "currentSHA256": "6c1c5b15737b16574b33492cf76fc4d708618e11d355c7b8e3e1a29654dbaf48",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 32,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 32
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/card-request-flow.check.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/card-request-flow.check.mjs",
+      "sha256": "0b9c60975d737425886c3a001caf047692d41599336e40a5fa6ea344914a0326",
+      "currentSHA256": "0b9c60975d737425886c3a001caf047692d41599336e40a5fa6ea344914a0326",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 197,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 197
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Manual local/provider-dependent diagnostic; read fully, not executed or counted in automatic suite totals. Its configured environment and writes require a disposable approved test setup."
+    },
+    {
+      "path": "apps/api/tests/company-dashboard.integration.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/company-dashboard.integration.test.mjs",
+      "sha256": "4ab2da7aa6bb6272ddffc6979e7796db3400a6102f6b24f82a52ce78a35db991",
+      "currentSHA256": "4ab2da7aa6bb6272ddffc6979e7796db3400a6102f6b24f82a52ce78a35db991",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 175,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 175
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/company-input.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/company-input.test.mjs",
+      "sha256": "8dde891ad7e546c73370ae9e67ceda3abd93075bf67baa3cedf9d34537967654",
+      "currentSHA256": "8dde891ad7e546c73370ae9e67ceda3abd93075bf67baa3cedf9d34537967654",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 37,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 37
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/config-severity.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/config-severity.test.mjs",
+      "sha256": "0e8be33e78e89f1038c827bfb6c47d25d859c5083268f0216807a6b98cce94a1",
+      "currentSHA256": "0e8be33e78e89f1038c827bfb6c47d25d859c5083268f0216807a6b98cce94a1",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 100,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 100
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/customer-audit.integration.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/customer-audit.integration.test.mjs",
+      "sha256": "963b9c92c4c9148261495e3d467eaa1f8397b749bae06a2d42d6343e3c3069f9",
+      "currentSHA256": "963b9c92c4c9148261495e3d467eaa1f8397b749bae06a2d42d6343e3c3069f9",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 128,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 128
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/customer-entitlement-gates.integration.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/customer-entitlement-gates.integration.test.mjs",
+      "sha256": "420c0609d3e35c49ecae143755d4a1564d73d6a7f5b55cbd861fd6d870902533",
+      "currentSHA256": "420c0609d3e35c49ecae143755d4a1564d73d6a7f5b55cbd861fd6d870902533",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 52,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 52
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/customer-funding-methods.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/customer-funding-methods.test.mjs",
+      "sha256": "b86fb57d8e6c67232f996cf01666db3cc8220d9ada119e6730542e7e45b543c5",
+      "currentSHA256": "b86fb57d8e6c67232f996cf01666db3cc8220d9ada119e6730542e7e45b543c5",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 49,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 49
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/database-tls.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/database-tls.test.mjs",
+      "sha256": "b5f13ac1ab93be114c746e2cc228b882f2c212695057bdb9f6bb03e530813234",
+      "currentSHA256": "b5f13ac1ab93be114c746e2cc228b882f2c212695057bdb9f6bb03e530813234",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 94,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 94
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/deploy-config.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/deploy-config.test.mjs",
+      "sha256": "e075253f81ea51828a6660cb91e14400f62810b874604b8c9c12c3c32b3d7640",
+      "currentSHA256": "e075253f81ea51828a6660cb91e14400f62810b874604b8c9c12c3c32b3d7640",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 158,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 158
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/discount-math.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/discount-math.test.mjs",
+      "sha256": "447e1c439a8ee79fc117b5bc795339c79ae594c85b9017009d114cc873aa2cb6",
+      "currentSHA256": "447e1c439a8ee79fc117b5bc795339c79ae594c85b9017009d114cc873aa2cb6",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 22,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 22
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/flutterwave-processor.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/flutterwave-processor.test.mjs",
+      "sha256": "342fb675fed17e684a8a703502f18c962041e8ddea98579cdcf3dc3a3a6fa686",
+      "currentSHA256": "342fb675fed17e684a8a703502f18c962041e8ddea98579cdcf3dc3a3a6fa686",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 214,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 214
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/flutterwave-subaccount.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/flutterwave-subaccount.test.mjs",
+      "sha256": "bd38878d3ee440d028c48158be61fa7b1a5cadf1e04c4c6122a4c584568334dd",
+      "currentSHA256": "bd38878d3ee440d028c48158be61fa7b1a5cadf1e04c4c6122a4c584568334dd",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 25,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 25
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/flutterwave-units.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/flutterwave-units.test.mjs",
+      "sha256": "06504d363af3692ef4a80cdb80619d8c9889d4a68d163c5cc79ffa43a18780ca",
+      "currentSHA256": "06504d363af3692ef4a80cdb80619d8c9889d4a68d163c5cc79ffa43a18780ca",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 76,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 76
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/fuel-checkout.integration.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/fuel-checkout.integration.test.mjs",
+      "sha256": "cba27f7c25fd70bf314c8e1418893c8db2b23ca18210be09778a1e521f132611",
+      "currentSHA256": "cba27f7c25fd70bf314c8e1418893c8db2b23ca18210be09778a1e521f132611",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 233,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 233
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/fuel-sale.integration.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/fuel-sale.integration.test.mjs",
+      "sha256": "f54c7048ce81e2f5885e21adff3855d381a1b733d53146e7803168a16e9d0c90",
+      "currentSHA256": "f54c7048ce81e2f5885e21adff3855d381a1b733d53146e7803168a16e9d0c90",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 183,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 183
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Initial complete source read, followed by complete current diff/changed-region review against baseline HEAD; unchanged source provenance is retained by previousCompleteReadSha256. All current changed lines read; exact current hash verified.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read.",
+      "previousCompleteReadSha256": "ee0c010096c6420f1792e71f1a87580ec97a0526da199d9e5dc2b6a96afc1da3",
+      "recheckProvenance": "Complete original/earlier current full read plus all latest changed regions; not a claimed second complete whole-file reread."
+    },
+    {
+      "path": "apps/api/tests/history-settlement-and-scheduler.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/history-settlement-and-scheduler.test.mjs",
+      "sha256": "3d98ba8739bcff5a0397c4dc38fc49fdbb729fea21ce568a3490d11f292f6839",
+      "currentSHA256": "3d98ba8739bcff5a0397c4dc38fc49fdbb729fea21ce568a3490d11f292f6839",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 213,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 213
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/late-settlement.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/late-settlement.test.mjs",
+      "sha256": "c5de74748ecbfba855461ec55fb2b71cd04149afeef45d8d9c49a9bbaaaa4a28",
+      "currentSHA256": "c5de74748ecbfba855461ec55fb2b71cd04149afeef45d8d9c49a9bbaaaa4a28",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 142,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 142
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Initial complete source read, followed by complete current diff/changed-region review against baseline HEAD; unchanged source provenance is retained by previousCompleteReadSha256. All current changed lines read; exact current hash verified.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Root corrected vacuous assertion: completeTopUp and actual applyLedgerEntry must exist; current posting asserts marked.amount_kobo principal and rejects fee/charged amount. Executed proof remains root-owned.",
+      "previousCompleteReadSha256": "10dfc398271fae42fbaa172bb3cb2d2da8ba567277ce1241600435ad36ef8f92",
+      "recheckProvenance": "Complete original/earlier current full read plus all latest changed regions; not a claimed second complete whole-file reread."
+    },
+    {
+      "path": "apps/api/tests/local-outbox.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/local-outbox.test.mjs",
+      "sha256": "ff4c27480037813fefc197f7c153f20c01d50edf8a6a3083e5ec0eac7a55d40e",
+      "currentSHA256": "ff4c27480037813fefc197f7c153f20c01d50edf8a6a3083e5ec0eac7a55d40e",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 18,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 18
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/migration-startup.integration.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/migration-startup.integration.test.mjs",
+      "sha256": "7ae1d8e23408711fe63e6e69f2494408e7165779fc908933017bb316be132c4f",
+      "currentSHA256": "7ae1d8e23408711fe63e6e69f2494408e7165779fc908933017bb316be132c4f",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 223,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 223
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/minimum-topup.check.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/minimum-topup.check.mjs",
+      "sha256": "4710a13e9fcb849e25c85e8b504bd87cd38a448f70adc0ececb9dd4561e67cf3",
+      "currentSHA256": "4710a13e9fcb849e25c85e8b504bd87cd38a448f70adc0ececb9dd4561e67cf3",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 100,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 100
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Manual local/provider-dependent diagnostic; read fully, not executed or counted in automatic suite totals. Its configured environment and writes require a disposable approved test setup."
+    },
+    {
+      "path": "apps/api/tests/minimum-topup.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/minimum-topup.test.mjs",
+      "sha256": "ef40f9d4dfb7c34d320e2f8913c6035bbf5d39b59054fb290f9804a62c299ccb",
+      "currentSHA256": "ef40f9d4dfb7c34d320e2f8913c6035bbf5d39b59054fb290f9804a62c299ccb",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 103,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 103
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/money.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/money.test.mjs",
+      "sha256": "eb2462331c600b016ccee2d375d01f79e006e199ab6f4ed17a716764c43123f2",
+      "currentSHA256": "eb2462331c600b016ccee2d375d01f79e006e199ab6f4ed17a716764c43123f2",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 310,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 310
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Initial complete source read, followed by complete current diff/changed-region review against baseline HEAD; unchanged source provenance is retained by previousCompleteReadSha256. All current changed lines read; exact current hash verified.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Current reread confirms mandatory explicit local PostgreSQL opt-in, dynamic app imports after isolation, owned unique schema cleanup; previous configured-database and prefix-delete risks were corrected by the auth-session worker.",
+      "previousCompleteReadSha256": "e8b26961a79a909aca8bec3325e1f6b588a42a9b24e17ce57ea35500b502e039",
+      "recheckProvenance": "Complete original/earlier current full read plus all latest changed regions; not a claimed second complete whole-file reread."
+    },
+    {
+      "path": "apps/api/tests/nearest-stations.integration.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/nearest-stations.integration.test.mjs",
+      "sha256": "c2c7a39d3c5a0c9a58906e8c0b6add4ee45bc27aaee851d257ee6d9715838de9",
+      "currentSHA256": "c2c7a39d3c5a0c9a58906e8c0b6add4ee45bc27aaee851d257ee6d9715838de9",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 104,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 104
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/no-secret-leak.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/no-secret-leak.test.mjs",
+      "sha256": "7e1ea2be23adfbf0a0edee01a5a3994a43c5ec86ec2bf9dc3712579d0f4b46dc",
+      "currentSHA256": "7e1ea2be23adfbf0a0edee01a5a3994a43c5ec86ec2bf9dc3712579d0f4b46dc",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 153,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 153
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Current reread confirms SUDO_WEBHOOK_SECRET is no longer public-by-design; synthetic sensitivity assertion covers it. Missing local .env comparisons remain explicitly skippable. No actual leaked secret was found by this read."
+    },
+    {
+      "path": "apps/api/tests/partner-authorization.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/partner-authorization.test.mjs",
+      "sha256": "223de76586a9be91b9176e5c568ca7b51f97398f76b6cec1a6cc85d390a39c08",
+      "currentSHA256": "223de76586a9be91b9176e5c568ca7b51f97398f76b6cec1a6cc85d390a39c08",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 195,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 195
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/partner-dashboard-wiring.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/partner-dashboard-wiring.test.mjs",
+      "sha256": "150c026043486f6f6a510d05cf52e3bc1b3adc1e26c47c823acd958bfae8f8fa",
+      "currentSHA256": "150c026043486f6f6a510d05cf52e3bc1b3adc1e26c47c823acd958bfae8f8fa",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 474,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 474
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/partner-pos-receipt.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/partner-pos-receipt.test.mjs",
+      "sha256": "462c3fa0a2d23fcc6ea5c8a93f65f4a90b400eb6478817c0f48eebaec5399beb",
+      "currentSHA256": "462c3fa0a2d23fcc6ea5c8a93f65f4a90b400eb6478817c0f48eebaec5399beb",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 54,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 54
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/partner-production-readiness.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/partner-production-readiness.test.mjs",
+      "sha256": "a019ffee1cbdba3d2fa78550a2bb11d6e18f7e51f6d77414417293a7c1927153",
+      "currentSHA256": "a019ffee1cbdba3d2fa78550a2bb11d6e18f7e51f6d77414417293a7c1927153",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 566,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 566
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Initial complete source read, followed by complete current diff/changed-region review against baseline HEAD; unchanged source provenance is retained by previousCompleteReadSha256. All current changed lines read; exact current hash verified.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Current source assertions now bind transactionPagination, validated transactionFilters and stable created_at/id ordering; separate actual HTTP signed-partner checks prove malformed bounds/date400 and scoped stable list/export200.",
+      "previousCompleteReadSha256": "8c5a9959bbd8d74d639a3fa4765e09b38bd9b5bbd06d728546df3b91dde97111",
+      "recheckProvenance": "Complete original/earlier current full read plus all latest changed regions; not a claimed second complete whole-file reread."
+    },
+    {
+      "path": "apps/api/tests/payment-error-visibility.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/payment-error-visibility.test.mjs",
+      "sha256": "433b833ed2413f3b2935e5bd7c041925a4dc09ce3ccb2906e455a7c995234627",
+      "currentSHA256": "433b833ed2413f3b2935e5bd7c041925a4dc09ce3ccb2906e455a7c995234627",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 115,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 115
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/payment-methods.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/payment-methods.test.mjs",
+      "sha256": "7e0cf8880805cd83b8c0a89a03ef55a4c37bc496b74ef047d52af95ff542e68c",
+      "currentSHA256": "7e0cf8880805cd83b8c0a89a03ef55a4c37bc496b74ef047d52af95ff542e68c",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 107,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 107
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/payments-hardening.check.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/payments-hardening.check.mjs",
+      "sha256": "1b960345c2c25e2157ef485e0f8f592c85f890a6ffa0db13a3705b97f1839dca",
+      "currentSHA256": "1b960345c2c25e2157ef485e0f8f592c85f890a6ffa0db13a3705b97f1839dca",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 236,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 236
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Manual local/provider-dependent diagnostic; read fully, not executed or counted in automatic suite totals. Its configured environment and writes require a disposable approved test setup."
+    },
+    {
+      "path": "apps/api/tests/payout-balance-guard.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/payout-balance-guard.test.mjs",
+      "sha256": "f08e370ffd491a8d76eed721f9f14c910f9aba4af61de6e3228cea8068eb6ade",
+      "currentSHA256": "f08e370ffd491a8d76eed721f9f14c910f9aba4af61de6e3228cea8068eb6ade",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 198,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 198
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/plan-wallet-separation.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/plan-wallet-separation.test.mjs",
+      "sha256": "508d85dddcf2c427cbea1d793ad3429306b249a3937e5d82e5222276637b0dfa",
+      "currentSHA256": "508d85dddcf2c427cbea1d793ad3429306b249a3937e5d82e5222276637b0dfa",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 102,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 102
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/prefs-security.check.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/prefs-security.check.mjs",
+      "sha256": "9d9aebb42f09c57246be2ce5359b5abb9d32e5752aeb5f86b55b2b33c63fc7c8",
+      "currentSHA256": "9d9aebb42f09c57246be2ce5359b5abb9d32e5752aeb5f86b55b2b33c63fc7c8",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 132,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 132
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Manual HTTP diagnostic, not in automatic *.test.mjs totals. Its fake push auth value decodes to 32 bytes while current contract requires 16; root/residual auditor owns correction or explicit disposition. Script was not executed."
+    },
+    {
+      "path": "apps/api/tests/reconciliation-fallback.integration.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/reconciliation-fallback.integration.test.mjs",
+      "sha256": "2c5dc97d84da3778b78055f18e1277b88d166eed980b24242cdd2cf8cad54107",
+      "currentSHA256": "2c5dc97d84da3778b78055f18e1277b88d166eed980b24242cdd2cf8cad54107",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 155,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 155
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Missing optional processor configuration is guarded before the pending count. The non-null test user therefore reaches the actual guard; the initially raised early-return concern is withdrawn. Root may make the fixture same-user for clarity."
+    },
+    {
+      "path": "apps/api/tests/refund-ambiguity.integration.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/refund-ambiguity.integration.test.mjs",
+      "sha256": "683b25c95f190ff3a7587a977dd9b01683d743030774994082a64ec694c46699",
+      "currentSHA256": "683b25c95f190ff3a7587a977dd9b01683d743030774994082a64ec694c46699",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 29,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 29
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/resume-payment.check.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/resume-payment.check.mjs",
+      "sha256": "68d7da3f79a2fc3225050cbcc9652cfb0117239fbf53a3f59b86a8ec3d84eb15",
+      "currentSHA256": "68d7da3f79a2fc3225050cbcc9652cfb0117239fbf53a3f59b86a8ec3d84eb15",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 200,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 200
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Manual local/provider-dependent diagnostic; read fully, not executed or counted in automatic suite totals. Its configured environment and writes require a disposable approved test setup."
+    },
+    {
+      "path": "apps/api/tests/savings-fee.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/savings-fee.test.mjs",
+      "sha256": "2695355705f7d4dc1cb796524a7cb48bdbf08fc96aaea323fb6b3090db169a8b",
+      "currentSHA256": "2695355705f7d4dc1cb796524a7cb48bdbf08fc96aaea323fb6b3090db169a8b",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 41,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 41
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/settlement-accounting.integration.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/settlement-accounting.integration.test.mjs",
+      "sha256": "7589a0ce0e29a9ccb7a1eb9427662226954070ba1bb2c0bd3c659880ff067ee7",
+      "currentSHA256": "7589a0ce0e29a9ccb7a1eb9427662226954070ba1bb2c0bd3c659880ff067ee7",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 357,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 357
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Initial complete source read, followed by complete current diff/changed-region review against baseline HEAD; unchanged source provenance is retained by previousCompleteReadSha256. All current changed lines read; exact current hash verified.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Current full reread includes real isolated PostgreSQL accounting, concurrency, reservation retention, contradictory transfer identity/amount/currency/reference, and delayed-failure race cases with mocked no-egress provider boundaries.",
+      "previousCompleteReadSha256": "3067a5776ee41d717939acdfa4ebbc2efdaf0e90a93ae22bcaa1a8be181a85f6",
+      "recheckProvenance": "Complete original/earlier current full read plus all latest changed regions; not a claimed second complete whole-file reread."
+    },
+    {
+      "path": "apps/api/tests/spend-projection-and-activity.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/spend-projection-and-activity.test.mjs",
+      "sha256": "6cc3b5378988109d419c3cebc8bc40c2665f3185b3476db1f7eba770d8cad567",
+      "currentSHA256": "6cc3b5378988109d419c3cebc8bc40c2665f3185b3476db1f7eba770d8cad567",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 164,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 164
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/subscription-entitlements.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/subscription-entitlements.test.mjs",
+      "sha256": "c08aa0be9e0b689be165b3a545836091a57f6dd9dae55e19a636c4901d34b5be",
+      "currentSHA256": "c08aa0be9e0b689be165b3a545836091a57f6dd9dae55e19a636c4901d34b5be",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 14,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 14
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/subscription-routing.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/subscription-routing.test.mjs",
+      "sha256": "71917c340cfd505068a1da785b4efe823f08a625433d83b38c6e99fde8274351",
+      "currentSHA256": "71917c340cfd505068a1da785b4efe823f08a625433d83b38c6e99fde8274351",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 46,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 46
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/sudo-contract.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/sudo-contract.test.mjs",
+      "sha256": "bc6e4b0505199da3c5d1c4a3beab41569ce42ebb17b07485ccb7b4e508f03c6b",
+      "currentSHA256": "bc6e4b0505199da3c5d1c4a3beab41569ce42ebb17b07485ccb7b4e508f03c6b",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 35,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 35
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/temporary-partner-account.integration.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/temporary-partner-account.integration.test.mjs",
+      "sha256": "1809e2b375cda321bd527012e88139e21e620ee0ab2be6575f0386ee7c6bfb09",
+      "currentSHA256": "1809e2b375cda321bd527012e88139e21e620ee0ab2be6575f0386ee7c6bfb09",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 411,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 411
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/unit.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/unit.test.mjs",
+      "sha256": "86dffc15d6056e8465edde6ff0f3c6d2f6da37cc574932b3e80bb61d3a72ac1a",
+      "currentSHA256": "86dffc15d6056e8465edde6ff0f3c6d2f6da37cc574932b3e80bb61d3a72ac1a",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 129,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 129
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/verification-flow.test.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/verification-flow.test.mjs",
+      "sha256": "75e4241d5bba3441da9ce6cecb08e2e9b29bbbc5a5acf382ad6d50924193d412",
+      "currentSHA256": "75e4241d5bba3441da9ce6cecb08e2e9b29bbbc5a5acf382ad6d50924193d412",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 212,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 212
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete current test source reviewed for fixture isolation, assertion scope and consistency with the relevant contracts; no additional literal actionable finding identified in this bounded read."
+    },
+    {
+      "path": "apps/api/tests/wallet-payments.check.mjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/api/tests/wallet-payments.check.mjs",
+      "sha256": "d7baac595db0dbabbcdc4a20423163ca49d5658b8e52c71f25e6988bf25f4b58",
+      "currentSHA256": "d7baac595db0dbabbcdc4a20423163ca49d5658b8e52c71f25e6988bf25f4b58",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 228,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 228
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Manual provider-dependent diagnostic, not in automatic totals. call() ignores supplied headers, making wrong webhook-header probe vacuous; simulated branch expects 5,000,000 kobo from a 5,000 naira input instead of 500,000. Root/residual auditor owns disposition; no manual provider calls were executed."
+    },
+    {
+      "path": "apps/web/tests/async-location-regression.test.cjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/web/tests/async-location-regression.test.cjs",
+      "sha256": "a530de7db5cdc7dc8319c184c24efc850ccc5345c0e0bc4040e74f98072b921f",
+      "currentSHA256": "a530de7db5cdc7dc8319c184c24efc850ccc5345c0e0bc4040e74f98072b921f",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 57,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 57
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete component/helper test source reviewed; VM/source or render fixtures establish their specific assertions and are not substituted for the parent browser route review."
+    },
+    {
+      "path": "apps/web/tests/auth-regression.test.cjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/web/tests/auth-regression.test.cjs",
+      "sha256": "57879ac8b3c080e0226f852f62d069299800d1309f4a3950c2400702a4e4b18f",
+      "currentSHA256": "57879ac8b3c080e0226f852f62d069299800d1309f4a3950c2400702a4e4b18f",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 51,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 51
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete component/helper test source reviewed; VM/source or render fixtures establish their specific assertions and are not substituted for the parent browser route review."
+    },
+    {
+      "path": "apps/web/tests/company-empty-pages.test.cjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/web/tests/company-empty-pages.test.cjs",
+      "sha256": "5d939a7835172bbd0295e7f46a1480ab16747c02e5d60a4b7a2bc3d3f5a2feec",
+      "currentSHA256": "5d939a7835172bbd0295e7f46a1480ab16747c02e5d60a4b7a2bc3d3f5a2feec",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 74,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 74
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete component/helper test source reviewed; VM/source or render fixtures establish their specific assertions and are not substituted for the parent browser route review."
+    },
+    {
+      "path": "apps/web/tests/company-input.test.cjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/web/tests/company-input.test.cjs",
+      "sha256": "a19b6ad13d284a628d4f20b1887eba84ea61b889c40375d3a91caa32728d57e4",
+      "currentSHA256": "a19b6ad13d284a628d4f20b1887eba84ea61b889c40375d3a91caa32728d57e4",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 39,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 39
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete component/helper test source reviewed; VM/source or render fixtures establish their specific assertions and are not substituted for the parent browser route review."
+    },
+    {
+      "path": "apps/web/tests/customer-audit.test.cjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/web/tests/customer-audit.test.cjs",
+      "sha256": "246e14c91ade1a6af2904b168f34e65d4a0ec8d3871f6126adda5212db3d2418",
+      "currentSHA256": "246e14c91ade1a6af2904b168f34e65d4a0ec8d3871f6126adda5212db3d2418",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 183,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 183
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete component/helper test source reviewed; VM/source or render fixtures establish their specific assertions and are not substituted for the parent browser route review."
+    },
+    {
+      "path": "apps/web/tests/customer-entitlements.test.cjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/web/tests/customer-entitlements.test.cjs",
+      "sha256": "11deebae3d3892b34f8d4973d96e0c16cc894c42e04a47ca82e2e634320a2660",
+      "currentSHA256": "11deebae3d3892b34f8d4973d96e0c16cc894c42e04a47ca82e2e634320a2660",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 36,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 36
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete component/helper test source reviewed; VM/source or render fixtures establish their specific assertions and are not substituted for the parent browser route review."
+    },
+    {
+      "path": "apps/web/tests/customer-my-card.test.cjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/web/tests/customer-my-card.test.cjs",
+      "sha256": "de54d43fb14df56116f583bc212647f75747c0a71f29a76f75bb0116f9fec0de",
+      "currentSHA256": "de54d43fb14df56116f583bc212647f75747c0a71f29a76f75bb0116f9fec0de",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 328,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 328
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete component/helper test source reviewed; VM/source or render fixtures establish their specific assertions and are not substituted for the parent browser route review."
+    },
+    {
+      "path": "apps/web/tests/dialog-focus.test.cjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/web/tests/dialog-focus.test.cjs",
+      "sha256": "538b17d51342a76efde6e2dab4ae27a87f6b2cf2a6041ceb97bedd7d9c59ea32",
+      "currentSHA256": "538b17d51342a76efde6e2dab4ae27a87f6b2cf2a6041ceb97bedd7d9c59ea32",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 88,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 88
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete component/helper test source reviewed; VM/source or render fixtures establish their specific assertions and are not substituted for the parent browser route review."
+    },
+    {
+      "path": "apps/web/tests/landing-plans-regression.test.cjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/web/tests/landing-plans-regression.test.cjs",
+      "sha256": "e02ab1edf5df7484a3ad87e07a50d84c504eb9355398f98fe40914cd640465c1",
+      "currentSHA256": "e02ab1edf5df7484a3ad87e07a50d84c504eb9355398f98fe40914cd640465c1",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 88,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 88
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete component/helper test source reviewed; VM/source or render fixtures establish their specific assertions and are not substituted for the parent browser route review."
+    },
+    {
+      "path": "apps/web/tests/partner-audit-regression.test.cjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/web/tests/partner-audit-regression.test.cjs",
+      "sha256": "5012eba892ed8854ba84eaa50ab4726ba0cfdcc019515e75d10e3a6717ee654b",
+      "currentSHA256": "5012eba892ed8854ba84eaa50ab4726ba0cfdcc019515e75d10e3a6717ee654b",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 112,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 112
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete component/helper test source reviewed; VM/source or render fixtures establish their specific assertions and are not substituted for the parent browser route review."
+    },
+    {
+      "path": "apps/web/tests/partner-verification.test.cjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/web/tests/partner-verification.test.cjs",
+      "sha256": "5d3bee0a25d98d7d12c02b64157ee3368c076cf6999cd3e8cbf6e7bb0bf4e448",
+      "currentSHA256": "5d3bee0a25d98d7d12c02b64157ee3368c076cf6999cd3e8cbf6e7bb0bf4e448",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 257,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 257
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete component/helper test source reviewed; VM/source or render fixtures establish their specific assertions and are not substituted for the parent browser route review."
+    },
+    {
+      "path": "apps/web/tests/station-fuels.test.cjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/web/tests/station-fuels.test.cjs",
+      "sha256": "c4b8842f15a114f8194bde82cc1a8716418848de880c023f4f62ebd4fa700fa2",
+      "currentSHA256": "c4b8842f15a114f8194bde82cc1a8716418848de880c023f4f62ebd4fa700fa2",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 16,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 16
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete component/helper test source reviewed; VM/source or render fixtures establish their specific assertions and are not substituted for the parent browser route review."
+    },
+    {
+      "path": "apps/web/tests/transport-regression.test.cjs",
+      "absolutePath": "/home/inimfon-udoh/Obligon/checkout/apps/web/tests/transport-regression.test.cjs",
+      "sha256": "cb00a46a38da5abd213eef902ed1e7bb5bcbb11d72d30a6bda0c352153307328",
+      "currentSHA256": "cb00a46a38da5abd213eef902ed1e7bb5bcbb11d72d30a6bda0c352153307328",
+      "depth": "full-source-current",
+      "fullSourceRead": true,
+      "lineCount": 88,
+      "readRanges": [
+        {
+          "start": 1,
+          "end": 88
+        }
+      ],
+      "coverageFraction": 1,
+      "readMethod": "Complete actual UTF-8 source returned and reviewed in bounded tool chunks; changed files reread in full before hash freeze.",
+      "testExecutionPerformedByThisReviewer": false,
+      "reviewNotes": "Complete component/helper test source reviewed; VM/source or render fixtures establish their specific assertions and are not substituted for the parent browser route review."
+    }
+  ],
+  "findings": [
+    {
+      "id": "TEST-READ-01",
+      "path": "apps/api/tests/money.test.mjs",
+      "category": "Shared",
+      "kind": "test safety",
+      "before": "Without explicit local opt-in the original tests could inherit the application database and cleanup by broad prefixes.",
+      "status": "Source correction reread; root owns executed verification",
+      "after": "Tests skip without OBLIGON_TEST_DATABASE_URL, reject non-local targets before connection, import app DB only after unique schema setup, and drop only the owned schema."
+    },
+    {
+      "id": "TEST-READ-02",
+      "path": "apps/api/tests/no-secret-leak.test.mjs",
+      "category": "Shared",
+      "kind": "scanner coverage",
+      "before": "SUDO_WEBHOOK_SECRET was wrongly exempted from sensitive configured-value scanning.",
+      "status": "Source correction reread; root owns executed verification",
+      "after": "Public exemption removed, synthetic secret/public configuration classification regression added. No actual secret leakage inferred."
+    },
+    {
+      "id": "TEST-READ-03",
+      "path": "apps/api/tests/late-settlement.test.mjs",
+      "category": "Customer",
+      "kind": "test proof gap",
+      "status": "Root source correction inspected; fresh root suite verification pending",
+      "detail": "Negative source assertion slices around absent creditWalletOnce instead of current applyLedgerEntry principal credit, permitting an empty slice.",
+      "after": "Requires the transition and applyLedgerEntry posting to exist, then asserts stored principal and excludes fee/charged credit."
+    },
+    {
+      "id": "TEST-READ-04",
+      "path": "apps/api/tests/partner-production-readiness.test.mjs",
+      "category": "Partner",
+      "kind": "test proof and request validation",
+      "status": "Root correction source reviewed; actual affected HTTP63-case green recorded",
+      "detail": "Existing pagination assertions are source-presence checks and do not establish finite integer/date query handling; current Infinity/date hazards identified in partner route source.",
+      "after": "Validated bound pagination and dates, parameterized SQL and created_at/id ordering; signed partner HTTP fixtures reject invalid input400 and preserve stable scoped list/export200."
+    },
+    {
+      "id": "TEST-READ-05",
+      "path": "apps/api/tests/prefs-security.check.mjs",
+      "category": "Shared",
+      "kind": "manual diagnostic fixture",
+      "status": "Root/residual auditor disposition pending",
+      "detail": "Fake push auth key decodes to 32 bytes instead of current 16-byte contract. Manual script not executed; not a failing automatic test claim."
+    },
+    {
+      "id": "TEST-READ-06",
+      "path": "apps/api/tests/wallet-payments.check.mjs",
+      "category": "Customer",
+      "kind": "manual diagnostic contract",
+      "status": "Root/residual auditor disposition pending",
+      "detail": "Request helper drops provided webhook headers; wrong-header probe repeats missing-header request. Simulated branch expects ten times its stated top-up principal. Manual script not executed."
+    }
+  ],
+  "withdrawnConcerns": [
+    {
+      "path": "apps/api/tests/reconciliation-fallback.integration.test.mjs",
+      "detail": "An initial early-return concern was withdrawn after reading activeProvider guard before pending COUNT. A non-null user reaches the relevant configuration guard."
+    }
+  ],
+  "limits": [
+    "Source assertions, VM doubles, mocked providers and injected route users prove only their literal contract scope. Parent owns actual fresh PostgreSQL/HTTP/browser/build evidence.",
+    "Manual .check diagnostics and live/sandbox provider capabilities were not executed by this reviewer.",
+    "Subsequent edits invalidate the corresponding full-read hash; the coverage merger must compare live currentSHA256."
+  ]
+}

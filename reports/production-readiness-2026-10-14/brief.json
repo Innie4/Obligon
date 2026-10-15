@@ -1,0 +1,124 @@
+{
+  "objective": "Audit the complete tracked project and all public/authenticated role pages; repair confirmed code blockers in coherent verified increments; report changes per page/dashboard and remaining external/review requirements.",
+  "baseCommit": "5914f6ebfc2f102255040eba80defbbb58f7ef67",
+  "branch": "codex/production-readiness-2026-10-14",
+  "date": "2026-10-14",
+  "authorization": {
+    "auditAndOrdinaryFixes": "User request 2026-10-14",
+    "focusedApplicationSecurityFixes": "User explicitly authorized affected application code and focused regression tests",
+    "productionOnlyChecks": "Use available access and list blocked checks",
+    "release": "User reported qualified reviewer approval for the exact tested source set on2026-10-15 and explicitly authorized master push. External production acceptance remains unverified; push pending.",
+    "focusedDatabaseAccessFixes": "User explicitly approved focused database permission/RLS migration and isolated tests; qualified human review before deployment",
+    "liveCustomerAudit": "User supplied existing credentials for a read-only Vercel customer test; no payment, credential, identity or support submission."
+  },
+  "verifiedAssumptions": [
+    {
+      "claim": "Next.js15/React19 web and Express5 PostgreSQL API monorepo",
+      "evidence": "apps/web/package.json;apps/api/package.json;pnpm-workspace.yaml"
+    },
+    {
+      "claim": "31 baseline migrations plus focused migration032, tested against isolated complete migration fixtures",
+      "evidence": "apps/api/src/migrations/001_init.sql..031_card_payment_provider_reference.sql;apps/api/tests/company-dashboard.integration.test.mjs"
+    },
+    {
+      "claim": "Existing31-migration local test cluster reachable on dedicated loopback port",
+      "evidence": "pg_isready2026-10-14 accepting connections; no production data used"
+    },
+    {
+      "claim": "Prior38-UI repair commit is baseline, application working tree initially clean",
+      "evidence": "gitrevparseHEAD=5914f6e;gitstatusonlyuntrackedlearn/reports"
+    },
+    {
+      "claim": "Real-provider staging remains unverified; qualified source reviewer approval reported by user",
+      "evidence": "Earlier available-access audit plus user attestation2026-10-15 for the exact tested155-file set"
+    }
+  ],
+  "acceptance": [
+    "Every tracked source/config/route family has explicit coverage and unresolved gaps are disclosed.",
+    "Every confirmed repair has reproducible evidence, a scoped diff and fresh relevant tests; full API/web/build verification after integration.",
+    "All role/public route smoke and relevant responsive, keyboard, loading/error states are inspected using isolated synthetic accounts.",
+    "Report each change by page/dashboard/API, tests, impacts, compatibility, recovery, review requirement and external limitation.",
+    "Do not label release ready until critical invariants, required provider/deployment evidence and qualified human review are satisfied."
+  ],
+  "financialInvariants": [
+    "Balanced internal wallet transfers per NGN",
+    "At most one money effect per caller/payload idempotency key",
+    "No cross-user or inactive membership access",
+    "No concurrent overspending",
+    "Recorded principal/fee/charged amount in integer kobo with bounded validated inputs",
+    "Provider evidence matches merchant reference/currency/known units; uncertain outcomes remain recoverable",
+    "Every financial effect traceable and reconciled; external provider agreement remains staging gated"
+  ],
+  "increments": [
+    {
+      "id": "AUTH-01-03",
+      "status": "implemented_verified_locally_release_gated",
+      "scope": "Durable MFA password proof, one-use reset/OTP, session race guards, refresh expiry and session identity",
+      "verify": "See final-verification.json, categorized findings and scoped before/after evidence; external requirements remain blocked."
+    },
+    {
+      "id": "MONEY-01-06",
+      "status": "implemented_verified_locally_release_gated",
+      "scope": "Exact amounts, immutable company/person quotes, wallet/allocation idempotence, provider evidence, atomic callbacks, recoverable refunds",
+      "verify": "See final-verification.json, categorized findings and scoped before/after evidence; external requirements remain blocked."
+    },
+    {
+      "id": "UI-PUBLIC-AUTH-CUSTOMER-COMPANY",
+      "status": "implemented_verified_locally_release_gated",
+      "scope": "Honest async state, role navigation, invitations/company context, workflows, whole-naira fee disclosure, dialog/retry semantics",
+      "verify": "See final-verification.json, categorized findings and scoped before/after evidence; external requirements remain blocked."
+    },
+    {
+      "id": "ACCESS-02",
+      "status": "implemented_verified_locally_release_gated",
+      "scope": "Active membership, personal resource isolation, retired shared test access, push boundaries",
+      "verify": "See final-verification.json, categorized findings and scoped before/after evidence; external requirements remain blocked."
+    },
+    {
+      "id": "DATABASE-01",
+      "status": "implemented_verified_locally_release_gated",
+      "scope": "Explicit private table/column/function grants and filtered public catalogs in migration032",
+      "verify": "See final-verification.json, categorized findings and scoped before/after evidence; external requirements remain blocked."
+    },
+    {
+      "id": "DEPENDENCY-01",
+      "status": "implemented_verified_locally_release_gated",
+      "scope": "Multer2.4 advisory repair and truthful multipart errors",
+      "verify": "See final-verification.json, categorized findings and scoped before/after evidence; external requirements remain blocked."
+    },
+    {
+      "id": "INTEGRATED-RELEASE",
+      "status": "implemented_verified_locally_release_gated",
+      "scope": "Full suites/build, route/browser inspection, categorized report and one learning breakdown",
+      "verify": "See final-verification.json, categorized findings and scoped before/after evidence; external requirements remain blocked."
+    }
+  ],
+  "auditEvidence": {
+    "productionDependencies": "Final pnpm production0; Trivy production0 vulnerabilities/0secrets after Multer2.4.0.",
+    "allDependencies": "Final1 high development-only braces advisory; no published supported patched version per recorded scan."
+  },
+  "workerLimits": {
+    "concurrency": 4,
+    "sameCapacityFailureRetries": 1,
+    "status": "Two audit turns hit capacity; one smaller focused follow-up dispatched to each. No model changes."
+  },
+  "status": "Human review approval reported; local verification/report/cleanup complete; master push authorized and pending; external production acceptance remains unverified.",
+  "humanReviewApproval": {
+    "status": "satisfied_by_user_attestation",
+    "reportedOn": "2026-10-15",
+    "attestation": "A qualified reviewer has approved it",
+    "scope": "Exact unchanged tested155-file source set; hashes recorded in final-verification.json",
+    "sourceFileCount": 155,
+    "criticalPolicyRequirementsRetained": true
+  },
+  "masterPush": {
+    "authorized": true,
+    "authorizedOn": "2026-10-15",
+    "targetBranch": "master",
+    "performed": false,
+    "status": "Authorized; pending at this pre-push report checkpoint",
+    "baseCommit": "5914f6ebfc2f102255040eba80defbbb58f7ef67",
+    "applicationCommit": "a8fa66227cda3e7b0ac1165efbbde07b9e0b74b5"
+  },
+  "applicationCommit": "a8fa66227cda3e7b0ac1165efbbde07b9e0b74b5"
+}

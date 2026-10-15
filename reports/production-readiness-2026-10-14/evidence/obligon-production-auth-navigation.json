@@ -1,0 +1,107 @@
+{
+  "task": "UI auth routing and mechanic frontend navigation fixes",
+  "date": "2026-10-14",
+  "branch": "codex/production-readiness-2026-10-14",
+  "findingIds": [
+    "UI-AU-04",
+    "UI-AU-05",
+    "UI-AU-06",
+    "UI-AU-07",
+    "UI-AU-08",
+    "UI-ME-01"
+  ],
+  "files": [
+    {
+      "path": "apps/web/app/auth/in-progress/page.tsx",
+      "sha256": "e2ff84dcbcc41fc95c8ce4bc74a2dfaa04d98d8b5034711ed46759c04b616a9d"
+    },
+    {
+      "path": "apps/web/app/auth/failure/page.tsx",
+      "sha256": "013c5c3bb65a773428c2b9460fbf751254d6c5c943ef3242f286b01a06052bb5"
+    },
+    {
+      "path": "apps/web/app/auth/session-expired/page.tsx",
+      "sha256": "6a41f44508ab1922e3c8d1a962a8fe198b94a2778e78b2ac7bba05ba71b6446f"
+    },
+    {
+      "path": "apps/web/components/auth/SuccessAutoRedirect.tsx",
+      "sha256": "97ee67b5803e895e72efbb884135f6f5e58e45bae26160e3e2bfc0191f797d18"
+    },
+    {
+      "path": "apps/web/app/admin/login/page.tsx",
+      "sha256": "a46868f3af88642d40d0c35e17d6db0966f6172c15f93af755057233e54b7ac8"
+    },
+    {
+      "path": "apps/web/components/dashboard/PartnershipShell.tsx",
+      "sha256": "26df7a6ed181d8f277c88e6e1307e39b92645bf55e74baf260c22f4a54db883b"
+    },
+    {
+      "path": "apps/web/lib/auth-routing.ts",
+      "sha256": "312b811985662d30b655e47d690764a566795d9c42f01ecedd164641d3a3362f"
+    },
+    {
+      "path": "apps/web/tests/production-auth-navigation.test.cjs",
+      "sha256": "25be631e84176448c2e4ca388d18d31a74a3541a1eaa74745fa7e938c3bd6873"
+    }
+  ],
+  "changes": [
+    "shared safeInternalPath rejects external/protocol-relative, backslash, control-character and encoded equivalents; canonicalizes harmless dot segments and rejects normalized // paths",
+    "dashboardDestination covers all five current roles and uses sign-in fallback when role is absent",
+    "expired-session login follows saved MFA password proof before welcome/redirect; non-MFA login verifies server session role",
+    "admin login uses a plain MFA URL and checks server session role before announcing admin access; non-admin/null session is cleared",
+    "success waits for ready authenticated user, sends signed-out users to sign-in, maps mechanic to /dashboard, and cancels stale redirects",
+    "in-progress uses validated intended route or verified role fallback, fetches once per mount and cancels navigation on unmount",
+    "failure/in-progress retries enter actual sign-in with a validated returnUrl",
+    "mechanic can mount /mechanic and the existing approved /dashboard subset; partner-only pages remain deny-all; mobile logout is reachable; existing plan gate remains"
+  ],
+  "verification": {
+    "baseline": {
+      "command": "node --test --test-reporter=spec apps/web/tests/production-auth-navigation.test.cjs",
+      "exitCode": 1,
+      "tests": 35,
+      "failed": 29,
+      "passed": 6,
+      "note": "Corrected JSX harness before this baseline; all failures then represented expected behavioral assertions."
+    },
+    "finalTests": {
+      "command": "node --test apps/web/tests/production-auth-navigation.test.cjs apps/web/tests/auth-regression.test.cjs apps/web/tests/mfa-password-proof.test.cjs apps/web/tests/partner-audit-regression.test.cjs",
+      "exitCode": 0,
+      "tests": 59,
+      "passed": 59,
+      "skipped": 0,
+      "focusedNewTests": 39
+    },
+    "typescript": {
+      "command": "node apps/web/node_modules/typescript/bin/tsc --project apps/web/tsconfig.json --noEmit --incremental false",
+      "exitCode": 0,
+      "output": "[raw content omitted; structured evidence retained]"
+    },
+    "diffCheck": {
+      "command": "git diff --check",
+      "exitCode": 0
+    }
+  },
+  "literalImpact": {
+    "callers": [
+      "expired-session/admin forms",
+      "auth in-progress/failure/success routes",
+      "all partner/mechanic pages using PartnershipShell"
+    ],
+    "publicContractsChanged": false,
+    "apiChanged": false,
+    "dependencyChanges": false,
+    "persistedDataChanged": false,
+    "authorizationBoundary": "Frontend rendering admits mechanic only for API mechanicAllowedPaths counterparts plus the equivalent /mechanic overview alias; server guards unchanged.",
+    "operationalRecovery": "Verification failures expose retry/sign-in and never announce completed authorization; timer cleanup prevents navigation after leaving success/in-progress.",
+    "reversibility": "Uncommitted eight-file review increment; no deployment, merge, provider effect, or schema change."
+  },
+  "limits": [
+    "Root browser verification and independent diff review still required.",
+    "Standard AuthForms/MFAUI currently use role homes rather than the retry returnUrl; they were explicitly outside this agent ownership.",
+    "Real provider/login/staging environments not called by this agent.",
+    "Frontend tests do not establish server authorization or production security.",
+    "Qualified human critical release review remains required; no production readiness claim."
+  ],
+  "designReferences": "All ten local catalog summaries read; Design Taste accessibility source consulted for associated native labels/status and existing-brand controls. No hosted design tools, library addition, or external data transmission.",
+  "learning": "Parent will cover this increment in the consolidated Edirae Learn breakdown and index; no separate write outside delegated files."
+}

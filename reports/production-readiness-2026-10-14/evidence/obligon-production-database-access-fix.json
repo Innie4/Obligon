@@ -1,0 +1,117 @@
+{
+  "createdAt": "2026-10-14T15:46:36.957999+00:00",
+  "authorization": "[redacted sensitive value]",
+  "repository": "/home/inimfon-udoh/Obligon/checkout",
+  "status": "expanded-to-all-private-application-tables; fresh-focused-verification-passed; independent and qualified hosted review outstanding",
+  "files": [
+    {
+      "path": "apps/api/src/migrations/032_private_database_access.sql",
+      "sha256": "e5b415c22997aa7f1bb6e6cd6bd66229257d259f134d91d795a7fc446e373f7b",
+      "lines": 103
+    },
+    {
+      "path": "apps/api/tests/database-private-access.integration.test.mjs",
+      "sha256": "9a1bfbc5afed941664921a19fba86887f7a69a4e6755bac344cb7c49e2f5fb55",
+      "lines": 207
+    }
+  ],
+  "problem": "Private application data must be accessed through the authenticated backend API; existing direct Data API privileges and private policies do not enforce that boundary.",
+  "beforeEvidence": "/tmp/obligon-remaining-access-proof.json",
+  "auditReport": "/tmp/obligon-production-remaining-access-audit.json",
+  "changes": [
+    "Explicitly scopes all63 application tables from migrations001-031 and schema_migrations runner ledger:59 private tables plus4 public catalogs. No unrelated hosted tables, owners or future default ACLs are changed.",
+    "Enables RLS and revokes PUBLIC/anon/authenticated table and independent column privileges on all59 private tables, including identity, sessions, cards/PIN configuration, wallets/ledger, organization data, finance, support, intake and audit records.",
+    "Removes Data API policies for PUBLIC/anon/authenticated on private tables; policies solely for other backend roles are preserved. Existing owner/BYPASSRLS access and explicit backend grants are preserved.",
+    "Retires unnecessary Data API RPC EXECUTE on the two UUID-only identity helpers; trusted owners and explicit backend execute privileges remain.",
+    "Makes4 catalog exceptions read-only and column-scoped to published public API data:pricing_plans,card_plans,job_postings,content_items. pricing_plans.paystack_plan_code is excluded. Existing active/open filters are retained; adds active-only card_plans policy for catalog visibility.",
+    "No row rewrite/backfill/ownership change;5second metadata lock timeout retained. Comments flag private data, unchanged retention, external direct Data API client compatibility and qualified review."
+  ],
+  "verification": {
+    "command": "DOTENV_CONFIG_PATH=/dev/null NODE_ENV=test DATABASE_SSL=false OBLIGON_TEST_DATABASE_URL=[redacted local connection] node --test apps/api/tests/database-private-access.integration.test.mjs",
+    "exitCode": 0,
+    "tests": 3,
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "durationMs": 598.570001,
+    "properties": [
+      "Real NOLOGIN anon/authenticated roles have no BYPASSRLS/superuser; dedicated disposable database contains31 baseline migrations with modeled legacy grants and dummy rows only.",
+      "Actual public-schema table inventory equals the explicit59 private+4catalog names; every application-owned table is covered.",
+      "SELECT/INSERT/UPDATE/DELETE/TRUNCATE denied for both Data API roles on each59 private tables (590table commands); independent effective column SELECT/INSERT/UPDATE/REFERENCES privileges also absent.",
+      "Private column reads and both UUID helper calls denied; account suspension does not alter direct wallet/card permission denial.",
+      "Explicit PUBLIC/anon/auth column-only grants removed; private Data API policies removed while a backend-only fixture policy remains.",
+      "Trusted owner and temporary explicit-privilege/BYPASSRLS backend read all63 tables and execute UUID helpers; dummy user/financial/state/ledger insert/update/delete operations work and roll back.",
+      "Both Data API roles can read published fields in all4 catalogs, see active/open rows and cannot read inactive/closed rows; catalog INSERT/UPDATE/DELETE/TRUNCATE and private processor binding reads denied.",
+      "Reapplying032leaves financial dummy rows and schema_migrations ledger unchanged; normal migration runner reports no pending migrations.",
+      "git diff --check exit0; temporary backend group role and dedicated database removed."
+    ],
+    "diagnostics": [
+      "An intermediate test UPDATE probe selected a GENERATED ALWAYS identity column and failed428C9 before reaching privilege checks. Probe corrected to use non-generated/non-identity columns; final focused run3/3passed."
+    ]
+  },
+  "impactAssessment": {
+    "callers": "No direct Supabase Data API .from calls found in apps/web or apps/api/src; sole SDK client is server storage wrapper using storage.from. HTTP API uses direct PostgreSQL pool; Supabase Auth and Storage endpoints unchanged.",
+    "publicContracts": "Existing browser and authenticated HTTP API contracts remain; direct Data API private-table/policy/RPC access intentionally denied. Public catalogs are filtered read-only published columns. Unknown external direct Data API clients may break and require qualified review.",
+    "persistedData": "No data rows rewritten; changes limited to privilege/policy/RLS metadata and explanatory comments.",
+    "authorization": "[redacted sensitive value]",
+    "generator": "Fresh schema runner includes032 normally; future tables still require explicit access review because unknown hosted owner default privileges are not rewritten.",
+    "recovery": "Migration runner executes032transactionally before HTTP startup; lock/privilege/dependent-grant failure rolls back and exits. Do not restore broad private Data API grants for rollback; recover approved backend ownership/privileges or disable Data API pending qualified remediation."
+  },
+  "sourceDocuments": [
+    "https://supabase.com/docs/guides/api/securing-your-api",
+    "https://supabase.com/docs/guides/database/postgres/column-level-security",
+    "https://www.postgresql.org/docs/16/sql-revoke.html",
+    "https://www.postgresql.org/docs/16/ddl-rowsecurity.html"
+  ],
+  "limitationsAndReleaseGates": [
+    "Live Supabase Data API exposed schemas, effective/inherited grants, additional policies, function owners and backend ownership/BYPASSRLS were not inspected.",
+    "Qualified database/auth review must confirm actual hosted backend privileges, function ownership, grantor/dependency paths, custom role memberships and external direct Data API consumers before deployment.",
+    "Unknown future owner default ACLs and unrelated hosted objects remain unchanged. Future generated private tables require explicit access review; inventory regression catches application schema additions.",
+    "Existing data retention/size/growth not supplied; metadata changes avoid row rewrite but require brief exclusive locks and operator deployment review.",
+    "Existing rawpostgres16 CI bootstrap lacks Supabase auth.uid/group roles; not expanded or modified.",
+    "No production database changes, provider network requests, real credentials/data/funds, new services/dependencies/tables/CI/model changes, deployment or commit performed.",
+    "Root owns broad integration, independent review and the single Edirae Learn breakdown; no release readiness/security guarantee follows from these local permission tests."
+  ],
+  "privateTableCount": 59,
+  "publicCatalogCount": 4,
+  "publicCatalogContract": {
+    "pricing_plans": [
+      "code",
+      "name",
+      "price_kobo",
+      "interval",
+      "features",
+      "highlighted",
+      "active"
+    ],
+    "card_plans": [
+      "code",
+      "name",
+      "amount_kobo",
+      "interval",
+      "features",
+      "active",
+      "sort_order"
+    ],
+    "job_postings": [
+      "id",
+      "title",
+      "department",
+      "location",
+      "employment_type",
+      "description",
+      "requirements",
+      "status",
+      "created_at"
+    ],
+    "content_items": [
+      "id",
+      "kind",
+      "title",
+      "body",
+      "meta",
+      "sort_order",
+      "active"
+    ]
+  }
+}

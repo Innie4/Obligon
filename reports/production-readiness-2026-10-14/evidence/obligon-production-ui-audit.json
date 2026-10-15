@@ -1,0 +1,3291 @@
+{
+  "task": "Production frontend route and source audit",
+  "date": "2026-10-14",
+  "baseCommit": "5914f6ebfc2f102255040eba80defbbb58f7ef67",
+  "scope": "Read-only route, component, client and endpoint contract audit before delegated fixes. New findings beyond prior38; no browser interaction by this agent.",
+  "limitations": [
+    "Source-only functional findings require root integration/browser verification.",
+    "Hosted design tools not used; all ten local reference catalog summaries consulted. Existing green/navy brand kept; no new library selected.",
+    "Money, tenant/auth and provider readiness remain subject to isolated adversarial tests and qualified human review; runtime authentication/data sources not assumed safe from presence of APIs."
+  ],
+  "routeCount": 72,
+  "routeCategoryCounts": {
+    "admin": 10,
+    "auth": "[redacted sensitive value]",
+    "company": 13,
+    "customer": 12,
+    "mechanic": 1,
+    "partner": 13,
+    "public": 12
+  },
+  "routes": [
+    {
+      "route": "/admin/companies",
+      "category": "admin",
+      "page": "apps/web/app/admin/companies/page.tsx",
+      "components": [],
+      "imports": [
+        "next/navigation"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/admin/discount-approvals",
+      "category": "admin",
+      "page": "apps/web/app/admin/discount-approvals/page.tsx",
+      "components": [
+        "AdminShell",
+        "DiscountApprovals"
+      ],
+      "imports": [
+        "@/components/admin-dashboard/AdminShell",
+        "@/components/admin-dashboard/DiscountApprovals"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [
+        "/api/admin/discount-requests",
+        "DiscountApprovals"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/admin/disputes",
+      "category": "admin",
+      "page": "apps/web/app/admin/disputes/page.tsx",
+      "components": [
+        "AdminScreen",
+        "AdminShell"
+      ],
+      "imports": [
+        "@/components/admin-dashboard/AdminScreen",
+        "@/components/admin-dashboard/AdminShell"
+      ],
+      "pageKey": "disputes",
+      "screenAndApiDependencies": [
+        "/api/admin/disputes",
+        "AdminScreen"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/admin/intake",
+      "category": "admin",
+      "page": "apps/web/app/admin/intake/page.tsx",
+      "components": [
+        "AdminShell",
+        "IntakeConsole"
+      ],
+      "imports": [
+        "@/components/admin-dashboard/AdminShell",
+        "@/components/admin-dashboard/IntakeConsole"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [
+        "/api/admin/{stations/review,intake/applications,intake/leads,intake/privacy,jobs,email-delivery,activity,financial-activity}",
+        "IntakeConsole"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/admin/login",
+      "category": "admin",
+      "page": "apps/web/app/admin/login/page.tsx",
+      "components": [
+        "AlertTriangle",
+        "AuthShell",
+        "Link",
+        "Loader2",
+        "Lock",
+        "Mail",
+        "ShieldCheck"
+      ],
+      "imports": [
+        "next/navigation",
+        "react",
+        "next/link",
+        "lucide-react",
+        "@/components/shared/AuthContext",
+        "@/components/auth/AuthShell",
+        "@/components/site/routes",
+        "@/components/shared/Toast"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/admin/operations",
+      "category": "admin",
+      "page": "apps/web/app/admin/operations/page.tsx",
+      "components": [
+        "AdminShell",
+        "OperationsInbox"
+      ],
+      "imports": [
+        "@/components/admin-dashboard/AdminShell",
+        "@/components/admin-dashboard/OperationsInbox"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [
+        "/api/admin/{support,fuel-review,payout-accounts,settlement-review}",
+        "OperationsInbox"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/admin",
+      "category": "admin",
+      "page": "apps/web/app/admin/page.tsx",
+      "components": [
+        "AdminScreen",
+        "AdminShell"
+      ],
+      "imports": [
+        "@/components/admin-dashboard/AdminScreen",
+        "@/components/admin-dashboard/AdminShell"
+      ],
+      "pageKey": "companies",
+      "screenAndApiDependencies": [
+        "/api/admin/companies",
+        "AdminScreen"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/admin/partner-applications",
+      "category": "admin",
+      "page": "apps/web/app/admin/partner-applications/page.tsx",
+      "components": [
+        "AdminScreen",
+        "AdminShell"
+      ],
+      "imports": [
+        "@/components/admin-dashboard/AdminScreen",
+        "@/components/admin-dashboard/AdminShell"
+      ],
+      "pageKey": "applications",
+      "screenAndApiDependencies": [
+        "/api/admin/applications",
+        "/api/admin/card-replacements",
+        "/api/admin/card-requests",
+        "/api/admin/card-requests/:id/{identity,approve,reject,reconcile}",
+        "AdminScreen"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/admin/reports",
+      "category": "admin",
+      "page": "apps/web/app/admin/reports/page.tsx",
+      "components": [
+        "AdminScreen",
+        "AdminShell"
+      ],
+      "imports": [
+        "@/components/admin-dashboard/AdminScreen",
+        "@/components/admin-dashboard/AdminShell"
+      ],
+      "pageKey": "reports",
+      "screenAndApiDependencies": [
+        "/api/admin/reports",
+        "AdminScreen"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/admin/staff",
+      "category": "admin",
+      "page": "apps/web/app/admin/staff/page.tsx",
+      "components": [
+        "AdminScreen",
+        "AdminShell"
+      ],
+      "imports": [
+        "@/components/admin-dashboard/AdminScreen",
+        "@/components/admin-dashboard/AdminShell"
+      ],
+      "pageKey": "staff",
+      "screenAndApiDependencies": [
+        "/api/admin/staff",
+        "AdminScreen"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/auth/failure",
+      "category": "auth",
+      "page": "apps/web/app/auth/failure/page.tsx",
+      "components": [
+        "AuthShell",
+        "AuthStatus"
+      ],
+      "imports": [
+        "next/navigation",
+        "react",
+        "@/components/auth/AuthShell",
+        "@/components/auth/AuthStatus",
+        "@/components/site/routes"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/auth/in-progress",
+      "category": "auth",
+      "page": "apps/web/app/auth/in-progress/page.tsx",
+      "components": [
+        "AuthShell",
+        "AuthStatus"
+      ],
+      "imports": [
+        "next/navigation",
+        "react",
+        "@/components/auth/AuthShell",
+        "@/components/auth/AuthStatus",
+        "@/components/site/routes",
+        "@/lib/services",
+        "@/lib/services/types"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": [
+        "/api/auth/session"
+      ]
+    },
+    {
+      "route": "/auth/login",
+      "category": "auth",
+      "page": "apps/web/app/auth/login/page.tsx",
+      "components": [
+        "AuthForms",
+        "AuthShell"
+      ],
+      "imports": [
+        "@/components/auth/AuthForms",
+        "@/components/auth/AuthShell"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [
+        "/api/auth/login",
+        "AuthForms"
+      ],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/auth/logout",
+      "category": "auth",
+      "page": "apps/web/app/auth/logout/page.tsx",
+      "components": [
+        "AuthShell",
+        "Loader2"
+      ],
+      "imports": [
+        "react",
+        "next/navigation",
+        "lucide-react",
+        "@/components/auth/AuthShell",
+        "@/components/site/routes",
+        "@/components/shared/AuthContext"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/auth/mfa/challenge",
+      "category": "auth",
+      "page": "apps/web/app/auth/mfa/challenge/page.tsx",
+      "components": [
+        "MFASetupUI"
+      ],
+      "imports": [
+        "@/components/auth/MFAUI"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [
+        "/api/auth/mfa/challenge",
+        "MFASetupUI"
+      ],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/auth/mfa/setup",
+      "category": "auth",
+      "page": "apps/web/app/auth/mfa/setup/page.tsx",
+      "components": [
+        "MFASetupUI"
+      ],
+      "imports": [
+        "@/components/auth/MFAUI"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [
+        "/api/auth/mfa/{setup,enable}",
+        "MFASetupUI"
+      ],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/auth/session-expired",
+      "category": "auth",
+      "page": "apps/web/app/auth/session-expired/page.tsx",
+      "components": [
+        "AlertTriangle",
+        "ArrowLeft",
+        "AuthShell",
+        "Clock",
+        "Link"
+      ],
+      "imports": [
+        "react",
+        "next/link",
+        "next/navigation",
+        "lucide-react",
+        "@/components/auth/AuthShell",
+        "@/components/site/routes",
+        "@/components/shared/AuthContext",
+        "@/components/shared/Toast"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/auth/signup",
+      "category": "auth",
+      "page": "apps/web/app/auth/signup/page.tsx",
+      "components": [
+        "AuthForms",
+        "AuthShell"
+      ],
+      "imports": [
+        "@/components/auth/AuthForms",
+        "@/components/auth/AuthShell"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [
+        "/api/auth/signup",
+        "AuthForms"
+      ],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/auth/success",
+      "category": "auth",
+      "page": "apps/web/app/auth/success/page.tsx",
+      "components": [
+        "AuthShell",
+        "SuccessAutoRedirect",
+        "SuccessHonesty",
+        "Suspense"
+      ],
+      "imports": [
+        "react",
+        "@/components/auth/AuthShell",
+        "@/components/auth/SuccessAutoRedirect",
+        "@/components/auth/SuccessHonesty"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [
+        "AuthProvider",
+        "SuccessAutoRedirect"
+      ],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/auth/verify-email",
+      "category": "auth",
+      "page": "apps/web/app/auth/verify-email/page.tsx",
+      "components": [
+        "VerificationUI"
+      ],
+      "imports": [
+        "@/components/auth/VerificationUI"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [
+        "/api/auth/verify/confirm",
+        "/api/auth/verify/send",
+        "VerificationUI"
+      ],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/auth/verify-phone",
+      "category": "auth",
+      "page": "apps/web/app/auth/verify-phone/page.tsx",
+      "components": [],
+      "imports": [
+        "next/navigation",
+        "@/components/auth/VerificationUI",
+        "@/components/site/routes"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/careers",
+      "category": "public",
+      "page": "apps/web/app/careers/page.tsx",
+      "components": [
+        "CareersPage"
+      ],
+      "imports": [
+        "@/components/careers/CareersPage"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [
+        "/api/public/jobs",
+        "/api/public/jobs/apply",
+        "CareersPage"
+      ],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/company/billing",
+      "category": "company",
+      "page": "apps/web/app/company/billing/page.tsx",
+      "components": [
+        "CompanyScreen",
+        "CompanyShell"
+      ],
+      "imports": [
+        "@/components/company-dashboard/CompanyScreen",
+        "@/components/company-dashboard/CompanyShell"
+      ],
+      "pageKey": "billing",
+      "screenAndApiDependencies": [
+        "/api/company/billing",
+        "Billing"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/company/cards",
+      "category": "company",
+      "page": "apps/web/app/company/cards/page.tsx",
+      "components": [
+        "CompanyScreen",
+        "CompanyShell"
+      ],
+      "imports": [
+        "@/components/company-dashboard/CompanyScreen",
+        "@/components/company-dashboard/CompanyShell"
+      ],
+      "pageKey": "cards",
+      "screenAndApiDependencies": [
+        "/api/company/assignments",
+        "/api/company/cards",
+        "/api/company/cards/:id/{freeze,unfreeze}",
+        "Cards"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/company/maintenance",
+      "category": "company",
+      "page": "apps/web/app/company/maintenance/page.tsx",
+      "components": [
+        "CompanyScreen",
+        "CompanyShell"
+      ],
+      "imports": [
+        "@/components/company-dashboard/CompanyScreen",
+        "@/components/company-dashboard/CompanyShell"
+      ],
+      "pageKey": "maintenance",
+      "screenAndApiDependencies": [
+        "/api/company/maintenance",
+        "Maintenance"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/company/notifications",
+      "category": "company",
+      "page": "apps/web/app/company/notifications/page.tsx",
+      "components": [
+        "CompanyScreen",
+        "CompanyShell"
+      ],
+      "imports": [
+        "@/components/company-dashboard/CompanyScreen",
+        "@/components/company-dashboard/CompanyShell"
+      ],
+      "pageKey": "notifications",
+      "screenAndApiDependencies": [
+        "/api/company/notifications",
+        "Notifications"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/company",
+      "category": "company",
+      "page": "apps/web/app/company/page.tsx",
+      "components": [
+        "CompanyScreen",
+        "CompanyShell"
+      ],
+      "imports": [
+        "@/components/company-dashboard/CompanyScreen",
+        "@/components/company-dashboard/CompanyShell"
+      ],
+      "pageKey": "overview",
+      "screenAndApiDependencies": [
+        "/api/company/overview",
+        "Overview"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/company/reports",
+      "category": "company",
+      "page": "apps/web/app/company/reports/page.tsx",
+      "components": [
+        "CompanyScreen",
+        "CompanyShell"
+      ],
+      "imports": [
+        "@/components/company-dashboard/CompanyScreen",
+        "@/components/company-dashboard/CompanyShell"
+      ],
+      "pageKey": "reports",
+      "screenAndApiDependencies": [
+        "/api/company/reports",
+        "Reports"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/company/roadside",
+      "category": "company",
+      "page": "apps/web/app/company/roadside/page.tsx",
+      "components": [
+        "CompanyScreen",
+        "CompanyShell"
+      ],
+      "imports": [
+        "@/components/company-dashboard/CompanyScreen",
+        "@/components/company-dashboard/CompanyShell"
+      ],
+      "pageKey": "roadside",
+      "screenAndApiDependencies": [
+        "/api/company/roadside",
+        "Roadside"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/company/settings",
+      "category": "company",
+      "page": "apps/web/app/company/settings/page.tsx",
+      "components": [
+        "CompanyScreen",
+        "CompanyShell"
+      ],
+      "imports": [
+        "@/components/company-dashboard/CompanyScreen",
+        "@/components/company-dashboard/CompanyShell"
+      ],
+      "pageKey": "settings",
+      "screenAndApiDependencies": [
+        "/api/company/settings",
+        "SettingsPage"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/company/stations",
+      "category": "company",
+      "page": "apps/web/app/company/stations/page.tsx",
+      "components": [
+        "CompanyScreen",
+        "CompanyShell"
+      ],
+      "imports": [
+        "@/components/company-dashboard/CompanyScreen",
+        "@/components/company-dashboard/CompanyShell"
+      ],
+      "pageKey": "stations",
+      "screenAndApiDependencies": [
+        "/api/company/stations",
+        "Stations"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/company/support",
+      "category": "company",
+      "page": "apps/web/app/company/support/page.tsx",
+      "components": [
+        "CompanyScreen",
+        "CompanyShell"
+      ],
+      "imports": [
+        "@/components/company-dashboard/CompanyScreen",
+        "@/components/company-dashboard/CompanyShell"
+      ],
+      "pageKey": "support",
+      "screenAndApiDependencies": [
+        "/api/company/support/tickets",
+        "Support"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/company/team",
+      "category": "company",
+      "page": "apps/web/app/company/team/page.tsx",
+      "components": [
+        "CompanyScreen",
+        "CompanyShell"
+      ],
+      "imports": [
+        "@/components/company-dashboard/CompanyScreen",
+        "@/components/company-dashboard/CompanyShell"
+      ],
+      "pageKey": "team",
+      "screenAndApiDependencies": [
+        "/api/company/team",
+        "Team"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/company/transactions",
+      "category": "company",
+      "page": "apps/web/app/company/transactions/page.tsx",
+      "components": [
+        "CompanyScreen",
+        "CompanyShell"
+      ],
+      "imports": [
+        "@/components/company-dashboard/CompanyScreen",
+        "@/components/company-dashboard/CompanyShell"
+      ],
+      "pageKey": "transactions",
+      "screenAndApiDependencies": [
+        "/api/company/assignments",
+        "/api/company/reports/export",
+        "/api/company/transactions",
+        "Transactions"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/company/vehicles",
+      "category": "company",
+      "page": "apps/web/app/company/vehicles/page.tsx",
+      "components": [
+        "CompanyScreen",
+        "CompanyShell"
+      ],
+      "imports": [
+        "@/components/company-dashboard/CompanyScreen",
+        "@/components/company-dashboard/CompanyShell"
+      ],
+      "pageKey": "vehicles",
+      "screenAndApiDependencies": [
+        "/api/company/assignments",
+        "/api/company/drivers",
+        "/api/company/reports/export",
+        "/api/company/vehicles",
+        "Vehicles"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/cookie-policy",
+      "category": "public",
+      "page": "apps/web/app/cookie-policy/page.tsx",
+      "components": [
+        "LegalPage"
+      ],
+      "imports": [
+        "@/components/legal/LegalPage"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [
+        "/api/public/cookie-consent",
+        "LegalPage"
+      ],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/customer/card",
+      "category": "customer",
+      "page": "apps/web/app/customer/card/page.tsx",
+      "components": [
+        "CustomerScreen",
+        "CustomerShell"
+      ],
+      "imports": [
+        "@/components/customer-dashboard/CustomerScreen",
+        "@/components/customer-dashboard/CustomerShell"
+      ],
+      "pageKey": "card",
+      "screenAndApiDependencies": [
+        "/api/customer/card",
+        "/api/customer/card-plans",
+        "/api/customer/card-request",
+        "/api/customer/card-request/cancel",
+        "/api/customer/card-request/checkout",
+        "/api/customer/card-request/details",
+        "/api/customer/card-request/open",
+        "/api/customer/card-request/progress",
+        "/api/customer/card-request/resume",
+        "/api/customer/card-request/verify-payment",
+        "/api/customer/cards/:id/{freeze,unfreeze,replace,report-lost,pin}",
+        "/api/customer/fuel-checkout",
+        "/api/customer/subscription",
+        "/api/public/payments/config",
+        "CardPage"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/customer/fuel-checkout",
+      "category": "customer",
+      "page": "apps/web/app/customer/fuel-checkout/page.tsx",
+      "components": [
+        "CustomerReturnParams"
+      ],
+      "imports": [
+        "next/navigation",
+        "@/lib/customer-card-routes"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": [],
+      "redirect": "Server redirect to /customer/card, preserving query and assigning paymentFlow for matching return reference"
+    },
+    {
+      "route": "/customer/notifications",
+      "category": "customer",
+      "page": "apps/web/app/customer/notifications/page.tsx",
+      "components": [
+        "CustomerScreen",
+        "CustomerShell"
+      ],
+      "imports": [
+        "@/components/customer-dashboard/CustomerScreen",
+        "@/components/customer-dashboard/CustomerShell"
+      ],
+      "pageKey": "notifications",
+      "screenAndApiDependencies": [
+        "/api/customer/notifications",
+        "NotificationsPage"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/customer",
+      "category": "customer",
+      "page": "apps/web/app/customer/page.tsx",
+      "components": [
+        "CustomerScreen",
+        "CustomerShell"
+      ],
+      "imports": [
+        "@/components/customer-dashboard/CustomerScreen",
+        "@/components/customer-dashboard/CustomerShell"
+      ],
+      "pageKey": "overview",
+      "screenAndApiDependencies": [
+        "/api/customer/card",
+        "/api/customer/overview",
+        "OverviewPage"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/customer/profile",
+      "category": "customer",
+      "page": "apps/web/app/customer/profile/page.tsx",
+      "components": [
+        "CustomerScreen",
+        "CustomerShell"
+      ],
+      "imports": [
+        "@/components/customer-dashboard/CustomerScreen",
+        "@/components/customer-dashboard/CustomerShell"
+      ],
+      "pageKey": "profile",
+      "screenAndApiDependencies": [
+        "/api/auth/change-password",
+        "/api/auth/mfa",
+        "/api/customer/profile",
+        "/api/push",
+        "ProfilePage"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/customer/report-problem",
+      "category": "customer",
+      "page": "apps/web/app/customer/report-problem/page.tsx",
+      "components": [
+        "CustomerScreen",
+        "CustomerShell"
+      ],
+      "imports": [
+        "@/components/customer-dashboard/CustomerScreen",
+        "@/components/customer-dashboard/CustomerShell"
+      ],
+      "pageKey": "reportProblem",
+      "screenAndApiDependencies": [
+        "/api/customer/support/tickets",
+        "SupportPage"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/customer/stations",
+      "category": "customer",
+      "page": "apps/web/app/customer/stations/page.tsx",
+      "components": [
+        "CustomerScreen",
+        "CustomerShell"
+      ],
+      "imports": [
+        "@/components/customer-dashboard/CustomerScreen",
+        "@/components/customer-dashboard/CustomerShell"
+      ],
+      "pageKey": "stations",
+      "screenAndApiDependencies": [
+        "/api/customer/stations",
+        "StationsPage"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/customer/subscription",
+      "category": "customer",
+      "page": "apps/web/app/customer/subscription/page.tsx",
+      "components": [
+        "CustomerReturnParams"
+      ],
+      "imports": [
+        "next/navigation",
+        "@/lib/customer-card-routes"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": [],
+      "redirect": "Server redirect to /customer/card, preserving query and assigning paymentFlow for matching return reference"
+    },
+    {
+      "route": "/customer/support",
+      "category": "customer",
+      "page": "apps/web/app/customer/support/page.tsx",
+      "components": [
+        "CustomerScreen",
+        "CustomerShell"
+      ],
+      "imports": [
+        "@/components/customer-dashboard/CustomerScreen",
+        "@/components/customer-dashboard/CustomerShell"
+      ],
+      "pageKey": "support",
+      "screenAndApiDependencies": [
+        "/api/customer/services",
+        "/api/customer/support/tickets",
+        "/api/customer/support/tickets/:id/messages",
+        "SupportPage"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/customer/transaction-detail",
+      "category": "customer",
+      "page": "apps/web/app/customer/transaction-detail/page.tsx",
+      "components": [
+        "CustomerScreen",
+        "CustomerShell"
+      ],
+      "imports": [
+        "@/components/customer-dashboard/CustomerScreen",
+        "@/components/customer-dashboard/CustomerShell"
+      ],
+      "pageKey": "transactionDetail",
+      "screenAndApiDependencies": [
+        "/api/customer/transactions/all",
+        "TransactionsPage"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/customer/transactions",
+      "category": "customer",
+      "page": "apps/web/app/customer/transactions/page.tsx",
+      "components": [
+        "CustomerScreen",
+        "CustomerShell"
+      ],
+      "imports": [
+        "@/components/customer-dashboard/CustomerScreen",
+        "@/components/customer-dashboard/CustomerShell"
+      ],
+      "pageKey": "transactions",
+      "screenAndApiDependencies": [
+        "/api/customer/transactions/all",
+        "TransactionsPage"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/customer/wallet",
+      "category": "customer",
+      "page": "apps/web/app/customer/wallet/page.tsx",
+      "components": [
+        "CustomerScreen",
+        "CustomerShell"
+      ],
+      "imports": [
+        "@/components/customer-dashboard/CustomerScreen",
+        "@/components/customer-dashboard/CustomerShell"
+      ],
+      "pageKey": "wallet",
+      "screenAndApiDependencies": [
+        "/api/customer/overview",
+        "/api/customer/wallet",
+        "/api/customer/wallet/topup",
+        "/api/public/payments/config",
+        "WalletPage"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/dashboard/billing",
+      "category": "partner",
+      "page": "apps/web/app/dashboard/billing/page.tsx",
+      "components": [
+        "PartnershipShell",
+        "SubscriptionPanel"
+      ],
+      "imports": [
+        "@/components/dashboard/PartnershipShell",
+        "@/components/shared/SubscriptionPanel"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session",
+        "PartnerNotificationsProvider /api/partner/notifications",
+        "PartnerSubscriptionGate /api/partner/billing"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/dashboard/card-verification",
+      "category": "partner",
+      "page": "apps/web/app/dashboard/card-verification/page.tsx",
+      "components": [
+        "DashboardScreen",
+        "PartnershipShell"
+      ],
+      "imports": [
+        "@/components/dashboard/DashboardScreen",
+        "@/components/dashboard/PartnershipShell"
+      ],
+      "pageKey": "verification",
+      "screenAndApiDependencies": [
+        "/api/partner/fuel-checkout/fulfill",
+        "/api/partner/pos/authorize",
+        "/api/partner/pricing",
+        "POSTerminalPage"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session",
+        "PartnerNotificationsProvider /api/partner/notifications",
+        "PartnerSubscriptionGate /api/partner/billing"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/dashboard/disputes",
+      "category": "partner",
+      "page": "apps/web/app/dashboard/disputes/page.tsx",
+      "components": [
+        "DashboardScreen",
+        "PartnershipShell"
+      ],
+      "imports": [
+        "@/components/dashboard/DashboardScreen",
+        "@/components/dashboard/PartnershipShell"
+      ],
+      "pageKey": "disputes",
+      "screenAndApiDependencies": [
+        "/api/partner/disputes",
+        "DisputesPage"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session",
+        "PartnerNotificationsProvider /api/partner/notifications",
+        "PartnerSubscriptionGate /api/partner/billing"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/dashboard/fuel-pricing",
+      "category": "partner",
+      "page": "apps/web/app/dashboard/fuel-pricing/page.tsx",
+      "components": [
+        "DashboardScreen",
+        "PartnershipShell"
+      ],
+      "imports": [
+        "@/components/dashboard/DashboardScreen",
+        "@/components/dashboard/PartnershipShell"
+      ],
+      "pageKey": "pricing",
+      "screenAndApiDependencies": [
+        "/api/partner/discounts",
+        "/api/partner/pricing",
+        "FuelPricingPage"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session",
+        "PartnerNotificationsProvider /api/partner/notifications",
+        "PartnerSubscriptionGate /api/partner/billing"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/dashboard/notifications",
+      "category": "partner",
+      "page": "apps/web/app/dashboard/notifications/page.tsx",
+      "components": [
+        "DashboardScreen",
+        "PartnershipShell"
+      ],
+      "imports": [
+        "@/components/dashboard/DashboardScreen",
+        "@/components/dashboard/PartnershipShell"
+      ],
+      "pageKey": "notifications",
+      "screenAndApiDependencies": [
+        "/api/partner/notifications",
+        "NotificationsPage"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session",
+        "PartnerNotificationsProvider /api/partner/notifications",
+        "PartnerSubscriptionGate /api/partner/billing"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/dashboard",
+      "category": "partner",
+      "page": "apps/web/app/dashboard/page.tsx",
+      "components": [
+        "DashboardScreen",
+        "PartnershipShell"
+      ],
+      "imports": [
+        "@/components/dashboard/DashboardScreen",
+        "@/components/dashboard/PartnershipShell"
+      ],
+      "pageKey": "overview",
+      "screenAndApiDependencies": [
+        "/api/partner/overview",
+        "OverviewPage"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session",
+        "PartnerNotificationsProvider /api/partner/notifications",
+        "PartnerSubscriptionGate /api/partner/billing"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/dashboard/reports",
+      "category": "partner",
+      "page": "apps/web/app/dashboard/reports/page.tsx",
+      "components": [
+        "DashboardScreen",
+        "PartnershipShell"
+      ],
+      "imports": [
+        "@/components/dashboard/DashboardScreen",
+        "@/components/dashboard/PartnershipShell"
+      ],
+      "pageKey": "reports",
+      "screenAndApiDependencies": [
+        "/api/partner/reports",
+        "/api/partner/reports/export",
+        "ReportsPage"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session",
+        "PartnerNotificationsProvider /api/partner/notifications",
+        "PartnerSubscriptionGate /api/partner/billing"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/dashboard/settings",
+      "category": "partner",
+      "page": "apps/web/app/dashboard/settings/page.tsx",
+      "components": [
+        "DashboardScreen",
+        "PartnershipShell"
+      ],
+      "imports": [
+        "@/components/dashboard/DashboardScreen",
+        "@/components/dashboard/PartnershipShell"
+      ],
+      "pageKey": "settings",
+      "screenAndApiDependencies": [
+        "/api/partner/settings",
+        "/api/partner/settings/api-keys",
+        "/api/partner/settings/service-requests",
+        "SettingsPage"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session",
+        "PartnerNotificationsProvider /api/partner/notifications",
+        "PartnerSubscriptionGate /api/partner/billing"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/dashboard/settlements",
+      "category": "partner",
+      "page": "apps/web/app/dashboard/settlements/page.tsx",
+      "components": [
+        "DashboardScreen",
+        "PartnershipShell"
+      ],
+      "imports": [
+        "@/components/dashboard/DashboardScreen",
+        "@/components/dashboard/PartnershipShell"
+      ],
+      "pageKey": "settlements",
+      "screenAndApiDependencies": [
+        "/api/partner/bank-accounts",
+        "/api/partner/settlements",
+        "SettlementsPage"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session",
+        "PartnerNotificationsProvider /api/partner/notifications",
+        "PartnerSubscriptionGate /api/partner/billing"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/dashboard/staff",
+      "category": "partner",
+      "page": "apps/web/app/dashboard/staff/page.tsx",
+      "components": [
+        "DashboardScreen",
+        "PartnershipShell"
+      ],
+      "imports": [
+        "@/components/dashboard/DashboardScreen",
+        "@/components/dashboard/PartnershipShell"
+      ],
+      "pageKey": "staff",
+      "screenAndApiDependencies": [
+        "/api/partner/staff",
+        "StaffPage"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session",
+        "PartnerNotificationsProvider /api/partner/notifications",
+        "PartnerSubscriptionGate /api/partner/billing"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/dashboard/station-profile",
+      "category": "partner",
+      "page": "apps/web/app/dashboard/station-profile/page.tsx",
+      "components": [
+        "DashboardScreen",
+        "PartnershipShell"
+      ],
+      "imports": [
+        "@/components/dashboard/DashboardScreen",
+        "@/components/dashboard/PartnershipShell"
+      ],
+      "pageKey": "station",
+      "screenAndApiDependencies": [
+        "/api/partner/station",
+        "/api/partner/stations",
+        "StationProfilePage"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session",
+        "PartnerNotificationsProvider /api/partner/notifications",
+        "PartnerSubscriptionGate /api/partner/billing"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/dashboard/transactions",
+      "category": "partner",
+      "page": "apps/web/app/dashboard/transactions/page.tsx",
+      "components": [
+        "DashboardScreen",
+        "PartnershipShell"
+      ],
+      "imports": [
+        "@/components/dashboard/DashboardScreen",
+        "@/components/dashboard/PartnershipShell"
+      ],
+      "pageKey": "transactions",
+      "screenAndApiDependencies": [
+        "/api/partner/transactions",
+        "/api/partner/transactions/export",
+        "TransactionsPage"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session",
+        "PartnerNotificationsProvider /api/partner/notifications",
+        "PartnerSubscriptionGate /api/partner/billing"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/dashboard/verify",
+      "category": "partner",
+      "page": "apps/web/app/dashboard/verify/page.tsx",
+      "components": [
+        "PartnerVerificationUI",
+        "PartnershipShell"
+      ],
+      "imports": [
+        "@/components/dashboard/PartnerVerification",
+        "@/components/dashboard/PartnershipShell"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session",
+        "PartnerNotificationsProvider /api/partner/notifications",
+        "PartnerSubscriptionGate /api/partner/billing"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/forgot-password",
+      "category": "public",
+      "page": "apps/web/app/forgot-password/page.tsx",
+      "components": [
+        "AlertTriangle",
+        "ArrowLeft",
+        "AuthShell",
+        "HTMLFormElement",
+        "Link",
+        "Loader2",
+        "Mail",
+        "ShieldCheck"
+      ],
+      "imports": [
+        "next/link",
+        "next/navigation",
+        "react",
+        "lucide-react",
+        "@/components/auth/AuthShell",
+        "@/components/site/routes",
+        "@/components/site/Input",
+        "@/components/shared/Toast",
+        "@/lib/services"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/login",
+      "category": "public",
+      "page": "apps/web/app/login/page.tsx",
+      "components": [],
+      "imports": [
+        "next/navigation",
+        "@/components/site/routes"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/mechanic",
+      "category": "mechanic",
+      "page": "apps/web/app/mechanic/page.tsx",
+      "components": [
+        "DashboardScreen",
+        "PartnershipShell"
+      ],
+      "imports": [
+        "@/components/dashboard/DashboardScreen",
+        "@/components/dashboard/PartnershipShell"
+      ],
+      "pageKey": "overview",
+      "screenAndApiDependencies": [
+        "/api/partner/overview",
+        "OverviewPage"
+      ],
+      "sharedDependencies": [
+        "AuthGuard",
+        "/api/auth/session",
+        "PartnerNotificationsProvider /api/partner/notifications",
+        "PartnerSubscriptionGate /api/partner/billing"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/",
+      "category": "public",
+      "page": "apps/web/app/page.tsx",
+      "components": [
+        "ClosingCta",
+        "Footer",
+        "Header",
+        "Hero",
+        "Partners",
+        "Pricing",
+        "ProductShowcase",
+        "Story"
+      ],
+      "imports": [
+        "@/components/landing/ClosingCta",
+        "@/components/landing/Footer",
+        "@/components/landing/Header",
+        "@/components/landing/Hero",
+        "@/components/landing/Partners",
+        "@/components/landing/Pricing",
+        "@/components/landing/ProductShowcase",
+        "@/components/landing/Story"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/privacy-policy",
+      "category": "public",
+      "page": "apps/web/app/privacy-policy/page.tsx",
+      "components": [
+        "LegalPage"
+      ],
+      "imports": [
+        "@/components/legal/LegalPage"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [
+        "/api/public/data-requests",
+        "LegalPage"
+      ],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/reset-password",
+      "category": "public",
+      "page": "apps/web/app/reset-password/page.tsx",
+      "components": [
+        "AlertTriangle",
+        "ArrowLeft",
+        "AuthShell",
+        "CheckCircle2",
+        "KeyRound",
+        "Link",
+        "Loader2",
+        "Record"
+      ],
+      "imports": [
+        "next/link",
+        "next/navigation",
+        "react",
+        "lucide-react",
+        "@/components/auth/AuthShell",
+        "@/components/site/routes",
+        "@/components/shared/Toast",
+        "@/lib/services"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/solutions/energyvista",
+      "category": "public",
+      "page": "apps/web/app/solutions/energyvista/page.tsx",
+      "components": [
+        "SolutionPage"
+      ],
+      "imports": [
+        "@/components/solutions/SolutionPage"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/solutions/fuelvista",
+      "category": "public",
+      "page": "apps/web/app/solutions/fuelvista/page.tsx",
+      "components": [
+        "SolutionPage"
+      ],
+      "imports": [
+        "@/components/solutions/SolutionPage"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/solutions/genvista",
+      "category": "public",
+      "page": "apps/web/app/solutions/genvista/page.tsx",
+      "components": [
+        "SolutionPage"
+      ],
+      "imports": [
+        "@/components/solutions/SolutionPage"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/support",
+      "category": "public",
+      "page": "apps/web/app/support/page.tsx",
+      "components": [
+        "Check",
+        "HTMLInputElement",
+        "Loader2",
+        "PageIntro",
+        "Send",
+        "SiteFooter",
+        "SiteHeader",
+        "Upload"
+      ],
+      "imports": [
+        "react",
+        "next/link",
+        "lucide-react",
+        "@/components/site/PageIntro",
+        "@/components/site/SiteFooter",
+        "@/components/site/SiteHeader",
+        "@/components/site/routes",
+        "@/components/shared/Toast",
+        "@/lib/services"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [
+        "/api/public/contact",
+        "SupportPage"
+      ],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": []
+    },
+    {
+      "route": "/terms-of-service",
+      "category": "public",
+      "page": "apps/web/app/terms-of-service/page.tsx",
+      "components": [
+        "LegalPage"
+      ],
+      "imports": [
+        "@/components/legal/LegalPage"
+      ],
+      "pageKey": null,
+      "screenAndApiDependencies": [
+        "/api/public/(static content)",
+        "LegalPage"
+      ],
+      "sharedDependencies": [
+        "AuthProvider /api/auth/session when tokens present",
+        "CookieConsentBanner /api/public/cookie-consent"
+      ],
+      "directApiEndpoints": []
+    }
+  ],
+  "findings": [
+    {
+      "id": "UI-ME-01",
+      "category": "mechanic",
+      "priority": "P1",
+      "title": "Mechanic role cannot mount its dashboard",
+      "source": [
+        "apps/web/components/dashboard/PartnershipShell.tsx:30",
+        "apps/web/components/dashboard/PartnershipShell.tsx:54",
+        "apps/web/app/mechanic/page.tsx:6",
+        "apps/web/app/dashboard/page.tsx:6"
+      ],
+      "trigger": "Mechanic opens /mechanic or signs in to /dashboard: /mechanic is missing from MECHANIC_ROUTES, then dashboard default allowedRoles is partner only; role home equality prevents another redirect and leaves blank page.",
+      "proposedFix": "Allow mechanic only on the already authorized mechanic route subset; keep partner-only pages denied; make its home and mobile sign-out coherent.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-AU-01",
+      "category": "auth",
+      "priority": "P1",
+      "title": "Real MFA setup errors are replaced with a fake secret and QR",
+      "source": [
+        "apps/web/components/auth/MFAUI.tsx:89"
+      ],
+      "trigger": "mfaSetup rejects with outage/401/config failure; catch fabricates setup and Continue becomes enabled.",
+      "proposedFix": "Show actual recoverable setup error; never fabricate issuer/authenticator state.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-AU-02",
+      "category": "auth",
+      "priority": "P1",
+      "title": "Standalone MFA completion never updates mounted auth context",
+      "source": [
+        "apps/web/components/auth/MFAUI.tsx:135",
+        "apps/web/components/shared/AuthContext.tsx:118",
+        "apps/web/lib/services/client.ts:1113"
+      ],
+      "trigger": "Login returns mfaRequired leaving context loading; challenge writes storage but never setUser/refresh, and routes to fixed /dashboard for all roles.",
+      "proposedFix": "Adopt verified returned user in context and select correct role destination; preserve safe intended route.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-AU-03",
+      "category": "auth",
+      "priority": "P1",
+      "title": "Saved MFA backup codes cannot be entered",
+      "source": [
+        "apps/web/components/auth/MFAUI.tsx:127",
+        "apps/web/components/auth/MFAUI.tsx:223",
+        "apps/api/src/routes/auth.routes.js:909"
+      ],
+      "trigger": "Saved backup codes contain letters and hyphens, but challenge only accepts six numeric digits.",
+      "proposedFix": "Provide explicit backup-code entry using existing server challenge contract; bound/validate input.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-AU-04",
+      "category": "auth",
+      "priority": "P1",
+      "title": "Session-expired reauthentication ignores MFA and role",
+      "source": [
+        "apps/web/app/auth/session-expired/page.tsx:31"
+      ],
+      "trigger": "Any role reauthenticates, or MFA account submits credentials: it announces welcome and pushes /customer regardless mfaRequired.",
+      "proposedFix": "Reuse normal credential/MFA result routing and do not announce full signin until verified.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-AU-05",
+      "category": "auth",
+      "priority": "P2",
+      "title": "In-progress page ignores verified role without return URL and unsafe path guard",
+      "source": [
+        "apps/web/app/auth/in-progress/page.tsx:21",
+        "apps/web/app/auth/in-progress/page.tsx:61"
+      ],
+      "trigger": "Customer/company/admin opens in-progress without query: returnUrl default /dashboard wins role destination; startsWith accepts protocol-relative routes.",
+      "proposedFix": "Use one safe internal-return route helper and role destination fallback.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-AU-06",
+      "category": "auth",
+      "priority": "P2",
+      "title": "Auth failure Retry does not retry authentication",
+      "source": [
+        "apps/web/app/auth/failure/page.tsx:25"
+      ],
+      "trigger": "Retry sets unused local status, refreshes same client page, rendered AuthStatus remains literal failure.",
+      "proposedFix": "Navigate to a concrete retry flow with safe return destination.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-AU-07",
+      "category": "auth",
+      "priority": "P2",
+      "title": "Success page omits mechanic destination and starts while session unresolved",
+      "source": [
+        "apps/web/components/auth/SuccessAutoRedirect.tsx:21"
+      ],
+      "trigger": "Mechanic success routes customer; loading/unauthenticated starts timer and shows dashboard link before role known.",
+      "proposedFix": "Wait for verified session and map every role; signed-out redirect to signin.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-AU-08",
+      "category": "admin",
+      "priority": "P2",
+      "title": "Admin signin falsely announces authorization for non-admin credentials",
+      "source": [
+        "apps/web/app/admin/login/page.tsx:38",
+        "apps/web/app/admin/login/page.tsx:44"
+      ],
+      "trigger": "General login endpoint can return a non-admin user; page still says admin authorization granted before guard redirects.",
+      "proposedFix": "Inspect verified result role and show coherent role outcome without expanding server permissions.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-SH-01",
+      "category": "shared",
+      "priority": "P1",
+      "title": "Failed background refresh replaces last good dashboard records",
+      "source": [
+        "apps/web/components/shared/useAsync.ts:90",
+        "apps/web/components/shared/States.tsx:115"
+      ],
+      "trigger": "Polling rejects while data exists: error set without clearing data, yet boundary branches on any error and hides records.",
+      "proposedFix": "Keep last good records with explicit nonblocking refresh warning, retry, and recover on success.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-SH-02",
+      "category": "shared",
+      "priority": "P2",
+      "title": "Empty-state actions silently dropped by boundary",
+      "source": [
+        "apps/web/components/shared/States.tsx:120"
+      ],
+      "trigger": "Caller supplies empty.action (for example wallet add-funds); boundary only forwards title/message/icon.",
+      "proposedFix": "Forward action and regression-test contract.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-CU-01",
+      "category": "customer",
+      "priority": "P1",
+      "title": "Funding confirmation rounds away kobo and uses binary money arithmetic",
+      "source": [
+        "apps/web/components/customer-dashboard/CustomerModals.tsx:873",
+        "apps/web/components/customer-dashboard/CustomerModals.tsx:880"
+      ],
+      "trigger": "Amount 100.25 with absorbed fee renders Pay 100; customer fee can be a rounded binary calculation and total rounds to whole naira.",
+      "proposedFix": "Parse exact minor units, calculate same provider quote formula with exact integers/decimal, format two decimals.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-CU-02",
+      "category": "customer",
+      "priority": "P1",
+      "title": "Funding config failure claims zero customer fee",
+      "source": [
+        "apps/web/components/customer-dashboard/CustomerModals.tsx:855",
+        "apps/web/components/customer-dashboard/CustomerModals.tsx:1077"
+      ],
+      "trigger": "Config request fails or is pending: fallback says fee absorbed and zero despite unknown actual bearer/fee.",
+      "proposedFix": "Show quote/config loading and recoverable failure; do not enable misleading price authorization.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-CU-03",
+      "category": "customer",
+      "priority": "P1",
+      "title": "Push rejection has no catch or visible error",
+      "source": [
+        "apps/web/components/customer-dashboard/CustomerScreen.tsx:1912",
+        "apps/web/lib/push-subscription.ts:76"
+      ],
+      "trigger": "Permission denied, PushManager or subscription API rejects; handleToggle only finally, leaving unhandled rejection without toast or inline explanation.",
+      "proposedFix": "Catch expected failures, restore truthful toggle and explain user recovery; guard transaction state.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-CU-04",
+      "category": "customer",
+      "priority": "P1",
+      "title": "My Card load failures leave primary controls absent and do not expose retry",
+      "source": [
+        "apps/web/components/customer-dashboard/CustomerScreen.tsx:799",
+        "apps/web/components/customer-dashboard/CustomerScreen.tsx:826"
+      ],
+      "trigger": "Card/request Promise.all rejects: hasCard null so neither card nor request action appears; open-card request rejects without catch.",
+      "proposedFix": "Use explicit loading/error state with retry, cancellation guards, and independent useful data where safe.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-CU-05",
+      "category": "customer",
+      "priority": "P2",
+      "title": "Card purchase refusal directs user to invented support number",
+      "source": [
+        "apps/web/lib/services/client.ts:1206"
+      ],
+      "trigger": "Unexposed 503 card checkout error says contact 0700 000 0000, absent verified support configuration.",
+      "proposedFix": "Use existing support route and remove fictional telephone.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-CU-06",
+      "category": "customer",
+      "priority": "P2",
+      "title": "Wallet load failure shows zero balance and no-confirmed-payments as fact",
+      "source": [
+        "apps/web/components/customer-dashboard/CustomerScreen.tsx:1302",
+        "apps/web/components/customer-dashboard/CustomerScreen.tsx:1363"
+      ],
+      "trigger": "Wallet pending/fails before first load: balance defaults zero while only history has AsyncBoundary error.",
+      "proposedFix": "Show unavailable/loading for unknown funds; preserve stale known balance with timestamp/warning.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-CU-07",
+      "category": "customer",
+      "priority": "P2",
+      "title": "Fuel code and order refresh does not recover visible load error",
+      "source": [
+        "apps/web/components/customer-dashboard/CustomerFuelCheckout.tsx:28"
+      ],
+      "trigger": "Failed refresh sets error; successful refresh does not clear it and no visible load retry control.",
+      "proposedFix": "Clear only relevant resolved errors, expose reload, preserve distinct confirmation error until resolved.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-CU-08",
+      "category": "customer",
+      "priority": "P2",
+      "title": "Receipt deep link reopens after every polling tick",
+      "source": [
+        "apps/web/components/customer-dashboard/CustomerScreen.tsx:388"
+      ],
+      "trigger": "/customer/transaction-detail?id=X opens receipt; closing modal leaves id query and next history poll resets selectedTxn.",
+      "proposedFix": "Consume intended deep link once or clear query on close without resetting user selection.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-CO-01",
+      "category": "company",
+      "priority": "P1",
+      "title": "Team invitation cannot be accepted",
+      "source": [
+        "apps/api/src/routes/company.routes.js:833",
+        "apps/web/components/auth/AuthForms.tsx:494",
+        "apps/api/src/routes/auth.routes.js"
+      ],
+      "trigger": "Invite email points signup?invite; no UI or API redeems invites anywhere in project.",
+      "proposedFix": "Implement isolated one-time expiry/email/organization-bound acceptance workflow with adversarial tests and qualified auth/tenant release review.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "missing_end_to_end_contract"
+    },
+    {
+      "id": "UI-CO-02",
+      "category": "company",
+      "priority": "P1",
+      "title": "Only newest 100 fleet vehicles and cards accessible",
+      "source": [
+        "apps/web/lib/services/company.ts:27",
+        "apps/web/components/company-dashboard/CompanyScreen.tsx:182",
+        "apps/api/src/routes/company.routes.js:100"
+      ],
+      "trigger": "Fleet exceeds 100: service hardcodes limit=100, discards total, tables have no pagination.",
+      "proposedFix": "Expose pagination/search using existing capped API and total; keep IDs and ownership unchanged.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-CO-03",
+      "category": "company",
+      "priority": "P2",
+      "title": "Company transactions have no path past first 100 records",
+      "source": [
+        "apps/web/components/company-dashboard/CompanyScreen.tsx:238",
+        "apps/web/components/company-dashboard/CompanyScreen.tsx:286"
+      ],
+      "trigger": "More than 100 matches: summary admits only first100, CSV includes all but user cannot inspect older rows in dashboard.",
+      "proposedFix": "Add page state/offset + accessible navigation with filter changes reset.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-CO-04",
+      "category": "company",
+      "priority": "P1",
+      "title": "Fleet fuel budget and usable POS code flow unavailable in web UI",
+      "source": [
+        "apps/api/src/routes/company.routes.js:625",
+        "apps/api/src/routes/company.routes.js:696",
+        "apps/api/src/routes/company.routes.js:945",
+        "apps/web/components/company-dashboard/CompanyModals.tsx:157"
+      ],
+      "trigger": "Company creates virtual card but has no wallet topup/member allocation UI and no card POS-code/PIN controls; no webcalls to available endpoints.",
+      "proposedFix": "Define company operator/driver funding and authorizing flow; connect existing contracts only after auth/money invariants pass; otherwise explicitly mark feature blocked.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "missing_end_to_end_workflow"
+    },
+    {
+      "id": "UI-CO-05",
+      "category": "company",
+      "priority": "P1",
+      "title": "Company operational requests cannot be followed through to service completion",
+      "source": [
+        "apps/web/components/company-dashboard/CompanyScreen.tsx:543",
+        "apps/api/src/routes/company.routes.js:892",
+        "apps/api/src/routes/company.routes.js:483",
+        "apps/api/src/routes/company.routes.js:999"
+      ],
+      "trigger": "Company support exposes ticket list only, no protected message fetch/reply contract; maintenance/roadside creation is present but admin dispatch/provider update workflow cannot be found.",
+      "proposedFix": "Complete scoped support conversation/status coordination, or accurately state external manual coordination and provide concrete follow-up.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "missing_end_to_end_contract"
+    },
+    {
+      "id": "UI-PU-01",
+      "category": "public",
+      "priority": "P2",
+      "title": "Landing header primary navigation disappears at tablet widths",
+      "source": [
+        "apps/web/components/landing/Header.tsx:32",
+        "apps/web/components/landing/Header.tsx:58"
+      ],
+      "trigger": "Viewport 768–1023: desktop nav hidden until lg, toggle and expandedmenu hidden at md.",
+      "proposedFix": "Align nav/menu breakpoints, named navigation, touch targets, Escape/close behavior.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-PU-02",
+      "category": "public",
+      "priority": "P1",
+      "title": "Career application dialog has no accessible dialog/focus handling",
+      "source": [
+        "apps/web/components/careers/CareersPage.tsx:228",
+        "apps/web/components/careers/CareersPage.tsx:240"
+      ],
+      "trigger": "Open role application: no role/name/aria-modal/focus containment/Escape; unlabeled X; background stays keyboard reachable.",
+      "proposedFix": "Reuse existing useDialogFocus/DialogFrame; label close and associate title; retain responsive scrolling.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-PU-03",
+      "category": "public",
+      "priority": "P1",
+      "title": "Late application success can contaminate next job application",
+      "source": [
+        "apps/web/components/careers/CareersPage.tsx:39",
+        "apps/web/components/careers/CareersPage.tsx:61",
+        "apps/web/components/careers/CareersPage.tsx:197"
+      ],
+      "trigger": "Submit then close/cancel before response; close clears role/draft, later sets submitted true; opening another role falsely shows application received for new role.",
+      "proposedFix": "Guard busy dismissal/submission with synchronous lock; capture submitted role/draft or sequence; reset per opening.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-PU-04",
+      "category": "public",
+      "priority": "P2",
+      "title": "Privacy request labels and submitting state missing",
+      "source": [
+        "apps/web/components/legal/LegalPage.tsx:249",
+        "apps/web/components/legal/LegalPage.tsx:270"
+      ],
+      "trigger": "AccountEmail/RequestType labels not connected; form can submit repeatedly while awaiting POST.",
+      "proposedFix": "Associate stable IDs, canonical select values, bounded duplicate UI submit guard, busy/error/status feedback.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-PU-05",
+      "category": "public",
+      "priority": "P2",
+      "title": "Contact category field lacks associated label",
+      "source": [
+        "apps/web/app/support/page.tsx:150"
+      ],
+      "trigger": "Screenreader focus on contact-requestType select has no accessible label.",
+      "proposedFix": "Add htmlFor to existing label, avoid redesign.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    },
+    {
+      "id": "UI-PU-06",
+      "category": "public",
+      "priority": "P1",
+      "title": "Public legal and product claims lack operational evidence",
+      "source": [
+        "apps/web/components/legal/LegalPage.tsx:123",
+        "apps/web/components/legal/LegalPage.tsx:229",
+        "apps/web/components/legal/LegalPage.tsx:246",
+        "apps/web/app/privacy-policy/page.tsx",
+        "apps/web/components/landing/Pricing.tsx:36",
+        "apps/web/components/solutions/SolutionPage.tsx:128"
+      ],
+      "trigger": "Pages assert NDPA compliant/DPO reply7days, enterprise ready, organizational stationcounts while legal review/verified SLA/network evidence unavailable; customer plan services/rewards include operational features without demonstrated service fulfillment.",
+      "proposedFix": "Keep user-requested plan grouping; qualify unverified promises and obtain owner/legal/provider sign-off rather than inventing compliance or scope.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "production_evidence_required"
+    },
+    {
+      "id": "UI-SH-03",
+      "category": "shared",
+      "priority": "P2",
+      "title": "Reduced motion preference not represented in global scrolling rules",
+      "source": [
+        "apps/web/app/globals.css:14"
+      ],
+      "trigger": "User requests reduced motion but document forces smooth scrolling; individual spin/pulse styles remain.",
+      "proposedFix": "Add scoped prefers-reduced-motion fallback for smooth scroll and relevant ornamental motion without changing brand.",
+      "evidence": "Source and caller/contract inspection; browser reproduction delegated to root.",
+      "kind": "confirmed_source_defect"
+    }
+  ],
+  "excludedAndStaleSources": [
+    {
+      "file": "apps/web/components/admin-dashboard/AdminModals.tsx",
+      "reason": "No runtime imports/callers; historical mock modals are dead code, not evidence that current admin flows fake success."
+    },
+    {
+      "file": "apps/web/components/dashboard/DashboardScreen.tsx:2269",
+      "reason": "Legacy PayoutModal unreachable: manual-payout button intentionally disabled and onOpenPayout not invoked. Do not enable money movement as a UI correction."
+    },
+    {
+      "file": "apps/web/lib/mock",
+      "reason": "Navigation/type/explicit local-fixture catalogs; live production client selected unless explicit local mock flag and no API URL. Mock folder existence does not prove runtime fake data."
+    },
+    {
+      "file": "apps/web/FRONTEND_ACCEPTANCE.md",
+      "reason": "Stale documentation describes frontend-only but API integration exists; document correction needed, does not change actual runtime behavior."
+    }
+  ],
+  "sourceCoverage": [
+    {
+      "file": "apps/web/app/admin/companies/page.tsx",
+      "lines": 7,
+      "sha256": "a18f1113250172951dda90d9f6726941b3d8beefc3697920bc0f731c31cd088c",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/admin/discount-approvals/page.tsx",
+      "lines": 4,
+      "sha256": "cc67bbbdf8ab0b97d66ba9864b0390cfe911a6d22648cb04893ada24262a746a",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/admin/disputes/page.tsx",
+      "lines": 12,
+      "sha256": "9434a7f4ec954f985b316b39c70bc822cc6d6869b565296a8eafccd61f0676b2",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/admin/intake/page.tsx",
+      "lines": 4,
+      "sha256": "3921adac00ce25df8fcf249979796de1a5fa0aef32628f30f28ebd857b3cbe83",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/admin/login/page.tsx",
+      "lines": 168,
+      "sha256": "b01b13431c6f0ee978f7efd638415b8508b27e3811f05e19f5319b77fa61ea00",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/admin/operations/page.tsx",
+      "lines": 4,
+      "sha256": "f1e38f5d7f16b023a098a2fe68d12b24816d099188325c1a37fb695d04a4d692",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/admin/page.tsx",
+      "lines": 12,
+      "sha256": "39a0cfd41fc8ca10471c319ef224f060ca83783fe0532bf2d634df1743b4e90b",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/admin/partner-applications/page.tsx",
+      "lines": 12,
+      "sha256": "e8426aaf2b66f90ccfd042bc2ab386fd330b2e4571411e9dc07d7ae1539d1127",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/admin/reports/page.tsx",
+      "lines": 12,
+      "sha256": "65b70aabbb90c77e744f5ff2cd5d69482e9f036416823e6934766682595ca695",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/admin/staff/page.tsx",
+      "lines": 12,
+      "sha256": "78f3a921321f360d80d9a83bdea23b3ff2b215dbdbf754f9cf522ac9da7d28d0",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/auth/failure/page.tsx",
+      "lines": 40,
+      "sha256": "cea2f202b55f764b9b95ba2fcba227438ce7b72210ed4e77b519a6f5820aeb48",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/auth/in-progress/page.tsx",
+      "lines": 89,
+      "sha256": "b06345d1c115d55257e1ef349b5e4da3e8cbd9596b2d82406536763ea66349d3",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/auth/login/page.tsx",
+      "lines": 11,
+      "sha256": "498a584c42b6bed8df62da7789906f46bae51f3140e7db94c4fd836d4eff4ddb",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/auth/logout/page.tsx",
+      "lines": 29,
+      "sha256": "b65216ad143c234756eebd267568322b88969418b3f9aa0aa0914b7e06d238cc",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/auth/mfa/challenge/page.tsx",
+      "lines": 5,
+      "sha256": "125babe6c8e16d10ffde5ab084dd90b0e450efb84290fbfe7ab80c91b27ddf5a",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/auth/mfa/setup/page.tsx",
+      "lines": 5,
+      "sha256": "970f35d9b8d8730ee820c39c16ee591319579ec7b7392b3028420834e83ea6fb",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/auth/session-expired/page.tsx",
+      "lines": 117,
+      "sha256": "75ae8a64167d4665a1bcf4500792bec9d5936e55c338b41349751bd4ee2d6d09",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/auth/signup/page.tsx",
+      "lines": 11,
+      "sha256": "3c79a2c7a0369444c96db5d333b1bc352e5f00bd2f30ad1890736efddc7d6f5e",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/auth/success/page.tsx",
+      "lines": 25,
+      "sha256": "b8a1f8637f17406c041964151062721557bf96306521f90ab2ab0d0457eb0ca2",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/auth/verify-email/page.tsx",
+      "lines": 15,
+      "sha256": "f8dac5915b966ebbe650ad6a1b7695322c0465942bbcbbe6fb504ee00727f596",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/auth/verify-phone/page.tsx",
+      "lines": 17,
+      "sha256": "e60e79eeaa2cbf5688c45f45ef002d29b5a0611954bee28032755184bce1d271",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/careers/page.tsx",
+      "lines": 7,
+      "sha256": "0a1826dacd7c27d3b6b9df0a2f26726febebc55cabaa053a874df0d71471998e",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/company/billing/page.tsx",
+      "lines": 12,
+      "sha256": "e194bd78194076d9dc4ed6087866c96dd2e2157acd3ab9a93d5d6cfb21258ba5",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/company/cards/page.tsx",
+      "lines": 12,
+      "sha256": "68016fbe743f28eb3cdec96da8f86c2c85cf8c6d2fe38298a7059fde0e29357d",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/company/maintenance/page.tsx",
+      "lines": 12,
+      "sha256": "973293b4aff3691d169905cc7fb286b3169bfadf75fdd1b81bfbbece0b73bd78",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/company/notifications/page.tsx",
+      "lines": 12,
+      "sha256": "e665674b0564a6fe40465177cd29702b11868499fbc09f2fd64bf5ff3355972e",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/company/page.tsx",
+      "lines": 12,
+      "sha256": "e4efb82e8503df1c9f33b0276a77bafdc2aa1126e9ce48dbf9ced312b40a6861",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/company/reports/page.tsx",
+      "lines": 12,
+      "sha256": "3bd5d3773ae8244155e4d750b28e773f095de84e152c03c3b59d1a2d478cbbd9",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/company/roadside/page.tsx",
+      "lines": 12,
+      "sha256": "e26cbf3440a109aa436987a034c5e9be27ed7dffa8ef7f789dbd2156803738ba",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/company/settings/page.tsx",
+      "lines": 12,
+      "sha256": "ebef78c8503f5c55d3d98e688172278da91c02561d9ce58dac8dc61ea2a5d6dc",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/company/stations/page.tsx",
+      "lines": 12,
+      "sha256": "2ba2ad64dff6f7164644235e84cb7f619bd57a18a277785c7e079310d38a2ee6",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/company/support/page.tsx",
+      "lines": 12,
+      "sha256": "44f9e5df5658f751fc99d96a3a11aecc881da3ebc0288d8808c0bdaf3cbafb2d",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/company/team/page.tsx",
+      "lines": 12,
+      "sha256": "0e8e6d1f041bb78952a318a3dc51ffe3f9ed4efb6cd62289a7ff7143c0bf603e",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/company/transactions/page.tsx",
+      "lines": 12,
+      "sha256": "b90d6b71cd79a1a77683e396d80ecbf34467f1d5828724a4d0a9664c38be7576",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/company/vehicles/page.tsx",
+      "lines": 12,
+      "sha256": "8f253f0700473d988ac0e51704f879bcd7325c1ae52ffaca03a2ac779d547409",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/cookie-policy/page.tsx",
+      "lines": 70,
+      "sha256": "73f8b6a72f01f55449f29b3df97f74fe357ac7b6b35693ce794995aa229883e4",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/customer/card/page.tsx",
+      "lines": 12,
+      "sha256": "db55512860bbd27e979530577bce9313ebd87a65617d7e5dd912cf7db42ee174",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/customer/fuel-checkout/page.tsx",
+      "lines": 7,
+      "sha256": "64ba581484ebbdef43e86b7ed75e66acd813704a6505118ac248bbcf27de1a90",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/customer/notifications/page.tsx",
+      "lines": 12,
+      "sha256": "d77723df66970853fe6a74ea1baf17f3f9238e2cdddffd6dca712f6064320a69",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/customer/page.tsx",
+      "lines": 12,
+      "sha256": "0a6d2d8dabce05792158053aa118461420a3944c59257dd0d36026dca8088e2c",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/customer/profile/page.tsx",
+      "lines": 12,
+      "sha256": "80c892b5da5f2ba8460c22eb4ec7d953ebf0b3503bcf5ab2e7296b4e9fe5c9ef",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/customer/report-problem/page.tsx",
+      "lines": 12,
+      "sha256": "d22fde5f7ed92aaba7ae7daf0a06d7ef60e975a5c66d8abe05eb04d1e79bd8e8",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/customer/stations/page.tsx",
+      "lines": 12,
+      "sha256": "5e35582d9c7abec13dd7b38cdc2c6650bb39cd2f6cbdf7b4a3230cb721fb14da",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/customer/subscription/page.tsx",
+      "lines": 7,
+      "sha256": "a284d60da54d714ba3e693263b9650b03a49f8668b4ca35b7efe55e2d7e22aa9",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/customer/support/page.tsx",
+      "lines": 12,
+      "sha256": "649c46d235e59f41749d7a4df2fc6290a7b9317d5381b66fa535632f24e49950",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/customer/transaction-detail/page.tsx",
+      "lines": 12,
+      "sha256": "0a19172a6fca8417fdf3b5db1a100245d5326addcd4c76cc50b69948d3eda6ef",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/customer/transactions/page.tsx",
+      "lines": 12,
+      "sha256": "7c29318bc01abe06ad26b3e3a9285d00ad1dcc1674dcf5431267ac78dfadc8fc",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/customer/wallet/page.tsx",
+      "lines": 12,
+      "sha256": "e40915d3c337ea1d62b52b16885df0c1543b98de631a0a064e7646d42cc05daf",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/dashboard/billing/page.tsx",
+      "lines": 4,
+      "sha256": "47e305e2ad85119f00ffdddd105de126e0733eb23609ff067b35477723040520",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/dashboard/card-verification/page.tsx",
+      "lines": 12,
+      "sha256": "e97051d53879eb8e00929162348a874c3fac7cd4310b2a3b39e3ba4a6c9d91b0",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/dashboard/disputes/page.tsx",
+      "lines": 12,
+      "sha256": "4dc3326d47593264db77e307cbdf37f1481a68c4701ef8299dc3d525713dc973",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/dashboard/fuel-pricing/page.tsx",
+      "lines": 12,
+      "sha256": "0658e2b2bd971f72d639df733161577bc29e6a2d1df4014d4fcd0dc0fe8372d3",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/dashboard/notifications/page.tsx",
+      "lines": 12,
+      "sha256": "7f4a7ffe9a600569f8d11ddfa99914a3b3180b528ac4427d27df96769f54cca6",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/dashboard/page.tsx",
+      "lines": 11,
+      "sha256": "871ed39049d64215b6422679de7e9e62991e66d43b9572528de75a043289fc3f",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/dashboard/reports/page.tsx",
+      "lines": 12,
+      "sha256": "d40f1948e92fc09291162fd4d58769801aee45ff53e7f4df3d4e3a3758892119",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/dashboard/settings/page.tsx",
+      "lines": 12,
+      "sha256": "a19705e0d352142cafbfc541107cb807a26c7c207a4da091149a3f2c06805585",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/dashboard/settlements/page.tsx",
+      "lines": 12,
+      "sha256": "178ef1e563ccb6953ed5e91dab1010139fc45c4127039fd22009d3865a728e63",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/dashboard/staff/page.tsx",
+      "lines": 12,
+      "sha256": "5b45446ee040b9c138adbca984edc14a10f09c300c004f812b02417fb9c8f1c5",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/dashboard/station-profile/page.tsx",
+      "lines": 12,
+      "sha256": "01c1de454b3e80a22103de5eb6812e234df8f0de9e80f3fa1d0f6a2bb29709fd",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/dashboard/transactions/page.tsx",
+      "lines": 12,
+      "sha256": "17d7bd5b01c9d2cf17b7db40e87c73e068d4979c5bfb3bfc3c1cb53063c27cd9",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/dashboard/verify/page.tsx",
+      "lines": 18,
+      "sha256": "cc498dcc821fec7fd2f54bc519bc5f17e13978c6876732cb8b0f4845910118a6",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/error.tsx",
+      "lines": 14,
+      "sha256": "f3ab09ec893d5cd5fce0e10bfd078ff258b27d02c148ad223094785007d389ef",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/forgot-password/page.tsx",
+      "lines": 187,
+      "sha256": "10ba6220ecfef8624b9d8b01dca557ebbc19d5dbe11f822cc242120d979f70df",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/global-error.tsx",
+      "lines": 20,
+      "sha256": "a8c02d5929d94051d24bed26188079005158daa7b2c03d40479c7474af44db5b",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/globals.css",
+      "lines": 29,
+      "sha256": "d2c8262880a01ac0802423b02a78046ee59838dc403dac754faf3d056386ba9b",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/icon.svg",
+      "lines": 41,
+      "sha256": "4ff8bd47e99b4a91868759903a8c8f92520bed2ce74adb1c754b659d3527e34a",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/layout.tsx",
+      "lines": 49,
+      "sha256": "cd83cd692c9fac5aae72a849afb8c11c2bb1715556952b2c6c56f69b4903819b",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/login/page.tsx",
+      "lines": 7,
+      "sha256": "01c620f62c88f9a193f2d0d9370f627a63df670bd9c4c1fc9093718d4676e47a",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/mechanic/page.tsx",
+      "lines": 11,
+      "sha256": "ab7245b8d5b62729033f62c33051f1f4d629cf2d0dafeaad0fd0ea1c4769d88e",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/not-found.tsx",
+      "lines": 20,
+      "sha256": "479baabf4b558de21c34c57c0e826ce98a0648029ba390cfffa0ae0d8deb9db2",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/page.tsx",
+      "lines": 24,
+      "sha256": "c69bc611b897b3221ec0d172bb8683215c61b94d0ec11f01119586052ec8adee",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/privacy-policy/page.tsx",
+      "lines": 98,
+      "sha256": "119ff9a461a5ba0c87fde5d32218e27a9135fa40e1245d5703ab62ff00dcbe5d",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/reset-password/page.tsx",
+      "lines": 225,
+      "sha256": "8e7d6232a752bb46ee69c3fa1c28c5b28378f42a0c6d8c4bf7c0145b73f169ca",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/solutions/energyvista/page.tsx",
+      "lines": 36,
+      "sha256": "8b35904dc0b33a19a782fe5cbba3c699024116d5eb5e01117163f6aff0e8b328",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/solutions/fuelvista/page.tsx",
+      "lines": 36,
+      "sha256": "6eae02dc85bb1818f4057a9c4dec14e06218099e9f164560e8718fae3ab6f764",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/solutions/genvista/page.tsx",
+      "lines": 36,
+      "sha256": "d6bf070f1dbcd4a7fa9b72a0c8e74ea14872135143e57845b8e60b24bc946e8e",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/support/page.tsx",
+      "lines": 222,
+      "sha256": "18f1fcaafccf388a12fd32764834cbfc1fbade772fe34627678176458c177572",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/app/terms-of-service/page.tsx",
+      "lines": 85,
+      "sha256": "291a6ac15b8a89a255f9b112447eddd746ebb5ad3803c01a24a8918a0166c377",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/admin-dashboard/AdminHeader.tsx",
+      "lines": 110,
+      "sha256": "f05f5f4d84b276de419309bb8ceaef31135ec3e8ce0ddcd9b90be8865bff2f8d",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/admin-dashboard/AdminModals.tsx",
+      "lines": 504,
+      "sha256": "0ab2ee9d05afb6f77e95468c1803e34f57049d94ed5e5bb1113ade2fdb6479dd",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/admin-dashboard/AdminScreen.tsx",
+      "lines": 498,
+      "sha256": "0b4f1b23cfe825991ca36bae32c7eed4f1582722c0e70d8a6f56df8bfe4159d8",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/admin-dashboard/AdminShell.tsx",
+      "lines": 56,
+      "sha256": "1479701b030623cb543b94993ac2f83041a3ede46cb8271eee2e3eeb3abdd114",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/admin-dashboard/AdminSidebar.tsx",
+      "lines": 77,
+      "sha256": "ab053a573fb07491bb044f91749bcdc4d9496a58d0a1b2359e998087c3ad4690",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/admin-dashboard/CardApprovalQueue.tsx",
+      "lines": 20,
+      "sha256": "315515bd871ac0ad24e93a609ae626451f175d9453c9db3b4ff2a67d80fb9d1c",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/admin-dashboard/DiscountApprovals.tsx",
+      "lines": 12,
+      "sha256": "1c2184b4666d2a567912a84dbccfd9a6f13249fcd73cd6dff3812fbe644fddd5",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/admin-dashboard/IntakeConsole.tsx",
+      "lines": 506,
+      "sha256": "6f3dd9bd80f170801888c7e28e121aa309c4988716f7ac979b5415b7fe6fd77a",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/admin-dashboard/OperationsInbox.tsx",
+      "lines": 331,
+      "sha256": "7fd4fe4fbbbf01ed299b99eab50ff2311e1c4e613b60a0d82dbe475742a345d2",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/auth/AuthForms.tsx",
+      "lines": 896,
+      "sha256": "171686588755e37cf389a5201de8f9d6d75b2a4965cc756e95109930b264bcad",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/auth/AuthGuard.tsx",
+      "lines": 157,
+      "sha256": "7fb0c98abee4d48cc09a8b39d062b6dcffe3b1f9ffba201808a2be931ae2823f",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/auth/AuthShell.tsx",
+      "lines": 66,
+      "sha256": "57ea847a2e6ffd8e9381e7fc33f237cb86ee60c643f43402c054a0336d39ef71",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/auth/AuthStatus.tsx",
+      "lines": 147,
+      "sha256": "aa6928dfaa27a5e74f2749dd356090e8c0627cb3b4544b28432a06b54f335823",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/auth/DemoAccountPanel.tsx",
+      "lines": 150,
+      "sha256": "1434510aae09541755919e57f6714d1530d9cf6572ec449978b36fa2fc75e3dc",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/auth/LogoutButton.tsx",
+      "lines": 139,
+      "sha256": "86fa4fabc3d35a68f3c23f4f10a1b4952ad1fb4371c83393430256d07d8733f1",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/auth/MFAUI.tsx",
+      "lines": 307,
+      "sha256": "c1dce40e4215aa8ca8d3d4d16a79aa4eb5b125da5d7d4feb25333bdcb6107635",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/auth/SuccessAutoRedirect.tsx",
+      "lines": 64,
+      "sha256": "5197b28646412ca4520b034509efa53a3eee8b6f8d5e3b9c28a15445a5f01d61",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/auth/SuccessHonesty.tsx",
+      "lines": 79,
+      "sha256": "528a3b24def3793ba8e23a7c1bef6ed358544d99452c4b78b07a0541c9e89dcc",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/auth/VerificationUI.tsx",
+      "lines": 309,
+      "sha256": "fe15c3f5d54c260abb223c996cde3ae9b0ec4fdaa5bec4d0b9c35a5cf2ecf9c3",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/careers/CareersPage.tsx",
+      "lines": 350,
+      "sha256": "5ceeb7267517718497f72278f75eb4b66e9f97dfa4524b5be54ac646fc6cddba",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/company-dashboard/CompanyModals.tsx",
+      "lines": 456,
+      "sha256": "f48d7b70facea77a477e0a163259f41a2aa48bcfb32ce8ca209efecdc2be64a2",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/company-dashboard/CompanyScreen.tsx",
+      "lines": 683,
+      "sha256": "162c8be19068a416e3c95ea1184fbd145ea7e7fb69690c7006428c8ba629a725",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/company-dashboard/CompanyShell.tsx",
+      "lines": 203,
+      "sha256": "2ad6d8c77f87b2d59b913fdf6642592039dbe79118204669b9ee528fc2d6798e",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/customer-dashboard/CardRequestModals.tsx",
+      "lines": 650,
+      "sha256": "c297963edec3705a82d89c857f4bf90d3f1f6acdef4dc9453a667d0045840794",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/customer-dashboard/CustomerFuelCheckout.tsx",
+      "lines": 82,
+      "sha256": "1bb13ae1355f787177098feadb47f3d178cb6888dfc76cd153e5c34f66c7ac2b",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/customer-dashboard/CustomerModals.tsx",
+      "lines": 1530,
+      "sha256": "f09b795fdb69ecfe997a893aff417ebd8e80e1c0942d791f1e1d4355d45f4179",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/customer-dashboard/CustomerScreen.tsx",
+      "lines": 2350,
+      "sha256": "73d5d8f3232b2cd45076d7c82411d635dae0ad3ed50faca00a387d609d595255",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/customer-dashboard/CustomerShell.tsx",
+      "lines": 207,
+      "sha256": "4ea88718b70a5e5232f9e2bc941b9d25db7e2c39357e259b91c7a5f647c4c295",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/dashboard/DashboardHeader.tsx",
+      "lines": 141,
+      "sha256": "6088337045015878a18a7d1ec15de2260d512768ed9633d95a2e4ad63c78a760",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/dashboard/DashboardScreen.tsx",
+      "lines": 2376,
+      "sha256": "8fb8719919f81867ffc6b25d84ffb77ebdf6c4e5b6575726d64a69d9ec270c98",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/dashboard/MobileDashboardNav.tsx",
+      "lines": 33,
+      "sha256": "e68e59be5bf5e63939c8a76f174c9d9b432d2e3676b0e2b17d4e2820ce2104e4",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/dashboard/PartnerApiKeys.tsx",
+      "lines": 164,
+      "sha256": "f9923e340623cb8405475815d9b97ae75843cf38aa3db2a74fd016246941a948",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/dashboard/PartnerNotificationsProvider.tsx",
+      "lines": 98,
+      "sha256": "0143382d0eef174629ac10449d86b537d45cc7722f7c87a9456f97c3d11412b8",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/dashboard/PartnerServiceRequests.tsx",
+      "lines": 165,
+      "sha256": "38ef7acb77545f5b20f323c5a11b26253f231bd6f4c129be52c4b23d923807d2",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/dashboard/PartnerSubscriptionGate.tsx",
+      "lines": 15,
+      "sha256": "90bffe5b54b339feda892a9e962d503c0f3af241af15a65ec0f351dd1f934ee3",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/dashboard/PartnerVerification.tsx",
+      "lines": 381,
+      "sha256": "441ef084d3c8a0971890f44f7d3863c8f3743c0d764b4a2160d51f8636f984c4",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/dashboard/PartnershipShell.tsx",
+      "lines": 90,
+      "sha256": "7020e4051e71661017cf88851d7c46158454c794d0aaae2b906aa18716adcd54",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/dashboard/PartnershipSidebar.tsx",
+      "lines": 185,
+      "sha256": "f6d3b364ac29a8c4e0fe189cc7fc8d0dcc0f6a8a3d87ecf0f0927ab50f4855bc",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/dashboard/StationDiscounts.tsx",
+      "lines": 13,
+      "sha256": "4a65ddc2126b82c85f9848785f812fb87d63bc06feced04076fc404c9690027b",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/landing/Button.tsx",
+      "lines": 49,
+      "sha256": "7d99e86a18717c07cf4ad821f6b741acca06fb629d91ecdb852314811cc823d9",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/landing/ClosingCta.tsx",
+      "lines": 52,
+      "sha256": "5decd6b7dface0451f3ebc646fde9482092f53e1b2a1d21370990775c9077b40",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/landing/Footer.tsx",
+      "lines": 79,
+      "sha256": "ec85717f1577ba7af6539e498256ba1ac8b52568f03dfa4e9627dc40817b58a9",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/landing/Header.tsx",
+      "lines": 93,
+      "sha256": "4661c0a5289665dd62bfdb55f18fe11d154ed79ac3d2d33221bfa9eb5b93e91b",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/landing/Hero.tsx",
+      "lines": 57,
+      "sha256": "4c6c8c71e9aba7b0d8c3cdf074594353dfd38750530065d94c2a4a3065e8569f",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/landing/Partners.tsx",
+      "lines": 2,
+      "sha256": "8dcbaaeee84cd97a83d2e75ad70d498971b80ccb487680170009c6504e21c5fa",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/landing/Pricing.tsx",
+      "lines": 354,
+      "sha256": "06507d6d9513bc0e6ad7196f6bc41c6a6200f544895e5a9b05b347ffdce5e55b",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/landing/ProductShowcase.tsx",
+      "lines": 51,
+      "sha256": "fa4cebdc680888accdc702fb4172b7a3d4e640bbc52f3a0cd3e221d88092db3a",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/landing/Story.tsx",
+      "lines": 76,
+      "sha256": "6b14b1e1e93ef5c0d44044b0cbbaa64a0c9ffb7b9162b0ec6d075b969349991e",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/landing/assets.ts",
+      "lines": 22,
+      "sha256": "9f58f82ab43657639c38c37b8709056d94e6ccbb71900fa3c38e5d218b5377b7",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/legal/LegalPage.tsx",
+      "lines": 320,
+      "sha256": "a4ba9267c9ae5251f7905819c0b9949b1a94895a2c5d099f31d90050cba5bc50",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/shared/AuthContext.tsx",
+      "lines": 153,
+      "sha256": "e5cb83270274af983217f43c83221c92810335078cee101d4e5d6b930364900e",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/shared/Calendar/Calendar.tsx",
+      "lines": 161,
+      "sha256": "18fe66f44d3ce413589a872448b0f009d3408dacaf9c6526bb0b766cf724d337",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/shared/DashboardLogo.tsx",
+      "lines": 66,
+      "sha256": "b455d667bd98e74065c44f3bf72f07485d42cf9e4ecbd666973fa98183db82d6",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/shared/Dialogs.tsx",
+      "lines": 221,
+      "sha256": "3e2f2bb12cbf060324e60af480f64a2d08342a402ae95d2c1a0d8a30101e6c42",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/shared/ErrorBoundary.tsx",
+      "lines": 75,
+      "sha256": "a765c1c05403723dfbc107db761f6f1ad51c3978d1874fda8d215b4d3259506f",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/shared/Providers.tsx",
+      "lines": 17,
+      "sha256": "3889aacf572bdc22bd2d59bd18ad224dc99ede204e57a100fc3ecb3323201d94",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/shared/States.tsx",
+      "lines": 104,
+      "sha256": "b76ba333d040fea366398176a7b55bcfa68d224c4aed7891325e241498d13c0e",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/shared/StationMap.tsx",
+      "lines": 123,
+      "sha256": "2de4cf0eb812e85820d82664d7bd5c4224b2df68b5d8fe09554a2dbd39bcbdb2",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/shared/SubscriptionPanel.tsx",
+      "lines": 160,
+      "sha256": "22ce3f69c7c203d6d92e0282d2e057724b42f0bc5f174dbd3edaa8c31fbfa98c",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/shared/Toast.tsx",
+      "lines": 96,
+      "sha256": "9148f46a225d2a90144df19804e41f6a3400f781187f5f2e16bd31a49f683c28",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/shared/Toggle.tsx",
+      "lines": 61,
+      "sha256": "62de924b2653fd43398defd41edf8c8762d8e64e230c49f8e92a260924a189a6",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/shared/useAsync.ts",
+      "lines": 110,
+      "sha256": "efa69c25a87eaa868a34a2f126cae2283917d323efe9f3569733cafce51f02d1",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/shared/useDialogFocus.ts",
+      "lines": 74,
+      "sha256": "fbfaa5edb2bd131b99452e577cfc7731f8b6840c1bb6c95b4072983c4dca1b6f",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/shared/usePolling.ts",
+      "lines": 55,
+      "sha256": "47b44ff37f22cb999defe665f6c0150b44ff3181314e61e91f9021449a89ec47",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/site/CookieConsentBanner.tsx",
+      "lines": 78,
+      "sha256": "9e01fb2eb3064d740f55e78e7dc77a3c51fd9083fdde2a436cba3586c776699d",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/site/Input.tsx",
+      "lines": 23,
+      "sha256": "7d01dab544abbc2a94b2cca3ed06eb8d2bf1f0697cdb34e587eec26c85522ff1",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/site/PageIntro.tsx",
+      "lines": 31,
+      "sha256": "f441f819e4e6ae412ad0f97e32180ba0a235dd0ab5307d132dea0c0deef46e51",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/site/SiteFooter.tsx",
+      "lines": 133,
+      "sha256": "eb045f9792735ce8e2c7f3871d7687ad3756b854feaf35a20e05f8560326e0f7",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/site/SiteHeader.tsx",
+      "lines": 52,
+      "sha256": "13d914838bb61c8c9db8fe3476159d71ac47848defbeaa2dc63b05ebfd202f9a",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/site/routes.ts",
+      "lines": 39,
+      "sha256": "7c61049022c94436dbc3c924ae196578e5a7cc6981eb3776175d91c719e1b3f2",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/components/solutions/SolutionPage.tsx",
+      "lines": 164,
+      "sha256": "0941fbe58a28e6d1febc3e680992c5798ed2d43a9dc801daf79d85c380835b0e",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/lib/company-input.ts",
+      "lines": 32,
+      "sha256": "98564632abe0a2d582e0dc1c68394199c9a98ac911ad951faf281800d361d263",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/lib/customer-card-routes.ts",
+      "lines": 21,
+      "sha256": "d07978d0c1fb82c2a0ff598ebba23ce7d281ec10a97e30c9039bc5af81cb9c99",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/lib/customer-entitlements.ts",
+      "lines": 17,
+      "sha256": "9181abfbeac87c8a8c63ab9d39c9df742e6951a4e43adfc7eb5120592cb7b6a1",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/lib/customer-presentation.ts",
+      "lines": 54,
+      "sha256": "14ddbab9b853bbc202e98c62046b0e930a9c4adc87c5df730f571ab0a5f49ac7",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/lib/demo/accounts.ts",
+      "lines": 107,
+      "sha256": "9fd5f30b16039ac7cb256174db4de4e1e8e058e1dcdabf29ddf7db2d21b7419f",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/lib/mock/admin-data.ts",
+      "lines": 153,
+      "sha256": "c5e2801221dba0d16af52a925e23944bc7aa1fac747996ddf2b1eeaf7ddf0ca3",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/lib/mock/company-data.ts",
+      "lines": 167,
+      "sha256": "a77d8548f9fb24f44f0066373471afea90f3a3fdae50023007eba08d3a8d0790",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/lib/mock/customer-data.ts",
+      "lines": 193,
+      "sha256": "099c0042d71eb2b12647fa485bac1dbfeb833f0dc0ad1607f58f2b50ff506400",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/lib/mock/dashboard-data.ts",
+      "lines": 390,
+      "sha256": "0494ab84542be18c44881e199d30ecc67728e8f682dc052736b9bc5bdc820d4a",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/lib/push-subscription.ts",
+      "lines": 128,
+      "sha256": "6b1623c496a53805171624f299d3c8a7553e4d1166af6ea9051a2522814f10c5",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/lib/services/client.ts",
+      "lines": 1692,
+      "sha256": "253d24473e59e84f3e55f54961af780355130acbfdd306423fcb1cb4dcdc553a",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/lib/services/company.ts",
+      "lines": 33,
+      "sha256": "475529e6ee4fb65f0c6c0cd9d99860f44ced483dcf92bc724d528710972502dc",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/lib/services/index.ts",
+      "lines": 49,
+      "sha256": "9538a9eebd22dc4a2cc794a793d3af1957c8096759588970f237343f42531cbc",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/lib/services/types.ts",
+      "lines": 569,
+      "sha256": "4b3f53f477cd321fc6c7b4bdb4c34ffdea599150094c8e859610c8f52c9a9214",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/lib/services/useApiData.ts",
+      "lines": 50,
+      "sha256": "ebe8f25b5caff208d939b4c4837fd476a6526c1471bf4b7beab2d7c8701c9ae0",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/lib/session-store.ts",
+      "lines": 66,
+      "sha256": "870dc5e7bbc4c9c9664e84a9de64a2347d4c7945f6e8121305706f49131b87d3",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/lib/station-fuels.ts",
+      "lines": 9,
+      "sha256": "92caa335d8f22da04322e6857b56498637a6dfaa510a775705cff06906e1e39c",
+      "coverage": "source inventoried with hash; runtime route/component/client contracts targeted in audit"
+    },
+    {
+      "file": "apps/web/tests/async-location-regression.test.cjs",
+      "lines": 58,
+      "sha256": "a530de7db5cdc7dc8319c184c24efc850ccc5345c0e0bc4040e74f98072b921f",
+      "coverage": "existing_test_inventory"
+    },
+    {
+      "file": "apps/web/tests/auth-regression.test.cjs",
+      "lines": 52,
+      "sha256": "152363f0fe10949dbab376e108c6015bc567fb33fe7b4ce5d6e94a7b939577c0",
+      "coverage": "existing_test_inventory"
+    },
+    {
+      "file": "apps/web/tests/company-empty-pages.test.cjs",
+      "lines": 75,
+      "sha256": "5d939a7835172bbd0295e7f46a1480ab16747c02e5d60a4b7a2bc3d3f5a2feec",
+      "coverage": "existing_test_inventory"
+    },
+    {
+      "file": "apps/web/tests/company-input.test.cjs",
+      "lines": 40,
+      "sha256": "a19b6ad13d284a628d4f20b1887eba84ea61b889c40375d3a91caa32728d57e4",
+      "coverage": "existing_test_inventory"
+    },
+    {
+      "file": "apps/web/tests/customer-audit.test.cjs",
+      "lines": 184,
+      "sha256": "246e14c91ade1a6af2904b168f34e65d4a0ec8d3871f6126adda5212db3d2418",
+      "coverage": "existing_test_inventory"
+    },
+    {
+      "file": "apps/web/tests/customer-entitlements.test.cjs",
+      "lines": 37,
+      "sha256": "11deebae3d3892b34f8d4973d96e0c16cc894c42e04a47ca82e2e634320a2660",
+      "coverage": "existing_test_inventory"
+    },
+    {
+      "file": "apps/web/tests/customer-my-card.test.cjs",
+      "lines": 329,
+      "sha256": "de54d43fb14df56116f583bc212647f75747c0a71f29a76f75bb0116f9fec0de",
+      "coverage": "existing_test_inventory"
+    },
+    {
+      "file": "apps/web/tests/dialog-focus.test.cjs",
+      "lines": 89,
+      "sha256": "538b17d51342a76efde6e2dab4ae27a87f6b2cf2a6041ceb97bedd7d9c59ea32",
+      "coverage": "existing_test_inventory"
+    },
+    {
+      "file": "apps/web/tests/landing-plans-regression.test.cjs",
+      "lines": 89,
+      "sha256": "e02ab1edf5df7484a3ad87e07a50d84c504eb9355398f98fe40914cd640465c1",
+      "coverage": "existing_test_inventory"
+    },
+    {
+      "file": "apps/web/tests/partner-audit-regression.test.cjs",
+      "lines": 113,
+      "sha256": "5012eba892ed8854ba84eaa50ab4726ba0cfdcc019515e75d10e3a6717ee654b",
+      "coverage": "existing_test_inventory"
+    },
+    {
+      "file": "apps/web/tests/partner-verification.test.cjs",
+      "lines": 258,
+      "sha256": "5d3bee0a25d98d7d12c02b64157ee3368c076cf6999cd3e8cbf6e7bb0bf4e448",
+      "coverage": "existing_test_inventory"
+    },
+    {
+      "file": "apps/web/tests/station-fuels.test.cjs",
+      "lines": 17,
+      "sha256": "c4b8842f15a114f8194bde82cc1a8716418848de880c023f4f62ebd4fa700fa2",
+      "coverage": "existing_test_inventory"
+    },
+    {
+      "file": "apps/web/tests/transport-regression.test.cjs",
+      "lines": 89,
+      "sha256": "cb00a46a38da5abd213eef902ed1e7bb5bcbb11d72d30a6bda0c352153307328",
+      "coverage": "existing_test_inventory"
+    }
+  ],
+  "coverageNote": "All72pagefiles enumerated. Sourcefile inventory179 includes tests, mock catalogs and shared implementations. Targeted runtime source/contract review produced31findings; no claim everyline or browserstate was tested. Dead/unreachable legacy modals excluded."
+}

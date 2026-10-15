@@ -1,0 +1,107 @@
+{
+  "task": "Bounded public UI controls and motion fixes",
+  "date": "2026-10-14",
+  "branch": "codex/production-readiness-2026-10-14",
+  "workspace": "/home/inimfon-udoh/Obligon/checkout",
+  "changedFiles": [
+    "apps/web/components/landing/Header.tsx",
+    "apps/web/components/careers/CareersPage.tsx",
+    "apps/web/components/legal/LegalPage.tsx",
+    "apps/web/app/support/page.tsx",
+    "apps/web/app/globals.css",
+    "apps/web/tests/production-public-controls.test.cjs"
+  ],
+  "before": [
+    {
+      "command": "node --test tests/production-public-controls.test.cjs",
+      "passed": 0,
+      "failed": 5,
+      "evidence": [
+        "landing hamburger hidden at md before desktop nav starts lg",
+        "career modal missing role, accessible name and shared focus hook",
+        "2 career service calls from repeated same-turn submission",
+        "privacy email/type labels missing associations",
+        "2 privacy service calls from repeated same-turn submission"
+      ]
+    },
+    {
+      "command": "node --test tests/production-public-controls.test.cjs",
+      "afterOnlyNavigationFix": true,
+      "passed": 1,
+      "failed": 9,
+      "evidence": [
+        "expanded regressions added keyboard Apply behavior, failed application retry/reset, stale unmount response, stable request values, contact category association and reduced motion"
+      ]
+    },
+    {
+      "command": "node --test --test-name-pattern='completed career|privacy response' tests/production-public-controls.test.cjs",
+      "passed": 1,
+      "failed": 1,
+      "evidence": [
+        "completed career application called service twice via same retained handler before React rerender; added immediate completed ref guard"
+      ]
+    }
+  ],
+  "verification": [
+    {
+      "command": "node --test tests/production-public-controls.test.cjs tests/dialog-focus.test.cjs tests/landing-plans-regression.test.cjs",
+      "cwd": "apps/web",
+      "runner": "require_escalated",
+      "publicTests": 12,
+      "dialogTests": 3,
+      "landingTests": 3,
+      "chunk_id": "c60ec3",
+      "wall_time_seconds": 0.755637629,
+      "exit_code": 0,
+      "original_token_count": 453,
+      "output": "[raw content omitted; structured evidence retained]"
+    },
+    {
+      "command": "node node_modules/typescript/bin/tsc --noEmit --incremental false",
+      "cwd": "apps/web",
+      "chunk_id": "629d89",
+      "wall_time_seconds": 5.350000658,
+      "exit_code": 0,
+      "original_token_count": 0,
+      "output": "[raw content omitted; structured evidence retained]"
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0
+    }
+  ],
+  "after": [
+    "Header toggle and expanded menu both hide at lg, matching full nav; aria-controls links toggle to menu.",
+    "Native Apply button opens named role=dialog with aria-modal, tabIndex and useDialogFocus for trapping, Escape and restoration.",
+    "Application ref guards reject duplicate pending and completed submissions; close/Escape/cancel/overlay cannot dismiss pending work; failed drafts remain editable and reset on later dismissal.",
+    "Application and privacy responses ignore stale component generations after unmount.",
+    "Privacy controls use linked labels and explicit export/deletion/correction values; busy controls, inline alert, draft retention and status confirmation implemented.",
+    "Contact category label now targets its select.",
+    "Reduced-motion media disables smooth scrolling, animation, and transition duration.",
+    "Existing landing individual and organization pricing regression suite still passes."
+  ],
+  "references": [
+    "/home/inimfon-udoh/.codex/skills/ui-reference-guide/SKILL.md",
+    "/home/inimfon-udoh/.codex/skills/ui-reference-guide/references/catalog.md",
+    "/home/inimfon-udoh/.codex/skills/design-taste/SKILL.md",
+    "/home/inimfon-udoh/.codex/skills/taste-accessibility/SKILL.md",
+    "/home/inimfon-udoh/.codex/ui-reference-library/design-taste/examples/corporate-trust.html",
+    "/home/inimfon-udoh/.codex/ui-reference-library/motion-primitives/components/core/dialog.tsx",
+    "apps/web/components/shared/useDialogFocus.ts",
+    "apps/web/components/shared/Dialogs.tsx"
+  ],
+  "limitations": [
+    "Source behavior exercised with existing VM component fixtures; real browser validation is assigned to parent agent.",
+    "Independent review is assigned to parent agent.",
+    "No dependency changes, commits, external messages, merge, or deployment performed.",
+    "Edirae Learn instructions and template read; parent agent owns the single overall-task breakdown and INDEX entry."
+  ],
+  "verifiedFileSha256": {
+    "apps/web/components/landing/Header.tsx": "a61b4ca7cc6b58c558ff954b2ebd6329d6eaef2d5e6a63a8416ba412efbc0cc9",
+    "apps/web/components/careers/CareersPage.tsx": "c123d530b1a3290ccd34a7fa9253d856409ce2660a14811a0007fc89e8961ee4",
+    "apps/web/components/legal/LegalPage.tsx": "56b7ca31c56ac682d10db6c1376ac2d465177df8b172670c8f496c8c14dd305f",
+    "apps/web/app/support/page.tsx": "49cdfbde574cf2f2612763806f0d2d217d5d939f5f5d97ac7c026f0e734196be",
+    "apps/web/app/globals.css": "fb145a8261beb78a8aa8322a2486d0dc7ea209ac028ecc23b666510975771fc6",
+    "apps/web/tests/production-public-controls.test.cjs": "9e31196000e0915bdbccd3279b7fd597ad9d3b2901b56a1ac56eafe42102211d"
+  }
+}

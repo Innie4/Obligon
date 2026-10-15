@@ -1,0 +1,98 @@
+{
+  "task": "Bounded customer production controls increment",
+  "date": "2026-10-14",
+  "status": "implemented; ready for independent review and root browser verification",
+  "scope": {
+    "allowedFiles": [
+      "apps/web/components/customer-dashboard/CustomerModals.tsx",
+      "apps/web/components/customer-dashboard/CustomerScreen.tsx",
+      "apps/web/components/customer-dashboard/CustomerFuelCheckout.tsx",
+      "apps/web/lib/customer-funding-quote.ts",
+      "apps/web/lib/services/client.ts",
+      "apps/web/tests/production-customer-controls.test.cjs"
+    ],
+    "clientHunks": "topUpWallet optional expectedTotalKobo signature/payload and startCardCheckout unexposed 503 support copy only",
+    "excluded": "No API/auth/MFA/shared-state edits, dependency changes, commits or deployment"
+  },
+  "acceptance": {
+    "UI-CU-01": "Whole-naira input, grouped commas and .00 accepted; fractional, exponent, malformed, negative, zero and >₦5,000,000 rejected. BigInt fee ceiling in kobo; customer total rounded upward to whole naira, remainder included in fee and disclosed. Platform fee is zero, base is unchanged. Existing expectedTotalKobo passed; API409 discards old quote and reloads settings without making a second money request.",
+    "UI-CU-02": "Loading/malformed/failed fee settings keep payment disabled; fee/total never falls back to an absorbed zero. Visible loading/error and retry.",
+    "UI-CU-03": "Push permission/subscription rejection caught; preference remains unchanged, busy clears, toast and inline alert explain recovery. Rapid requests guarded while busy/saving.",
+    "UI-CU-04": "Card and request settled independently; useful known card retained, new issuance blocked when request absence unknown. Loading/error/retry explicit. Effect cleanup ignores late loads. Pending request load failure and nested409 lookup failure caught.",
+    "UI-CU-05": "Fictional0700 support number removed; customer pointed to existing dashboard Support.",
+    "UI-CU-06": "Unknown funds/payment history show loading/unavailable. Known stale balance retained with warning, local last-success-display timestamp and wallet retry.",
+    "UI-CU-07": "Fuel load failures separate from payment/authorization error; successful retry clears only resolved loadError. Visible reload; outdated/unavailable fuel details block new authorization/payment while paid code/history display preserved.",
+    "UI-CU-08": "Receipt deep link consumed by requested ID once; same-ID polling cannot reopen closed receipt, different intentional ID can still open."
+  },
+  "quoteExamples": [
+    {
+      "inputNaira": "101",
+      "feeBasisPoints": 150,
+      "rawFeeKobo": 152,
+      "roundingKobo": 48,
+      "feeKobo": 200,
+      "totalKobo": 10300
+    },
+    {
+      "inputNaira": "101",
+      "bearer": "platform",
+      "feeKobo": 0,
+      "totalKobo": 10100
+    }
+  ],
+  "verification": [
+    {
+      "command": "node tests/production-customer-controls.test.cjs",
+      "cwd": "apps/web",
+      "result": "16 passed,0 failed; fresh final source",
+      "log": "/tmp/obligon-customer-proof.log"
+    },
+    {
+      "command": "node tests/customer-my-card.test.cjs",
+      "cwd": "apps/web",
+      "result": "14 passed,0 failed; fresh after final fuel guards"
+    },
+    {
+      "command": "node tests/customer-audit.test.cjs",
+      "cwd": "apps/web",
+      "result": "8 passed,0 failed; checked customer receipt/status/notifications preservation"
+    },
+    {
+      "command": "node tests/customer-entitlements.test.cjs",
+      "cwd": "apps/web",
+      "result": "6 passed,0 failed; existing entitlements preserved"
+    },
+    {
+      "command": "./node_modules/.bin/tsc --noEmit --incremental false",
+      "cwd": "apps/web",
+      "result": "exit0; fresh final source"
+    },
+    {
+      "command": "git diff --check -- owned paths",
+      "result": "exit0; fresh final source"
+    }
+  ],
+  "reproduction": {
+    "log": "/tmp/obligon-customer-repro.log",
+    "initialResult": "11 failures: two new-helper missing cases,8 existing behavior failures,1 test fixture shape issue corrected before proof; unhandled pending-request rejection reproduced.",
+    "runnerLimit": "Sandbox node --test worker did not report genuine checks; direct Node test-file runner used to execute actual node:test suite."
+  },
+  "uiReferenceRationale": "All ten catalog summaries consulted; Design Taste accessibility references selected. Existing green/navy customer surfaces, labels, live errors, native buttons retained; no new libraries, hosted generation or external project upload.",
+  "limitsAndRisks": [
+    "Root still must perform real browser desktop/mobile and keyboard checks and independent review; this increment has source/runtime component-test evidence only.",
+    "Push denial is an isolated mocked rejection. No real browser permission prompt, service worker registration or external push subscription tested.",
+    "Flutterwave v3 fractional sandbox acceptance remains unproven; whole-naira deposit policy applied. No live payment or real-money test was run.",
+    "Critical financial/provider release needs qualified human review and wider sandbox/reconciliation/security evidence; these UI checks are not a readiness or security claim.",
+    "Existing direct fuel price preview still uses floating arithmetic as before; server checkout amount remains final authority. This scoped load-state fix does not certify that preview precision.",
+    "Existing disableWebPush helper catches subscription-removal failures internally; this scope adds UI rejection handling but does not redesign that helper."
+  ],
+  "learning": "Root will include these changes in the single task Edirae Learn breakdown and index; no separate learning file authored by subagent.",
+  "sourceHashes": {
+    "apps/web/components/customer-dashboard/CustomerModals.tsx": "c0d8f738fbb7fe9e136c7b7951ae0a9bf78373d9da2a29968a83d604e974f6b2",
+    "apps/web/components/customer-dashboard/CustomerScreen.tsx": "803f0a28047f87ad4d50f76b3ae868c0ea396006b43b7cb14451f1a9e432f9c7",
+    "apps/web/components/customer-dashboard/CustomerFuelCheckout.tsx": "4310a63a4528ad904cca19b1b9728a3b1c0f6a35e6353e619f23ce27bf496cf2",
+    "apps/web/lib/customer-funding-quote.ts": "422b328117b0d21afbe116b4400fb13638e348d7d0f4913c10af866aee95edec",
+    "apps/web/lib/services/client.ts": "200e1c082138fd5773f3ac098528ba444d1db7229cd8b31e29fb13b5c6be433b",
+    "apps/web/tests/production-customer-controls.test.cjs": "fb0e4f3477f2a3efaa88584290d8879cb9949ed1e592d261ce5b3f8f6db7855c"
+  }
+}

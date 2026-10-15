@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-14",
+  "ownedFixturesRemoved": {
+    "withdrawnCardRequest": 1,
+    "failedRefund": 1,
+    "companyMembership": 1,
+    "secondCompany": 1
+  },
+  "browser": {
+    "ownedTabsClosed": [
+      4,
+      5,
+      6
+    ],
+    "temporaryViewportReset": true,
+    "userTabPreserved": true,
+    "liveAccountSignedOut": true
+  },
+  "localListenersStopped": [
+    4310,
+    4311,
+    4410
+  ],
+  "ownedPostgresClusterStopped": true,
+  "ownedGeneratedFontCachesRemoved": true,
+  "auditPortsNoLongerListening": true,
+  "productionBusinessDataChanged": false,
+  "liveRoutineAuthenticationAndConsentActions": true
+}

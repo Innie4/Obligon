@@ -1,0 +1,152 @@
+{
+  "task": "Production company invitations UI-CO-01",
+  "date": "2026-10-14",
+  "branch": "codex/production-readiness-2026-10-14",
+  "status": "implemented_and_focused_verified_pending_root_browser_and_independent_review",
+  "scope": "Company invitation redemption, selected company session context, primary account role preservation; no commits, push, deploy, dependencies or schema migration.",
+  "acceptanceCriteria": [
+    "Legacy /auth/signup?invite links redirect to the invitation page; login, signup, MFA and email verification preserve a safe internal invitation destination.",
+    "Signed-in active user must have a verified email equal to the invitation email, case-insensitively.",
+    "Acceptance updates exactly one invited membership and marks the invite accepted in one PostgreSQL transaction, with expiry checked at the final claim.",
+    "No primary users.role changes, no new company, no duplicate memberships or invitation ownership/capability escalation.",
+    "Company context selection is bound to the current user live session and refresh credential, with current active company membership and company organization type.",
+    "Company API, session reload and refresh enforce current membership and type; removed/suspended selected context never silently falls back.",
+    "Company context cannot authorize partner/mechanic APIs; explicit exit restores primary account context.",
+    "Team role/capability edits preserve primary account role and cannot exceed the acting member rights."
+  ],
+  "reproduction": {
+    "sourceFinding": "/tmp/obligon-production-ui-audit.json UI-CO-01: no redemption UI/API for invites emitted at /auth/signup?invite.",
+    "preFixFocusedTests": "9/9 failed: eight invite endpoint requests returned Express 404 HTML, and team role edit changed users.role customer -> company.",
+    "testFile": "apps/api/tests/company-invitations.integration.test.mjs"
+  },
+  "ownedFilesAndRegions": [
+    {
+      "file": "apps/api/src/routes/auth.routes.js",
+      "regions": "loadOrgForUser, sessionPayload additive fields, refresh/session org context validation, new company-context(s) and invitation endpoints; password/MFA/reset code owned by others untouched"
+    },
+    {
+      "file": "apps/api/src/middleware/auth.js",
+      "regions": "companyContext and requireCompanyMembership; requireOrgMembership partner/mechanic organization type checks"
+    },
+    {
+      "file": "apps/api/src/lib/security.js",
+      "regions": "optional org/orgType claims on existing signRefreshToken only; randomCode independently changed by root"
+    },
+    {
+      "file": "apps/api/src/routes/company.routes.js",
+      "regions": "company router gate and team invite/update/remove; wallet/operations regions owned by others untouched"
+    },
+    {
+      "file": "apps/api/tests/company-invitations.integration.test.mjs",
+      "regions": "35 isolated PostgreSQL behavioral/adversarial tests"
+    },
+    {
+      "file": "apps/web/components/company-dashboard/CompanyShell.tsx",
+      "regions": "signed company context rendering, selector, primary account return controls"
+    },
+    {
+      "file": "apps/web/components/company-dashboard/CompanyContextSelector.tsx",
+      "regions": "active company selection and signed context reset before primary dashboard navigation"
+    },
+    {
+      "file": "apps/web/components/auth/CompanyInvitation.tsx",
+      "regions": "signed-out, verification, invite states, atomic accept then company selection, account switching"
+    },
+    {
+      "file": "apps/web/app/auth/company-invitation/page.tsx",
+      "regions": "new server route passes token to invitation screen"
+    },
+    {
+      "file": "apps/web/app/auth/signup/page.tsx",
+      "regions": "legacy valid invite destination redirect"
+    },
+    {
+      "file": "apps/web/lib/company-invitation-routing.ts",
+      "regions": "validated invitation and auth return links using existing safeInternalPath"
+    },
+    {
+      "file": "apps/web/lib/services/company-invitations.ts",
+      "regions": "existing api.request and session-store; no new transport; stale session token-write guard"
+    },
+    {
+      "file": "apps/web/lib/services/types.ts",
+      "regions": "additive optional SessionUser organizationId/organizationType/organizationRole"
+    },
+    {
+      "file": "apps/web/components/auth/AuthForms.tsx",
+      "regions": "safe returnUrl through login/signup/MFA/verification and account links only"
+    },
+    {
+      "file": "apps/web/components/auth/MFAUI.tsx",
+      "regions": "safe invitation return after existing MFA result only"
+    },
+    {
+      "file": "apps/web/components/auth/VerificationUI.tsx",
+      "regions": "safe invitation return once server reports emailVerified; phone remains independently pending"
+    },
+    {
+      "file": "apps/web/tests/production-company-invitations.test.cjs",
+      "regions": "19 routing/component/client behavioral checks"
+    },
+    {
+      "file": "apps/web/tests/mfa-password-proof.test.cjs",
+      "regions": "window/routing test fixture compatibility for new return path hook only"
+    }
+  ],
+  "contracts": {
+    "GET /api/auth/company-invitations/:token": "requireAuth, matching current email. Returns invitation {organizationId,companyName,role,status,expiresAt}. No token/email/inviter data in response.",
+    "POST /api/auth/company-invitations/:token/accept": "requireAuth, authLimiter. Returns {ok:true,organization:{id,name,type}}. No new login session and no changed primary role.",
+    "GET /api/auth/company-contexts": "requireAuth. Returns {organizations:[{id,name}]} for active company memberships/ownership.",
+    "POST /api/auth/company-context": "requireAuth and live same-user session + refreshToken. Body {organizationId:string|null,refreshToken}; null explicitly resets to primary account default context. Returns {user,accessToken,refreshToken}. Same durable session and raw credential; signed selected org claims only.",
+    "SessionUser": "role remains primary role. Additive organizationId,organizationType,organizationRole authorize UI context; all APIs re-read DB membership/status/permissions."
+  },
+  "verification": [
+    {
+      "command": "OBLIGON_TEST_DATABASE_URL=<isolated local PG> DOTENV_CONFIG_PATH=/dev/null NODE_ENV=test DATABASE_SSL=false node --test apps/api/tests/company-invitations.integration.test.mjs",
+      "result": "35 tests passed, 0 failed, 0 skipped, exit 0 after last backend edits; acceptance/removal concurrency and forced audit DB failure rollback included."
+    },
+    {
+      "command": "... node --test apps/api/tests/company-invitations.integration.test.mjs apps/api/tests/partner-authorization.test.mjs",
+      "result": "Previous increment 52 passed, 0 skipped (32 invitation + 20 existing partner tests); three later backend tests freshly verified by final35 run."
+    },
+    {
+      "command": "node --test apps/web/tests/production-company-invitations.test.cjs apps/web/tests/mfa-password-proof.test.cjs apps/web/tests/production-auth-navigation.test.cjs",
+      "result": "68 tests passed, 0 failed, 0 skipped, exit 0 after last UI/client edits."
+    },
+    {
+      "command": "apps/web/node_modules/.bin/tsc --noEmit --project apps/web/tsconfig.json",
+      "result": "exit 0, no diagnostics after other company owner completed previously in-progress CompanyModalKey type."
+    },
+    {
+      "command": "git diff --check; node --check auth.routes/company.routes/middleware/auth/lib/security.js",
+      "result": "exit 0; no whitespace or JS syntax diagnostics after last edits."
+    }
+  ],
+  "impact": [
+    "Company endpoints now use selected company context instead of primary account role. Existing requirePermission gates continue to govern mutations and current DB memberships govern all company reads.",
+    "Default organization selection is constrained to matching primary organization type; selected secondary company context is explicit and signed, compatible with legacy default refresh tokens.",
+    "Suspending/deleting membership immediately invalidates company API access and refresh; duplicate legacy user memberships in a company are denied until corrected.",
+    "Company joining does not create organizations, wallets, billing subscriptions or duplicate users; all existing financial service flows remain under their permission gates.",
+    "Root hardened customer personal wallet lookups independently to force personal scope while company context is selected.",
+    "Only partner router uses requireOrgMembership; it now rejects company context even for a preserved partner/mechanic primary role. Legacy minimal test fixtures must include real org type and signed orgType.",
+    "Pending team role edits synchronize invite.role; team removal revokes matching pending invites so old links cannot revive a deleted membership."
+  ],
+  "recovery": [
+    "Database failure during membership activation, invitation claim or audit rolls back all changes; tested with forced audit error and successful retry.",
+    "If acceptance commits but context selection/network fails, the accepted invitation page offers Open company dashboard and retries selection without replaying acceptance.",
+    "Expired or revoked links require a new invitation. Owners can remove the invited team row and invite again through existing team workflow.",
+    "Explicit Return to primary account requests a default signed context reset before navigation; logout invalidates the existing durable session and clears local session state.",
+    "No migration required; rollback affects application routes/helpers only. Existing accepted memberships remain valid persisted records if application code is rolled back."
+  ],
+  "limitationsAndReleaseGates": [
+    "Root owns browser verification and full integrated suites; this agent did not inspect rendered desktop/mobile UI or conduct independent release review.",
+    "Qualified human review of authentication/tenant boundaries is required before production release. No security or production-readiness guarantee made.",
+    "Live invitation email provider delivery not exercised; isolated tests prohibit external network. Existing mailer delivery path retained with awaited emailDelivered response.",
+    "Legacy invitations require their existing invited membership row. Deleted, suspended, conflicting or duplicate legacy rows are deliberately rejected instead of inferred/repaired.",
+    "Invitation tokens retain the existing opaque plaintext token schema; 192-bit generated random values, authenticated preview, email verification/binding, expiry and auth rate limiter apply. No schema expansion requested.",
+    "Selected context refresh JWT expiry uses the existing signer policy and durable session expires_at cap; any pre-existing remember-me JWT-vs-session TTL mismatch is unchanged by this task.",
+    "Invitation manager/dispatcher roles retain existing explicit capability behavior; membership role is not assumed to imply privileges beyond existing owner/admin bypass.",
+    "Root writes the single Edirae Learn breakdown and index after integration; this agent did not add a duplicate breakdown.",
+    "All ten local UI reference catalog summaries consulted; existing green/navy tokens and semantic form controls kept. Focused Better Design typography and taste-accessibility/code craft references inspected. No hosted design service, paid account, external project upload or new UI dependency used."
+  ]
+}

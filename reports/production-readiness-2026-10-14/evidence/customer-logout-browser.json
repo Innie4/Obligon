@@ -1,0 +1,83 @@
+{
+  "date": "2026-10-14",
+  "environment": "isolated loopback synthetic accounts; no providers enabled",
+  "before": {
+    "liveMobile": {
+      "ancestors": [
+        {
+          "position": "fixed",
+          "tag": "DIV",
+          "zIndex": "50"
+        },
+        {
+          "position": "absolute",
+          "tag": "NAV",
+          "zIndex": "40"
+        }
+      ],
+      "button": {
+        "height": 48,
+        "left": 167,
+        "top": 708,
+        "width": 129
+      },
+      "buttonReceivesPointer": false,
+      "hitHref": "/customer/stations",
+      "hitTag": "svg",
+      "hitText": ""
+    },
+    "localDesktop": {
+      "ancestors": [
+        {
+          "position": "fixed",
+          "tag": "DIV",
+          "zIndex": "50"
+        },
+        {
+          "position": "fixed",
+          "tag": "ASIDE",
+          "zIndex": "auto"
+        }
+      ],
+      "button": {
+        "height": 48,
+        "width": 249,
+        "x": 647,
+        "y": 552.5
+      },
+      "buttonReceivesPointer": false,
+      "hit": {
+        "className": "w-full rounded-2xl border border-[#dbe2d8] h-[500px]",
+        "tag": "IFRAME",
+        "text": ""
+      },
+      "width": 1280
+    }
+  },
+  "after": {
+    "mobile320": {
+      "buttonReceivesPointer": true,
+      "client": 320,
+      "hitText": "Sign Out",
+      "scroll": 320,
+      "width": 320
+    },
+    "mobileEscape": {
+      "activeText": "Sign Out",
+      "dialogs": 0
+    },
+    "desktop1280Short": {
+      "buttonReceivesPointer": true,
+      "cookieZ": "34",
+      "height": 500,
+      "width": 1280
+    },
+    "desktopPointerLogoutDestination": "/auth/login",
+    "mobilePointerLogoutDestination": "/auth/login"
+  },
+  "passed": true,
+  "notes": [
+    "The CSS cookie layer can have intermediate z-index values during its existing300ms transition; pointer acceptance was measured on the actual displayed frame.",
+    "Local station iframe and live bottom-nav pointer intercepts were reproduced before repair."
+  ]
+}

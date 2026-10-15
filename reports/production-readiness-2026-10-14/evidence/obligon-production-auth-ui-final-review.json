@@ -1,0 +1,250 @@
+{
+  "date": "2026-10-14",
+  "reviewedAt": "2026-10-14T16:07:55.096014+00:00",
+  "role": "Independent bounded read-only review; no repository changes, commits, pushes, deployments or production/provider requests",
+  "scope": "Only exact8 findings in prior auth/UI review plus AUTH-REFRESH-LIFETIME-01 and AUTH-SIDLESS-ACCESS-01 final increment",
+  "codeVerdict": "Approve the ten corrected findings within the bounded reviewed scope",
+  "shipBanner": "DO NOT SHIP",
+  "productionDecision": "Qualified human review of authentication/authorization/tenant/money changes and remaining root-owned production checks are still required; this review cannot authorize production release.",
+  "newFindings": [],
+  "findings": [
+    {
+      "id": "UI-CONTEXT-01",
+      "disposition": "Corrected; root-owned actual browser evidence independently inspected",
+      "fix": "The selected-company CompanyShell main subtree is keyed by user.organizationId. Changing A to B therefore replaces the main subtree, including CompanyScreen page, modal state and their outstanding effect cleanups. Same-org rerenders preserve it.",
+      "evidence": [
+        "CompanyShell selected-company main is keyed by organizationId; page and modal lifetimes are descendants.",
+        "Root exercised actual browser on the same /company page: A shows6 vehicles and original FLT-1198 row; switching to Audit second fleet shows0 vehicles/0spend/0cards and empty transactions with no A row. Returned A reloads6 (reported by root).",
+        "Reviewer read browser JSON and visually inspected both before/after screenshots. This is actual application React DOM behavior, not inferred from mock hook tests."
+      ],
+      "browserEvidence": {
+        "json": "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-14/company-context-browser.json",
+        "images": [
+          "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-14/images/company-a-before-switch.jpg",
+          "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-14/images/company-b-after-switch.jpg"
+        ],
+        "driver": "root agent shared Cua browser; independent reviewer read saved evidence only"
+      }
+    },
+    {
+      "id": "UI-CONTEXT-02",
+      "disposition": "Corrected and independently verified for reviewed snapshot",
+      "fix": "Pending allocation storage and its payload bind immutable organizationId. Restoring in another same-name fleet loads no pending request. API rejects a request whose expected organization differs from selected signed organization before money effects.",
+      "evidence": [
+        "Fresh production-company-workflows direct component test same-name company selection cannot restore another company allocation.",
+        "Fresh temporary existing-fixture real HTTP/PG probe: both same-name fleets available to same owner; old A payload under B returns409 with unchanged wallets/ledger and zero idempotency/audit rows; matching current org transfers the exact principal and balanced2 ledger legs.",
+        "Temp probe uses existing fixture auth injection for route-contract test; actual signed tenant context enforcement is separately exercised by company-invitations HTTP suite."
+      ]
+    },
+    {
+      "id": "AUTH-DISABLE-01",
+      "disposition": "Corrected and independently verified for reviewed snapshot",
+      "fix": "MFA disable locks current user and rechecks credential revision, active status, pending provider recovery and same-account live durable session before password proof and disable commit; pending MFA proofs invalidate in same transaction.",
+      "evidence": [
+        "Fresh real HTTP/PG account-lock ordering: reset queued before disable completes200; old-password disable returns401; MFA remains enabled, replacement password persists, sessions revoked.",
+        "Session revoked while disable awaits account lock returns401 and preserves MFA; legitimate disable succeeds and consumes pending proof while keeping current intended local session."
+      ]
+    },
+    {
+      "id": "AUTH-LOCKOUT-01",
+      "disposition": "Corrected and independently verified for reviewed snapshot",
+      "fix": "Failed counter increment/lockout derive atomically from current PostgreSQL count, guarded by original password hash and provider credential revision.",
+      "evidence": [
+        "Fresh five concurrent wrong passwords return401, persist count5 and future lockout, then correct password is denied.",
+        "Fresh stale password failure blocked by row lock then credential replacement returns401 without incrementing the replacement credential counter."
+      ]
+    },
+    {
+      "id": "AUTH-UI-SESSION-01",
+      "disposition": "Corrected and independently verified for reviewed snapshot",
+      "fix": "Auth service guards revision, exact token identity and original pending MFA proof before storage writes; AuthProvider guards generation; MFA UI rejects obsolete/unmounted results before user state and navigation.",
+      "evidence": [
+        "Fresh direct actual compiled service tests cover pending MFA/password login after logout/new login, replacing proof, MFA response replays, late logout and provider password change.",
+        "Fresh AuthProvider tests cover older successful/failed password login after newer account authenticated.",
+        "Fresh MFA UI completion after revision invalidation or unmount causes no session update or navigation.",
+        "Client React component tests use mock hook fixtures, not full browser reconciliation/cross-tab proof."
+      ]
+    },
+    {
+      "id": "UI-REFRESH-01",
+      "disposition": "Corrected and independently verified for reviewed snapshot",
+      "fix": "Same-input refresh drops while inFlight holds a request without changing silentNonce and invalidating the running effect; dependency/reload cleanup and request-sequence ownership still discard stale responses.",
+      "evidence": [
+        "Fresh source-compiled hook probe resolves initial records, starts a refresh, fires overlap without new request, resolves first refresh and receives Fresh records.",
+        "Fresh stale old location completion cannot unlock a current location request; initial-error recovery/stale warning/clear behavior remains green."
+      ]
+    },
+    {
+      "id": "UI-MFA-BACKUP-01",
+      "disposition": "Corrected and independently verified for reviewed snapshot",
+      "fix": "Accepted optional-hyphen backup values trim, uppercase and serialize to generated XXXX-XXXX format before challenge submission.",
+      "evidence": [
+        "Fresh compiled UI tests accept lowercase spaced hyphenated and separator-free a1b2c3d4 and submit A1B2-C3D4.",
+        "Fresh actual HTTP backup challenge remains one-use under10 concurrent completions; cannot bypass prior password proof."
+      ]
+    },
+    {
+      "id": "UI-PASSWORD-CHANGE-01",
+      "disposition": "Corrected and independently verified for reviewed snapshot",
+      "fix": "API success explicitly declares reauthenticationRequired for provider-managed password update; client clears captured session only for current successful required-reauth response; modal clears React user and routes login with accurate copy. Local credential flow preserves current session as intended.",
+      "evidence": [
+        "Fresh actual HTTP/PG provider boundary mock requires one external update, response flagtrue and all sessions/proofs revoked; local responsefalse keeps current session valid.",
+        "Fresh compiled client tests clear only when flagtrue and do not erase newer account on stale response.",
+        "Fresh compiled password modal test checks explanatory copy, null React user, confirmation toast and /auth/login replace.",
+        "Supabase provider is mocked at fetch boundary; real provider staging is unavailable."
+      ]
+    },
+    {
+      "id": "AUTH-REFRESH-LIFETIME-01",
+      "disposition": "Corrected and independently verified for reviewed frozen auth snapshot",
+      "fix": "Refresh JWT numeric exp equals persisted sessions.expires_at, including remembered30d/ordinary7d. Company context selection/return reissues against original locked expiry and same SID.",
+      "evidence": [
+        "Fresh actual HTTP test remembered refresh on simulated day8 succeeds and at durable expiry rejects.",
+        "Fresh normal/remembered exp equals stored expiry to integer second; selection/return preserves original expiry and SID.",
+        "Fresh revoked or DB-expired session denies otherwise unexpired remembered token.",
+        "Existing tokens retain old exp until reissue; standard JWT precision may expire less than1s before millisecond DB expiry."
+      ]
+    },
+    {
+      "id": "AUTH-SIDLESS-ACCESS-01",
+      "disposition": "Corrected and independently verified for reviewed frozen auth snapshot",
+      "fix": "Normal access JWT requires nonempty SID and live unrevoked unexpired same-subject durable session; existing scoped partner API-key branch remains separate.",
+      "evidence": [
+        "Fresh actual HTTP session endpoint denies a signed sidless JWT before and after logout; valid bound access succeeds before logout and rejects after.",
+        "Missing/wrong-account/revoked/expired session ID tests reject.",
+        "Reviewed production access issuers all provide SID, refresh issuers all pass DB expiry; signer/middleware/auth final hashes match frozen artifact."
+      ]
+    }
+  ],
+  "verification": {
+    "api": {
+      "command": "node --test tests/password-reset-claim.integration.test.mjs tests/mfa-password-proof.integration.test.mjs tests/auth-session-lifetime.integration.test.mjs tests/company-invitations.integration.test.mjs tests/company-membership.integration.test.mjs",
+      "cwd": "/home/inimfon-udoh/Obligon/checkout/apps/api",
+      "exitCode": 0,
+      "counts": {
+        "tests": 82,
+        "pass": 82,
+        "fail": 0,
+        "skipped": 0
+      },
+      "log": "/tmp/obligon-production-auth-ui-final-api.log",
+      "errors": "Printed Synthetic session/password-write failures and provider recovery503 are intentional asserted rollback/recovery tests; no unresolved test failure."
+    },
+    "web": {
+      "runner": "Direct node tests/*.test.cjs per selected file; counts are actual subtests, not sandbox file wrappers",
+      "total": 63,
+      "suites": [
+        {
+          "suite": "mfa-password-proof",
+          "exitCode": 0,
+          "log": "/tmp/obligon-production-auth-ui-final-mfa-password-proof.log",
+          "counts": {
+            "tests": 13,
+            "pass": 13,
+            "fail": 0,
+            "skipped": 0
+          }
+        },
+        {
+          "suite": "auth-session-races",
+          "exitCode": 0,
+          "log": "/tmp/obligon-production-auth-ui-final-auth-session-races.log",
+          "counts": {
+            "tests": 13,
+            "pass": 13,
+            "fail": 0,
+            "skipped": 0
+          }
+        },
+        {
+          "suite": "production-company-invitations",
+          "exitCode": 0,
+          "log": "/tmp/obligon-production-auth-ui-final-production-company-invitations.log",
+          "counts": {
+            "tests": 19,
+            "pass": 19,
+            "fail": 0,
+            "skipped": 0
+          }
+        },
+        {
+          "suite": "production-company-workflows",
+          "exitCode": 0,
+          "log": "/tmp/obligon-production-auth-ui-final-production-company-workflows.log",
+          "counts": {
+            "tests": 11,
+            "pass": 11,
+            "fail": 0,
+            "skipped": 0
+          }
+        },
+        {
+          "suite": "production-shared-state",
+          "exitCode": 0,
+          "log": "/tmp/obligon-production-auth-ui-final-production-shared-state.log",
+          "counts": {
+            "tests": 7,
+            "pass": 7,
+            "fail": 0,
+            "skipped": 0
+          }
+        }
+      ]
+    },
+    "companyContextRouteProbe": {
+      "command": "node --test --test-name-pattern=independent expected-company /tmp/obligon-production-company-context-final-probe.mjs",
+      "tests": 2,
+      "pass": 2,
+      "fail": 0,
+      "skipped": 0,
+      "log": "/tmp/obligon-production-company-context-final-probe.log",
+      "source": "/tmp/obligon-production-company-context-final-probe.mjs"
+    },
+    "isolation": "Existing loopback test PG55433, uniquely named temporary schemas, synthetic accounts, cleanup after each process; external provider auth mocked or prohibited. No shared browser interaction by reviewer; root is actively running browser QA."
+  },
+  "requiredReleaseEvidence": [
+    "Root-owned integrated build/full suite, complete role/mobile/keyboard checks beyond the demonstrated A/B context switch.",
+    "Qualified human security and financial-flow review before production release.",
+    "Real Supabase/provider/email/SMS staging, live settings, data migrations and rollback/monitoring not assessed in this bounded review.",
+    "Full financial core/payment/refund/ACL/push boundaries excluded and assigned independent review elsewhere."
+  ],
+  "evidenceHashes": {
+    "/tmp/obligon-production-auth-ui-final-api.log": "d4654297337bb04bd50dcef886c25db527f89263175044017f191a2e4f48c60a",
+    "/tmp/obligon-production-company-context-final-probe.log": "aebea74538bf1cb9ddc3f7c094734001e9801c9f198fe25adeb10527920a12a6",
+    "/tmp/obligon-production-auth-ui-final-mfa-password-proof.log": "0473af101d04328345a5ef5b050163fb241df2774fc979361ce7b401f222e6a0",
+    "/tmp/obligon-production-auth-ui-final-auth-session-races.log": "a8200230b57695cc3831b84a4b18f59aaaa55d1451a143f4e3c27dd14de99540",
+    "/tmp/obligon-production-auth-ui-final-production-company-invitations.log": "165a9a5a63b2d61ac1b4930b72d2e46d6019e37d391717843459501dada9314e",
+    "/tmp/obligon-production-auth-ui-final-production-company-workflows.log": "6e57ff6f1e5d987361be09c16bc8ee9039addfd11c9b442592c1da1a5af8fce2",
+    "/tmp/obligon-production-auth-ui-final-production-shared-state.log": "34e0c6a53600cf4953558a0a739a343cb4e1981aeb6ceab108ade06a7729ed56",
+    "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-14/company-context-browser.json": "ff172364eafa97218e50da9a6abf3df4137fa34635fe2f485e27e27f5d55b4f6",
+    "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-14/images/company-a-before-switch.jpg": "0941589860c4e12b964189bf89a8ded69ef18f095ea1ee0669916ee8af6db60b",
+    "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-14/images/company-b-after-switch.jpg": "bc106c6e1dfa88e15572ba8856c93bed23ac86f7d645075dbee21f7196ae4cfe"
+  },
+  "freshness": "The82 API/63UI/2context-route tests bind to their saved verification source snapshot. Actual root A/B browser proof inspected afterward. Later root mechanic mapping update is explicitly recorded with current hashes and targeted review; root-owned affected regression/full suite required before final claims.",
+  "postReviewSourceChange": {
+    "files": [
+      "apps/api/src/middleware/auth.js",
+      "apps/api/src/routes/auth.routes.js"
+    ],
+    "scope": "Root restored existing mechanic primary-account resolution through active partner or mechanic organizations; company-selected contexts remain barred from partner APIs.",
+    "inspection": "Reviewer read changed loadOrgForUser and requireOrgMembership primaryTypeMatches sections; original SID, expiry, MFA, lockout and reset corrections remain unchanged. Original82-test log is pinned to sourceHashesAtVerification, not this later root source. Root owns affected mechanic/auth HTTP regression and final integrated verification.",
+    "currentHashes": {
+      "apps/api/src/middleware/auth.js": "d85d648df02bb35503e63533d522e772c4aa668360d34c48f1ed9a8b345d33b8",
+      "apps/api/src/routes/auth.routes.js": "e170a881b681cc853b77be675760aab4a1740475d3bc00e63720a212adac4c81"
+    }
+  },
+  "sourceHashesAtVerification": {
+    "apps/api/src/lib/security.js": "61afaf50419e91565fec007e0e137fdd6d40a4f6da2c40f364cc2d3204820c5a",
+    "apps/api/src/middleware/auth.js": "7ae64685ca5957c0ba4cbc7da3e6d0fc1b440402d894892c70ee50fbe8cabf07",
+    "apps/api/src/routes/auth.routes.js": "6752c6fea7599ca3d1627b7e362801e6663fb6c0134f4a765c2b1542ba31f307",
+    "apps/api/src/routes/company.routes.js": "8d6422e329a74d5d5733e9b2ce18af5e1406ca6c1667f38afab5dd83f2987c1c",
+    "apps/web/components/company-dashboard/CompanyShell.tsx": "ab15bc37f7324e8e8ac9386306a83463316482f34c0684872e1095e2dbd56e01",
+    "apps/web/components/company-dashboard/CompanyModals.tsx": "97321118d5b87068fbfcb62bb962ff711b8a9807cbd95a6f2b33eb2d9b5ea207",
+    "apps/web/components/shared/useAsync.ts": "97ade7c0204510900821c8db45f1cff520284c3dd5bd7f8dfbf7a913594f473b",
+    "apps/web/components/shared/AuthContext.tsx": "21a4ea9fa75f556228c697c01fc283e9cd34fc4f7fb74eb31b12de144b63c307",
+    "apps/web/components/auth/MFAUI.tsx": "e1f308758f60a898120e1114a2cafaa2338fb9f6e12ee0e7f6281e9ced45d35b",
+    "apps/web/components/customer-dashboard/CustomerModals.tsx": "6eecb4be6777ac93436d2df934b8a51570f464c35cb3ac2af69f7bec674a4251",
+    "apps/web/lib/services/client.ts": "2aa375de4d7c935dafa6946a2dbc97520f6210f47d0b5431d707d0b35817d118",
+    "apps/web/lib/services/company-invitations.ts": "046c1154cc7071cb1873d20b9fdb6abcb54aa647af02c12d88880c8beb9b0b9f"
+  }
+}

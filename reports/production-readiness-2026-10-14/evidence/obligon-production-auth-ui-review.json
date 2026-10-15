@@ -1,0 +1,450 @@
+{
+  "date": "2026-10-14",
+  "role": "Independent read-only auth/UI review; no source edits, commits, pushes, deployment, external code upload or real-money activity",
+  "branch": "codex/production-readiness-2026-10-14",
+  "baseline": "5914f6e",
+  "freeze": "Frozen at parent request before AUTH03/shared-hook revisions; source and tests must be rechecked only for the exact corrected findings.",
+  "scope": [
+    "AUTH01 password proof/MFA setup and backup UI",
+    "AUTH02 reset/OTP/contact/credential revisions and races",
+    "Company invitation redemption/context/team roles and CompanyShell",
+    "Public forms/dialog async states and shared useAsync",
+    "Customer quote/load/error/payment controls",
+    "Company pagination/billing allocation/POS codes/support workflow API and UI contracts"
+  ],
+  "excluded": [
+    "Financial core/webhooks/refund/payment helpers still mutating under root ownership",
+    "Broader remaining access audit assigned separately",
+    "Real browser/screen reader/provider staging/production release"
+  ],
+  "codeVerdict": "Request changes",
+  "shipBanner": "DO NOT SHIP",
+  "findings": [
+    {
+      "id": "UI-CONTEXT-01",
+      "priority": "P1",
+      "title": "Company selection retains the previous company page and modal state",
+      "source": [
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/web/components/company-dashboard/CompanyContextSelector.tsx",
+          "start": 30,
+          "end": 37
+        },
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/web/components/company-dashboard/CompanyScreen.tsx",
+          "start": 163,
+          "end": 177
+        },
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/web/components/company-dashboard/CompanyScreen.tsx",
+          "start": 745,
+          "end": 758
+        }
+      ],
+      "trigger": "A user with two active fleets switches A to B without leaving the current company page.",
+      "observed": "Actual compiled Overview/useAsync loaded once and continued displaying org-a metrics after user.organizationId became org-b. CompanyScreen Page key used pageKey/revision only; modal key used modal only. New requests use current B signed tokens.",
+      "expected": "Remount or explicitly revalidate all tenant-specific pages, choices, pending actions and modals on organizationId changes; never show A records beneath B workspace identity.",
+      "reproduction": "/tmp/obligon-production-auth-ui-edge-repro.cjs",
+      "evidence": "/tmp/obligon-production-auth-ui-edge-repro.log",
+      "introduced": "The new in-place company context switch exposes existing page state not keyed to tenant.",
+      "disposition": "Root has since added CompanyShell main key=organizationId. Corrected React reconciliation/browser behavior and final tests are not yet independently rechecked; remain pending at freeze."
+    },
+    {
+      "id": "UI-CONTEXT-02",
+      "priority": "P1",
+      "title": "Nonunique company display names share an uncertain allocation request",
+      "source": [
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/web/components/company-dashboard/CompanyModals.tsx",
+          "start": 527,
+          "end": 557
+        }
+      ],
+      "trigger": "A pending allocation from A is reopened in B where both organizations have the same display name and recipient is an active member of both.",
+      "observed": "Actual compiled allocation component restored frozen org-a payload from company-allocation:owner:Same Fleet and submitted the same request key under org-b. Server organization-scoped idempotency treats this as a distinct B money movement.",
+      "expected": "Use organizationId in storage key and persisted payload; reject a restored request or a submission when its organization differs from the signed context.",
+      "reproduction": "/tmp/obligon-production-auth-ui-edge-repro.cjs",
+      "evidence": "/tmp/obligon-production-auth-ui-edge-repro.log",
+      "disposition": "Root has since changed storage key/pending payload to organizationId and added API expected-organization409 checking. Corrected behavior and fixture revision are pending independent recheck; artifact records original reproduced defect."
+    },
+    {
+      "id": "AUTH-DISABLE-01",
+      "priority": "P1",
+      "title": "Old-password MFA disable can commit after password reset revokes the session",
+      "source": [
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/api/src/routes/auth.routes.js",
+          "start": 1030,
+          "end": 1032
+        }
+      ],
+      "trigger": "Authenticated disable attaches the old user/session before reset, verifies old password, and waits to update behind a concurrent password reset.",
+      "observed": "Isolated real HTTP/PG probe queued reset first behind an account row lock, then disable. Reset returned200, stored replacement password and revoked all sessions; old-password disable still returned200 and stored two_factor_enabled=false afterward.",
+      "expected": "Revalidate the current account credential, active authenticated session and pending-recovery state while holding the account lock, then atomically disable MFA.",
+      "reproduction": "/tmp/obligon-production-auth-ui-auth-edge-repro.mjs",
+      "evidence": "/tmp/obligon-production-auth-ui-auth-edge-repro.log",
+      "introduced": "Pre-existing adjacent disable path, uncovered by credential/reset concurrency review.",
+      "disposition": "Unfixed at freeze; root is assigning focused AUTH03 correction."
+    },
+    {
+      "id": "AUTH-LOCKOUT-01",
+      "priority": "P2",
+      "title": "Concurrent wrong password logins lose the durable lockout count",
+      "source": [
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/api/src/routes/auth.routes.js",
+          "start": 377,
+          "end": 383
+        }
+      ],
+      "trigger": "Five simultaneous wrong-password login requests read the same account state before writing failed_login_attempts.",
+      "observed": "Isolated real HTTP/PG probe returned401 for all five, but persisted only two failed attempts and locked_until=NULL. Assignment from stale user.failed_login_attempts overwrites intervening increments.",
+      "expected": "Increment the current database counter atomically and derive lockout from the committed count; avoid stale password failures modifying a changed credential revision.",
+      "reproduction": "/tmp/obligon-production-auth-ui-auth-edge-repro.mjs",
+      "evidence": "/tmp/obligon-production-auth-ui-auth-edge-repro.log",
+      "introduced": "Pre-existing adjacent login path, uncovered by review of modified login concurrency safeguards.",
+      "disposition": "Unfixed at freeze; root is assigning focused AUTH03 correction."
+    },
+    {
+      "id": "AUTH-UI-SESSION-01",
+      "priority": "P1",
+      "title": "Pending MFA completion restores old client session after logout or account replacement",
+      "source": [
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/web/lib/services/client.ts",
+          "start": 1145,
+          "end": 1159
+        },
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/web/components/auth/MFAUI.tsx",
+          "start": 140,
+          "end": 145
+        }
+      ],
+      "trigger": "MFA completion is pending when logout clears proof and session, or a newer account login replaces them.",
+      "observed": "Actual compiled service probe cleared pending proof/tokens/user through authApi.logout, resolved the older successful MFA response, then observed old-user access/refresh tokens and persisted session restored. MFA UI also sets user/navigates unconditionally after success.",
+      "expected": "Bind auth completion to an unchanged client session generation and exact pending proof; reject obsolete completions before writing tokens, user state or redirect.",
+      "reproduction": "/tmp/obligon-production-auth-ui-session-repro.cjs",
+      "evidence": "/tmp/obligon-production-auth-ui-session-repro.log",
+      "disposition": "Unfixed at freeze; root is assigning focused AUTH03 correction. Related password-login/AuthProvider generation paths should use the same enforced boundary."
+    },
+    {
+      "id": "UI-REFRESH-01",
+      "priority": "P2",
+      "title": "Overlapping silent refresh cancels the response it intends to preserve",
+      "source": [
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/web/components/shared/useAsync.ts",
+          "start": 69,
+          "end": 104
+        }
+      ],
+      "trigger": "refresh() is called again with unchanged inputs while a silent request is pending.",
+      "observed": "Changed silentNonce runs prior cleanup(active=false), then the next effect returns because inFlight is set. The earlier successful response is ignored. Compiled hook probe retained old records with status=success,error=null and no replacement request.",
+      "expected": "Drop an overlapping same-input trigger without invalidating the current response; still invalidate on dependency/reload/unmount changes.",
+      "reproduction": "/tmp/obligon-production-auth-ui-refresh-repro.cjs",
+      "evidence": "/tmp/obligon-production-auth-ui-refresh-repro.log",
+      "introduced": "Pre-existing adjacent behavior in the modified shared hook.",
+      "disposition": "Unfixed at freeze; root plans focused hook fix."
+    },
+    {
+      "id": "UI-MFA-BACKUP-01",
+      "priority": "P2",
+      "title": "Accepted separator-free backup code is sent in a form the server cannot match",
+      "source": [
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/web/components/auth/MFAUI.tsx",
+          "start": 135,
+          "end": 143
+        },
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/api/src/routes/auth.routes.js",
+          "start": 280,
+          "end": 286
+        },
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/api/src/routes/auth.routes.js",
+          "start": 1007,
+          "end": 1008
+        }
+      ],
+      "trigger": "User types A1B2C3D4 instead of generated A1B2-C3D4.",
+      "observed": "UI optional-hyphen regular expression accepts it, but submission only uppercases. Server hashes exact text and stores hyphenated generated codes, so it rejects and spends a challenge attempt.",
+      "expected": "Normalize accepted separator-free values to generated XXXX-XXXX representation, or require the separator with a clear validation message.",
+      "evidence": "Source-confirmed only; no additional HTTP probe. Existing positive backup test covers lowercase/space normalization with separator.",
+      "disposition": "Unfixed at freeze; root plans backup-format normalization."
+    },
+    {
+      "id": "UI-PASSWORD-CHANGE-01",
+      "priority": "P2",
+      "title": "Provider password change requires reauthentication while UI promises continued sign-in",
+      "source": [
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/api/src/routes/auth.routes.js",
+          "start": 1055,
+          "end": 1069
+        },
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/api/src/routes/auth.routes.js",
+          "start": 195,
+          "end": 203
+        },
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/web/components/customer-dashboard/CustomerModals.tsx",
+          "start": 469,
+          "end": 471
+        },
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/web/components/customer-dashboard/CustomerModals.tsx",
+          "start": 503,
+          "end": 505
+        }
+      ],
+      "trigger": "Successful password change for a Supabase-managed account.",
+      "observed": "Provider=true invalidation and finalization revoke all sessions; success response is only ok, old client tokens persist, and modal says You will stay signed in on this device. Closing succeeds until subsequent API calls reject the revoked session.",
+      "expected": "Expose reauthenticationRequired and explicitly clear/redirect provider sessions on success, with accurate copy; preserve intended local-credential session policy.",
+      "evidence": "Source-confirmed changed contract; focused provider tests exercise revision/revocation/recovery at fake fetch boundary. No live Supabase call.",
+      "disposition": "Unfixed at freeze; root is assigning focused AUTH03 correction."
+    }
+  ],
+  "priorAUTH02Dispositions": [
+    {
+      "id": "AUTH-RESET-01",
+      "disposition": "Resolved for reviewed AUTH02 snapshot",
+      "evidence": "consumeVerificationCode/spendFailedAttempt uses DB attempts+1, cap5, consumed_at on fifth mismatch; focused HTTP tests verify ten wrong requests persist attempts5 and deny correct code."
+    },
+    {
+      "id": "AUTH-RESET-02",
+      "disposition": "Resolved for reviewed AUTH02 snapshot",
+      "evidence": "Reset locks account, claims live code under lock, updates password/invalidation in same transaction; four concurrent replay test admits exactly one."
+    },
+    {
+      "id": "AUTH-PROOF-02",
+      "disposition": "Resolved for reviewed AUTH02 snapshot",
+      "evidence": "Proof binds credentialHash, reset/change consumes pending two_factor rows; stale verification/session creation rechecks credential revision; focused HTTP tests deny old proof and stale login completions."
+    },
+    {
+      "id": "OTP-ATTEMPTS-01",
+      "disposition": "Resolved for reviewed AUTH02 snapshot",
+      "evidence": "Atomic helper caps/burns at five, serialized combined/individual contact confirmations; concurrent phone/combined guesses and one-time contact claims pass."
+    },
+    {
+      "id": "OTP-CONTACT-01",
+      "disposition": "Source correction verified; current profile/contact flow still needs broader integration/browser proof",
+      "evidence": "Customer profile now locks user and invalidates outstanding phone_verify on changed phone; verification-send locks user and invalidates old target, issuance checks actual current target under same account lock. This review did not run a dedicated customer-profile contact replacement race."
+    },
+    {
+      "id": "MONEY-PENDING-02",
+      "disposition": "Excluded from this auth/UI review; root owns financial core correction",
+      "evidence": "No financial-core completion claim made here."
+    }
+  ],
+  "verifiedProperties": [
+    "MFA proof requires prior password authentication, remains in sessionStorage rather than URL, is capped/single-use under database locks and includes credential/role/secret binding; backup consumption/session insertion rollback together.",
+    "Invitation preview/redemption requires current signed account, matching email, verified email for acceptance, one pending membership matching role, current company type, live expiry and atomic invite+membership+audit transaction; primary account role is preserved.",
+    "Signed selected company survives refresh only through current active membership; partner company context cannot authorize partner routes; revoked sessions/membership and unauthorized team elevation are denied by focused real HTTP tests.",
+    "Funding quotes parse whole naira into exact kobo and compute ceiling fees with BigInt; absent settings block checkout; request includes disclosed expectedTotalKobo; company funding confirms server-side rather than trusting callback status.",
+    "Company list requests preserve limit/offset/total and filter context; API validates pagination bounds and deterministic order.",
+    "Public careers/legal mutations use durable-in-component submit guards and announced error/success states; careers dialog uses shared focus containment and close guards. No browser pass inferred.",
+    "Shared initial errors remain blocking, successful background recovery clears errors, stale loaded data gets a visible warning when failure is recorded, and empty creation actions render. Overlap defect is separately recorded.",
+    "Customer card/request failures settle independently, paid order/code history remains visible, latest unknown fee/card/fuel state blocks relevant new mutations, and receipt deep links are consumed once."
+  ],
+  "verification": {
+    "api": {
+      "command": "Existing isolated localhost PostgreSQL fixture; node --test tests/password-reset-claim.integration.test.mjs tests/mfa-password-proof.integration.test.mjs tests/company-invitations.integration.test.mjs tests/company-membership.integration.test.mjs",
+      "tests": 69,
+      "passed": 69,
+      "failed": 0,
+      "skipped": 0,
+      "log": "/tmp/obligon-production-auth-ui-api-review.log",
+      "externalProvider": "Mocked and prohibited; isolated synthetic schemas cleaned."
+    },
+    "ui": {
+      "tests": 112,
+      "passed": 112,
+      "failed": 0,
+      "skipped": 0,
+      "runner": "Direct Node test files, after node --test reported only seven file wrappers in sandbox",
+      "suites": [
+        {
+          "suite": "mfa-password-proof",
+          "exitCode": 0,
+          "summary": {
+            "tests": [
+              "10"
+            ],
+            "pass": [
+              "10"
+            ],
+            "fail": [
+              "0"
+            ],
+            "skipped": [
+              "0"
+            ]
+          },
+          "log": "/tmp/obligon-auth-ui-mfa-password-proof.log"
+        },
+        {
+          "suite": "production-auth-navigation",
+          "exitCode": 0,
+          "summary": {
+            "tests": [
+              "39"
+            ],
+            "pass": [
+              "39"
+            ],
+            "fail": [
+              "0"
+            ],
+            "skipped": [
+              "0"
+            ]
+          },
+          "log": "/tmp/obligon-auth-ui-production-auth-navigation.log"
+        },
+        {
+          "suite": "production-company-invitations",
+          "exitCode": 0,
+          "summary": {
+            "tests": [
+              "19"
+            ],
+            "pass": [
+              "19"
+            ],
+            "fail": [
+              "0"
+            ],
+            "skipped": [
+              "0"
+            ]
+          },
+          "log": "/tmp/obligon-auth-ui-production-company-invitations.log"
+        },
+        {
+          "suite": "production-company-workflows",
+          "exitCode": 0,
+          "summary": {
+            "tests": [
+              "10"
+            ],
+            "pass": [
+              "10"
+            ],
+            "fail": [
+              "0"
+            ],
+            "skipped": [
+              "0"
+            ]
+          },
+          "log": "/tmp/obligon-auth-ui-production-company-workflows.log"
+        },
+        {
+          "suite": "production-customer-controls",
+          "exitCode": 0,
+          "summary": {
+            "tests": [
+              "16"
+            ],
+            "pass": [
+              "16"
+            ],
+            "fail": [
+              "0"
+            ],
+            "skipped": [
+              "0"
+            ]
+          },
+          "log": "/tmp/obligon-auth-ui-production-customer-controls.log"
+        },
+        {
+          "suite": "production-public-controls",
+          "exitCode": 0,
+          "summary": {
+            "tests": [
+              "12"
+            ],
+            "pass": [
+              "12"
+            ],
+            "fail": [
+              "0"
+            ],
+            "skipped": [
+              "0"
+            ]
+          },
+          "log": "/tmp/obligon-auth-ui-production-public-controls.log"
+        },
+        {
+          "suite": "production-shared-state",
+          "exitCode": 0,
+          "summary": {
+            "tests": [
+              "6"
+            ],
+            "pass": [
+              "6"
+            ],
+            "fail": [
+              "0"
+            ],
+            "skipped": [
+              "0"
+            ]
+          },
+          "log": "/tmp/obligon-auth-ui-production-shared-state.log"
+        }
+      ],
+      "evidence": "/tmp/obligon-production-auth-ui-direct-tests.json"
+    },
+    "edgeProbes": {
+      "confirmedDefects": 5,
+      "logs": [
+        "/tmp/obligon-production-auth-ui-edge-repro.log",
+        "/tmp/obligon-production-auth-ui-auth-edge-repro.log",
+        "/tmp/obligon-production-auth-ui-refresh-repro.log",
+        "/tmp/obligon-production-auth-ui-session-repro.log"
+      ],
+      "note": "Passing reproduction assertions prove observed incorrect behavior, not corrected production behavior."
+    }
+  },
+  "requiredReleaseEvidence": [
+    "Qualified human review of authentication, authorization, tenant isolation and money flows is required before production release. Agent review cannot substitute.",
+    "Root-owned final integrated build/full suite and bounded recheck of AUTH03/context/shared-state fixes.",
+    "Real browser desktop/mobile/dialog/keyboard, contrast and screen reader verification; no browser was run by this reviewer.",
+    "Provider sandbox/staging email/SMS/Supabase/payment interaction, actual recovery and reconciliation evidence.",
+    "Production flags/configuration/migrations, monitoring and rollback operational evidence not assessed; final release gate remains root/user-owned."
+  ],
+  "sourceHashesAtFreeze": {
+    "apps/api/src/routes/auth.routes.js": "ca5bbc7b5387d69d295f53efc399d7a6051969a5bf20383dd67b941db0d95767",
+    "apps/api/src/middleware/auth.js": "1e0a81027537b6cf825f514dfcd5a6f012725eb93fd62114d373b7b6404efdef",
+    "apps/api/src/routes/company.routes.js": "4870432dc9dca342b03270495871b21f5b599d86e79d54113c93e6cf505ecd87",
+    "apps/api/src/routes/customer.routes.js": "d64940df45d3f21f40263ecb5fb8566bce9ad8dd42ad0834b009b2bb0d79c36d",
+    "apps/web/components/auth/MFAUI.tsx": "5125bbb7fb5329e4e02f112791cd78a2c68df222160a5c04889f1ebd8fbe98d3",
+    "apps/web/components/auth/CompanyInvitation.tsx": "e59ae3425eaacdb9dfd63c63cd71ac8b5493cbebedc17d9fe2325a4eac277742",
+    "apps/web/components/company-dashboard/CompanyContextSelector.tsx": "822feaa5b2eb10706b39485a78d5c3bd1052ae600863652ad2d8110903fdfe62",
+    "apps/web/components/company-dashboard/CompanyShell.tsx": "ab15bc37f7324e8e8ac9386306a83463316482f34c0684872e1095e2dbd56e01",
+    "apps/web/components/company-dashboard/CompanyScreen.tsx": "e648228662a8266e543d266624307a8dff8acdd1d9f25147c030dc7a32c63cf2",
+    "apps/web/components/company-dashboard/CompanyModals.tsx": "97321118d5b87068fbfcb62bb962ff711b8a9807cbd95a6f2b33eb2d9b5ea207",
+    "apps/web/components/customer-dashboard/CustomerModals.tsx": "c0d8f738fbb7fe9e136c7b7951ae0a9bf78373d9da2a29968a83d604e974f6b2",
+    "apps/web/components/customer-dashboard/CustomerScreen.tsx": "803f0a28047f87ad4d50f76b3ae868c0ea396006b43b7cb14451f1a9e432f9c7",
+    "apps/web/components/customer-dashboard/CustomerFuelCheckout.tsx": "4310a63a4528ad904cca19b1b9728a3b1c0f6a35e6353e619f23ce27bf496cf2",
+    "apps/web/components/shared/useAsync.ts": "53713fa6da4e7c833f3a1bb00323809257160e46ded4620b35e59dee3e182b24",
+    "apps/web/components/shared/States.tsx": "c91b6c653f959f1f7eddbb563eef98bdba878410808afa3ecbe4fe42c1abbb9a",
+    "apps/web/components/shared/useDialogFocus.ts": "fbfaa5edb2bd131b99452e577cfc7731f8b6840c1bb6c95b4072983c4dca1b6f",
+    "apps/web/components/careers/CareersPage.tsx": "c123d530b1a3290ccd34a7fa9253d856409ce2660a14811a0007fc89e8961ee4",
+    "apps/web/components/legal/LegalPage.tsx": "7783e7dc9041da8c5515812a11097a38c00791ad393866cde9e650776abe4faf",
+    "apps/web/lib/services/client.ts": "b73c4c96d68afafb97634dbc6bcc8d579ec6e76f799bed3e9a813d3ee65ee705",
+    "apps/web/lib/services/company-invitations.ts": "046c1154cc7071cb1873d20b9fdb6abcb54aa647af02c12d88880c8beb9b0b9f",
+    "apps/web/lib/services/company.ts": "06270673606cce5c2e48f8675dd94295a97e1da5f6de774c113e0ecbea1c6bd7",
+    "apps/web/lib/customer-funding-quote.ts": "422b328117b0d21afbe116b4400fb13638e348d7d0f4913c10af866aee95edec",
+    "apps/web/lib/auth-routing.ts": "312b811985662d30b655e47d690764a566795d9c42f01ecedd164641d3a3362f",
+    "apps/web/lib/company-invitation-routing.ts": "6fe94209b262f541b3b326100b8b972614b157853b82009d9d278fc1beefbff1"
+  },
+  "freshnessNote": "API/client tests correspond to the snapshot when run. Root began company context fixes after edge proof; final hashes contain those partial corrections, explicitly not independently verified here. Other root financial sections continue mutating; no blanket freshness/whole-project safety claim."
+}

@@ -1,0 +1,418 @@
+{
+  "date": "2026-10-14",
+  "site": "https://obligon.vercel.app",
+  "apiOrigin": "https://obligon.onrender.com",
+  "account": "User-supplied customer test account; credentials and personal details omitted",
+  "knownCustomerRoutes": [
+    "/customer/card",
+    "/customer/fuel-checkout",
+    "/customer/notifications",
+    "/customer",
+    "/customer/profile",
+    "/customer/report-problem",
+    "/customer/stations",
+    "/customer/subscription",
+    "/customer/support",
+    "/customer/transaction-detail",
+    "/customer/transactions",
+    "/customer/wallet"
+  ],
+  "coveredCustomerRoutes": [
+    "/customer/card",
+    "/customer/fuel-checkout",
+    "/customer/notifications",
+    "/customer",
+    "/customer/profile",
+    "/customer/report-problem",
+    "/customer/stations",
+    "/customer/subscription",
+    "/customer/support",
+    "/customer/transaction-detail",
+    "/customer/transactions",
+    "/customer/wallet"
+  ],
+  "routeCoverage": "12/12",
+  "observations": [
+    {
+      "path": "/auth/login",
+      "result": "initial request failed; one bounded retry returned 200 and dashboard loaded",
+      "classification": "transient connection/provider startup not diagnosed",
+      "credentialsSaved": false
+    },
+    {
+      "alerts": [],
+      "client": 1265,
+      "expectedBudgetNavigation": true,
+      "heading": "Dashboard Overview",
+      "loading": false,
+      "scroll": 1265,
+      "url": "/customer",
+      "width": 1280,
+      "path": "/customer",
+      "environment": "live",
+      "layoutPassed": true
+    },
+    {
+      "alerts": [],
+      "client": 1280,
+      "headings": [
+        "My Card",
+        "Card Management",
+        "Get your Fuelvista Card",
+        "Verify your details",
+        "Fuel Budget",
+        "Pay for fuel at a station",
+        "Use your fuel wallet",
+        "Your fuel orders"
+      ],
+      "paymentButtons": [
+        {
+          "disabled": true,
+          "label": "Continue to payment"
+        }
+      ],
+      "scroll": 1280,
+      "url": "/customer/card",
+      "verificationDialogPresent": true,
+      "width": 1280,
+      "path": "/customer/card",
+      "environment": "live",
+      "layoutPassed": true
+    },
+    {
+      "path": "/customer/wallet",
+      "environment": "live",
+      "interaction": "entered synthetic fractional amount without checkout",
+      "issue": "Live funding permits fractional naira and presents a rounded Pay amount without a whole-naira rejection. The local branch already implements the approved whole-naira requirement.",
+      "alerts": [],
+      "fractionalInputAccepted": true,
+      "payButton": [
+        {
+          "disabled": false,
+          "label": "Pay ₦106"
+        }
+      ],
+      "wholeNairaExplanation": false,
+      "width": 560,
+      "financialSubmission": false
+    },
+    {
+      "alerts": [],
+      "client": 1265,
+      "heading": "Wallet Management",
+      "loading": false,
+      "scroll": 1265,
+      "url": "/customer/wallet",
+      "width": 1280,
+      "path": "/customer/wallet",
+      "environment": "live",
+      "layoutPassed": true
+    },
+    {
+      "path": "/customer/transactions",
+      "environment": "live",
+      "interaction": "existing receipt opened",
+      "result": "receipt displayed matching ledger entry; download not requested",
+      "sensitiveDataSaved": false
+    },
+    {
+      "alerts": [],
+      "client": 1265,
+      "dataRows": 4,
+      "heading": "Transaction History",
+      "scroll": 1265,
+      "url": "/customer/transactions",
+      "width": 1280,
+      "path": "/customer/transactions",
+      "environment": "live",
+      "layoutPassed": true
+    },
+    {
+      "path": "/customer/stations",
+      "environment": "live",
+      "interaction": "station details opened; no location permission requested",
+      "issue": "When location is unavailable, the live detail panel says Location unavailable away.",
+      "sourceFollowup": "scoped missing-distance label repair under review",
+      "realStationDataValidated": false
+    },
+    {
+      "alerts": [],
+      "client": 1265,
+      "heading": "Nearby Stations",
+      "scroll": 1265,
+      "url": "/customer/stations",
+      "width": 1280,
+      "path": "/customer/stations",
+      "environment": "live",
+      "layoutPassed": true
+    },
+    {
+      "alerts": [],
+      "client": 1280,
+      "heading": "Support Center",
+      "scroll": 1280,
+      "supportDialogLoaded": true,
+      "url": "/customer/support",
+      "width": 1280,
+      "path": "/customer/support",
+      "environment": "live",
+      "layoutPassed": true,
+      "noMessageSent": true
+    },
+    {
+      "alerts": [],
+      "client": 1265,
+      "heading": "Notifications",
+      "scroll": 1265,
+      "url": "/customer/notifications",
+      "width": 1280,
+      "path": "/customer/notifications",
+      "environment": "live",
+      "layoutPassed": true
+    },
+    {
+      "alerts": [],
+      "client": 1265,
+      "heading": "Profile and Settings",
+      "labelCount": 13,
+      "passwordChangeControls": [
+        "Change PasswordUpdate your account password"
+      ],
+      "scroll": 1265,
+      "url": "/customer/profile",
+      "width": 1280,
+      "path": "/customer/profile",
+      "environment": "live",
+      "layoutPassed": true,
+      "profileSaved": false,
+      "credentialsChanged": false
+    },
+    {
+      "alerts": [],
+      "client": 273,
+      "scroll": 288,
+      "url": "/customer/profile",
+      "width": 288,
+      "path": "/customer/profile",
+      "environment": "live",
+      "layoutPassed": false,
+      "calibrated": true,
+      "exploratoryBelowMinimum": true,
+      "excludedFrom320Acceptance": true
+    },
+    {
+      "client": 305,
+      "overflow": [],
+      "scroll": 305,
+      "url": "/customer/profile",
+      "width": 320,
+      "path": "/customer/profile",
+      "environment": "live",
+      "layoutPassed": true,
+      "calibrated": true
+    },
+    {
+      "alerts": [],
+      "client": 320,
+      "layoutPassed": true,
+      "modal": true,
+      "scroll": 320,
+      "url": "/customer/card",
+      "width": 320,
+      "path": "/customer/card",
+      "environment": "live",
+      "calibrated": true
+    },
+    {
+      "alerts": [],
+      "client": 305,
+      "scroll": 305,
+      "url": "/customer/wallet",
+      "width": 320,
+      "path": "/customer/wallet",
+      "environment": "live",
+      "layoutPassed": true,
+      "calibrated": true
+    },
+    {
+      "alerts": [],
+      "client": 305,
+      "scroll": 305,
+      "tableScrollContainers": [
+        {
+          "overflowX": "auto",
+          "parentWidth": 263,
+          "tableWidth": 1035.6640625
+        }
+      ],
+      "url": "/customer/transactions",
+      "width": 320,
+      "path": "/customer/transactions",
+      "environment": "live",
+      "layoutPassed": true,
+      "calibrated": true
+    },
+    {
+      "alerts": [],
+      "client": 305,
+      "customerFleetCopy": true,
+      "scroll": 305,
+      "url": "/customer",
+      "width": 320,
+      "path": "/customer",
+      "environment": "live",
+      "layoutPassed": true,
+      "calibrated": true
+    },
+    {
+      "alerts": [],
+      "client": 320,
+      "issueFormShown": true,
+      "scroll": 320,
+      "submitDisabled": true,
+      "url": "/customer/report-problem",
+      "width": 320,
+      "path": "/customer/report-problem",
+      "environment": "live",
+      "layoutPassed": true,
+      "noTicketSubmitted": true
+    },
+    {
+      "alerts": [],
+      "client": 305,
+      "headings": [
+        "Transaction Detail",
+        "Transaction History"
+      ],
+      "scroll": 305,
+      "url": "/customer/transaction-detail",
+      "width": 320,
+      "path": "/customer/transaction-detail",
+      "environment": "live",
+      "layoutPassed": true,
+      "requestWithoutReference": true
+    },
+    {
+      "client": 320,
+      "scroll": 320,
+      "url": "/customer/card",
+      "width": 320,
+      "path": "/customer/subscription",
+      "environment": "live",
+      "expectedRedirect": "/customer/card",
+      "redirectPassed": true
+    },
+    {
+      "path": "/customer/fuel-checkout",
+      "environment": "live",
+      "url": "/customer/card",
+      "expectedRedirect": "/customer/card",
+      "redirectPassed": true
+    },
+    {
+      "alerts": [],
+      "client": 320,
+      "scroll": 320,
+      "url": "/customer/stations",
+      "width": 320,
+      "path": "/customer/stations",
+      "environment": "live",
+      "layoutPassed": true,
+      "calibrated": true
+    },
+    {
+      "alerts": [],
+      "client": 305,
+      "scroll": 305,
+      "url": "/customer/support",
+      "width": 320,
+      "path": "/customer/support",
+      "environment": "live",
+      "layoutPassed": true,
+      "calibrated": true
+    },
+    {
+      "alerts": [],
+      "client": 305,
+      "scroll": 305,
+      "url": "/customer/notifications",
+      "width": 320,
+      "path": "/customer/notifications",
+      "environment": "live",
+      "layoutPassed": true,
+      "calibrated": true
+    },
+    {
+      "path": "/customer",
+      "environment": "live",
+      "interaction": "mobile Sign Out confirmation pointer hit test at320",
+      "issue": "Bottom navigation intercepts the Sign Out confirmation button; prior attempted pointer click navigated to Stations without a logout request.",
+      "ancestors": [
+        {
+          "position": "fixed",
+          "tag": "DIV",
+          "zIndex": "50"
+        },
+        {
+          "position": "absolute",
+          "tag": "NAV",
+          "zIndex": "40"
+        }
+      ],
+      "button": {
+        "height": 48,
+        "left": 167,
+        "top": 708,
+        "width": 129
+      },
+      "buttonReceivesPointer": false,
+      "hitHref": "/customer/stations",
+      "hitTag": "svg",
+      "hitText": ""
+    },
+    {
+      "path": "/auth/logout",
+      "environment": "live",
+      "result": "keyboard Enter on real confirmation button completed logout and returned to login",
+      "credentialsSaved": false,
+      "workaroundFor": "mobile bottom-nav pointer overlap"
+    }
+  ],
+  "api": {
+    "responsesObservedAfterRetry": 134,
+    "serverErrors": [],
+    "unauthorizedResponses": [
+      {
+        "path": "/api/customer/subscription",
+        "status": 401
+      },
+      {
+        "path": "/api/customer/notifications",
+        "status": 401
+      },
+      {
+        "path": "/api/customer/subscription",
+        "status": 401
+      }
+    ],
+    "networkFailures": [],
+    "limits": "Initial failed sign-in occurred before network capture; cause not diagnosed. 401 responses occurred during continued use; pages recovered, no credentials/bodies/headers saved."
+  },
+  "logout": {
+    "status": 200,
+    "destination": "/auth/login",
+    "pointerBugConfirmed": true,
+    "keyboardCompleted": true
+  },
+  "blockedChecks": [
+    "Account has no issued card or active subscription: active-card authorization/PIN/renewal success not exercised.",
+    "No payment, refund, card issuance, identity submission, profile/notification change, support ticket or location permission was submitted.",
+    "Provider sandbox/recovery, qualified human release review, production DB ACL, other roles remain separate access gates.",
+    "Current live deployment retains fractional-deposit, station-distance, customer-copy and mobile Sign Out pointer defects; their local repairs require release review."
+  ],
+  "privacy": {
+    "credentialsSaved": false,
+    "personalAccountValuesSaved": false,
+    "liveScreenshots": "Only public station context and Sign Out dialog; no account values."
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-14",
+  "frozenAt": "2026-10-14T19:27:13.026617+00:00",
+  "scope": "Single coherent customer logout stacking repair across mobile and desktop; CustomerShell class changes only. No shared modal/portal/auth logic, layout/positions or noncustomer source changes.",
+  "sourceChange": {
+    "path": "apps/web/components/customer-dashboard/CustomerShell.tsx",
+    "desktop": "Fixed Sidebar aside gainsz40, matching established partner/company Sidebar pattern. Existing desktop headerz30 remains below; main content dialogsz50 remain above.",
+    "mobile": "Existing approved account dropdownz40→z50 remains, above later bottomnavz40.",
+    "diffSize": "Two localized class changes total, desktop1 addedclass and mobile1 changedclass."
+  },
+  "beforeEvidence": {
+    "desktop": {
+      "viewportWidth": 1280,
+      "rootHitTestPoint": {
+        "x": 771.5,
+        "y": 576.5
+      },
+      "rootElementFromPoint": "IFRAME classh500",
+      "buttonReceivesPointer": false,
+      "screenshot": "reports/production-readiness-2026-10-14/images/customer-desktop-signout-before.jpg",
+      "screenshotSHA256": "7fd96b8b4d4f1424ea21ed8e0a1f4e3a1deaba0b18ec223afcc772c468624660",
+      "reviewerViewedScreenshot": true,
+      "observed": "Map iframe visibly paints over central logout dialog and confirm button; fixed Sidebarzauto stacks beneath later station map."
+    },
+    "mobile": {
+      "previousReceipt": "/tmp/obligon-production-mobile-logout-stacking.json",
+      "rootReportedAfterOldMobileFix": "At320px target pointer true, actual click navigated to login and Escape restored opener focus.",
+      "currentIntegratedAfter": "Root will repeat after latest desktop Sidebar class/build; previous mobile evidence is not asserted as a fresh test of this new wholefile hash."
+    }
+  },
+  "establishedPatterns": [
+    "PartnershipSidebar fixed asidez40",
+    "CompanyShell fixed asidez40 and headerz30",
+    "Shared DialogFrame fixed overlayz50 with existing useDialogFocus keyboard trap/Escape/focus return"
+  ],
+  "verification": {
+    "typecheck": {
+      "command": "./apps/web/node_modules/.bin/tsc --noEmit --project apps/web/tsconfig.json",
+      "exitCode": 0,
+      "log": "/tmp/obligon-customer-logout-stacking-types.log"
+    },
+    "focusedDiffCheckExitCode": 0,
+    "testsAdded": 0,
+    "reason": "Reversible CSS stacking classes; layout/source mirror tests would not prove real iframe hit-target behavior. Root actual browser proof is required.",
+    "actualFinalDesktopAndMobile": "Root-owned pending after rebuild: elementFromPoint confirmbutton, actual logout/network/login, Escape focus return and station dialog."
+  },
+  "sourceHashBeforeDesktopDelta": "10fed346875d78302656f3e65e61830b289fd5cf39da709b654848f0c0fabed8",
+  "sourceHashAfter": "4aa800c0b12475876360841d181420c54e3703d1680ae4fb4baece13bd1915fd",
+  "limits": [
+    "This source/typecheck receipt does not claim current-hash desktop/mobile browser acceptance or a completed final production build.",
+    "Qualified release review/provider/infrastructure gates remain; no new auth implementation changes are made."
+  ]
+}

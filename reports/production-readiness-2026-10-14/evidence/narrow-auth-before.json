@@ -1,0 +1,32 @@
+[
+  {
+    "client": 320,
+    "offenders": [
+      {
+        "class": "h-14 w-12 text-center text-2xl font-bold rounded-lg border-obligon-border bg-white focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20",
+        "right": 367.9513969421387,
+        "tag": "INPUT",
+        "text": "",
+        "width": 47.99479293823242
+      }
+    ],
+    "route": "/auth/mfa/challenge",
+    "scroll": 368,
+    "width": 320
+  },
+  {
+    "client": 303,
+    "offenders": [
+      {
+        "class": "rounded-3xl border border-obligon-border bg-white p-8 text-center shadow-card",
+        "right": 305.5208435058594,
+        "tag": "SECTION",
+        "text": "ACTION REQUIRED\nAuthentication Failed\n\nWe could not complete the verif",
+        "width": 285.5208435058594
+      }
+    ],
+    "route": "/auth/failure",
+    "scroll": 305,
+    "width": 320
+  }
+]

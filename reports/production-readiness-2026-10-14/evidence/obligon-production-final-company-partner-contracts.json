@@ -1,0 +1,88 @@
+{
+  "date": "2026-10-14",
+  "frozenAt": "2026-10-14T17:08:34.689314+00:00",
+  "branch": "codex/production-readiness-2026-10-14",
+  "scope": "Root-authored partner transaction validation, company self-service contract denial and newly approved existing-admin-verification gate. This worker owns only three reserved test files; no application edits, commits, deployment, providers or learning artifact.",
+  "findings": [
+    {
+      "id": "PARTNER-TRANSACTION-INPUT-01",
+      "category": "Partner",
+      "before": "Invalid pagination was coerced/interpolated into SQL, invalid dates could raise500, and same-timestamp rows lacked a stable tie-breaker.",
+      "after": "Whole finite integer bounds are validated and parameterized; list/export share bounded string filters and real dates, with created_at/id deterministic ordering. Valid large limits remain capped.",
+      "verification": "Actual HTTP signed-partner requests reject 13 malformed bounds and eight list/export date cases with400 and no internal error logs. Two same-time own rows traverse exact stable page IDs; scoped export excludes wrong-status, wrong-date and foreign-partner rows."
+    },
+    {
+      "id": "COMPANY-CONTRACT-BILLING-01",
+      "category": "Company",
+      "before": "Plan endpoint could mark a plan active and insert a paid invoice without a payment or agreed contract change; cancellation could mutate the same contract subscription.",
+      "after": "Both legacy self-service billing writes deny403 with agreed-contract/Support guidance. No organization/subscription/invoice/wallet/ledger/payment-method/audit mutation occurs.",
+      "verification": "Both writes returned200 in the pre-fix HTTP run; after repair they return403 with complete before/after row snapshots identical."
+    },
+    {
+      "id": "COMPANY-APPROVAL-GATE-01",
+      "category": "Company",
+      "before": "Company onboarding lacked an operational approval boundary and could create a14-day free period.",
+      "after": "Pending/unverified/rejected company operations deny403 until the existing organization admin-verification status is verified. Overview,billing,support,settings and notifications retain onboarding access. New signup persists pending/canceled company metadata, zero wallet and no trial/subscription or paid invoice. Session exposes organizationVerificationStatus.",
+      "verification": "Three workflow cases each prove21 denied operations with unchanged fleet/financial snapshots, allowed support/settings/notification follow-up that cannot self-approve, and actual DB verification transition restoring four reads and fuel-code issuance. Signed-session real signup proves pending/no subscription/no invoice and retained onboarding access.",
+      "reproductionLimit": "This new user-approved gate was already implemented when tests were added; no separate pre-gate red is claimed. Initial signup test fixture omitted required phone (400), then was corrected; not an application failure."
+    }
+  ],
+  "verification": [
+    {
+      "phase": "red-existing-contracts",
+      "command": "node --test --test-name-pattern='partner transaction|agreed contracts' apps/api/tests/upload-compatibility.integration.test.mjs apps/api/tests/company-workflows.integration.test.mjs",
+      "exitCode": 1,
+      "tests": 5,
+      "passed": 0,
+      "failed": 5,
+      "skipped": 0,
+      "log": "/tmp/obligon-production-final-contracts-red.log"
+    },
+    {
+      "phase": "green-existing-contracts",
+      "command": "node --test apps/api/tests/upload-compatibility.integration.test.mjs apps/api/tests/company-workflows.integration.test.mjs",
+      "exitCode": 0,
+      "tests": 23,
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "log": "/tmp/obligon-production-final-contracts-green.log"
+    },
+    {
+      "phase": "green-final-approval-contracts",
+      "command": "node --test apps/api/tests/company-workflows.integration.test.mjs apps/api/tests/company-invitations.integration.test.mjs apps/api/tests/upload-compatibility.integration.test.mjs",
+      "exitCode": 0,
+      "tests": 63,
+      "passed": 63,
+      "failed": 0,
+      "skipped": 0,
+      "log": "/tmp/obligon-production-company-approval-green.log"
+    },
+    {
+      "phase": "diff-check",
+      "command": "git diff --check -- [three reserved test files]",
+      "exitCode": 0
+    }
+  ],
+  "fixture": "Explicit disposable loopback PostgreSQL database; unique per-file schemas cleaned after tests, synthetic records only. Existing storage boundary mocked/local delivery; no production/provider effects.",
+  "counts": "Focused runs overlap one another and root full suites; do not sum5/23/63 into a project total.",
+  "limits": [
+    "Existing verification_status is a product approval gate, not independent proof a legally valid contract was signed. Owner/admin operating procedure and qualified legal/financial/tenant human review remain release gates.",
+    "Company workflow fixture injects route user identity; signup/invitation file separately uses real signed durable sessions. Do not call injected-route assertions JWT verification evidence.",
+    "Current company shell banner/browser and final API/web/build/hosted approval review remain parent-owned.",
+    "Automatic permission approval timed out once before corrected-fixture run launched; allowed identical retry launched and exited0. Timeout is not an unsafe-action verdict."
+  ],
+  "hashes": {
+    "apps/api/tests/upload-compatibility.integration.test.mjs": "c97897bfd826272d283845ee0d24fb367618b2e93fdcb319ec250fc22f29b89c",
+    "apps/api/tests/company-workflows.integration.test.mjs": "21a39b95e669c3c2de91cb9599bcde0cdb4fb388a89fe308e2ba30271a7bd885",
+    "apps/api/tests/company-invitations.integration.test.mjs": "a53a0549dfc5459ec4fe8de7beaffaabac362ed0f0c6c2bb4a4e42b98ea14196",
+    "apps/api/src/routes/partner.routes.js": "edae8dece877348d4610dcd2b9fe2ae9d284a4b16655f9f0c8f3a07904d65a47",
+    "apps/api/src/routes/company.routes.js": "22075c3794292b1d2aa7f6fe970f24bde3f96f98af84afda9114c1ad55cb5574",
+    "apps/api/src/routes/auth.routes.js": "56644e49366f4a85b0ce11e624e81e5d5f4e15f067fb21b73062d4cd87488b0b"
+  },
+  "evidenceHashes": {
+    "red": "1d0cef9db6d2f06c54327dc552cad9e6f8a20e7be508482f25e8e6fc1ca5ea50",
+    "contractGreen": "00de20db2d998c01b19bdcef98ac5b70822cc72fbd4d934e83212bfb11fc0346",
+    "approvalGreen": "4f6c1a0755eb5682eeebf52e913bcda35f61251b6b438a716af2240533419512"
+  }
+}

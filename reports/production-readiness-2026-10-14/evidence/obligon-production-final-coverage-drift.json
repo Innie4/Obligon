@@ -1,0 +1,5 @@
+{
+  "scope": "Final report hash integrity only; no new source/test/scan execution",
+  "mismatches": [],
+  "status": "Resolved: the single CompanyShell row now matches the frozen source with prior full-read and exact changed-region review provenance retained."
+}

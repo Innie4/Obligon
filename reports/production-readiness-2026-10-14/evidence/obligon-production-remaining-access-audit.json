@@ -1,0 +1,720 @@
+{
+  "createdAt": "2026-10-14T15:13:14.365954+00:00",
+  "repository": "/home/inimfon-udoh/Obligon/checkout",
+  "branch": "codex/production-readiness-2026-10-14",
+  "head": "5914f6ebfc2f102255040eba80defbbb58f7ef67",
+  "scope": "bounded remaining access/data/config review; money/webhook implementations delegated to root",
+  "implementationStatus": "Read audit frozen before authorized migration032; findings may subsequently be fixed by root/subagent.",
+  "findings": [
+    {
+      "id": "remaining-support-null-org",
+      "severity": "P1",
+      "confirmed": true,
+      "source": "apps/api/src/routes/customer.routes.js GET/POST /support/tickets/:id/messages",
+      "trigger": "Authenticated customer with orgId=null supplies a different personal/public ticket UUID whose organization_id is null.",
+      "impact": "Read another customer private replies and insert reply under attacker identity.",
+      "proof": "/tmp/obligon-personal-support-boundary-proof.json",
+      "minimalFix": "Scope customer support routes to user_id; a null organization ID is never an ownership grant. Root owns fix."
+    },
+    {
+      "id": "remaining-customer-stale-org",
+      "severity": "P1",
+      "confirmed": "source control-flow",
+      "source": "apps/api/src/routes/customer.routes.js requireAuth-only router, loadCard, receipts, notifications and support org predicates",
+      "trigger": "Previously issued selected-company token remains active after membership deletion/demotion; customer routes trust org claim without current membership/capability check.",
+      "impact": "Read company notifications/support/receipts and access other company cards through customer actions despite stricter company router checks.",
+      "minimalFix": "Make customer routes personal ownership-only and use company routes for tenant operations. Root owns fix.",
+      "limitation": "No external issuer mutation attempted; query/guard control flow inspected."
+    },
+    {
+      "id": "remaining-push-ssrf",
+      "severity": "P1",
+      "confirmed": true,
+      "source": "apps/api/src/routes/push.routes.js subscribe; apps/api/src/lib/push.js sendPush",
+      "trigger": "Authenticated user stores valid encryption keys and internal HTTPS endpoint, then triggers own notification with VAPID configured.",
+      "impact": "Server HTTPS POST to attacker-controlled internal host/path; request effect/timing availability, no response content return proven.",
+      "proof": "/tmp/obligon-remaining-access-proof.json",
+      "minimalFix": "Validate trusted public push service endpoints at subscription and sending boundaries; bound sends. Root owns fix."
+    },
+    {
+      "id": "remaining-data-api-secrets",
+      "severity": "P1",
+      "confirmed": "local reproduction under documented legacy Supabase grants",
+      "source": "003_rls_policies.sql users_self_select; 001_init.sql two_factor_secret",
+      "trigger": "Password-only Supabase Auth JWT for victim identity with existing users SELECT grant reaches own row before app MFA.",
+      "impact": "Recover app TOTP seed and generate accepted TOTP; private identity/hash exposure.",
+      "proof": "/tmp/obligon-remaining-access-proof.json",
+      "minimalFix": "Revoke Data API access to private users rows while retaining trusted server and SECURITY DEFINER ID helpers. Focused migration now user-authorized.",
+      "limitation": "Actual hosted grants/Data API exposure not inspected."
+    },
+    {
+      "id": "remaining-private-finance-rls",
+      "severity": "P1",
+      "confirmed": "local reproduction under documented legacy Supabase grants",
+      "source": "migrations 011,015,019 plus lib/migrations.js schema_migrations creation",
+      "trigger": "Anonymous or authenticated Data API role inherits default grants for private tables without RLS/revokes.",
+      "impact": "Cross-user/org private rows readable; monthly_spend_projections mutation reproduced; schema_migrations ledger poisoning possible by source grant/guard path.",
+      "proof": "/tmp/obligon-remaining-access-proof.json",
+      "minimalFix": "Enable RLS and revoke PUBLIC/anon/authenticated table and column privileges on seven exposed private tables. Focused migration now user-authorized.",
+      "qualification": "Existing business_activity trigger denied the attempted settlement_accounts mutation; do not claim every exposed table permits writes. Actual hosted ACL not inspected."
+    },
+    {
+      "id": "remaining-remember-ttl",
+      "severity": "P2",
+      "confirmed": true,
+      "source": "apps/api/src/lib/security.js signRefreshToken/refreshExpiry and auth issueSession",
+      "trigger": "Login rememberMe=true with default config.",
+      "impact": "Durable session says30days but signed refresh JWT expires7days; remember-me stops at7days.",
+      "proof": "/tmp/obligon-remaining-access-proof.json",
+      "minimalFix": "Bind refresh token expiry to existing durable session deadline without extending deadline during context switching. Root owns decision."
+    },
+    {
+      "id": "remaining-ci-migration-bootstrap",
+      "severity": "P2",
+      "confirmed": "source mismatch",
+      "source": ".github/workflows/ci.yml raw postgres16 migrate vs migration003 auth.uid()/anon/authenticated",
+      "trigger": "CI starts fresh postgres:16 without Supabase auth schema/group roles.",
+      "impact": "Migration003 fails before CI tests; CI pipeline does not supply production verification.",
+      "minimalFix": "Report existing CI limitation; scope explicitly prohibits unsolicited CI changes.",
+      "limitation": "Pipeline not executed by this audit."
+    }
+  ],
+  "nonFindings": [
+    {
+      "boundary": "sidless JWT",
+      "result": "An internally signed sidless JWT bypasses session lookup, reproduced; all3 live access-token issuer callsites provide session ID. No external sidless issuance/password-reset bypass demonstrated; latent legacy-token compatibility risk only."
+    },
+    {
+      "boundary": "email_outbox",
+      "result": "026 introduced table but028 enables RLS/revokes Data API privileges; earlier preliminary concern withdrawn."
+    },
+    {
+      "boundary": "Admin/API promotions",
+      "result": "Admin/intake/support routers inherit requireAuth plus current users.role===admin middleware; signup explicitly rejects admin role. Admin staff labels deliberately all grant full administrator access; no lower-admin permission promise in current response."
+    },
+    {
+      "boundary": "Storage downloads",
+      "result": "Private bucket requested; signed URLs short-lived; checked admin resume/support and partner dispute evidence source ownership guards. Hosted existing bucket visibility not inspected."
+    },
+    {
+      "boundary": "SSE",
+      "result": "Initial and25s heartbeat recheck active user, durable session and org membership; emitted client scope uses user/org/role filters. Cached role permission changes and query token log hygiene remain deployment considerations."
+    }
+  ],
+  "sourceCoverage": [
+    {
+      "path": "apps/api/src/middleware/auth.js",
+      "depth": "full-source",
+      "sha256": "1e0a81027537b6cf825f514dfcd5a6f012725eb93fd62114d373b7b6404efdef",
+      "lines": 231
+    },
+    {
+      "path": "apps/api/src/middleware/security.js",
+      "depth": "full-source",
+      "sha256": "e86c2ab45703f0e2df7b84e4b506261decda57f60c68f743238471d42893bf70",
+      "lines": 70
+    },
+    {
+      "path": "apps/api/src/lib/security.js",
+      "depth": "full-source",
+      "sha256": "a26c24fc3f91f94afa853828920872c70d5016435900117acb2eb3c360bdeec4",
+      "lines": 61
+    },
+    {
+      "path": "apps/api/src/lib/storage.js",
+      "depth": "full-source",
+      "sha256": "d5520e87b84e19a513ea0a422070517899d4bfbf11fd324abf5acca56f4ff407",
+      "lines": 77
+    },
+    {
+      "path": "apps/api/src/routes/public.routes.js",
+      "depth": "full-source",
+      "sha256": "7b37f79dd43bfd602fbc9977a2d8892c9f1a10b70c2ef4af0b308cda51b2ad0f",
+      "lines": 476
+    },
+    {
+      "path": "apps/api/src/routes/intake-admin.routes.js",
+      "depth": "full-source",
+      "sha256": "084b96732b373e2c335393af035b43d1720e4a4d3aa99ce9cd5a3d2719e9b6f7",
+      "lines": 301
+    },
+    {
+      "path": "apps/api/src/routes/support-admin.routes.js",
+      "depth": "full-source",
+      "sha256": "eb8f460a126eef374c294ebc6259cc7106e2699a1dbc2d31b8164f3be7bc8909",
+      "lines": 61
+    },
+    {
+      "path": "apps/api/src/routes/push.routes.js",
+      "depth": "full-source",
+      "sha256": "cfbdd96bd51e9da9fbd52239e3ee2f0cf79e387a2904a43f088e46546744180c",
+      "lines": 38
+    },
+    {
+      "path": "apps/api/src/lib/push.js",
+      "depth": "full-source",
+      "sha256": "8b5bb4f612bcff22c29841a8f295d2d2e6f7aa7e2751f17bd450fbca3190588c",
+      "lines": 32
+    },
+    {
+      "path": "apps/api/src/lib/sse.js",
+      "depth": "full-source",
+      "sha256": "421610aa26b4faca44520dd818f2a6cd3da190850fe43b103f69f74252d0b195",
+      "lines": 64
+    },
+    {
+      "path": "apps/api/src/lib/notify.js",
+      "depth": "full-source",
+      "sha256": "eb58a0a38a87034d87fa199dde39ebb7dd4add7465a4e9b410e83db549e2cb15",
+      "lines": 172
+    },
+    {
+      "path": "apps/api/src/config/env.js",
+      "depth": "full-source",
+      "sha256": "f1504f36a344baebcd7c8b6093df44d6386cdcab1bcf0c85639b89bc66a813ed",
+      "lines": 228
+    },
+    {
+      "path": "apps/api/src/db.js",
+      "depth": "full-source",
+      "sha256": "6b8975b2e0077911f386e2461fbb09db40d8f1a7da43fbe11ef8526807b83fa3",
+      "lines": 131
+    },
+    {
+      "path": "apps/api/src/index.js",
+      "depth": "full-source",
+      "sha256": "b91d155c599a6edb99498574c52f50699e7fa9d04aea88346ce2c197ab6503c0",
+      "lines": 112
+    },
+    {
+      "path": "apps/api/src/app.js",
+      "depth": "full-source",
+      "sha256": "cb86095048e092ca5f64849a3059c326e78a44cff39962432a5d2acb7459220b",
+      "lines": 101
+    },
+    {
+      "path": "apps/api/src/lib/migrations.js",
+      "depth": "full-source",
+      "sha256": "045b5961eef874d61a7d4fe00e4be24c1757ea689703a1fab32690b87ef31c04",
+      "lines": 59
+    },
+    {
+      "path": "apps/api/src/lib/supabaseAuth.js",
+      "depth": "full-source",
+      "sha256": "1b6b197adc4368fd151e24e0cfefefc3f6719cc914ba29477654fd073a4344b1",
+      "lines": 99
+    },
+    {
+      "path": "apps/api/src/lib/http.js",
+      "depth": "full-source",
+      "sha256": "7ecd3ec695c4e0d34219e73783f0d166b7edd8cccf126f459bd6f15552d5352c",
+      "lines": 36
+    },
+    {
+      "path": "apps/api/src/scripts/migrate.js",
+      "depth": "full-source",
+      "sha256": "3ef71204e30acbe9e8e29a6d3b3e46e40c41d2b337726997cf1849f2acca4884",
+      "lines": 19
+    },
+    {
+      "path": "apps/api/src/scripts/config-check.js",
+      "depth": "full-source",
+      "sha256": "a64c5610f60f87ebbf055aabb31b197f425988cf2f2365b2d8430458fcf3caeb",
+      "lines": 22
+    },
+    {
+      "path": "apps/api/src/scripts/prodboot.check.mjs",
+      "depth": "full-source",
+      "sha256": "42c409f0c465d55ea2fe55c6dcabd8a0e42dd6559b2a348957070a39a134d1b2",
+      "lines": 101
+    },
+    {
+      "path": "apps/api/src/scripts/cron.js",
+      "depth": "full-source",
+      "sha256": "bb05a00994ffb3d18af54f4b65aae1c1f9098a1f67dc4606bee444f61177b849",
+      "lines": 28
+    },
+    {
+      "path": "apps/web/lib/session-store.ts",
+      "depth": "full-source",
+      "sha256": "870dc5e7bbc4c9c9664e84a9de64a2347d4c7945f6e8121305706f49131b87d3",
+      "lines": 65
+    },
+    {
+      "path": "apps/web/components/shared/AuthContext.tsx",
+      "depth": "full-source",
+      "sha256": "e5cb83270274af983217f43c83221c92810335078cee101d4e5d6b930364900e",
+      "lines": 152
+    },
+    {
+      "path": "apps/web/next.config.mjs",
+      "depth": "full-source",
+      "sha256": "1e3206cb200e264fdddb4dbb2e4772daebc839fdbc94b78316d74892a0de6fa2",
+      "lines": 4
+    },
+    {
+      "path": "apps/web/.env.example",
+      "depth": "full-source",
+      "sha256": "3d2b21356a2e96216e51d59c457b1ecc6396a3d2f9c05f7eada3d089edd36912",
+      "lines": 65
+    },
+    {
+      "path": "render.yaml",
+      "depth": "full-source",
+      "sha256": "1a13d3285b4cc80349bed735bfa51d0ab2432e2c94dfe7b8c00128421b8ab770",
+      "lines": 155
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "depth": "full-source",
+      "sha256": "994fdf74d5a6efae821d872bd18168d97b5c67e80e685121444307524ec2abfb",
+      "lines": 76
+    },
+    {
+      "path": "package.json",
+      "depth": "full-source",
+      "sha256": "ea825b9b839c9311733243fa85ff76125f61a751b9d305de609a27fb6249ad08",
+      "lines": 24
+    },
+    {
+      "path": "apps/api/src/migrations/003_rls_policies.sql",
+      "depth": "full-source",
+      "sha256": "9285e0ff329e82779a4e1658f3afac0f05b96bcedc74a6b65b1764b28eadafd1",
+      "lines": 172
+    },
+    {
+      "path": "apps/api/src/migrations/004_role_access.sql",
+      "depth": "full-source",
+      "sha256": "3da5b400b4dfe3fa2dda126809b0b6af231c138e00e4ce050ac13fc6d8d5ac25",
+      "lines": 39
+    },
+    {
+      "path": "apps/api/src/migrations/005_card_requests.sql",
+      "depth": "full-source",
+      "sha256": "cf1885a33ebdb6f9f586d889705859e07cede8922dfc86c998d129258c3de0b8",
+      "lines": 22
+    },
+    {
+      "path": "apps/api/src/migrations/011_refunds_reconciliation_settlement.sql",
+      "depth": "full-source",
+      "sha256": "4533ca284ac38abcab337bc56f4ac2655d5a3c054ed1491a0e2496180b5391a1",
+      "lines": 120
+    },
+    {
+      "path": "apps/api/src/migrations/015_monthly_spend_projection.sql",
+      "depth": "full-source",
+      "sha256": "dd8b1c889b0d781ec99b797e6a2810f9d47578511d4cb65eb45f9910a29ca350",
+      "lines": 43
+    },
+    {
+      "path": "apps/api/src/migrations/017_verification_code_attempts.sql",
+      "depth": "full-source",
+      "sha256": "8caa98f1867ac8915d92712734b951a491af6c555caaf47432a8fb83a0fb971b",
+      "lines": 26
+    },
+    {
+      "path": "apps/api/src/migrations/019_settlement_accrual.sql",
+      "depth": "full-source",
+      "sha256": "bf722653304c8051fd0497b225f8ff65df9b046b17947c3cefb42fd4c1cac72d",
+      "lines": 89
+    },
+    {
+      "path": "apps/api/src/migrations/020_settlement_accounting.sql",
+      "depth": "full-source",
+      "sha256": "65d9d5ac248a03af8f57578526249c556b7942043967d963147c04822e551985",
+      "lines": 20
+    },
+    {
+      "path": "apps/api/src/migrations/021_card_approval.sql",
+      "depth": "full-source",
+      "sha256": "b02ca73aeb5ba25ab1e6d9cd46819ff390b5221354ecb681de5ddeca56bb8c93",
+      "lines": 24
+    },
+    {
+      "path": "apps/api/src/migrations/024_bank_settlement_binding.sql",
+      "depth": "full-source",
+      "sha256": "c7868062a855cb58f36c1d777e363048b740fa800275eae4f4df8e14cdf0db2a",
+      "lines": 16
+    },
+    {
+      "path": "apps/api/src/migrations/026_public_intake_and_activity.sql",
+      "depth": "full-source",
+      "sha256": "b47a7872bf73862a700f1fbb2510f6440b9e1e72ebdaaa206bdb3a3249a287c2",
+      "lines": 37
+    },
+    {
+      "path": "apps/api/src/migrations/028_activity_coverage.sql",
+      "depth": "full-source",
+      "sha256": "2f97fd331bbd90de1173e9e142d6f2f0f2c249c091644d4b235b1587f89ea4a6",
+      "lines": 10
+    },
+    {
+      "path": "apps/api/src/migrations/029_partner_api_keys.sql",
+      "depth": "full-source",
+      "sha256": "ccccdc73845ad59f37f8a06062790397b5a02928cc7f5b1a1f0849dc850a1f39",
+      "lines": 11
+    },
+    {
+      "path": "apps/api/src/migrations/030_admin_activity_coverage.sql",
+      "depth": "full-source",
+      "sha256": "6aa0c15ff3466a8d48d7d235e2c069e1a95786b7576cc555b4b3b23d0800b908",
+      "lines": 4
+    },
+    {
+      "path": "apps/api/src/routes/auth.routes.js",
+      "depth": "targeted-source-ranges",
+      "ranges": [
+        [
+          1,
+          690
+        ],
+        [
+          1000,
+          1077
+        ]
+      ],
+      "sha256": "ca5bbc7b5387d69d295f53efc399d7a6051969a5bf20383dd67b941db0d95767",
+      "lines": 1077,
+      "note": "Ranges reflect inspected source; active root edits can shift customer/admin line numbers."
+    },
+    {
+      "path": "apps/api/src/routes/admin.routes.js",
+      "depth": "targeted-source-ranges",
+      "ranges": [
+        [
+          1,
+          201
+        ],
+        [
+          421,
+          760
+        ]
+      ],
+      "sha256": "b13a87b8c668b024e38caaa116109096db59628b36ac6cd0ac72ca37b98858b7",
+      "lines": 721,
+      "note": "Ranges reflect inspected source; active root edits can shift customer/admin line numbers."
+    },
+    {
+      "path": "apps/web/lib/services/client.ts",
+      "depth": "targeted-source-ranges",
+      "ranges": [
+        [
+          1,
+          240
+        ],
+        [
+          354,
+          516
+        ],
+        [
+          977,
+          1080
+        ],
+        [
+          1690,
+          1740
+        ]
+      ],
+      "sha256": "b73c4c96d68afafb97634dbc6bcc8d579ec6e76f799bed3e9a813d3ee65ee705",
+      "lines": 1743,
+      "note": "Ranges reflect inspected source; active root edits can shift customer/admin line numbers."
+    },
+    {
+      "path": "apps/api/src/lib/card-approval.js",
+      "depth": "targeted-source-ranges",
+      "ranges": [
+        [
+          1,
+          32
+        ],
+        [
+          70,
+          88
+        ]
+      ],
+      "sha256": "2fb4131795de0c086523ea58eea2320f3dddec21de0636e5a64b9440a6a55147",
+      "lines": 94,
+      "note": "Ranges reflect inspected source; active root edits can shift customer/admin line numbers."
+    },
+    {
+      "path": "apps/api/src/routes/customer.routes.js",
+      "depth": "targeted-source-ranges",
+      "ranges": [
+        [
+          20,
+          90
+        ],
+        [
+          1500,
+          1535
+        ],
+        [
+          1680,
+          1725
+        ],
+        [
+          1860,
+          1930
+        ]
+      ],
+      "sha256": "d64940df45d3f21f40263ecb5fb8566bce9ad8dd42ad0834b009b2bb0d79c36d",
+      "lines": 1918,
+      "note": "Ranges reflect inspected source; active root edits can shift customer/admin line numbers."
+    },
+    {
+      "path": "apps/api/src/routes/partner.routes.js",
+      "depth": "targeted-source-ranges",
+      "ranges": [
+        [
+          1,
+          75
+        ],
+        [
+          1090,
+          1125
+        ]
+      ],
+      "sha256": "eb14825b474c5cc939ea8a8ecf87d22cf24e3e315277c5f92a4f31ae0c4fae27",
+      "lines": 1239,
+      "note": "Ranges reflect inspected source; active root edits can shift customer/admin line numbers."
+    },
+    {
+      "path": "apps/api/src/migrations/001_init.sql",
+      "depth": "targeted-source-ranges",
+      "ranges": [
+        [
+          1,
+          126
+        ],
+        [
+          607,
+          620
+        ]
+      ],
+      "sha256": "afb063f5f7b29a90ba6287788ae88f51fa99ff7317090e477d2442edc2917407",
+      "lines": 633,
+      "note": "Ranges reflect inspected source; active root edits can shift customer/admin line numbers."
+    },
+    {
+      "path": "apps/api/.env.example",
+      "depth": "targeted-source-ranges",
+      "ranges": [
+        [
+          1,
+          164
+        ],
+        [
+          180,
+          252
+        ]
+      ],
+      "sha256": "078f6c7aa4af49b68fabb20fd7b83c1eab837aeb48c6e795a9f18cc92cec6bf9",
+      "lines": 252,
+      "note": "Ranges reflect inspected source; active root edits can shift customer/admin line numbers."
+    },
+    {
+      "path": "apps/api/src/migrations/002_staff_and_indexes.sql",
+      "depth": "catalog-search-only",
+      "sha256": "84a172191d832b6739245b318d3f7cf3177232c8339bf21c15634ae641d3caad",
+      "patterns": [
+        "CREATE TABLE",
+        "ENABLE ROW LEVEL SECURITY",
+        "REVOKE ALL",
+        "GRANT"
+      ]
+    },
+    {
+      "path": "apps/api/src/migrations/006_vehicle_driver_relation.sql",
+      "depth": "catalog-search-only",
+      "sha256": "c1d760eb6b63175b112074085e1087af017ebfce63612fe5bd970ba464b0740b",
+      "patterns": [
+        "CREATE TABLE",
+        "ENABLE ROW LEVEL SECURITY",
+        "REVOKE ALL",
+        "GRANT"
+      ]
+    },
+    {
+      "path": "apps/api/src/migrations/007_card_request_plans.sql",
+      "depth": "catalog-search-only",
+      "sha256": "1191c95c6f3618ed7964389aebb501d8f7afe8676193aab4e8ca8a872db87395",
+      "patterns": [
+        "CREATE TABLE",
+        "ENABLE ROW LEVEL SECURITY",
+        "REVOKE ALL",
+        "GRANT"
+      ]
+    },
+    {
+      "path": "apps/api/src/migrations/008_retire_legacy_card_requests.sql",
+      "depth": "catalog-search-only",
+      "sha256": "7a4e0df88ba53dfe0e68538551fd28611230be28e8fd14d9b680c2d2ea3a6404",
+      "patterns": [
+        "CREATE TABLE",
+        "ENABLE ROW LEVEL SECURITY",
+        "REVOKE ALL",
+        "GRANT"
+      ]
+    },
+    {
+      "path": "apps/api/src/migrations/009_wallet_kinds.sql",
+      "depth": "catalog-search-only",
+      "sha256": "3e214151853e7738e5fca2729ee1040d9b3c5ea3fd241da4aacf8a9052eb1a8b",
+      "patterns": [
+        "CREATE TABLE",
+        "ENABLE ROW LEVEL SECURITY",
+        "REVOKE ALL",
+        "GRANT"
+      ]
+    },
+    {
+      "path": "apps/api/src/migrations/010_expand_plan_features.sql",
+      "depth": "catalog-search-only",
+      "sha256": "354ce385056c832f29c90491c64e60a12f03896be7b237f98e795f8d78b21f25",
+      "patterns": [
+        "CREATE TABLE",
+        "ENABLE ROW LEVEL SECURITY",
+        "REVOKE ALL",
+        "GRANT"
+      ]
+    },
+    {
+      "path": "apps/api/src/migrations/012_transaction_unit_price.sql",
+      "depth": "catalog-search-only",
+      "sha256": "2daf4e05450b1669fbf207d1d73eac3730788b0ae8b55869b9c0ca072a9b7570",
+      "patterns": [
+        "CREATE TABLE",
+        "ENABLE ROW LEVEL SECURITY",
+        "REVOKE ALL",
+        "GRANT"
+      ]
+    },
+    {
+      "path": "apps/api/src/migrations/013_payment_fee_bearer.sql",
+      "depth": "catalog-search-only",
+      "sha256": "94385e69e3ee9f6106ad632bcdfa3b183c9b45f3dfcfb5f78d6a9a423a2cd47b",
+      "patterns": [
+        "CREATE TABLE",
+        "ENABLE ROW LEVEL SECURITY",
+        "REVOKE ALL",
+        "GRANT"
+      ]
+    },
+    {
+      "path": "apps/api/src/migrations/014_plan_not_wallet_funding.sql",
+      "depth": "catalog-search-only",
+      "sha256": "bffa9352eba04861eff7286ee1797cb20153663f23c28c03015675006bb15536",
+      "patterns": [
+        "CREATE TABLE",
+        "ENABLE ROW LEVEL SECURITY",
+        "REVOKE ALL",
+        "GRANT"
+      ]
+    },
+    {
+      "path": "apps/api/src/migrations/016_event_keys_and_ledger_reference.sql",
+      "depth": "catalog-search-only",
+      "sha256": "59bbd54b594f45ff5e9aa2626b44cbc237642d9c4b977acc3a073e0b8d3facf6",
+      "patterns": [
+        "CREATE TABLE",
+        "ENABLE ROW LEVEL SECURITY",
+        "REVOKE ALL",
+        "GRANT"
+      ]
+    },
+    {
+      "path": "apps/api/src/migrations/018_flutterwave_processor.sql",
+      "depth": "catalog-search-only",
+      "sha256": "56bda681b3051e35d294fb1b14e1f5339d7f1a0ff4d1c81016afcb96c4bf2d00",
+      "patterns": [
+        "CREATE TABLE",
+        "ENABLE ROW LEVEL SECURITY",
+        "REVOKE ALL",
+        "GRANT"
+      ]
+    },
+    {
+      "path": "apps/api/src/migrations/022_dashboard_subscriptions_discounts.sql",
+      "depth": "catalog-search-only",
+      "sha256": "5eb3f94875fb9a13ff9a012ff612413270995616cd7e738884c35aead0eedab6",
+      "patterns": [
+        "CREATE TABLE",
+        "ENABLE ROW LEVEL SECURITY",
+        "REVOKE ALL",
+        "GRANT"
+      ]
+    },
+    {
+      "path": "apps/api/src/migrations/023_fuel_orders.sql",
+      "depth": "catalog-search-only",
+      "sha256": "e01d8c16539106854c86b74eeeec041d373604810c8290e3a55a38936e6ad79e",
+      "patterns": [
+        "CREATE TABLE",
+        "ENABLE ROW LEVEL SECURITY",
+        "REVOKE ALL",
+        "GRANT"
+      ]
+    },
+    {
+      "path": "apps/api/src/migrations/025_station_coordinates.sql",
+      "depth": "catalog-search-only",
+      "sha256": "704e96c48fa3ed3714609f9bd183c43d32484d40eb784bfb258ded3f2cfd0b57",
+      "patterns": [
+        "CREATE TABLE",
+        "ENABLE ROW LEVEL SECURITY",
+        "REVOKE ALL",
+        "GRANT"
+      ]
+    },
+    {
+      "path": "apps/api/src/migrations/027_station_review.sql",
+      "depth": "catalog-search-only",
+      "sha256": "d2eb95d6bbf47ca6027b9fa884469c4859d48a7e847fa5593a4670179e24020a",
+      "patterns": [
+        "CREATE TABLE",
+        "ENABLE ROW LEVEL SECURITY",
+        "REVOKE ALL",
+        "GRANT"
+      ]
+    },
+    {
+      "path": "apps/api/src/migrations/031_card_payment_provider_reference.sql",
+      "depth": "catalog-search-only",
+      "sha256": "7656655c74828b0ba2e311d9aa2dc9efcb101fcb3259769eafb7066167473503",
+      "patterns": [
+        "CREATE TABLE",
+        "ENABLE ROW LEVEL SECURITY",
+        "REVOKE ALL",
+        "GRANT"
+      ]
+    }
+  ],
+  "verification": [
+    {
+      "command": "DOTENV_CONFIG_PATH=/dev/null NODE_ENV=test DATABASE_SSL=false node /tmp/obligon-remaining-access-proof.mjs",
+      "exitCode": 0,
+      "proofPath": "/tmp/obligon-remaining-access-proof.json",
+      "notes": "Creates/drops dedicated database, models documented existing-project grants; push request intercepted before network."
+    },
+    {
+      "command": "DOTENV_CONFIG_PATH=/dev/null NODE_ENV=test DATABASE_SSL=false node /tmp/obligon-personal-support-boundary-proof.mjs",
+      "exitCode": 0,
+      "proofPath": "/tmp/obligon-personal-support-boundary-proof.json",
+      "notes": "Actual customer route handlers, twofixtureusers, read1 private message/write1 unauthorized message; no external calls."
+    }
+  ],
+  "sources": [
+    "https://supabase.com/docs/guides/api/securing-your-api",
+    "https://supabase.com/docs/guides/database/postgres/column-level-security",
+    "https://supabase.com/docs/guides/auth/auth-mfa",
+    "https://www.postgresql.org/docs/16/sql-revoke.html",
+    "https://www.postgresql.org/docs/16/ddl-rowsecurity.html"
+  ],
+  "gaps": [
+    "Live Supabase ACL/default ACL, Data API exposed schemas, storage bucket visibility, Realtime publication not inspected.",
+    "Hosted grantor/inherited role paths, trusted backend ownership/BYPASSRLS, migration lock duration and recovery need qualified review before release.",
+    "No real provider traffic, production deployment, live webhook/session revocation, credentials or service changes performed.",
+    "Public upload MIME headers are client supplied; content scanning/true content type provider configuration not exercised.",
+    "Audit depth recorded per file; catalog searches are not complete semantic review. Root owns full tracked-file coverage merge and Learn."
+  ]
+}

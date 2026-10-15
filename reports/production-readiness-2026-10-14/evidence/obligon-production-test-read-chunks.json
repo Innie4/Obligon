@@ -1,0 +1,492 @@
+[
+  {
+    "path": "apps/api/tests/activity-balance-and-otp.test.mjs",
+    "start": 1,
+    "end": 199,
+    "sha256": "609d7ba228b833d0ac6fb1567873d04bd341dc5453e5eb55b4ad420dfe5c9c17",
+    "totalLines": 199
+  },
+  {
+    "path": "apps/api/tests/admin-support.integration.test.mjs",
+    "start": 1,
+    "end": 186,
+    "sha256": "94ad4f63e8084f992e05c8c1ffdf5974b18174b347495d42fb124d4c3766f3cc",
+    "totalLines": 306
+  },
+  {
+    "path": "apps/api/tests/admin-support.integration.test.mjs",
+    "start": 187,
+    "end": 306,
+    "sha256": "94ad4f63e8084f992e05c8c1ffdf5974b18174b347495d42fb124d4c3766f3cc",
+    "totalLines": 306
+  },
+  {
+    "path": "apps/api/tests/api.smoke.test.mjs",
+    "start": 1,
+    "end": 368,
+    "sha256": "501bc244d697b7c7cb93132c5b1d2e4e9f8d91cf6187f0763c38393f98657001",
+    "totalLines": 368
+  },
+  {
+    "path": "apps/api/tests/card-approval.integration.check.mjs",
+    "start": 1,
+    "end": 50,
+    "sha256": "e7ac0d80cc715b373694d7497408f5ec1f97efc01d0a48c607538b52bed994bc",
+    "totalLines": 50
+  },
+  {
+    "path": "apps/api/tests/card-approval.test.mjs",
+    "start": 1,
+    "end": 32,
+    "sha256": "6c1c5b15737b16574b33492cf76fc4d708618e11d355c7b8e3e1a29654dbaf48",
+    "totalLines": 32
+  },
+  {
+    "path": "apps/api/tests/card-request-flow.check.mjs",
+    "start": 1,
+    "end": 197,
+    "sha256": "0b9c60975d737425886c3a001caf047692d41599336e40a5fa6ea344914a0326",
+    "totalLines": 197
+  },
+  {
+    "path": "apps/api/tests/company-dashboard.integration.test.mjs",
+    "start": 1,
+    "end": 165,
+    "sha256": "4ab2da7aa6bb6272ddffc6979e7796db3400a6102f6b24f82a52ce78a35db991",
+    "totalLines": 175
+  },
+  {
+    "path": "apps/api/tests/company-dashboard.integration.test.mjs",
+    "start": 166,
+    "end": 175,
+    "sha256": "4ab2da7aa6bb6272ddffc6979e7796db3400a6102f6b24f82a52ce78a35db991",
+    "totalLines": 175
+  },
+  {
+    "path": "apps/api/tests/company-input.test.mjs",
+    "start": 1,
+    "end": 37,
+    "sha256": "8dde891ad7e546c73370ae9e67ceda3abd93075bf67baa3cedf9d34537967654",
+    "totalLines": 37
+  },
+  {
+    "path": "apps/api/tests/config-severity.test.mjs",
+    "start": 1,
+    "end": 100,
+    "sha256": "0e8be33e78e89f1038c827bfb6c47d25d859c5083268f0216807a6b98cce94a1",
+    "totalLines": 100
+  },
+  {
+    "path": "apps/api/tests/customer-audit.integration.test.mjs",
+    "start": 1,
+    "end": 128,
+    "sha256": "963b9c92c4c9148261495e3d467eaa1f8397b749bae06a2d42d6343e3c3069f9",
+    "totalLines": 128
+  },
+  {
+    "path": "apps/api/tests/customer-entitlement-gates.integration.test.mjs",
+    "start": 1,
+    "end": 52,
+    "sha256": "420c0609d3e35c49ecae143755d4a1564d73d6a7f5b55cbd861fd6d870902533",
+    "totalLines": 52
+  },
+  {
+    "path": "apps/api/tests/customer-funding-methods.test.mjs",
+    "start": 1,
+    "end": 49,
+    "sha256": "b86fb57d8e6c67232f996cf01666db3cc8220d9ada119e6730542e7e45b543c5",
+    "totalLines": 49
+  },
+  {
+    "path": "apps/api/tests/database-tls.test.mjs",
+    "start": 1,
+    "end": 94,
+    "sha256": "b5f13ac1ab93be114c746e2cc228b882f2c212695057bdb9f6bb03e530813234",
+    "totalLines": 94
+  },
+  {
+    "path": "apps/api/tests/deploy-config.test.mjs",
+    "start": 1,
+    "end": 158,
+    "sha256": "e075253f81ea51828a6660cb91e14400f62810b874604b8c9c12c3c32b3d7640",
+    "totalLines": 158
+  },
+  {
+    "path": "apps/api/tests/discount-math.test.mjs",
+    "start": 1,
+    "end": 22,
+    "sha256": "447e1c439a8ee79fc117b5bc795339c79ae594c85b9017009d114cc873aa2cb6",
+    "totalLines": 22
+  },
+  {
+    "path": "apps/api/tests/flutterwave-processor.test.mjs",
+    "start": 1,
+    "end": 214,
+    "sha256": "342fb675fed17e684a8a703502f18c962041e8ddea98579cdcf3dc3a3a6fa686",
+    "totalLines": 214
+  },
+  {
+    "path": "apps/api/tests/flutterwave-subaccount.test.mjs",
+    "start": 1,
+    "end": 25,
+    "sha256": "bd38878d3ee440d028c48158be61fa7b1a5cadf1e04c4c6122a4c584568334dd",
+    "totalLines": 25
+  },
+  {
+    "path": "apps/api/tests/flutterwave-units.test.mjs",
+    "start": 1,
+    "end": 76,
+    "sha256": "06504d363af3692ef4a80cdb80619d8c9889d4a68d163c5cc79ffa43a18780ca",
+    "totalLines": 76
+  },
+  {
+    "path": "apps/api/tests/fuel-checkout.integration.test.mjs",
+    "start": 1,
+    "end": 233,
+    "sha256": "cba27f7c25fd70bf314c8e1418893c8db2b23ca18210be09778a1e521f132611",
+    "totalLines": 233
+  },
+  {
+    "path": "apps/api/tests/fuel-sale.integration.test.mjs",
+    "start": 1,
+    "end": 175,
+    "sha256": "ee0c010096c6420f1792e71f1a87580ec97a0526da199d9e5dc2b6a96afc1da3",
+    "totalLines": 175
+  },
+  {
+    "path": "apps/api/tests/history-settlement-and-scheduler.test.mjs",
+    "start": 1,
+    "end": 213,
+    "sha256": "3d98ba8739bcff5a0397c4dc38fc49fdbb729fea21ce568a3490d11f292f6839",
+    "totalLines": 213
+  },
+  {
+    "path": "apps/api/tests/late-settlement.test.mjs",
+    "start": 1,
+    "end": 136,
+    "sha256": "10dfc398271fae42fbaa172bb3cb2d2da8ba567277ce1241600435ad36ef8f92",
+    "totalLines": 136
+  },
+  {
+    "path": "apps/api/tests/local-outbox.test.mjs",
+    "start": 1,
+    "end": 18,
+    "sha256": "ff4c27480037813fefc197f7c153f20c01d50edf8a6a3083e5ec0eac7a55d40e",
+    "totalLines": 18
+  },
+  {
+    "path": "apps/api/tests/migration-startup.integration.test.mjs",
+    "start": 1,
+    "end": 223,
+    "sha256": "7ae1d8e23408711fe63e6e69f2494408e7165779fc908933017bb316be132c4f",
+    "totalLines": 223
+  },
+  {
+    "path": "apps/api/tests/minimum-topup.check.mjs",
+    "start": 1,
+    "end": 100,
+    "sha256": "4710a13e9fcb849e25c85e8b504bd87cd38a448f70adc0ececb9dd4561e67cf3",
+    "totalLines": 100
+  },
+  {
+    "path": "apps/api/tests/minimum-topup.test.mjs",
+    "start": 1,
+    "end": 103,
+    "sha256": "ef40f9d4dfb7c34d320e2f8913c6035bbf5d39b59054fb290f9804a62c299ccb",
+    "totalLines": 103
+  },
+  {
+    "path": "apps/api/tests/money.test.mjs",
+    "start": 1,
+    "end": 322,
+    "sha256": "545e28d43ea464cefe5808986c6d75be5ab06d6bd391cb5f0d0d153b5dab3c7f",
+    "totalLines": 322
+  },
+  {
+    "path": "apps/api/tests/nearest-stations.integration.test.mjs",
+    "start": 1,
+    "end": 104,
+    "sha256": "c2c7a39d3c5a0c9a58906e8c0b6add4ee45bc27aaee851d257ee6d9715838de9",
+    "totalLines": 104
+  },
+  {
+    "path": "apps/api/tests/no-secret-leak.test.mjs",
+    "start": 1,
+    "end": 148,
+    "sha256": "bb2b3afbff7a46fb8a49d7156fa1bcbbdc9d40fa11984ddac6c25b64a2734562",
+    "totalLines": 148
+  },
+  {
+    "path": "apps/api/tests/partner-authorization.test.mjs",
+    "start": 1,
+    "end": 195,
+    "sha256": "223de76586a9be91b9176e5c568ca7b51f97398f76b6cec1a6cc85d390a39c08",
+    "totalLines": 195
+  },
+  {
+    "path": "apps/api/tests/partner-dashboard-wiring.test.mjs",
+    "start": 1,
+    "end": 422,
+    "sha256": "150c026043486f6f6a510d05cf52e3bc1b3adc1e26c47c823acd958bfae8f8fa",
+    "totalLines": 474
+  },
+  {
+    "path": "apps/api/tests/partner-dashboard-wiring.test.mjs",
+    "start": 423,
+    "end": 474,
+    "sha256": "150c026043486f6f6a510d05cf52e3bc1b3adc1e26c47c823acd958bfae8f8fa",
+    "totalLines": 474
+  },
+  {
+    "path": "apps/api/tests/partner-pos-receipt.test.mjs",
+    "start": 1,
+    "end": 54,
+    "sha256": "462c3fa0a2d23fcc6ea5c8a93f65f4a90b400eb6478817c0f48eebaec5399beb",
+    "totalLines": 54
+  },
+  {
+    "path": "apps/api/tests/partner-production-readiness.test.mjs",
+    "start": 1,
+    "end": 436,
+    "sha256": "8c5a9959bbd8d74d639a3fa4765e09b38bd9b5bbd06d728546df3b91dde97111",
+    "totalLines": 565
+  },
+  {
+    "path": "apps/api/tests/partner-production-readiness.test.mjs",
+    "start": 437,
+    "end": 565,
+    "sha256": "8c5a9959bbd8d74d639a3fa4765e09b38bd9b5bbd06d728546df3b91dde97111",
+    "totalLines": 565
+  },
+  {
+    "path": "apps/api/tests/payment-error-visibility.test.mjs",
+    "start": 1,
+    "end": 115,
+    "sha256": "433b833ed2413f3b2935e5bd7c041925a4dc09ce3ccb2906e455a7c995234627",
+    "totalLines": 115
+  },
+  {
+    "path": "apps/api/tests/payment-methods.test.mjs",
+    "start": 1,
+    "end": 107,
+    "sha256": "7e0cf8880805cd83b8c0a89a03ef55a4c37bc496b74ef047d52af95ff542e68c",
+    "totalLines": 107
+  },
+  {
+    "path": "apps/api/tests/payments-hardening.check.mjs",
+    "start": 1,
+    "end": 236,
+    "sha256": "1b960345c2c25e2157ef485e0f8f592c85f890a6ffa0db13a3705b97f1839dca",
+    "totalLines": 236
+  },
+  {
+    "path": "apps/api/tests/payout-balance-guard.test.mjs",
+    "start": 1,
+    "end": 198,
+    "sha256": "f08e370ffd491a8d76eed721f9f14c910f9aba4af61de6e3228cea8068eb6ade",
+    "totalLines": 198
+  },
+  {
+    "path": "apps/api/tests/plan-wallet-separation.test.mjs",
+    "start": 1,
+    "end": 102,
+    "sha256": "508d85dddcf2c427cbea1d793ad3429306b249a3937e5d82e5222276637b0dfa",
+    "totalLines": 102
+  },
+  {
+    "path": "apps/api/tests/prefs-security.check.mjs",
+    "start": 1,
+    "end": 132,
+    "sha256": "9d9aebb42f09c57246be2ce5359b5abb9d32e5752aeb5f86b55b2b33c63fc7c8",
+    "totalLines": 132
+  },
+  {
+    "path": "apps/api/tests/reconciliation-fallback.integration.test.mjs",
+    "start": 1,
+    "end": 155,
+    "sha256": "2c5dc97d84da3778b78055f18e1277b88d166eed980b24242cdd2cf8cad54107",
+    "totalLines": 155
+  },
+  {
+    "path": "apps/api/tests/refund-ambiguity.integration.test.mjs",
+    "start": 1,
+    "end": 29,
+    "sha256": "683b25c95f190ff3a7587a977dd9b01683d743030774994082a64ec694c46699",
+    "totalLines": 29
+  },
+  {
+    "path": "apps/api/tests/resume-payment.check.mjs",
+    "start": 1,
+    "end": 200,
+    "sha256": "68d7da3f79a2fc3225050cbcc9652cfb0117239fbf53a3f59b86a8ec3d84eb15",
+    "totalLines": 200
+  },
+  {
+    "path": "apps/api/tests/savings-fee.test.mjs",
+    "start": 1,
+    "end": 41,
+    "sha256": "2695355705f7d4dc1cb796524a7cb48bdbf08fc96aaea323fb6b3090db169a8b",
+    "totalLines": 41
+  },
+  {
+    "path": "apps/api/tests/settlement-accounting.integration.test.mjs",
+    "start": 1,
+    "end": 296,
+    "sha256": "e2e23362e8530aac1de7f236f0ed0b2e7bd2eaf5de4059b838e36c7761bad46a",
+    "totalLines": 296
+  },
+  {
+    "path": "apps/api/tests/spend-projection-and-activity.test.mjs",
+    "start": 1,
+    "end": 164,
+    "sha256": "6cc3b5378988109d419c3cebc8bc40c2665f3185b3476db1f7eba770d8cad567",
+    "totalLines": 164
+  },
+  {
+    "path": "apps/api/tests/subscription-entitlements.test.mjs",
+    "start": 1,
+    "end": 14,
+    "sha256": "c08aa0be9e0b689be165b3a545836091a57f6dd9dae55e19a636c4901d34b5be",
+    "totalLines": 14
+  },
+  {
+    "path": "apps/api/tests/subscription-routing.test.mjs",
+    "start": 1,
+    "end": 46,
+    "sha256": "71917c340cfd505068a1da785b4efe823f08a625433d83b38c6e99fde8274351",
+    "totalLines": 46
+  },
+  {
+    "path": "apps/api/tests/sudo-contract.test.mjs",
+    "start": 1,
+    "end": 35,
+    "sha256": "bc6e4b0505199da3c5d1c4a3beab41569ce42ebb17b07485ccb7b4e508f03c6b",
+    "totalLines": 35
+  },
+  {
+    "path": "apps/api/tests/temporary-partner-account.integration.test.mjs",
+    "start": 1,
+    "end": 361,
+    "sha256": "1809e2b375cda321bd527012e88139e21e620ee0ab2be6575f0386ee7c6bfb09",
+    "totalLines": 411
+  },
+  {
+    "path": "apps/api/tests/temporary-partner-account.integration.test.mjs",
+    "start": 362,
+    "end": 411,
+    "sha256": "1809e2b375cda321bd527012e88139e21e620ee0ab2be6575f0386ee7c6bfb09",
+    "totalLines": 411
+  },
+  {
+    "path": "apps/api/tests/unit.test.mjs",
+    "start": 1,
+    "end": 129,
+    "sha256": "86dffc15d6056e8465edde6ff0f3c6d2f6da37cc574932b3e80bb61d3a72ac1a",
+    "totalLines": 129
+  },
+  {
+    "path": "apps/api/tests/verification-flow.test.mjs",
+    "start": 1,
+    "end": 212,
+    "sha256": "75e4241d5bba3441da9ce6cecb08e2e9b29bbbc5a5acf382ad6d50924193d412",
+    "totalLines": 212
+  },
+  {
+    "path": "apps/api/tests/wallet-payments.check.mjs",
+    "start": 1,
+    "end": 228,
+    "sha256": "d7baac595db0dbabbcdc4a20423163ca49d5658b8e52c71f25e6988bf25f4b58",
+    "totalLines": 228
+  },
+  {
+    "path": "apps/web/tests/async-location-regression.test.cjs",
+    "start": 1,
+    "end": 57,
+    "sha256": "a530de7db5cdc7dc8319c184c24efc850ccc5345c0e0bc4040e74f98072b921f",
+    "totalLines": 57
+  },
+  {
+    "path": "apps/web/tests/auth-regression.test.cjs",
+    "start": 1,
+    "end": 51,
+    "sha256": "57879ac8b3c080e0226f852f62d069299800d1309f4a3950c2400702a4e4b18f",
+    "totalLines": 51
+  },
+  {
+    "path": "apps/web/tests/company-empty-pages.test.cjs",
+    "start": 1,
+    "end": 74,
+    "sha256": "5d939a7835172bbd0295e7f46a1480ab16747c02e5d60a4b7a2bc3d3f5a2feec",
+    "totalLines": 74
+  },
+  {
+    "path": "apps/web/tests/company-input.test.cjs",
+    "start": 1,
+    "end": 39,
+    "sha256": "a19b6ad13d284a628d4f20b1887eba84ea61b889c40375d3a91caa32728d57e4",
+    "totalLines": 39
+  },
+  {
+    "path": "apps/web/tests/customer-audit.test.cjs",
+    "start": 1,
+    "end": 183,
+    "sha256": "246e14c91ade1a6af2904b168f34e65d4a0ec8d3871f6126adda5212db3d2418",
+    "totalLines": 183
+  },
+  {
+    "path": "apps/web/tests/customer-entitlements.test.cjs",
+    "start": 1,
+    "end": 36,
+    "sha256": "11deebae3d3892b34f8d4973d96e0c16cc894c42e04a47ca82e2e634320a2660",
+    "totalLines": 36
+  },
+  {
+    "path": "apps/web/tests/customer-my-card.test.cjs",
+    "start": 1,
+    "end": 328,
+    "sha256": "de54d43fb14df56116f583bc212647f75747c0a71f29a76f75bb0116f9fec0de",
+    "totalLines": 328
+  },
+  {
+    "path": "apps/web/tests/dialog-focus.test.cjs",
+    "start": 1,
+    "end": 88,
+    "sha256": "538b17d51342a76efde6e2dab4ae27a87f6b2cf2a6041ceb97bedd7d9c59ea32",
+    "totalLines": 88
+  },
+  {
+    "path": "apps/web/tests/landing-plans-regression.test.cjs",
+    "start": 1,
+    "end": 88,
+    "sha256": "e02ab1edf5df7484a3ad87e07a50d84c504eb9355398f98fe40914cd640465c1",
+    "totalLines": 88
+  },
+  {
+    "path": "apps/web/tests/partner-audit-regression.test.cjs",
+    "start": 1,
+    "end": 112,
+    "sha256": "5012eba892ed8854ba84eaa50ab4726ba0cfdcc019515e75d10e3a6717ee654b",
+    "totalLines": 112
+  },
+  {
+    "path": "apps/web/tests/partner-verification.test.cjs",
+    "start": 1,
+    "end": 257,
+    "sha256": "5d3bee0a25d98d7d12c02b64157ee3368c076cf6999cd3e8cbf6e7bb0bf4e448",
+    "totalLines": 257
+  },
+  {
+    "path": "apps/web/tests/station-fuels.test.cjs",
+    "start": 1,
+    "end": 16,
+    "sha256": "c4b8842f15a114f8194bde82cc1a8716418848de880c023f4f62ebd4fa700fa2",
+    "totalLines": 16
+  },
+  {
+    "path": "apps/web/tests/transport-regression.test.cjs",
+    "start": 1,
+    "end": 88,
+    "sha256": "cb00a46a38da5abd213eef902ed1e7bb5bcbb11d72d30a6bda0c352153307328",
+    "totalLines": 88
+  }
+]

@@ -1,0 +1,135 @@
+[
+  {
+    "suite": "mfa-password-proof",
+    "exitCode": 0,
+    "summary": {
+      "tests": [
+        "10"
+      ],
+      "pass": [
+        "10"
+      ],
+      "fail": [
+        "0"
+      ],
+      "skipped": [
+        "0"
+      ]
+    },
+    "log": "/tmp/obligon-auth-ui-mfa-password-proof.log"
+  },
+  {
+    "suite": "production-auth-navigation",
+    "exitCode": 0,
+    "summary": {
+      "tests": [
+        "39"
+      ],
+      "pass": [
+        "39"
+      ],
+      "fail": [
+        "0"
+      ],
+      "skipped": [
+        "0"
+      ]
+    },
+    "log": "/tmp/obligon-auth-ui-production-auth-navigation.log"
+  },
+  {
+    "suite": "production-company-invitations",
+    "exitCode": 0,
+    "summary": {
+      "tests": [
+        "19"
+      ],
+      "pass": [
+        "19"
+      ],
+      "fail": [
+        "0"
+      ],
+      "skipped": [
+        "0"
+      ]
+    },
+    "log": "/tmp/obligon-auth-ui-production-company-invitations.log"
+  },
+  {
+    "suite": "production-company-workflows",
+    "exitCode": 0,
+    "summary": {
+      "tests": [
+        "10"
+      ],
+      "pass": [
+        "10"
+      ],
+      "fail": [
+        "0"
+      ],
+      "skipped": [
+        "0"
+      ]
+    },
+    "log": "/tmp/obligon-auth-ui-production-company-workflows.log"
+  },
+  {
+    "suite": "production-customer-controls",
+    "exitCode": 0,
+    "summary": {
+      "tests": [
+        "16"
+      ],
+      "pass": [
+        "16"
+      ],
+      "fail": [
+        "0"
+      ],
+      "skipped": [
+        "0"
+      ]
+    },
+    "log": "/tmp/obligon-auth-ui-production-customer-controls.log"
+  },
+  {
+    "suite": "production-public-controls",
+    "exitCode": 0,
+    "summary": {
+      "tests": [
+        "12"
+      ],
+      "pass": [
+        "12"
+      ],
+      "fail": [
+        "0"
+      ],
+      "skipped": [
+        "0"
+      ]
+    },
+    "log": "/tmp/obligon-auth-ui-production-public-controls.log"
+  },
+  {
+    "suite": "production-shared-state",
+    "exitCode": 0,
+    "summary": {
+      "tests": [
+        "6"
+      ],
+      "pass": [
+        "6"
+      ],
+      "fail": [
+        "0"
+      ],
+      "skipped": [
+        "0"
+      ]
+    },
+    "log": "/tmp/obligon-auth-ui-production-shared-state.log"
+  }
+]

@@ -1,0 +1,138 @@
+{
+  "date": "2026-10-14",
+  "reviewedAt": "2026-10-14T19:17:14.423044+00:00",
+  "reviewer": "/root/fix_partner_audit",
+  "scope": "Independent bounded mobile/desktop customer sign-out stacking review; no application edit or browser/test execution.",
+  "codeVerdict": "Approve for bounded mobile/desktop and conditional cookie correction; actual final pointer/keyboard/browser acceptance recorded",
+  "finding": {
+    "id": "CUSTOMER-MOBILE-SIGNOUT-01",
+    "category": "Customer",
+    "pages": [
+      "Mobile Account menu",
+      "Desktop sidebar",
+      "Sign Out confirmation"
+    ],
+    "criticalHumanReviewRequired": false,
+    "before": "The mobile logout confirmation (z50) was inside the Account menu stacking context (z40). The later bottom navigation also usedz40 and intercepted the real confirmation tap; live hit test returned the Stations SVG and pointer navigation did not send logout. Separately, the desktop fixed sidebar zauto contained the same dialog and a later StationMap iframe intercepted its confirmation pointer.",
+    "after": "Mobile Account nowz50 outranks bottom navigationz40; desktop Sidebarz40 outranks the StationMap iframe. The separately reviewed shared conditional rule lowers Cookie Consent toz30 only while an aria-modal dialog exists, retaining normal first-visitz40.",
+    "verification": [
+      "Exact current CustomerShell two-class diff and unchanged logout/modal/focus hierarchy independently reviewed. Mobile menuz50 outranks bottom navigation40; desktop Sidebar40 outranks the station iframe; shared conditional cookie rule retains its normal layer and lowers beneath active dialogs.",
+      "Saved final actual browser receipt independently read:320px Sign Out button receives pointer and click returns/auth/login; Escape closes dialog and returns focus to Sign Out.1280x500 desktop confirmation also receives pointer and click returns/auth/login. These are local synthetic UI interactions, not real-provider or human auth-security approval."
+    ],
+    "compatibility": "Existing dimensions, navigation links and authenticated logout contract remain. The mobile and desktop stacking contexts change only to keep the shared confirmation visible and clickable.",
+    "recovery": "The existing shared hook retains Escape/focus restoration and the same authenticated logout clears/revokes session; CSS paint acceptance must be proven in the actual browser.",
+    "status": "Implemented and independently reviewed; actual current-source mobile/desktop pointer and Escape acceptance passed"
+  },
+  "sourceHashes": {
+    "apps/web/components/customer-dashboard/CustomerShell.tsx": "4aa800c0b12475876360841d181420c54e3703d1680ae4fb4baece13bd1915fd",
+    "apps/web/components/auth/LogoutButton.tsx": "86fa4fabc3d35a68f3c23f4f10a1b4952ad1fb4371c83393430256d07d8733f1",
+    "apps/web/components/shared/Dialogs.tsx": "3e2f2bb12cbf060324e60af480f64a2d08342a402ae95d2c1a0d8a30101e6c42",
+    "apps/web/components/shared/useDialogFocus.ts": "fbfaa5edb2bd131b99452e577cfc7731f8b6840c1bb6c95b4072983c4dca1b6f",
+    "apps/web/components/site/CookieConsentBanner.tsx": "9e01fb2eb3064d740f55e78e7dc77a3c51fd9083fdde2a436cba3586c776699d",
+    "apps/web/app/layout.tsx": "1ad1ba2343c6d7ec3c28e085c500a9502a1682a5d355e2034ff04506662e3561",
+    "apps/web/app/globals.css": "4e27f9d47fbbbbf6982265684f4c6bb4c815914186521827df9130371f8167eb"
+  },
+  "evidenceHashes": {
+    "/tmp/obligon-production-mobile-logout-stacking.json": "5b617907dbedc6ad3f9b510e25ae7591d36309b445eb1b7c1a44bbf1d2a5b92d",
+    "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-14/live-customer-browser.json": "e0e4cf67581ab168d180904b659674ab323edb7421f13dfd12ccd1c32cee2919",
+    "/tmp/obligon-production-consent-layer-review.json": "6efd9cea9245e616e28a9597fb40dd98e91575af315011c6bd56aedc2e3fc839",
+    "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-14/customer-logout-browser.json": "80f9731b025786217e50125d38b94c2ab6d2d7d6b12a13b9f87eee18e6184645",
+    "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-14/consent-layer-after.json": "62407df8412c7ad6809a99cbe0197607a302bd926239b96abc2d19e575eca228"
+  },
+  "limits": [
+    "Overall qualified human/external auth/release gates still apply; this is not authentication-security approval.",
+    "No app source edits, real financial actions or user credential data were performed/saved by this review."
+  ],
+  "additionalSourceObservation": {
+    "priority": "P2",
+    "canonicalFinding": "CUSTOMER-MOBILE-SIGNOUT-01",
+    "issue": "A new desktop Sidebar z40 context would still place its child logout backdrop below later global Cookie Consent z40, despite child dialog z50.",
+    "sourceProof": "CookieConsentBanner fixedz40; app/layout renders it after children; desktop modal remains a descendant of fixed Sidebar. Source stacking order guarantees cookie controls paint above the parent context. Actual viewport overlap/hit testing remains root-owned.",
+    "sentToRoot": true,
+    "suggestedBoundedDisposition": "Use the same z50 parent layer as the mobile Account menu or prove/repair first-visit desktop interaction within this canonical stack correction.",
+    "disposition": "Resolved in source and actual first-visit normal/modal/closed browser acceptance. Normal1024px cookie40/text hittrue retained; active-dialog frame cookie37/34 is below sidebar40; normal settled40 restored. Selector target30 is not asserted as an exact computed after-frame value."
+  },
+  "finalBrowserReceipt": {
+    "date": "2026-10-14",
+    "environment": "isolated loopback synthetic accounts; no providers enabled",
+    "before": {
+      "liveMobile": {
+        "ancestors": [
+          {
+            "position": "fixed",
+            "tag": "DIV",
+            "zIndex": "50"
+          },
+          {
+            "position": "absolute",
+            "tag": "NAV",
+            "zIndex": "40"
+          }
+        ],
+        "button": {
+          "height": 48,
+          "left": 167,
+          "top": 708,
+          "width": 129
+        },
+        "buttonReceivesPointer": false,
+        "hitHref": "/customer/stations",
+        "hitTag": "svg",
+        "hitText": ""
+      },
+      "localDesktop": {
+        "ancestors": [
+          {
+            "position": "fixed",
+            "tag": "DIV",
+            "zIndex": "50"
+          },
+          {
+            "position": "fixed",
+            "tag": "ASIDE",
+            "zIndex": "auto"
+          }
+        ],
+        "button": {
+          "height": 48,
+          "width": 249,
+          "x": 647,
+          "y": 552.5
+        },
+        "buttonReceivesPointer": false,
+        "hit": {
+          "className": "w-full rounded-2xl border border-[#dbe2d8] h-[500px]",
+          "tag": "IFRAME",
+          "text": ""
+        },
+        "width": 1280
+      }
+    },
+    "after": {
+      "mobile320": {
+        "buttonReceivesPointer": true,
+        "client": 320,
+        "hitText": "Sign Out",
+        "scroll": 320,
+        "width": 320
+      },
+      "mobileEscape": {
+        "activeText": "Sign Out",
+        "dialogs": 0
+      },
+      "desktop1280Short": {
+        "buttonReceivesPointer": true,
+        "cookieZ": "34",
+        "height": 500,
+        "width": 1280
+      },
+      "desktopPointerLogoutDestination": "/auth/login",
+      "mobilePointerLogoutDestination": "/auth/login"
+    },
+    "passed": true,
+    "notes": [
+      "The CSS cookie layer can have intermediate z-index values during its existing300ms transition; pointer acceptance was measured on the actual displayed frame.",
+      "Local station iframe and live bottom-nav pointer intercepts were reproduced before repair."
+    ]
+  }
+}

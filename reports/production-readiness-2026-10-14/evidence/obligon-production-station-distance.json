@@ -1,0 +1,47 @@
+{
+  "date": "2026-10-14",
+  "frozenAt": "2026-10-14T19:02:45.102319+00:00",
+  "scope": "Only confirmed customer Station Details unavailable-distance label; ordinary UI presentation/type fix, no auth, financial, API, map or geolocation behavior changes.",
+  "locationCorrection": "Actual station-detail rendering is in CustomerScreen.tsx, not CustomerModals.tsx; root explicitly authorized that exact state/label region before editing.",
+  "sourceEvidence": {
+    "existingCardPattern": "st.distanceKm != null ? `${st.distance} away` : \"Distance unavailable\"",
+    "backendContract": "customer.routes.js returns distanceKm:null and distance:\"Location unavailable\" when distance cannot be computed; otherwise numeric distanceKm and a unit-bearing distance string.",
+    "before": "Detail state omitted distanceKm and rendered `${detail.distance} away` unconditionally.",
+    "after": "Detail state retains optional/null distanceKm; its existing unit-bearing display receives away only when distanceKm != null, including zero."
+  },
+  "verification": {
+    "red": {
+      "tests": 34,
+      "pass": 32,
+      "fail": 2,
+      "skip": 0,
+      "log": "/tmp/obligon-station-distance-red.log",
+      "meaning": "Actual detail component opened from a station with null/omitted distance metadata displayed Location unavailable away; known and zero distances already passed."
+    },
+    "green": {
+      "tests": 34,
+      "pass": 34,
+      "fail": 0,
+      "skip": 0,
+      "log": "/tmp/obligon-station-distance-green.log",
+      "meaning": "Existing transpiled actual component suite, including4 new opened-detail cases null, undefined,0 and1.2 km. Controlled hook/data/event fixture; no browser/provider claim."
+    },
+    "typecheck": {
+      "command": "./apps/web/node_modules/.bin/tsc --noEmit --project apps/web/tsconfig.json",
+      "exitCode": 0,
+      "log": "/tmp/obligon-station-distance-types.log"
+    },
+    "focusedDiffCheckExitCode": 0,
+    "browserAfter": "Root owns available live browser confirmation",
+    "finalIntegratedWebAndBuild": "Root owns fresh final verification after this source freeze"
+  },
+  "sourceHashesBefore": {
+    "apps/web/components/customer-dashboard/CustomerScreen.tsx": "776d51bf16e84a1829fdb911d83934bfb4925ae7e8cbf8a670eafb8038eafcf4",
+    "apps/web/tests/production-customer-controls.test.cjs": null
+  },
+  "sourceHashesAfter": {
+    "apps/web/components/customer-dashboard/CustomerScreen.tsx": "ca2b7451f4ad983d449aa5ce2113ef8535bd92cc317a332fc82afcd2bf6fca07",
+    "apps/web/tests/production-customer-controls.test.cjs": "77c3d5e15585331035cba3a9bce8bc7e79577fddaf7c7c42779f4b576db2f75a"
+  },
+  "learningNote": "Top-level production audit learning artifact remains root-owned; this localized presentation fix does not create a separate child task breakdown."
+}

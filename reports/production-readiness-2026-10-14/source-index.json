@@ -1,0 +1,1397 @@
+[
+  {
+    "path": "FRONTEND_COMPLETION_REPORT.md",
+    "sha256": "b9df811fcaa13e1f6f8153de65408b52398071a9c28eb6bb98bad219808c53aa",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Updates acceptance status and explicit incomplete/external workflows.",
+    "diffHunks": 1
+  },
+  {
+    "path": "MILESTONE_TRACKER.md",
+    "sha256": "c364d77c39430c48132de5ca4b7562b83930bbf46aacd71a5c112a4d2549a3a9",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Replaces stale completion claims with scoped audit, implementation and release gates.",
+    "diffHunks": 2
+  },
+  {
+    "path": "apps/api/.env.example",
+    "sha256": "a24ceb366e1a97d3e52376cd90d128c1d84730beb7fd55683adafff8d3d85a69",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Corrects root .env setup and API-origin webhook documentation; clarifies disposable local setup and production gates.",
+    "diffHunks": 7
+  },
+  {
+    "path": "apps/api/README.md",
+    "sha256": "e106445cbe82d2b8af0e7cc7c6d5fa88fe8078b766ef3b8c961a28c3f5c1bd74",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Documents exact-money, provider recovery, authorization and private database deployment constraints.",
+    "diffHunks": 10
+  },
+  {
+    "path": "apps/api/package.json",
+    "sha256": "9e095658f0cc7ecd4adf738d64f3a4d63c3226756ea01ac64a8d637ed3fc36e7",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Updates Multer to 2.4.0 within the runtime dependency remediation scope.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/src/app.js",
+    "sha256": "943ab52c539117d5faa8233adfda7a2103ec55387cf69cedaa6d03c2ec3ef956",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Classifies known multipart limits/framing failures as safe 400/413 without hiding genuine server faults.",
+    "diffHunks": 3
+  },
+  {
+    "path": "apps/api/src/lib/company-input.js",
+    "sha256": "7ee6f43a1362aca01dc7076d705c60ccb7005dabb2d60a9ab3ba3d097163351a",
+    "category": "Company",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Validates exact independent monetary limits and company input contracts.",
+    "diffHunks": 2
+  },
+  {
+    "path": "apps/api/src/lib/discounts.js",
+    "sha256": "14019adfd3cd9e5ea9cde61ca1e04aa419957dd4a4ed731851fcf9e48c6628f0",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Uses exact bounded minor-unit discount and charged/partner fee arithmetic.",
+    "diffHunks": 4
+  },
+  {
+    "path": "apps/api/src/lib/flutterwave.js",
+    "sha256": "bebdc0ea6054441b93ebb7f113bce6bb287d8985caf1255a7685a40c89738e95",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Validates explicit provider currency/reference/major-unit amount contracts and refund evidence; preserves paginated envelopes.",
+    "diffHunks": 18
+  },
+  {
+    "path": "apps/api/src/lib/fuel-checkout.js",
+    "sha256": "52c059d8ed289be47612bcbbdcd4ab1523bd228a3baef2e2b5725b59b1ea43b9",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Persists exact immutable quote and unit-price evidence; atomically correlates payment and recoverable excess refunds.",
+    "diffHunks": 6
+  },
+  {
+    "path": "apps/api/src/lib/fuel-sale.js",
+    "sha256": "6b05aecaee203bec2d6c64b4f1ace9dc27db2986ae8af79d143edda967856ee2",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Requires accepted station status and NGN wallet; locks and records exact sale evidence.",
+    "diffHunks": 7
+  },
+  {
+    "path": "apps/api/src/lib/mailer.js",
+    "sha256": "21f3dce09763f01bc011a15da827c7bcd2363948476894fe5b72bfb92ab067d0",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Repairs encoded password-reset subject text without changing the reset delivery flow.",
+    "diffHunks": 2
+  },
+  {
+    "path": "apps/api/src/lib/money-amounts.js",
+    "sha256": "00dc5ea6395a29249ab2bc922c12fb3712289bb28274f673e7a1740dedf2a194",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Added",
+    "whatChanged": "Adds bounded exact decimal-to-kobo parsing and BigInt monetary contracts.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/src/lib/money.js",
+    "sha256": "646ced224c6acc63367a435d7800f3c70a1017c913e01a6097ebfdb9f5302e08",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Enforces caller/payload-bound transfer identity, live company membership and exact balanced wallet effects.",
+    "diffHunks": 23
+  },
+  {
+    "path": "apps/api/src/lib/payments.js",
+    "sha256": "7148ad755f6afd03288f233c284239032d74522dc22b2cc8c57864a8b9c5df46",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Freezes fee/charged quotes, verifies retained provider contracts and reserves/dispatches recoverable exact refunds.",
+    "diffHunks": 13
+  },
+  {
+    "path": "apps/api/src/lib/paystack.js",
+    "sha256": "cfc9401713912f8641d311b29da6340556066c5986c11aa27f8780d3ee6e2ab1",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Requires real production verification and exact minor-unit refund/payment correlation.",
+    "diffHunks": 5
+  },
+  {
+    "path": "apps/api/src/lib/pdf.js",
+    "sha256": "b5831367474c373d56fef84e3f3371ac3fb8c0d1f60ac29cfc2596a29c076fd8",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Uses the configured business timezone in receipt, invoice and report dates.",
+    "diffHunks": 4
+  },
+  {
+    "path": "apps/api/src/lib/plans.js",
+    "sha256": "296b5e1587dfa694e6350af03235d93534fec67a25ed27cf08a372e2381ef317",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Preserves paginated provider plan data and reports genuine drift.",
+    "diffHunks": 3
+  },
+  {
+    "path": "apps/api/src/lib/push.js",
+    "sha256": "882bac8dab82a82621c5c0163d06d9efcaacb9ccf81b259df6b2f83d8fdad98a",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Validates trusted services/keys and guarded DNS/socket delivery; bounds outbound work and avoids internal targets.",
+    "diffHunks": 4
+  },
+  {
+    "path": "apps/api/src/lib/reconcile.js",
+    "sha256": "ba18cfca3739d3f0d77b9a5ee83dd067067fbdd5ae6942b52a1bd9c460a3f31f",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Recovers uncertain payments fairly, respects provider states and original quotes, and surfaces global refund attention.",
+    "diffHunks": 45
+  },
+  {
+    "path": "apps/api/src/lib/savings.js",
+    "sha256": "25348cba6e40c8d7cec21974148be19d112d25724528d3acaf1711ba0824c4cb",
+    "category": "Customer",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Separates recorded discount savings from current-price estimates with exact per-transaction evidence.",
+    "diffHunks": 7
+  },
+  {
+    "path": "apps/api/src/lib/scheduler.js",
+    "sha256": "fc976e14db2f62b4e9fb3e8cece6140d4d8cf1a8f81409abdc1cda233a4e7778",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Validates immutable transfer identity/NGN amount/currency/reference and prevents delayed failed lookup from overwriting a concurrently settled payout.",
+    "diffHunks": 7
+  },
+  {
+    "path": "apps/api/src/lib/security.js",
+    "sha256": "61afaf50419e91565fec007e0e137fdd6d40a4f6da2c40f364cc2d3204820c5a",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Generates cryptographic codes and binds refresh JWT expiry/context to durable session expiry.",
+    "diffHunks": 2
+  },
+  {
+    "path": "apps/api/src/lib/spend.js",
+    "sha256": "669a258238055dc31414691ec178a59b25d08c7c4d44225ab205aa9151ad2f60",
+    "category": "Customer",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Rejects monetary overprecision rather than rounding a different projection.",
+    "diffHunks": 2
+  },
+  {
+    "path": "apps/api/src/lib/sudo.js",
+    "sha256": "e9f12d0154991ece98acebac26c2e6ade5c683682d3e8b39835a846cc56cba28",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Fails closed for unsupported account-backed issuer spending; retains verified zero-funded issuance.",
+    "diffHunks": 3
+  },
+  {
+    "path": "apps/api/src/lib/temporaryPartnerAccount.js",
+    "sha256": "836867bdec1b9321fe4c6da5b31f2913e77c57bc6d4ce739f90d83dbb386f1aa",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Retires shared testing access in production and requires explicit nonproduction fixture credentials.",
+    "diffHunks": 5
+  },
+  {
+    "path": "apps/api/src/lib/transfer-recovery.js",
+    "sha256": "0ca84ac162f8e574aec25c9e54fbd9d32e5ed25b4bb210ecaa38aacfdb969014",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Retains exact recoverable transfer outcomes rather than fabricated provider success.",
+    "diffHunks": 2
+  },
+  {
+    "path": "apps/api/src/middleware/auth.js",
+    "sha256": "d85d648df02bb35503e63533d522e772c4aa668360d34c48f1ed9a8b345d33b8",
+    "category": "Auth",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Checks active membership/current account and bound durable session identity; preserves scoped API-key branch.",
+    "diffHunks": 5
+  },
+  {
+    "path": "apps/api/src/migrations/032_private_database_access.sql",
+    "sha256": "e5b415c22997aa7f1bb6e6cd6bd66229257d259f134d91d795a7fc446e373f7b",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Added",
+    "whatChanged": "Revokes private Data API table/column/function access across 59 tables while preserving four filtered public catalogs and trusted backend.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/src/routes/admin.routes.js",
+    "sha256": "9ecdb24e33857af71f7a4db2410624f735a0e71fa9bc4d72bd5ba0b771de7122",
+    "category": "Admin",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Binds exact original-charge refunds, validates provisioning credit, fixes revenue billion thresholds, creates pending fleets with an owned company wallet, and requires atomic attributable contract-agreed admin approval.",
+    "diffHunks": 20
+  },
+  {
+    "path": "apps/api/src/routes/auth.routes.js",
+    "sha256": "56644e49366f4a85b0ce11e624e81e5d5f4e15f067fb21b73062d4cd87488b0b",
+    "category": "Auth",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Serializes password/MFA/OTP/session claims, binds durable refresh expiry, supports invitations and stable company contexts, and creates pending contract-gated company signups without free trial.",
+    "diffHunks": 56
+  },
+  {
+    "path": "apps/api/src/routes/company.routes.js",
+    "sha256": "22075c3794292b1d2aa7f6fe970f24bde3f96f98af84afda9114c1ad55cb5574",
+    "category": "Company",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Adds owned paging, exact quotes/allocation identity, fuel-code and support controls; denies self-service contract billing and gates operations on existing admin verification while retaining onboarding.",
+    "diffHunks": 44
+  },
+  {
+    "path": "apps/api/src/routes/customer.routes.js",
+    "sha256": "836218ba3c8f9c76012234d56504f23afddd00ecba344cd2771ed46e5b156be9",
+    "category": "Customer",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Isolates personal ownership and exact funding/refund/phone state; PIN updates validate typed digits, lock current credentials, revoke old wallet fuel codes, and expose only pinSet metadata.",
+    "diffHunks": 55
+  },
+  {
+    "path": "apps/api/src/routes/partner.routes.js",
+    "sha256": "146f4d79942c5205483983fa6729e44e85acd9aa856ce1a60a2514039f8eda79",
+    "category": "Partner",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Corrects scoped dispute bindings, validates exact station inputs and finite transaction pagination/date/filter queries, and adds deterministic ID order for list/export.",
+    "diffHunks": 18
+  },
+  {
+    "path": "apps/api/src/routes/push.routes.js",
+    "sha256": "a4657c44b1bdbd289776023a322f1f2610ac04b9b8a9365efd4e9b46d01ff47f",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Rejects untrusted subscriptions before storage and keeps removal owner-scoped.",
+    "diffHunks": 4
+  },
+  {
+    "path": "apps/api/src/routes/subscription.routes.js",
+    "sha256": "3894e22e9463bc57e054672ad7dfe21156db6cb021ac8442d71eab610becc4eb",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Preserves original payment quotes and exact excess-debt outcomes.",
+    "diffHunks": 5
+  },
+  {
+    "path": "apps/api/src/routes/webhooks.routes.js",
+    "sha256": "669fe223ded403b8c8ffe66a6dc08cd141002ded15a37270c301d4866fc63574",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Reverifies immutable payment evidence and couples durable callback ownership with the financial transaction.",
+    "diffHunks": 25
+  },
+  {
+    "path": "apps/api/src/scripts/_e2e-payment.mjs",
+    "sha256": "00e643672f1d4e2cdcd92f5183e287e42c23b0021f83ddf99c2a115a029a0196",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Corrects the diagnostic expectation for authenticated but uncorroborated webhook charges to retryable 503.",
+    "diffHunks": 2
+  },
+  {
+    "path": "apps/api/src/scripts/demo-accounts.js",
+    "sha256": "f33e69477deae7535346c8321c73ce4d783cbbc35312912e0332e43c92fe1d2d",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Parameterizes demo-account corrective values instead of embedding SQL literals.",
+    "diffHunks": 3
+  },
+  {
+    "path": "apps/api/tests/activity-balance-and-otp.test.mjs",
+    "sha256": "609d7ba228b833d0ac6fb1567873d04bd341dc5453e5eb55b4ad420dfe5c9c17",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for activity balance and otp.",
+    "diffHunks": 4
+  },
+  {
+    "path": "apps/api/tests/admin-support.integration.test.mjs",
+    "sha256": "1a3d0fb7946e6fa90bfa9584297183e48a0b5ddae8ff844dadf405e56383e5f9",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for admin support. Added cases include: admin provisioning creates a pending company and sends an honest review invitation; pending company verification takes priority over the canceled subscription badge.",
+    "diffHunks": 5
+  },
+  {
+    "path": "apps/api/tests/api.smoke.test.mjs",
+    "sha256": "501bc244d697b7c7cb93132c5b1d2e4e9f8d91cf6187f0763c38393f98657001",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for api.smoke.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/auth-session-lifetime.integration.test.mjs",
+    "sha256": "66852ea08e421148eb747141d6b96b408eb64d4e6330c1d0e9db3707b4c98571",
+    "category": "Auth",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for auth session lifetime. Added cases include: a signed access token without a durable session is refused before and after logout; access JWT session IDs must refer to the same active unexpired account session.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/company-dashboard.integration.test.mjs",
+    "sha256": "4ab2da7aa6bb6272ddffc6979e7796db3400a6102f6b24f82a52ce78a35db991",
+    "category": "Company",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for company dashboard.",
+    "diffHunks": 2
+  },
+  {
+    "path": "apps/api/tests/company-input.test.mjs",
+    "sha256": "8dde891ad7e546c73370ae9e67ceda3abd93075bf67baa3cedf9d34537967654",
+    "category": "Company",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for company input. Added cases include: company card limits retain every kobo in bounded decimal input; company card limits reject coerced arrays rather than interpreting them as naira.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/company-invitations.integration.test.mjs",
+    "sha256": "a53a0549dfc5459ec4fe8de7beaffaabac362ed0f0c6c2bb4a4e42b98ea14196",
+    "category": "Company",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for company invitations. Added cases include: a verified signed-in invitee joins the existing fleet without changing the primary account role; concurrent redemption is single use and never duplicates a membership.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/company-membership.integration.test.mjs",
+    "sha256": "75f43a4ac8f7462f68e8bc5885f30cafd4e33e32a4431934d555c321ced4017a",
+    "category": "Company",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for company membership. Added cases include: active company member retains permitted access; suspended company membership loses access immediately.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/company-money.integration.test.mjs",
+    "sha256": "f607d3f4983a6e3c3b7b8eb2955404ad7337828b3d29b91f3a7429051018a1f4",
+    "category": "Company",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for company money. Added cases include: pending company approval prevents direct allocation without any money effect; company top-up persists principal, quoted fee, charged total and chosen method against the real schema.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/company-workflows.integration.test.mjs",
+    "sha256": "21a39b95e669c3c2de91cb9599bcde0cdb4fb388a89fe308e2ba30271a7bd885",
+    "category": "Company",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for company workflows. Added cases include: fleet pages traverse beyond one hundred rows with stable IDs and matching totals; fleet pagination rejects malformed bounds before SQL and caps valid limits.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/customer-audit.integration.test.mjs",
+    "sha256": "963b9c92c4c9148261495e3d467eaa1f8397b749bae06a2d42d6343e3c3069f9",
+    "category": "Customer",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for customer audit.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/customer-production-boundaries.integration.test.mjs",
+    "sha256": "8a6e5fc8285ceddaed9fd24c180f2c3bc4e7596810ebab57085efab670789ba0",
+    "category": "Customer",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for customer production boundaries. Added cases include: personal card PIN setup state is explicit and concurrent first setup cannot replace an established PIN; customer deposits reject fractional, malformed and oversized input before intent creation.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/database-private-access.integration.test.mjs",
+    "sha256": "9a1bfbc5afed941664921a19fba86887f7a69a4e6755bac344cb7c49e2f5fb55",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for database private access. Added cases include: permission maintenance denies every application-private table and column to both Data API roles; trusted owner/backend still read and write while all four public catalogs remain filtered and read-only.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/demo-accounts.test.mjs",
+    "sha256": "8295bb354f05468520a498aa4b5f648ef9d032638ec5616063ce43ea643f369e",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for demo accounts. Added cases include: demo repair binds actual status and boolean values and remains idempotent.",
+    "diffHunks": 3
+  },
+  {
+    "path": "apps/api/tests/discount-math.test.mjs",
+    "sha256": "447e1c439a8ee79fc117b5bc795339c79ae594c85b9017009d114cc873aa2cb6",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for discount math. Added cases include: large safe principal discounts round half-up using exact integer products; a valid small two-decimal discount rate is not refused by binary multiplication.",
+    "diffHunks": 2
+  },
+  {
+    "path": "apps/api/tests/exact-money-projection.integration.test.mjs",
+    "sha256": "79e2699464744b9ff2e8c39c4e04840f74ab7ac315ee6ed93f96f5b1cc45fafb",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for exact money projection. Added cases include: projection stores bounded exact decimal kobo and supports changing the same month; projection refuses sub-kobo amounts without writing a rounded plan.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/exact-money-provider.test.mjs",
+    "sha256": "2409b8c770dfc27c1ba2a929345e1a8ab55394613ef34232c40bcb09f6abce65",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for exact money provider. Added cases include: split settlement uses exact integer half-up arithmetic for a large safe principal; a platform split fee greater than the charge is rejected.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/flutterwave-processor.test.mjs",
+    "sha256": "342fb675fed17e684a8a703502f18c962041e8ddea98579cdcf3dc3a3a6fa686",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for flutterwave processor.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/flutterwave-units.test.mjs",
+    "sha256": "06504d363af3692ef4a80cdb80619d8c9889d4a68d163c5cc79ffa43a18780ca",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for flutterwave units. Added cases include: v3 verification amounts have a documented major-unit contract; decimal major units convert exactly and malformed precision is refused.",
+    "diffHunks": 3
+  },
+  {
+    "path": "apps/api/tests/fuel-checkout.integration.test.mjs",
+    "sha256": "cba27f7c25fd70bf314c8e1418893c8db2b23ca18210be09778a1e521f132611",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for fuel checkout. Added cases include: direct fuel confirmation persists its original unit price after station prices change; direct checkout computes the original decimal litres quote with exact half-up rounding.",
+    "diffHunks": 5
+  },
+  {
+    "path": "apps/api/tests/fuel-sale.integration.test.mjs",
+    "sha256": "f54c7048ce81e2f5885e21adff3855d381a1b733d53146e7803168a16e9d0c90",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for fuel sale. Added cases include: closed active station cannot consume a wallet code or move money; wallet sale records the quoted unit price and keeps it after published price changes.",
+    "diffHunks": 10
+  },
+  {
+    "path": "apps/api/tests/history-settlement-and-scheduler.test.mjs",
+    "sha256": "3d98ba8739bcff5a0397c4dc38fc49fdbb729fea21ce568a3490d11f292f6839",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for history settlement and scheduler.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/late-settlement.test.mjs",
+    "sha256": "c5de74748ecbfba855461ec55fb2b71cd04149afeef45d8d9c49a9bbaaaa4a28",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for late settlement.",
+    "diffHunks": 5
+  },
+  {
+    "path": "apps/api/tests/legacy-provider-verification.test.mjs",
+    "sha256": "5774faed0ede97052120aa2e6a2a7b9a342d4c37dd4169c3208b58230b44df66",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for legacy provider verification. Added cases include: production cannot confirm an unpaid legacy charge through a frontend simulation claim; production cannot fabricate a legacy refund through simulation.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/local-diagnostic-safety.test.mjs",
+    "sha256": "494c0ad7f0262a7eff7e256b058b2f04daadcc57cfae70b2139e86b1a6015726",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for local diagnostic safety. Added cases include: preference diagnostic refuses absent explicit fixture credentials before login.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/mfa-password-proof.integration.test.mjs",
+    "sha256": "f64593b64310fdcd852174aa901d8ca992aebca89fa88937cc0ecd8a4500a783",
+    "category": "Auth",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for mfa password proof. Added cases include: a standalone email and valid backup code cannot bypass the password step; an authenticated session cannot overwrite an already enabled MFA secret.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/migration-startup.integration.test.mjs",
+    "sha256": "7ae1d8e23408711fe63e6e69f2494408e7165779fc908933017bb316be132c4f",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for migration startup.",
+    "diffHunks": 5
+  },
+  {
+    "path": "apps/api/tests/minimum-topup.test.mjs",
+    "sha256": "ef40f9d4dfb7c34d320e2f8913c6035bbf5d39b59054fb290f9804a62c299ccb",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for minimum topup.",
+    "diffHunks": 2
+  },
+  {
+    "path": "apps/api/tests/money-amounts.test.mjs",
+    "sha256": "244901385449a8e7b82222339f34543f857011af3f95da2bf83d59fbb73161fa",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for money amounts. Added cases include: naira input preserves exact kobo without binary rounding; whole-naira checkout refuses fractional deposits rather than silently surcharging.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/money.test.mjs",
+    "sha256": "eb2462331c600b016ccee2d375d01f79e006e199ab6f4ed17a716764c43123f2",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for money. Added cases include: creditWalletOnce credits exactly once for the same idempotency key; debitWalletOnce refuses to overdraw and never goes negative.",
+    "diffHunks": 23
+  },
+  {
+    "path": "apps/api/tests/no-secret-leak.test.mjs",
+    "sha256": "7e1ea2be23adfbf0a0edee01a5a3994a43c5ec86ec2bf9dc3712579d0f4b46dc",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for no secret leak. Added cases include: Sudo webhook signing secrets are sensitive while public provider configuration remains public.",
+    "diffHunks": 2
+  },
+  {
+    "path": "apps/api/tests/otp-provider-resilience.test.mjs",
+    "sha256": "6c091698f13c6ab6a598c4cc77d39f7ba66668198037126587f80d20a8384e89",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for otp provider resilience. Added cases include: password-reset subject preserves readable text and the one-time code.",
+    "diffHunks": 3
+  },
+  {
+    "path": "apps/api/tests/partner-dashboard-wiring.test.mjs",
+    "sha256": "ddf896e9497f53b9ab1315fe43b39fa288f550428af78a8be8741c3e055d259c",
+    "category": "Partner",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for partner dashboard wiring.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/partner-production-readiness.test.mjs",
+    "sha256": "a019ffee1cbdba3d2fa78550a2bb11d6e18f7e51f6d77414417293a7c1927153",
+    "category": "Partner",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for partner production readiness. Added cases include: pagination uses validated integer bounds and bound SQL parameters.",
+    "diffHunks": 6
+  },
+  {
+    "path": "apps/api/tests/partner-staff.integration.test.mjs",
+    "sha256": "76ad0e6d43dbdcf8450e64ef5629efe80e7bde3248f0af1ef52ca36589a21251",
+    "category": "Partner",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for partner staff. Added cases include: staff disable persists, revokes current access, remains visible and can be restored; staff owner, foreign membership and invalid permission mutations are rejected without state changes.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/password-reset-claim.integration.test.mjs",
+    "sha256": "ed99a82748009c4db002b7f51777d7e920cbf9ebd47bda943cd2413bf6b8f2e0",
+    "category": "Auth",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for password reset claim. Added cases include: five wrong reset guesses durably burn the code and prevent the correct guess; four concurrent reset replays change the password only once.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/payment-plans.integration.test.mjs",
+    "sha256": "c35d8ac8ce8e9580743343a83ed52678465aa624dc0ec7fce753fac961e93573",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for payment plans. Added cases include: official v3 envelope retrieves both pages and exposes cancelled-plan drift; empty official catalogue is accepted and cached.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/payment-verification-contract.test.mjs",
+    "sha256": "313c39b99f4262c85e010b3f529fce100d3e2071f4a0c8fa15597c340eb2f0e0",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for payment verification contract. Added cases include: verified v3 amounts always use major units, including 100-fold overpayment; overpayment remains explicit evidence for the refund owner.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/payment-webhook-recovery.integration.test.mjs",
+    "sha256": "86419d3e1306b44bbaa7bbc326c70f03460d9dfe3fc06fdf96211471aa84bea4",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for payment webhook recovery. Added cases include: forged provider webhooks cannot look up payments or claim events; signed legacy callbacks require current matching currency, reference and amount.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/payout-balance-guard.test.mjs",
+    "sha256": "f08e370ffd491a8d76eed721f9f14c910f9aba4af61de6e3228cea8068eb6ade",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for payout balance guard.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/pdf-layout.test.mjs",
+    "sha256": "80e681de11e12f3d59af10d46d20450f13715229ebf953c3167f9300255d8223",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for pdf layout. Added cases include: receipt, invoice and report dates use the configured business day across UTC midnight.",
+    "diffHunks": 2
+  },
+  {
+    "path": "apps/api/tests/prefs-security.check.mjs",
+    "sha256": "73fc789fbe78a1f500d5bec27c769d2b47cd502e382bab2f9ab120b4ee3feff6",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for prefs security.check. Added cases include: temporary push subscription cleanup succeeds; original notification preferences are restored.",
+    "diffHunks": 9
+  },
+  {
+    "path": "apps/api/tests/push-boundaries.test.mjs",
+    "sha256": "e6de9f1cea6e05b03c2584e8bb6580833d8679b742b862672a0dab4c500f28db",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for push boundaries. Added cases include: public DNS result is the address handed directly to the socket, without a second lookup; a service redirect response never triggers a second request.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/reconciliation-fallback.integration.test.mjs",
+    "sha256": "2c5dc97d84da3778b78055f18e1277b88d166eed980b24242cdd2cf8cad54107",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for reconciliation fallback. Added cases include: a delayed bank payment stays recoverable after its initial provider lookup is missing; a still-pending payment remains recoverable after the former eight-attempt threshold.",
+    "diffHunks": 9
+  },
+  {
+    "path": "apps/api/tests/refund-ambiguity.integration.test.mjs",
+    "sha256": "683b25c95f190ff3a7587a977dd9b01683d743030774994082a64ec694c46699",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for refund ambiguity.",
+    "diffHunks": 2
+  },
+  {
+    "path": "apps/api/tests/refund-boundaries.integration.test.mjs",
+    "sha256": "29fa2552ac91476160c1105475e42f5e81437ff678617c36b4ad27ac04d33a93",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for refund boundaries. Added cases include: admin partial refund cannot exceed the immutable original charge; aggregate partial refunds cannot exceed the original charge.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/refund-recovery.integration.test.mjs",
+    "sha256": "2087e3ee1d9271fa3714b2737fb572655a1aba195ea50eedfe35b121748fee29",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for refund recovery. Added cases include: refund intent rolls back with its purchase and never contacts provider; a crash after committing intent is recovered with one POST across 20 concurrent dispatches.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/savings-fee.test.mjs",
+    "sha256": "2695355705f7d4dc1cb796524a7cb48bdbf08fc96aaea323fb6b3090db169a8b",
+    "category": "Customer",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for savings fee. Added cases include: platform-borne fees never silently surcharge a fractional checkout.",
+    "diffHunks": 2
+  },
+  {
+    "path": "apps/api/tests/savings.integration.test.mjs",
+    "sha256": "83f064218af3d9008eb240608e96bca4ae60a68b1a94b74765edd7746e927070",
+    "category": "Customer",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for savings. Added cases include: unequal-volume purchases sum actual recorded discounts rather than averaging unit prices; recorded historical savings do not change when current network prices change.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/settlement-accounting.integration.test.mjs",
+    "sha256": "7589a0ce0e29a9ccb7a1eb9427662226954070ba1bb2c0bd3c659880ff067ee7",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for settlement accounting. Added cases include: a delayed failed lookup cannot overwrite a concurrently settled payout; contradictory transfer identity, currency, amount or reference never releases a payout reservation.",
+    "diffHunks": 2
+  },
+  {
+    "path": "apps/api/tests/sudo-contract.test.mjs",
+    "sha256": "bc6e4b0505199da3c5d1c4a3beab41569ce42ebb17b07485ccb7b4e508f03c6b",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for sudo contract. Added cases include: unintegrated issuer funding is rejected before any card creation.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/temporary-partner-account.integration.test.mjs",
+    "sha256": "1809e2b375cda321bd527012e88139e21e620ee0ab2be6575f0386ee7c6bfb09",
+    "category": "Partner",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for temporary partner account. Added cases include: startup retires temporary access by default and production cannot recreate it.",
+    "diffHunks": 3
+  },
+  {
+    "path": "apps/api/tests/upload-compatibility.integration.test.mjs",
+    "sha256": "c97897bfd826272d283845ee0d24fb367618b2e93fdcb319ec250fc22f29b89c",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for upload compatibility. Added cases include: oversized uploads return 413 across all five routes without storing files or records; unexpected file fields and excess files return safe 400 errors.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/api/tests/verification-flow.test.mjs",
+    "sha256": "75e4241d5bba3441da9ce6cecb08e2e9b29bbbc5a5acf382ad6d50924193d412",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for verification flow. Added cases include: a matched live contact code is consumed atomically within its account lock.",
+    "diffHunks": 3
+  },
+  {
+    "path": "apps/api/tests/wallet-payments.check.mjs",
+    "sha256": "50ca6ec1e2ed3276a0eef977fef928d7f5e9a438cbc8d5a5c07b6d3da69b966b",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for wallet payments.check. Added cases include: confirming credits the wallet once; webhook fails closed for missing verif-hash or unavailable authentication.",
+    "diffHunks": 18
+  },
+  {
+    "path": "apps/web/FRONTEND_ACCEPTANCE.md",
+    "sha256": "a332fb0f8934226d5cd0bf27f793feb2e40a171ed35376b26bb31dcf1cf125d1",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Updates acceptance checklist with actual role/form/error proof and external gates.",
+    "diffHunks": 4
+  },
+  {
+    "path": "apps/web/app/admin/login/page.tsx",
+    "sha256": "a46868f3af88642d40d0c35e17d6db0966f6172c15f93af755057233e54b7ac8",
+    "category": "Admin",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Uses safe internal return paths and verified session/MFA/role routing on this entry page.",
+    "diffHunks": 5
+  },
+  {
+    "path": "apps/web/app/auth/company-invitation/page.tsx",
+    "sha256": "bdb0b53f489c38651b873ad4c60e479d873937524e00e50b19b9e9e4a99ea001",
+    "category": "Company",
+    "kind": "Source/config/documentation",
+    "status": "Added",
+    "whatChanged": "Uses safe internal return paths and verified session/MFA/role routing on this entry page.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/web/app/auth/failure/page.tsx",
+    "sha256": "013c5c3bb65a773428c2b9460fbf751254d6c5c943ef3242f286b01a06052bb5",
+    "category": "Auth",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Uses safe internal return paths and verified session/MFA/role routing on this entry page.",
+    "diffHunks": 7
+  },
+  {
+    "path": "apps/web/app/auth/in-progress/page.tsx",
+    "sha256": "e2ff84dcbcc41fc95c8ce4bc74a2dfaa04d98d8b5034711ed46759c04b616a9d",
+    "category": "Auth",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Uses safe internal return paths and verified session/MFA/role routing on this entry page.",
+    "diffHunks": 13
+  },
+  {
+    "path": "apps/web/app/auth/session-expired/page.tsx",
+    "sha256": "6a41f44508ab1922e3c8d1a962a8fe198b94a2778e78b2ac7bba05ba71b6446f",
+    "category": "Auth",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Uses safe internal return paths and verified session/MFA/role routing on this entry page.",
+    "diffHunks": 8
+  },
+  {
+    "path": "apps/web/app/auth/signup/page.tsx",
+    "sha256": "b8ea0e8b28a454bc2f0469ec375ac129bffaa1b9032c702034cc8c1d6f3b1fcd",
+    "category": "Auth",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Uses safe internal return paths and verified session/MFA/role routing on this entry page.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/web/app/fonts/Inter-variable.woff2",
+    "sha256": "351f50d53207a6a7d8643edfa2520468627b141466d572493c0ef1b3075d0311",
+    "category": "Public",
+    "kind": "Font asset",
+    "status": "Added",
+    "whatChanged": "Bundles the existing licensed brand font for deterministic framework font loading without a Google request.",
+    "diffHunks": 0
+  },
+  {
+    "path": "apps/web/app/fonts/PlusJakartaSans-variable.woff2",
+    "sha256": "49c62cf1fb70f225ea113361f0134a48858c3a7d0175173aa3e38a0c6c8539d2",
+    "category": "Public",
+    "kind": "Font asset",
+    "status": "Added",
+    "whatChanged": "Bundles the existing licensed brand font for deterministic framework font loading without a Google request.",
+    "diffHunks": 0
+  },
+  {
+    "path": "apps/web/app/fonts/README.md",
+    "sha256": "5a19b6e344ac5511ff84ebbad75b2e001d27e77ecfe54fb506f1a3e928b698b3",
+    "category": "Public",
+    "kind": "Source/config/documentation",
+    "status": "Added",
+    "whatChanged": "Records the local font provenance, preserved families and license paths.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/web/app/globals.css",
+    "sha256": "4e27f9d47fbbbbf6982265684f4c6bb4c815914186521827df9130371f8167eb",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Adds reduced-motion fallback and conditionally lowers only Cookie Consent while an aria-modal dialog exists, retaining its normal z40 layout/layer.",
+    "diffHunks": 2
+  },
+  {
+    "path": "apps/web/app/layout.tsx",
+    "sha256": "1ad1ba2343c6d7ec3c28e085c500a9502a1682a5d355e2034ff04506662e3561",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Loads the existing Inter and Plus Jakarta Sans families from bundled licensed files while preserving font variables, removing the Google download build dependency.",
+    "diffHunks": 3
+  },
+  {
+    "path": "apps/web/app/solutions/fuelvista/page.tsx",
+    "sha256": "7002e66a66a26699d46138ac0551c42974424a4f37abe27ab21cfe5396faff23",
+    "category": "Public",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Qualifies operational product copy rather than claiming unsupported automation.",
+    "diffHunks": 5
+  },
+  {
+    "path": "apps/web/app/support/page.tsx",
+    "sha256": "49cdfbde574cf2f2612763806f0d2d217d5d939f5f5d97ac7c026f0e734196be",
+    "category": "Public",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Associates contact category label with its native select.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/web/components/admin-dashboard/AdminScreen.tsx",
+    "sha256": "da50325ea79ea72d9306278ccbbd0463bf9d42f5f6748d7ca36e44c2ef6f50e1",
+    "category": "Admin",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Separates company verification from subscription state, requires an explicit contract-agreed checkbox for new approval, reports actual owner-invitation result, and keeps edits/close controls disabled while saving.",
+    "diffHunks": 13
+  },
+  {
+    "path": "apps/web/components/auth/AuthForms.tsx",
+    "sha256": "d7d3ee47ceb73daaad5ff7de91f107ae379411f376455892fdfa3451dd1f9369",
+    "category": "Auth",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Adds truthful MFA/admin/credential result routing and safe pending state.",
+    "diffHunks": 11
+  },
+  {
+    "path": "apps/web/components/auth/AuthStatus.tsx",
+    "sha256": "262f5412a3bbe236e942acb88c852b83a43fb33ec8fe6c6702c41cb2ab8257f7",
+    "category": "Auth",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Reports actual session verification without invented identity or encryption claims; shrinkable status card, mobile padding/type and local word wrapping prevent 320px overflow.",
+    "diffHunks": 6
+  },
+  {
+    "path": "apps/web/components/auth/CompanyInvitation.tsx",
+    "sha256": "e59ae3425eaacdb9dfd63c63cd71ac8b5493cbebedc17d9fe2325a4eac277742",
+    "category": "Auth",
+    "kind": "Source/config/documentation",
+    "status": "Added",
+    "whatChanged": "Adds explicit account-bound invitation preview/acceptance and company entry.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/web/components/auth/MFAUI.tsx",
+    "sha256": "aa3fe0c79e2ca79d9bbd2b534c295d8fb3a0e31fdbdbead0b2932b187d1cb48b",
+    "category": "Auth",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Shows real setup failures, accepts normalized backup codes, guards obsolete completion, and fits six labeled challenge digits into a shrinkable mobile grid while preserving desktop boxes and input behavior.",
+    "diffHunks": 25
+  },
+  {
+    "path": "apps/web/components/auth/SuccessAutoRedirect.tsx",
+    "sha256": "97ee67b5803e895e72efbb884135f6f5e58e45bae26160e3e2bfc0191f797d18",
+    "category": "Auth",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Waits for authenticated ready session and chooses a safe verified role destination.",
+    "diffHunks": 4
+  },
+  {
+    "path": "apps/web/components/auth/VerificationUI.tsx",
+    "sha256": "d3f8aa5efb5f3db5721746c0c85e1bc822ee4e9f50d91a04e4b7b37127d963ca",
+    "category": "Auth",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Retains current verification state and proper stale/busy completion handling.",
+    "diffHunks": 5
+  },
+  {
+    "path": "apps/web/components/careers/CareersPage.tsx",
+    "sha256": "c123d530b1a3290ccd34a7fa9253d856409ce2660a14811a0007fc89e8961ee4",
+    "category": "Public",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Makes application dialog keyboard-contained and guards duplicate or stale submissions.",
+    "diffHunks": 29
+  },
+  {
+    "path": "apps/web/components/company-dashboard/CompanyContextSelector.tsx",
+    "sha256": "822feaa5b2eb10706b39485a78d5c3bd1052ae600863652ad2d8110903fdfe62",
+    "category": "Company",
+    "kind": "Source/config/documentation",
+    "status": "Added",
+    "whatChanged": "Chooses active company contexts and returns to primary identity with durable-session preservation.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/web/components/company-dashboard/CompanyModals.tsx",
+    "sha256": "97321118d5b87068fbfcb62bb962ff711b8a9807cbd95a6f2b33eb2d9b5ea207",
+    "category": "Company",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Adds quoted funding, stable allocation retry identity, conversations/maintenance/card-code controls and exact money fields.",
+    "diffHunks": 7
+  },
+  {
+    "path": "apps/web/components/company-dashboard/CompanyScreen.tsx",
+    "sha256": "e648228662a8266e543d266624307a8dff8acdd1d9f25147c030dc7a32c63cf2",
+    "category": "Company",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Adds pagination, operational follow-up, wallet/budget/code surfaces and protected support conversations.",
+    "diffHunks": 32
+  },
+  {
+    "path": "apps/web/components/company-dashboard/CompanyShell.tsx",
+    "sha256": "dc3bd1bf1780bce0beaab283e4fd710441e2a1b2f81ca4e02883e659a4f8cb27",
+    "category": "Company",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Remounts workspace state by organization ID, filters contract-gated navigation, presents approval/Support guidance, and closes the old mobile drawer with a new topbar focus target when the selected company changes.",
+    "diffHunks": 15
+  },
+  {
+    "path": "apps/web/components/customer-dashboard/CustomerFuelCheckout.tsx",
+    "sha256": "4310a63a4528ad904cca19b1b9728a3b1c0f6a35e6353e619f23ce27bf496cf2",
+    "category": "Customer",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Separates load recovery from payment errors and preserves existing paid code/history safely.",
+    "diffHunks": 10
+  },
+  {
+    "path": "apps/web/components/customer-dashboard/CustomerModals.tsx",
+    "sha256": "b3aa054f4d02cf21b8ab44556d146b3708d6d78bd70dc894335fbca827a27c80",
+    "category": "Customer",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Uses exact disclosed funding quote, truthful config failure, current password reauthentication and safe retries; visible card-issue wording is personal while the legacy support wire value stays intact.",
+    "diffHunks": 52
+  },
+  {
+    "path": "apps/web/components/customer-dashboard/CustomerScreen.tsx",
+    "sha256": "3b2bfa6fd7e489c704660f6793e75096952de44d6f56f34fb68d255f8251f248",
+    "category": "Customer",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Retains useful card/wallet state, retry and receipt links, repairs device push readiness, prevents terminal card application reopening, and presents actual full-refund outcomes; keeps missing station distance unavailable while retaining valid zero distance; the mobile greeting describes the personal account.",
+    "diffHunks": 52
+  },
+  {
+    "path": "apps/web/components/customer-dashboard/CustomerShell.tsx",
+    "sha256": "4aa800c0b12475876360841d181420c54e3703d1680ae4fb4baece13bd1915fd",
+    "category": "Customer",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Raises the mobile Account dropdown and desktop sidebar stacking contexts so their unchanged Sign Out confirmations outrank underlying navigation/map controls; logout/session/focus handlers and layout dimensions remain intact.",
+    "diffHunks": 2
+  },
+  {
+    "path": "apps/web/components/dashboard/DashboardScreen.tsx",
+    "sha256": "2ee26d035782a978b3861d9bcb87f4ddd59a3b6d963794559795af9ac6c1e5b7",
+    "category": "Partner",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Makes settlement table column shrinkable to confine responsive scrolling.",
+    "diffHunks": 14
+  },
+  {
+    "path": "apps/web/components/dashboard/PartnershipShell.tsx",
+    "sha256": "26df7a6ed181d8f277c88e6e1307e39b92645bf55e74baf260c22f4a54db883b",
+    "category": "Partner",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Allows the existing mechanic subset and reachable sign-out without widening partner mutation permissions.",
+    "diffHunks": 4
+  },
+  {
+    "path": "apps/web/components/landing/Header.tsx",
+    "sha256": "a61b4ca7cc6b58c558ff954b2ebd6329d6eaef2d5e6a63a8416ba412efbc0cc9",
+    "category": "Public",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Aligns tablet/mobile menu breakpoints with desktop navigation.",
+    "diffHunks": 3
+  },
+  {
+    "path": "apps/web/components/legal/LegalPage.tsx",
+    "sha256": "7783e7dc9041da8c5515812a11097a38c00791ad393866cde9e650776abe4faf",
+    "category": "Public",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Adds named privacy form state, stable request values, retry guards and qualified legal copy.",
+    "diffHunks": 21
+  },
+  {
+    "path": "apps/web/components/shared/AuthContext.tsx",
+    "sha256": "21a4ea9fa75f556228c697c01fc283e9cd34fc4f7fb74eb31b12de144b63c307",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Guards session generation before accepting older login/MFA results.",
+    "diffHunks": 3
+  },
+  {
+    "path": "apps/web/components/shared/States.tsx",
+    "sha256": "c91b6c653f959f1f7eddbb563eef98bdba878410808afa3ecbe4fe42c1abbb9a",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Preserves empty-state actions and exposes nonblocking refresh warnings.",
+    "diffHunks": 4
+  },
+  {
+    "path": "apps/web/components/shared/useAsync.ts",
+    "sha256": "97ade7c0204510900821c8db45f1cff520284c3dd5bd7f8dfbf7a913594f473b",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Keeps last good data and prevents overlapping refresh from invalidating its own in-flight response.",
+    "diffHunks": 7
+  },
+  {
+    "path": "apps/web/lib/auth-routing.ts",
+    "sha256": "312b811985662d30b655e47d690764a566795d9c42f01ecedd164641d3a3362f",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Added",
+    "whatChanged": "Adds role destinations and strict safe internal return-path validation.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/web/lib/company-invitation-routing.ts",
+    "sha256": "6fe94209b262f541b3b326100b8b972614b157853b82009d9d278fc1beefbff1",
+    "category": "Company",
+    "kind": "Source/config/documentation",
+    "status": "Added",
+    "whatChanged": "Binds invitation continuation to valid internal paths.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/web/lib/customer-funding-quote.ts",
+    "sha256": "422b328117b0d21afbe116b4400fb13638e348d7d0f4913c10af866aee95edec",
+    "category": "Customer",
+    "kind": "Source/config/documentation",
+    "status": "Added",
+    "whatChanged": "Computes exact disclosed customer funding fee/total with bounded whole-naira input.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/web/lib/push-subscription.ts",
+    "sha256": "ef65f4cd31ec2aeef1f8374ae4228a52e910fc01c3900471f7d0d32ae032b646",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Derives actual device subscription readiness and propagates browser/API unsubscribe errors.",
+    "diffHunks": 5
+  },
+  {
+    "path": "apps/web/lib/services/client.ts",
+    "sha256": "2aa375de4d7c935dafa6946a2dbc97520f6210f47d0b5431d707d0b35817d118",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Guards session/token generation writes and adds exact/quoted/owned dashboard service contracts.",
+    "diffHunks": 21
+  },
+  {
+    "path": "apps/web/lib/services/company-invitations.ts",
+    "sha256": "046c1154cc7071cb1873d20b9fdb6abcb54aa647af02c12d88880c8beb9b0b9f",
+    "category": "Company",
+    "kind": "Source/config/documentation",
+    "status": "Added",
+    "whatChanged": "Adds account-bound invitation and company context selection API service.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/web/lib/services/company.ts",
+    "sha256": "06270673606cce5c2e48f8675dd94295a97e1da5f6de774c113e0ecbea1c6bd7",
+    "category": "Company",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Adds typed paging, wallet, budget, code and operational service contracts.",
+    "diffHunks": 4
+  },
+  {
+    "path": "apps/web/lib/services/types.ts",
+    "sha256": "23693aeb863addfaf368aec1a10943e6561154d24688e95a06622cd34ecaeac6",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Adds stable organization/context, company verification status, terminal card request states and exact dashboard contract fields.",
+    "diffHunks": 2
+  },
+  {
+    "path": "apps/web/public/fonts/Inter-OFL.txt",
+    "sha256": "5b9321a4298cfeb6b34354164a1c3afc3db114569984c502b9b35d988fd58c57",
+    "category": "Public",
+    "kind": "Source/config/documentation",
+    "status": "Added",
+    "whatChanged": "Preserves the upstream Open Font License alongside the bundled brand font.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/web/public/fonts/PlusJakartaSans-OFL.txt",
+    "sha256": "995c7199cab65954f545996326755daee7b63cc6b42b06c13da1f9502ab08a99",
+    "category": "Public",
+    "kind": "Source/config/documentation",
+    "status": "Added",
+    "whatChanged": "Preserves the upstream Open Font License alongside the bundled brand font.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/web/tests/admin-company-approval.test.cjs",
+    "sha256": "0f19bf0d282cf9de833304308cd9718d576427162b5cd547076afcc2842e0943",
+    "category": "Company",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for admin company approval. Added cases include: company review exposes labelled verification and contract approval controls; approving without explicit confirmation never sends an approval request.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/web/tests/auth-regression.test.cjs",
+    "sha256": "57879ac8b3c080e0226f852f62d069299800d1309f4a3950c2400702a4e4b18f",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Modified",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for auth regression.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/web/tests/auth-session-races.test.cjs",
+    "sha256": "ed6002b6d1de745461fe4f0637ea54a1a636ab2e502c19359e1ab20d46757fb4",
+    "category": "Auth",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for auth session races. Added cases include: replaced password proof rejects a pending MFA completion even without a session token; two MFA replays cannot persist two different successful completions.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/web/tests/local-fonts.test.cjs",
+    "sha256": "1320cb695d93245cfe89a5143a7bd6f1f7839ad244c1709c359464772c4be273",
+    "category": "Public",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for local fonts. Added cases include: actual Next local loader emits only local font assets with preserved swap, weight and CSS variables.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/web/tests/mfa-password-proof.test.cjs",
+    "sha256": "ad11f275e636cc0354c7c5d765c0ade8a969d7d3c9c11bdd8ae28365c217c1fd",
+    "category": "Auth",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for mfa password proof. Added cases include: failed live authenticator setup displays its real error and cannot show or continue with fake credentials; a challenge opened without password proof explains recovery and disables code submission.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/web/tests/production-auth-navigation.test.cjs",
+    "sha256": "25be631e84176448c2e4ca388d18d31a74a3541a1eaa74745fa7e938c3bd6873",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for production auth navigation. Added cases include: expired-session password proof follows MFA without announcing completed sign-in; expired session cannot announce success when post-login verification fails.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/web/tests/production-company-invitations.test.cjs",
+    "sha256": "c1e25c96a2710ce9176be00ee6b4c354426911a1725a57f580210b2bbfeb9658",
+    "category": "Company",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for production company invitations. Added cases include: legacy invitation query maps to a validated internal acceptance destination; signed-out invitation provides sign-in and signup links that preserve acceptance.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/web/tests/production-company-workflows.test.cjs",
+    "sha256": "676b85d7bacd8ff5cf5ae61d24087e3bf905caf947619faaa436a95567531f13",
+    "category": "Company",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for production company workflows. Added cases include: company fleet services preserve total and caller pagination/search; vehicle and card pages load another page and search resets its offset.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/web/tests/production-customer-controls.test.cjs",
+    "sha256": "77c3d5e15585331035cba3a9bce8bc7e79577fddaf7c7c42779f4b576db2f75a",
+    "category": "Customer",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for production customer controls. Added cases include: whole-naira input rejects fractional, malformed and unbounded amounts; exact quote rounds customer total upwards and leaves platform Bearer [redacted] unchanged.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/web/tests/production-partner-staff.test.cjs",
+    "sha256": "879e0a5a4ff250401b2932f1a5714f42e95fc3e5c8cb33dd186a5f61f0052a41",
+    "category": "Partner",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for production partner staff. Added cases include: staff form maps attendant to supported dispatcher and sends explicit POS access; editing disabled staff starts disabled and submits the chosen enabled state.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/web/tests/production-public-controls.test.cjs",
+    "sha256": "9e31196000e0915bdbccd3279b7fd597ad9d3b2901b56a1ac56eafe42102211d",
+    "category": "Public",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for production public controls. Added cases include: landing navigation remains reachable between mobile and desktop breakpoints; career application opens a named dialog using the shared focus behavior.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/web/tests/production-shared-state.test.cjs",
+    "sha256": "3efbfb41687e1a107f79380fc405f4c1ec7e740fc87b74a5b664c64c9432da43",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for production shared state. Added cases include: overlapping same-input polls retain their pending response; initial loading failure remains a blocking error without invented records.",
+    "diffHunks": 1
+  },
+  {
+    "path": "apps/web/tests/push-subscription.test.cjs",
+    "sha256": "80dbc2e15f57fc175e54d034b0f96fb80529230ebbe4f8af92bd893f0e29829c",
+    "category": "Shared",
+    "kind": "Test",
+    "status": "Added",
+    "whatChanged": "Adds/updates focused regression cases and fixtures for push subscription. Added cases include: API unsubscribe failure rejects and leaves the browser subscribed for retry; browser unsubscribe refusal with a remaining subscription rejects instead of claiming push is disabled.",
+    "diffHunks": 1
+  },
+  {
+    "path": "pnpm-lock.yaml",
+    "sha256": "7e0a9dd8b2e6c7f9d32556feac8e95e1d5d6ed3e0bcb2e46144f8abfc41c892e",
+    "category": "Shared",
+    "kind": "Source/config/documentation",
+    "status": "Modified",
+    "whatChanged": "Records the resolved Multer dependency tree used by final audits.",
+    "diffHunks": 25
+  }
+]

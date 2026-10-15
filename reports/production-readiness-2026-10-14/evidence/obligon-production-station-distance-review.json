@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-14",
+  "reviewedAt": "2026-10-14T19:04:04.800682+00:00",
+  "reviewer": "/root/fix_partner_audit",
+  "scope": "Independent bounded review of actual Station Details unavailable-distance presentation and the four opened-component scenarios; no source edit or new execution.",
+  "codeVerdict": "Approve for this ordinary UI correction; no new literal defect found",
+  "releaseDecision": "DO NOT SHIP: overall qualified human and external acceptance gates remain",
+  "finding": {
+    "id": "CUSTOMER-STATION-DISTANCE-01",
+    "category": "Customer",
+    "pages": [
+      "Station locator",
+      "Station Details"
+    ],
+    "criticalHumanReviewRequired": false,
+    "before": "Station Details unconditionally appended away to backend Location unavailable; the list card already used optional numeric distance metadata correctly.",
+    "after": "Dialog state retains optional/null distanceKm and uses the existing numeric-presence condition. Null/undefined show Distance unavailable; zero and known numeric distances retain their unit-bearing distance plus away.",
+    "verification": [
+      "Actual source for detail state, both selection paths, existing card condition, detail label and backend response contract independently read.",
+      "All34-case focused green output and literal two-case red failures read: null/omitted scenarios failed before; null/omitted/zero/known opened-dialog scenarios all pass after. These are controlled actual-component tests, not real browser geolocation/provider proof.",
+      "Final saved browser ledger contains finalStationRepair at/customer/stations:320px client/scroll320, unavailabletrue and falseAwayfalse. Real geolocation/provider station data remains outside this fixture proof."
+    ],
+    "status": "Implemented and independently reviewed; actual final local320px unavailable-distance rendering passed; live deployment still has old label",
+    "compatibility": "Existing geolocation, map selection, station API, units and known/zero distance behavior remain unchanged.",
+    "recovery": "Missing location is an unavailable value, never a fabricated distance; no global clipping or replacement data is added."
+  },
+  "sourceHashes": {
+    "apps/web/components/customer-dashboard/CustomerScreen.tsx": "3b2bfa6fd7e489c704660f6793e75096952de44d6f56f34fb68d255f8251f248",
+    "apps/web/tests/production-customer-controls.test.cjs": "77c3d5e15585331035cba3a9bce8bc7e79577fddaf7c7c42779f4b576db2f75a",
+    "apps/api/src/routes/customer.routes.js": "836218ba3c8f9c76012234d56504f23afddd00ecba344cd2771ed46e5b156be9"
+  },
+  "evidenceHashes": {
+    "/tmp/obligon-production-station-distance.json": "16400b963a9095595e84c08a2074dbf23143d63eec4a5faf38c33e2c01d99ebd",
+    "/tmp/obligon-station-distance-red.log": "54d702b3decf192a3b97028abebd55850473d1ff24e998d48029003b4b942c13",
+    "/tmp/obligon-station-distance-green.log": "6ec22f46599bc425247a77fe2b64d9ae08a0666a24b484fafbef0d1acc752b08",
+    "/tmp/obligon-production-customer-copy-review.json": "7bce3fb3704029b29cb5561c0d4113111fc12cdcb15456413af08e8a26484171",
+    "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-14/browser-verification.json": "4cead875d154b516f5e8fd0b5d3241ecee4077144fabda8f2155558db3dd5d72"
+  },
+  "limits": [
+    "Current production deployment has not received this review-branch correction.",
+    "No map location permission, checkout, PIN or financial submission was made by this review."
+  ],
+  "laterChangedRegionReviews": [
+    {
+      "path": "apps/web/components/customer-dashboard/CustomerScreen.tsx",
+      "priorReviewedHash": "ca2b7451f4ad983d449aa5ce2113ef8535bd92cc317a332fc82afcd2bf6fca07",
+      "currentHash": "3b2bfa6fd7e489c704660f6793e75096952de44d6f56f34fb68d255f8251f248",
+      "scope": "Only later mobile greeting text changed to personal account overview; exact current greeting line independently read in customer-copy-review. Previously reviewed card/PIN/refund/station regions unchanged.",
+      "evidence": "/tmp/obligon-production-customer-copy-review.json"
+    }
+  ]
+}

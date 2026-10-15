@@ -1,0 +1,159 @@
+{
+  "createdAt": "2026-10-14T15:35:09.051Z",
+  "repository": "/home/inimfon-udoh/Obligon/checkout",
+  "branch": "codex/production-readiness-2026-10-14",
+  "scope": "Confirmed remaining-push-ssrf application fix; three existing source files and two focused tests only. No commit, push, merge, deployment, dependency, CI, infrastructure, or migration changes.",
+  "finding": "An authenticated browser subscription previously accepted internal HTTPS targets and web-push reached https.request for 127.0.0.1:8443. Original no-egress proof retained in /tmp/obligon-remaining-access-proof.json.",
+  "files": [
+    {
+      "path": "apps/api/src/lib/push.js",
+      "sha256": "882bac8dab82a82621c5c0163d06d9efcaacb9ccf81b259df6b2f83d8fdad98a",
+      "change": "Shared endpoint/key validator at registration and delivery; exact documented FCM/Mozilla origins and documented Apple/Microsoft subdomains, HTTPS/default port only, no credentials/fragment/whitespace/backslash. Canonical URL and base64url keys. P-256 curve point validation. Native HTTPS agent with guarded single DNS lookup, four global sockets, DNS deadline, socket idle timeout; invalid rows skipped with redacted reason, expired rows deleted only for user."
+    },
+    {
+      "path": "apps/api/src/routes/push.routes.js",
+      "sha256": "a4657c44b1bdbd289776023a322f1f2610ac04b9b8a9365efd4e9b46d01ff47f",
+      "change": "Reject invalid subscriptions before DB writes. Remove both original/canonical endpoint spelling only for caller. Preserve idempotent unknown removal and actual query errors."
+    },
+    {
+      "path": "apps/web/lib/push-subscription.ts",
+      "sha256": "2734d18605102696670c8abea73877d2d00755ba7c4ccccfe92a142fcf0ec0cd",
+      "change": "Surface API/service-worker/browser unsubscribe errors to existing preference caller. False unsubscribe result is successful only when browser no longer has subscription. Existing subscribe rejection already propagated."
+    },
+    {
+      "path": "apps/api/tests/push-boundaries.test.mjs",
+      "sha256": "e6de9f1cea6e05b03c2584e8bb6580833d8679b742b862672a0dab4c500f28db",
+      "change": "82 no-egress handler/delivery/DNS/encryption/redirect/ownership tests."
+    },
+    {
+      "path": "apps/web/tests/push-subscription.test.cjs",
+      "sha256": "593e0ae4e34d9e2d5a1fa62fa7a63a0594405d8df040b7daf3adfef0bb527c58",
+      "change": "7 isolated helper tests, including failure propagation and expired subscription handling."
+    }
+  ],
+  "acceptanceCriteria": [
+    "Unapproved HTTP/HTTPS/IP/private/loopback/encoded IP/IPv6/userinfo/port/suffix-confusion/fragment/control URL variants are not stored and cannot reach web-push or https.request.",
+    "Documented browser push service fixture subscriptions and valid P-256/auth keys still store and deliver through mocked HTTPS only.",
+    "Malformed, wrong-length, invalid-point, invalid-base64, and incorrect-padding keys are rejected before storage/provider.",
+    "Each outgoing socket gets only checked public DNS addresses from its one lookup; private/mixed/special-purpose answers and stale late answers fail closed.",
+    "web-push 3.6.7 rejects redirects and no private Location target is followed.",
+    "Invalid stored subscription diagnostic omits endpoint capability, keys, and notification payload.",
+    "Removal is scoped to caller, survives canonical URL spelling, and unknown/expired removal remains idempotent; actual failure is surfaced."
+  ],
+  "primarySources": [
+    {
+      "url": "https://web.dev/articles/codelab-notifications-push-server",
+      "use": "Google browser PushSubscription example uses https://fcm.googleapis.com/fcm/send/ opaque token."
+    },
+    {
+      "url": "https://mozilla-services.github.io/autopush-rs/",
+      "use": "Mozilla production push endpoint https://updates.push.services.mozilla.com/."
+    },
+    {
+      "url": "https://mozilla-services.github.io/autopush-rs/http.html",
+      "use": "Mozilla notification URL is opaque and provider reserves future path changes."
+    },
+    {
+      "url": "https://webkit.org/blog/12945/meet-web-push/",
+      "use": "Apple tells managed push endpoint servers to allow any subdomain of push.apple.com."
+    },
+    {
+      "url": "https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/",
+      "use": "Apple reiterates *.push.apple.com for Safari standards-based Web Push."
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/apps/develop/notifications/push-notifications/firewall-allowlist-config",
+      "use": "WNS CloudServiceDNS *.notify.windows.com and port443 for servers sending notifications."
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/deployedge/microsoft-edge-browser-policies/forcebuiltinpushmessagingclient",
+      "use": "Current Microsoft Edge policy identifies its built-in WNS push client connecting to Windows Push Notification Service; hostname source is separate WNS official configuration documentation."
+    },
+    {
+      "url": "https://github.com/web-push-libs/web-push",
+      "use": "Existing library documents HTTPS Agent option and socket timeout; pinned local 3.6.7 source inspected to confirm non-2xx/redirect rejection and direct https.request."
+    },
+    {
+      "url": "https://nodejs.org/api/https.html",
+      "use": "Native HTTPS Agent options, preserving default TLS verification and SNI host."
+    },
+    {
+      "url": "https://nodejs.org/api/net.html",
+      "use": "Native BlockList.addSubnet/check; used APIs available in Node14.18+, not recent26-only APIs."
+    },
+    {
+      "url": "https://www.rfc-editor.org/rfc/rfc8291",
+      "use": "Web Push authentication secret16bytes and uncompressed P-256 representation65bytes."
+    },
+    {
+      "url": "https://www.iana.org/assignments/iana-ipv4-special-registry/",
+      "use": "Conservative IPv4 special-purpose range exclusions including private/shared/link-local/loopback/docs/benchmark."
+    },
+    {
+      "url": "https://www.iana.org/assignments/iana-ipv6-special-registry/",
+      "use": "Conservative IPv6 global-unicast-only with protocol/documentation/6to4 exclusions."
+    }
+  ],
+  "changedContracts": [
+    "Subscribe returns400 for unsupported/self-hosted providers or malformed keys; supported existing browser service origins remain accepted.",
+    "Explicit443/encoded hostname and valid optional base64url padding normalize before storage/send. Unsubscribe matches original and canonical endpoint.",
+    "DNS rejects a whole response containing any non-public address; intentional split-horizon provider DNS cannot be used.",
+    "sendPush remains best-effort delivered boolean; disallowed stored rows are retained for owner removal and skipped on each delivery.",
+    "disableWebPush now rejects service-worker/API/browser removal failure so existing caller can keep preference and show error; missing/expired subscriptions are successful disabled end states."
+  ],
+  "redEvidence": [
+    {
+      "path": "/tmp/obligon-production-push-red-api.log",
+      "result": "67 scenarios before implementation:64failures/3passes; internal destination accepted200 and delivery invoked Web Push. Some new agent-option assertions necessarily failed because no agent existed."
+    },
+    {
+      "path": "/tmp/obligon-production-push-red-web.log",
+      "result": "6 original helper scenarios before implementation:3failures/3passes; API/browser/worker failure was swallowed."
+    }
+  ],
+  "verification": [
+    {
+      "check": 0,
+      "status": "fulfilled",
+      "chunk_id": "b65411",
+      "wall_time_seconds": 0.143498195,
+      "exit_code": 0,
+      "original_token_count": 1585,
+      "output": "[raw content omitted; structured evidence retained]"
+    },
+    {
+      "check": 1,
+      "status": "fulfilled",
+      "chunk_id": "67e278",
+      "wall_time_seconds": 1.271862649,
+      "exit_code": 0,
+      "original_token_count": 554,
+      "output": "[raw content omitted; structured evidence retained]"
+    },
+    {
+      "check": 2,
+      "status": "fulfilled",
+      "chunk_id": "9ff942",
+      "wall_time_seconds": 1.73e-05,
+      "exit_code": 0,
+      "original_token_count": 127,
+      "output": "[raw content omitted; structured evidence retained]"
+    }
+  ],
+  "verificationCommands": [
+    "cd apps/api && node --test --test-isolation=none tests/push-boundaries.test.mjs",
+    "cd apps/web && node --test --test-isolation=none tests/push-subscription.test.cjs tests/production-customer-controls.test.cjs",
+    "git diff --check -- apps/api/src/lib/push.js apps/api/src/routes/push.routes.js apps/api/tests/push-boundaries.test.mjs apps/web/lib/push-subscription.ts apps/web/tests/push-subscription.test.cjs"
+  ],
+  "limits": [
+    "No outbound private/provider request, real browser permission, actual provider registration, DNS query, payment activity, deployment, or production smoke test performed. Tests stub DB/provider/DNS boundaries; redirect/encryption use real installed web-push with https.request intercepted.",
+    "Test process isolation was blocked in this restricted sandbox; --test-isolation=none produced the read 82API+23web tests all passing with0skips. Root owns full-suite/build verification.",
+    "Socket timeout bounds inactivity, not complete response wall-clock duration. DNS lookup has a deadline; four total outgoing sockets cap concurrency. Library response-body/queue-total limits remain unchanged.",
+    "Trust remains in vendor-controlled documented DNS namespaces and normal TLS/CA validation; IPv4 special-purpose and IPv6 non-global ranges intentionally conservative.",
+    "A browser's currentPushState checks local subscription state, not API stored-row state; existing enable failure propagates to caller, but no new remote state endpoint was added.",
+    "Endpoint provider hostnames can change; unsupported new browser providers require reviewed allowlist maintenance based on primary sources.",
+    "Qualified human security review required before production release; root-owned independent agent review still pending.",
+    "Root owns one combined Edirae Learn breakdown/index entry; no additional Learn file written by this worker."
+  ],
+  "completion": "Focused implementation and verification complete; production release readiness is not claimed."
+}

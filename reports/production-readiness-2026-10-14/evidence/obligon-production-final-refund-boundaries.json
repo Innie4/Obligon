@@ -1,0 +1,144 @@
+{
+  "date": "2026-10-14",
+  "frozenAt": "2026-10-14T16:18:26.699277+00:00",
+  "branch": "codex/production-readiness-2026-10-14",
+  "scope": "Bounded original-charge refund limits, atomic card refund intent/reservation, truthful provider settlement state, fair sweep and debt attention. Auth frozen/unmodified. No UI, dependency, migration, CI, commit, push, deployment, real funds or Learn changes.",
+  "invariants": [
+    "Non-excess aggregate full/partial requested debt cannot exceed immutable recorded original charge, counted exactly with BigInt under purchase row plus charge-wide transaction advisory locks. Explicit verified excess debt is separate.",
+    "Original owner/provider/reference/provider transaction must match the source card request or paid fuel exception. Unknown original charge is rejected without catalogue fallback.",
+    "Reservation of card issuance, full withdrawal, refund id and customer historic wallet-credit clawback commit atomically with durable refund intent before outbound provider POST.",
+    "Pending provider acceptance/uncertain/manual-review outcomes preserve paid charge and refund_pending issuance. Only exact correlated authoritative refund lookup can mark card charge refunded after full aggregate disbursement.",
+    "Uncertain claims never resend automatically; old manual/failed debt remains visible and bounded sweeps rotate unresolved rows."
+  ],
+  "findings": [
+    {
+      "id": "REFUND-CAP-01",
+      "disposition": "Corrected in frozen source; independent review pending",
+      "before": "Admin refunds allowed amount above original charge and aggregate partial/full combinations above charge.",
+      "after": "queueRefund verifies locked immutable card/fuel source and enforces aggregate non-excess cap under common advisory lock; direct and API paths share it. Replay binding includes source record identity.",
+      "evidence": [
+        "oversized partial returns400 before POST",
+        "70k+50k against100k rejected",
+        "full after70k partial rejected",
+        "20 distinct concurrent 60k partial requests against100k admit one provider effect",
+        "verified explicit excess20k remains separate from original100k cap"
+      ]
+    },
+    {
+      "id": "REFUND-STATE-01",
+      "disposition": "Corrected in frozen source; independent review pending",
+      "before": "Admin/customer full refunds marked payment refunded before confirmed provider disbursement; manual debt notification promised money on its way.",
+      "after": "Admin/customer lock and reserve original request/issuance plus intent in one transaction; payment remains paid and issuance refund_pending. API exposes refundStatus/reviewRequired/message; admin refund listing exposes review details. Exact successful lookup settles card state only after cumulative settled refund equals original charge.",
+      "evidence": [
+        "manual belowminimum refund emits pending/review true, no POST and payment paid",
+        "withdrawal completed acceptance stays paid until exact completed-bank-transfer lookup",
+        "partial settlement leaves paid state until total70k+30k settles",
+        "lost provider response returns durable review debt, ten replays no extra POST",
+        "admin/customer concurrent full request yields one refund/provider effect"
+      ]
+    },
+    {
+      "id": "REFUND-QUOTE-01",
+      "disposition": "Corrected in frozen source; independent review pending",
+      "before": "Customer withdrawal substituted current mutable card catalogue price for missing charged_kobo.",
+      "after": "Withdrawal requires positive bounded immutable charged_kobo before any reservation or clawback.",
+      "evidence": [
+        "NULL charged_kobo with nonzero current catalogue price returns400, no POST and issuance unchanged"
+      ]
+    },
+    {
+      "id": "REFUND-ATOMICITY-01",
+      "disposition": "Corrected in frozen source; independent review pending",
+      "before": "Withdrawal reservation and legacy wallet debit survived failed refund-intent persistence.",
+      "after": "Existing ledger helper executes under same database transaction with wallet lock and once-only ledger key, together with refund intent/card withdrawal.",
+      "evidence": [
+        "failed refund insert restores original request issuance/status",
+        "injected refund insert failure restores historic wallet balance and leaves no debit ledger row",
+        "ten simultaneous legacy withdrawals debit once and send one refund"
+      ]
+    },
+    {
+      "id": "REFUND-FAIRNESS-01",
+      "disposition": "Corrected in frozen source; independent review pending",
+      "before": "Old review_required refund monopolized every created_at ordered batch; manual/refund failures were omitted from requiresAttention.",
+      "after": "Order by updated_at/created_at/id and rotate every unresolved pending attempt in finally. Global pending/manual/failed debt counts include rows outside the selected batch; manual/failed debt and refund errors contribute to reconciliation attention.",
+      "evidence": [
+        "limit1 bounded sweeps reach later queued refund behind manual debt",
+        "limit0 manual debt still requiresAttention",
+        "recorded failed refund requiresAttention and no automatic retry"
+      ]
+    }
+  ],
+  "validation": {
+    "red": {
+      "command": "node --test tests/refund-boundaries.integration.test.mjs",
+      "exitCode": 1,
+      "tests": 12,
+      "pass": 1,
+      "fail": 11,
+      "skipped": 0,
+      "log": "/tmp/obligon-production-final-refund-boundaries-red.log",
+      "note": "Clean red run after correcting the fixture: no assertions in provider stub about pre-fix missing reservation, and injected schema constraint reset between cases. Failures show the actual reported properties."
+    },
+    "green": {
+      "command": "node --test tests/refund-boundaries.integration.test.mjs tests/refund-recovery.integration.test.mjs tests/refund-ambiguity.integration.test.mjs tests/admin-support.integration.test.mjs tests/late-settlement.test.mjs tests/reconciliation-fallback.integration.test.mjs tests/exact-money-provider.test.mjs",
+      "exitCode": 0,
+      "tests": 107,
+      "pass": 107,
+      "fail": 0,
+      "skipped": 0,
+      "log": "/tmp/obligon-production-final-refund-boundaries-green.log"
+    },
+    "environment": {
+      "cwd": "/home/inimfon-udoh/Obligon/checkout/apps/api",
+      "execution": "require_escalated actual Node test runner; real isolated PostgreSQL and loopback HTTP with actual app, signed SID-bound authenticated customer/admin sessions; external providers mocked only at fetch boundary",
+      "database": "[redacted local connection]",
+      "DOTENV_CONFIG_PATH": "/dev/null",
+      "NODE_ENV": "test",
+      "DATABASE_SSL": "false",
+      "isolation": "Unique temporary schemas, synthetic data, test schemas dropped after completion; no production provider or money movement"
+    },
+    "diffCheck": {
+      "exitCode": 0,
+      "files": [
+        "apps/api/src/lib/money.js",
+        "apps/api/src/routes/admin.routes.js",
+        "apps/api/src/routes/customer.routes.js",
+        "apps/api/src/lib/reconcile.js",
+        "apps/api/tests/refund-boundaries.integration.test.mjs",
+        "apps/api/tests/refund-ambiguity.integration.test.mjs"
+      ]
+    },
+    "fullOutputRead": true,
+    "negativeCaseLogs": "Synthetic failed refund inserts, provider response loss/timeouts, and unavailable email are expected assertions in the passing suite."
+  },
+  "limits": [
+    "Independent finance reviewer must recheck exact corrected findings before acceptance; qualified human review and provider sandbox/staging evidence remain required before production release.",
+    "No production readiness or application security claim. No live provider refund/settlement or real browser/UI validation. API exposes honest pending/review state; frontend changes were explicitly outside scope.",
+    "Full request after an earlier partial is rejected if original full amount would exceed remaining capacity; no unapproved automatic remaining-balance refund is invented. Admin can explicitly request a bounded partial remainder. Existing partial idempotency keys remain amount-based.",
+    "Started/completed/approved card issuance is rejected by refund paths; issued-card cancellation/entitlement reversal is outside this increment.",
+    "Historical charges without a usable immutable quote require support/provider reconciliation; current catalogue prices are never inferred as original money.",
+    "All non-excess reserved rows, including failed rows, conservatively retain cap capacity. Failed/uncertain effects require investigation instead of automatic cap release or resend.",
+    "Legacy over-refund anomalies are not retroactively repaired. A settled aggregate above original charge is rejected from automatic card settlement and surfaces reconciliation error.",
+    "Existing queued historical records are not migrated. New queued full/partial intents require an immutable purchase binding. The prior generic ambiguity test now seeds such an original paid card record so the same transport uncertainty behavior remains covered.",
+    "Other root-owned source sections were preserved, including authoritative provider transaction updates and optional no-provider read sweep handling. Whole-file hashes include those current integrated sections and must be invalidated if another agent changes them."
+  ],
+  "hashes": {
+    "apps/api/src/lib/money.js": "7d9441ca7f9f095d3522653514bc6bd409746ff7af582ffca48a6d21a45c0f44",
+    "apps/api/src/routes/admin.routes.js": "eb5f4fe617621cca6e220db41983b44ab72839c5803eb1eb21bc9cc29097fd0c",
+    "apps/api/src/routes/customer.routes.js": "e92ba5caf1ffa9d6cd81fadacf7247c4592e2579cde66d2e567960614f80a061",
+    "apps/api/src/lib/reconcile.js": "ba18cfca3739d3f0d77b9a5ee83dd067067fbdd5ae6942b52a1bd9c460a3f31f",
+    "apps/api/tests/refund-boundaries.integration.test.mjs": "29fa2552ac91476160c1105475e42f5e81437ff678617c36b4ad27ac04d33a93",
+    "apps/api/tests/refund-ambiguity.integration.test.mjs": "683b25c95f190ff3a7587a977dd9b01683d743030774994082a64ec694c46699"
+  },
+  "evidenceHashes": {
+    "/tmp/obligon-production-final-refund-boundaries-red.log": "4885b6c6f5a09e8968b2011f749ac5837a8fba3badf68c558d576978a3ee39f3",
+    "/tmp/obligon-production-final-refund-boundaries-green.log": "1ede905656b532a8816b8750828088051db7ab4731fcbc6b52f9e7144968e572"
+  },
+  "priorIndependentEvidence": [
+    "/tmp/obligon-finance-admin-refund-probe.mjs",
+    "/tmp/obligon-finance-admin-refund-probe.log",
+    "/tmp/obligon-finance-refund-fairness-probe.mjs",
+    "/tmp/obligon-finance-refund-fairness-probe.log"
+  ]
+}

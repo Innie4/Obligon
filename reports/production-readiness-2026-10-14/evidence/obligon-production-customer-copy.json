@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-14",
+  "frozenAt": "2026-10-14T19:08:08.157459+00:00",
+  "scope": "Only2 confirmed customer visible-copy changes; no broader sweep, financial/auth logic, API contract or payload changes.",
+  "changes": [
+    {
+      "path": "apps/web/components/customer-dashboard/CustomerScreen.tsx",
+      "region": "OverviewPage mobile subtitle",
+      "before": "Here is your live fleet overview for today.",
+      "after": "Here is your personal account overview for today."
+    },
+    {
+      "path": "apps/web/components/customer-dashboard/CustomerModals.tsx",
+      "region": "ReportProblemModal option display text",
+      "before": "Lost / Stolen Fleet Card",
+      "after": "Lost / Stolen Fuel Card",
+      "wireValueRetained": "Lost / Stolen Fleet Card",
+      "categoryRetained": "complaint",
+      "representation": "Existing issueTypes string array remains unchanged. Its existing selected item stays the multipart subject; only rendered label maps the one legacy option to personal fuel-card wording."
+    }
+  ],
+  "verification": {
+    "typecheck": {
+      "command": "./apps/web/node_modules/.bin/tsc --noEmit --project apps/web/tsconfig.json",
+      "exitCode": 0,
+      "log": "/tmp/obligon-customer-copy-types.log"
+    },
+    "focusedDiffCheckExitCode": 0,
+    "wireContractProbe": {
+      "tests": 1,
+      "pass": 1,
+      "fail": 0,
+      "skip": 0,
+      "log": "/tmp/obligon-customer-copy-probe.log",
+      "script": "/tmp/obligon-customer-copy-probe.cjs",
+      "behavior": "Actual transpiled ReportProblemModal new visible option is clicked; description entered; native FormData passed to captured transport retains endpoint/method/subject/category/message. No real HTTP or delivery occurred.",
+      "committedTestsAdded": 0,
+      "reason": "No typo/string/layout mirror tests; transient behavior probe verifies the specifically required unchanged public contract."
+    },
+    "finalWebBuild": "Root-owned fresh build after live audit completion/source freeze"
+  },
+  "sourceHashesBefore": {
+    "apps/web/components/customer-dashboard/CustomerScreen.tsx": "ca2b7451f4ad983d449aa5ce2113ef8535bd92cc317a332fc82afcd2bf6fca07",
+    "apps/web/components/customer-dashboard/CustomerModals.tsx": "e1361fb72210aeff0542685da3b6cd39640fd1d61647c5828c5a747008a5d6ce"
+  },
+  "sourceHashesAfter": {
+    "apps/web/components/customer-dashboard/CustomerScreen.tsx": "3b2bfa6fd7e489c704660f6793e75096952de44d6f56f34fb68d255f8251f248",
+    "apps/web/components/customer-dashboard/CustomerModals.tsx": "b3aa054f4d02cf21b8ab44556d146b3708d6d78bd70dc894335fbca827a27c80"
+  },
+  "learningNote": "Localized copy changes skip child learning breakdown; top-level task artifact remains root-owned."
+}

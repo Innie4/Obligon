@@ -1,0 +1,93 @@
+[
+  {
+    "file": "apps/web/public/assets/figma/arrow-up-right.svg",
+    "elements": 3,
+    "viewBox": "0 0 16 16",
+    "activeContent": [],
+    "sha256": "ecb4c8ca8176d027a8d53732fbc4c5b8f8289d4a282a609fa53efb51930a8d49"
+  },
+  {
+    "file": "apps/web/public/assets/figma/check-green.svg",
+    "elements": 3,
+    "viewBox": "0 0 9.50833 20",
+    "activeContent": [],
+    "sha256": "6e1d11aaf2b3a414b2f397aaf59038c3ec867f470dbf61d262fb2e5d1d7a5ca6"
+  },
+  {
+    "file": "apps/web/public/assets/figma/check-large.svg",
+    "elements": 3,
+    "viewBox": "0 0 9.50833 20",
+    "activeContent": [],
+    "sha256": "675084cee1844b87df70ffa09c3e105b5c9816e450a9265a0f3232e52e0d1b1e"
+  },
+  {
+    "file": "apps/web/public/assets/figma/check-small.svg",
+    "elements": 3,
+    "viewBox": "0 0 12 7.4",
+    "activeContent": [],
+    "sha256": "b86f6cd3bda39020d92c30da814eb0af43b69087829b149e9fee50703205869e"
+  },
+  {
+    "file": "apps/web/public/assets/figma/chevron-down.svg",
+    "elements": 3,
+    "viewBox": "0 0 11.6667 11.6667",
+    "activeContent": [],
+    "sha256": "dbd441922c6f86d2619d4734d0e9982f1d6d0fa0b80bbfe87421873da2de9dda"
+  },
+  {
+    "file": "apps/web/public/assets/figma/droplet.svg",
+    "elements": 3,
+    "viewBox": "0 0 22 21",
+    "activeContent": [],
+    "sha256": "2828f51174725e04eea5e2388d6d85753010bcc8cd714b0fe6a4dc988fee00f9"
+  },
+  {
+    "file": "apps/web/public/assets/figma/facebook.svg",
+    "elements": 3,
+    "viewBox": "0 0 20.625 22.5",
+    "activeContent": [],
+    "sha256": "dc18416f69accbe500e21522736e80dcd4a31b18f22ed8e2837914600d0ef765"
+  },
+  {
+    "file": "apps/web/public/assets/figma/linkedin.svg",
+    "elements": 3,
+    "viewBox": "0 0 24.4375 25",
+    "activeContent": [],
+    "sha256": "f84e32d8b79d64c713ca63baeb690efe6653959dd566b37f2f20480fb4ccd5f7"
+  },
+  {
+    "file": "apps/web/public/assets/figma/map-pin.svg",
+    "elements": 3,
+    "viewBox": "0 0 27.5 20",
+    "activeContent": [],
+    "sha256": "e8aab25dc988d0049bfc820f0b08c4b0580f6ee122cce940be477a50ebaf101c"
+  },
+  {
+    "file": "apps/web/public/assets/figma/social-at.svg",
+    "elements": 3,
+    "viewBox": "0 0 11.6667 11.6667",
+    "activeContent": [],
+    "sha256": "3b31838efe3ff7fd24ecae9f5e108bbf8dd275553cc1f82b511365c50aad4d03"
+  },
+  {
+    "file": "apps/web/public/assets/figma/social-globe.svg",
+    "elements": 3,
+    "viewBox": "0 0 11.6667 11.6667",
+    "activeContent": [],
+    "sha256": "dbd441922c6f86d2619d4734d0e9982f1d6d0fa0b80bbfe87421873da2de9dda"
+  },
+  {
+    "file": "apps/web/public/assets/figma/truck.svg",
+    "elements": 3,
+    "viewBox": "0 0 11.6667 11.6667",
+    "activeContent": [],
+    "sha256": "3b31838efe3ff7fd24ecae9f5e108bbf8dd275553cc1f82b511365c50aad4d03"
+  },
+  {
+    "file": "apps/web/public/assets/figma/zap.svg",
+    "elements": 3,
+    "viewBox": "0 0 22.5 25",
+    "activeContent": [],
+    "sha256": "94d0c217993c8d9f98ac911ba0b03510c5c3b26b16437c1d3a5f7ca770eff3e5"
+  }
+]

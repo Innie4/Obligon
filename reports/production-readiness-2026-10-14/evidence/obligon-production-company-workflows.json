@@ -1,0 +1,133 @@
+{
+  "task": "Company production workflow increment UI-CO-02 through UI-CO-05",
+  "date": "2026-10-14",
+  "branch": "codex/production-readiness-2026-10-14",
+  "baseCommit": "5914f6ebfc2f102255040eba80defbbb58f7ef67",
+  "state": "Implemented and focused source/API verified; root browser and independent review pending",
+  "files": [
+    "apps/web/components/company-dashboard/CompanyScreen.tsx",
+    "apps/web/components/company-dashboard/CompanyModals.tsx",
+    "apps/web/lib/services/company.ts",
+    "apps/web/lib/services/client.ts (company methods only)",
+    "apps/api/src/routes/company.routes.js (pagination/support/POS/maintenance blocks only)",
+    "apps/web/tests/production-company-workflows.test.cjs",
+    "apps/api/tests/company-workflows.integration.test.mjs"
+  ],
+  "findings": [
+    {
+      "id": "UI-CO-02",
+      "status": "implemented",
+      "change": "Vehicles and cards now accept caller queries, retain total, show20 rows/page with previous/next and search resetting page. API caps100, rejects malformed/negative/fractional/array/out-of-range bounds, binds limit/offset and orders created_at,id consistently.",
+      "source": [
+        "apps/web/components/company-dashboard/CompanyScreen.tsx:184",
+        "apps/web/lib/services/company.ts",
+        "apps/api/src/routes/company.routes.js:81",
+        "apps/api/src/routes/company.routes.js:237"
+      ],
+      "evidence": "105vehicles and106cards traversed without duplicate/missing IDs; total/search and malformed-pagination HTTP checks pass; frontend pagination/reset regression passes."
+    },
+    {
+      "id": "UI-CO-03",
+      "status": "implemented",
+      "change": "Transactions now request explicit offset, retain totals, use same20-row navigation. Vehicle/driver/range/date changes reset page; export retains active filters independently of pagination.",
+      "source": [
+        "apps/web/components/company-dashboard/CompanyScreen.tsx:247",
+        "apps/api/src/routes/company.routes.js:349"
+      ],
+      "evidence": "105transaction pagination HTTP test and filter-reset/export-context UI regression pass."
+    },
+    {
+      "id": "UI-CO-04",
+      "status": "implemented",
+      "change": "Billing exposes company balance/ledger, quoted whole-naira funding with fail-closed settings and authorization of expectedTotalKobo, stored provider callback reference and explicit server confirmation, plus member allocations preserving request payload/key on uncertain retries and reopen/reload. Cards exposes single-use fuel code with exact server code/expiry and company-wallet explanation. No simulated funding/code result is treated as money success.",
+      "source": [
+        "apps/web/components/company-dashboard/CompanyScreen.tsx:441",
+        "apps/web/components/company-dashboard/CompanyModals.tsx:479",
+        "apps/web/components/company-dashboard/CompanyModals.tsx:528",
+        "apps/web/components/company-dashboard/CompanyModals.tsx:581",
+        "apps/web/lib/services/client.ts:1424",
+        "apps/api/src/routes/company.routes.js:1024",
+        "apps/api/src/lib/fuel-sale.js:25"
+      ],
+      "evidence": "Loading/failure/settings retry/fraction/mismatched quote/double-submit, allocation same-key retry+reopen, actual expiry and wallet-source UI checks pass. PG checks confirm permission/foreign/frozen-card denial, stored expiry/code equality, no pre-redemption ledger/balance effect, collision retry including expired unique-index codes, bounded10 attempts and atomic audit rollback. Root owns topup/allocation money invariants and provider proofs."
+    },
+    {
+      "id": "UI-CO-05",
+      "status": "implemented_with_manual_service_coordination",
+      "change": "Support tickets open protected conversations with real status, messages and replies; failed replies preserve draft, closed replies atomically reopen. Ticket list and threads scope current org even for same original user. Ticket+first message transaction prevents orphans and validates bounds. Maintenance records allow permission-protected confirmed status changes; exact cost parsing prevents malformed zero/floating rounding. Maintenance and roadside explain manual coordination and provide Support follow-up with record ID; eligible roadside requests can be cancelled with visible errors.",
+      "source": [
+        "apps/web/components/company-dashboard/CompanyScreen.tsx:402",
+        "apps/web/components/company-dashboard/CompanyScreen.tsx:616",
+        "apps/web/components/company-dashboard/CompanyScreen.tsx:726",
+        "apps/web/components/company-dashboard/CompanyModals.tsx:612",
+        "apps/api/src/routes/company.routes.js:948",
+        "apps/api/src/routes/company.routes.js:961",
+        "apps/api/src/routes/company.routes.js:1073"
+      ],
+      "evidence": "Protected threads/replies/cross-org/stale/suspended permission tests and message-insert-failure rollback pass. Exact149.99cost=>14999kobo, malformed/negative/oversized rejection and fleet.manage permission checked. Manual dispatch/provider lifecycle remains external and unimplemented."
+    }
+  ],
+  "contracts": {
+    "GET /api/company/{vehicles,cards,transactions}": "limit default20 max100; offset default0 bounded signed32-bit integer; response rows+total; deterministic newest ordering. search/status and existing transaction vehicle,driverId,range,date filters retained.",
+    "GET /api/company/wallet": "company{balanceKobo,balanceLabel}, members{userId,name,email,role,balanceKobo,balanceLabel}, recent ledger movements; wallet.manage required, API remains root-owned.",
+    "POST /api/company/wallet/topup": "{amountKobo,method,expectedTotalKobo} whole-naira credit up to500000000kobo. Response reference,paymentUrl,amountKobo,feeKobo,totalKobo,provider; expectedtotal mismatch409 before intent. Root changed callback to /company/billing?topup=<ref>. billing.manage required.",
+    "POST /api/company/wallet/topup/confirm": "{reference,transactionId?}. Frontend marks confirmed only when response.ok and server provider verification succeeds. Callback query not trusted as success.",
+    "POST /api/company/wallet/allocate": "{toUserId,amountKobo,note,idempotencyKey}. Request bound to organization+actor+payload on server. Session storage key company-allocation:<userId>:<selected company name> retains uncertain request; fields locked until retry completion. This UI accepts whole-naira allocations.",
+    "POST /api/company/cards/:id/pos-code": "fleet.manage and ownedactivecard. Crypto randomInt6digits; transaction card lock+advisorylock73491622; any existing indexed code collision retried<=10; DB-returned expiry15minutes. Priorcode replaced atomically withaudit. No wallet movement until existing POS redemption.",
+    "GET /api/company/support/tickets/:id/messages": "current active company context+sameorg ticket. Response{status,messages:[{id,sender,role,body,time}]}. InvalidUUID400, absent/foreign404.",
+    "POST /api/company/support/tickets/:id/messages": "{body:string trimmed1..5000}; ownedorg rowlocked; inserts attributablemessage and reopensclosed ticket in same transaction.",
+    "POST /api/company/support/tickets": "subject1..140,message1..5000,category general|billing|card|fleet,priority normal|high; initialmessage+ticket atomic. Response{ok,reference}.",
+    "PUT /api/company/maintenance/:id": "fleet.manage required; allowedstatus scheduled|in_progress|completed|cancelled; currentorg record; does not bookexternalprovider.",
+    "POST /api/company/maintenance": "cost optional0, exact NGN parser precision<=2,bounds0..100000000000kobo; notification explicitly schedule-recorded/manualprovider confirmation.",
+    "POST /api/company/roadside/:id/cancel": "existing ownorg route; received/dispatching only; UI calls it with disabledpending/errorstates."
+  },
+  "verification": [
+    {
+      "command": "node --test tests/production-company-workflows.test.cjs tests/company-empty-pages.test.cjs tests/company-input.test.cjs",
+      "cwd": "apps/web",
+      "result": "36 passed,0failed,0skipped; finalsource tests"
+    },
+    {
+      "command": "OBLIGON_TEST_DATABASE_URL=<isolated localhost PG> DATABASE_SSL=false NODE_ENV=test DOTENV_CONFIG_PATH=/dev/null node --test tests/company-workflows.integration.test.mjs",
+      "cwd": "apps/api",
+      "result": "9passed,0failed,0skipped; isolated real-schema clones and HTTP; finalsource"
+    },
+    {
+      "command": "COMPANY_WORKFLOWS_BASELINE=true ... node --test tests/company-workflows.integration.test.mjs",
+      "cwd": "apps/api",
+      "result": "2passed,6failed before final creation validation test added; tests imported git HEAD router with live middleware; proves negative bounds500, crosstenant ticketlist, missingreply404, collision generator and malformedmaintenancezero defects"
+    },
+    {
+      "command": "node node_modules/typescript/bin/tsc --noEmit",
+      "cwd": "apps/web",
+      "result": "exit0 after finalsource edits, sequential no existingcompilerprocess"
+    },
+    {
+      "command": "node --check src/routes/company.routes.js; git diff --check",
+      "cwd": "apps/api",
+      "result": "exit0"
+    },
+    {
+      "command": "node --test tests/company-workflows.integration.test.mjs tests/company-dashboard.integration.test.mjs withisolatedPG",
+      "cwd": "apps/api",
+      "result": "new9passed; existingdashboard26failed due fixture missingmemberships.id in refreshed requireOrg SQL. Reported to root/invitationowner to updateownedfixture; no applicationfailure conclusion fromthisfixture."
+    }
+  ],
+  "design": {
+    "direction": "Existing restrained green/navy fleet dashboard, compact tables, native labeled inputs/selects, >=44pxcontrols, focus-managed dialogs, announcederrors/status.",
+    "references": [
+      "Read ui-reference-guide SKILL and all10 catalog summaries",
+      "Read local design-taste core and taste-accessibility; retainedexistingbrand/no newdependency",
+      "Existing CompanyModals/useDialogFocus, customer-funding-quote, customer ticket messages and native form patterns"
+    ],
+    "limitations": "No hosted canvas/review/account used and no external project upload; real browser verification delegated to root after integrated build."
+  },
+  "limits": [
+    "Root integration must recheck refreshed company-dashboard fixture and fullsuite/build.",
+    "Independent code review and browser desktop/mobile/dialog/keyboard verification pending root.",
+    "Qualified human review required before real-money/auth/tenant production release; no commit,push,merge or deployment performed.",
+    "Live provider checkout/issuer acceptance, actual dispatch/vendor booking and production operational coordination not exercised.",
+    "This agent did not modify root-owned wallet routes/coremoney/auth/customerPOS; root coordinating sharedcustomerPOSadvisorylock.",
+    "Learning breakdown is one root-owned task report; no additional Learn output created here."
+  ]
+}

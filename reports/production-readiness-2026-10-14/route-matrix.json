@@ -1,0 +1,3211 @@
+[
+  {
+    "route": "/admin/companies",
+    "category": "Admin",
+    "page": "apps/web/app/admin/companies/page.tsx",
+    "sha256": "a18f1113250172951dda90d9f6726941b3d8beefc3697920bc0f731c31cd088c",
+    "components": [],
+    "apiEndpoints": [],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "FIN-FINAL-03",
+      "FIN-FINAL-04",
+      "PAYMENT-DIAGNOSTICS",
+      "ADMIN-COMPANY-CONTRACT-APPROVAL",
+      "ADMIN-CREDIT-01",
+      "ADMIN-REPORT-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/admin/discount-approvals",
+    "category": "Admin",
+    "page": "apps/web/app/admin/discount-approvals/page.tsx",
+    "sha256": "cc67bbbdf8ab0b97d66ba9864b0390cfe911a6d22648cb04893ada24262a746a",
+    "components": [
+      "AdminShell",
+      "DiscountApprovals"
+    ],
+    "apiEndpoints": [
+      "/api/admin/discount-requests"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "FIN-FINAL-03",
+      "FIN-FINAL-04",
+      "PAYMENT-DIAGNOSTICS",
+      "ADMIN-COMPANY-CONTRACT-APPROVAL",
+      "ADMIN-CREDIT-01",
+      "ADMIN-REPORT-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/admin/disputes",
+    "category": "Admin",
+    "page": "apps/web/app/admin/disputes/page.tsx",
+    "sha256": "9434a7f4ec954f985b316b39c70bc822cc6d6869b565296a8eafccd61f0676b2",
+    "components": [
+      "AdminScreen",
+      "AdminShell"
+    ],
+    "apiEndpoints": [
+      "/api/admin/disputes"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "FIN-FINAL-03",
+      "FIN-FINAL-04",
+      "PAYMENT-DIAGNOSTICS",
+      "ADMIN-COMPANY-CONTRACT-APPROVAL",
+      "ADMIN-CREDIT-01",
+      "ADMIN-REPORT-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/admin/intake",
+    "category": "Admin",
+    "page": "apps/web/app/admin/intake/page.tsx",
+    "sha256": "3921adac00ce25df8fcf249979796de1a5fa0aef32628f30f28ebd857b3cbe83",
+    "components": [
+      "AdminShell",
+      "IntakeConsole"
+    ],
+    "apiEndpoints": [
+      "/api/admin/{stations/review,intake/applications,intake/leads,intake/privacy,jobs,email-delivery,activity,financial-activity}"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "FIN-FINAL-03",
+      "FIN-FINAL-04",
+      "PAYMENT-DIAGNOSTICS",
+      "ADMIN-COMPANY-CONTRACT-APPROVAL",
+      "ADMIN-CREDIT-01",
+      "ADMIN-REPORT-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/admin/login",
+    "category": "Admin",
+    "page": "apps/web/app/admin/login/page.tsx",
+    "sha256": "a46868f3af88642d40d0c35e17d6db0966f6172c15f93af755057233e54b7ac8",
+    "components": [
+      "AlertTriangle",
+      "AuthShell",
+      "Link",
+      "Loader2",
+      "Lock",
+      "Mail",
+      "ShieldCheck"
+    ],
+    "apiEndpoints": [],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (2 observations; observed CSS widths 320, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "FIN-FINAL-03",
+      "FIN-FINAL-04",
+      "PAYMENT-DIAGNOSTICS",
+      "ADMIN-COMPANY-CONTRACT-APPROVAL",
+      "ADMIN-CREDIT-01",
+      "ADMIN-REPORT-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 2,
+      "observedCssWidths": [
+        320,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/admin/operations",
+    "category": "Admin",
+    "page": "apps/web/app/admin/operations/page.tsx",
+    "sha256": "f1e38f5d7f16b023a098a2fe68d12b24816d099188325c1a37fb695d04a4d692",
+    "components": [
+      "AdminShell",
+      "OperationsInbox"
+    ],
+    "apiEndpoints": [
+      "/api/admin/{support,fuel-review,payout-accounts,settlement-review}"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (4 observations; observed CSS widths 320, 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "FIN-FINAL-03",
+      "FIN-FINAL-04",
+      "PAYMENT-DIAGNOSTICS",
+      "ADMIN-COMPANY-CONTRACT-APPROVAL",
+      "ADMIN-CREDIT-01",
+      "ADMIN-REPORT-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 4,
+      "observedCssWidths": [
+        320,
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/admin",
+    "category": "Admin",
+    "page": "apps/web/app/admin/page.tsx",
+    "sha256": "39a0cfd41fc8ca10471c319ef224f060ca83783fe0532bf2d634df1743b4e90b",
+    "components": [
+      "AdminScreen",
+      "AdminShell"
+    ],
+    "apiEndpoints": [
+      "/api/admin/companies"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "FIN-FINAL-03",
+      "FIN-FINAL-04",
+      "PAYMENT-DIAGNOSTICS",
+      "ADMIN-COMPANY-CONTRACT-APPROVAL",
+      "ADMIN-CREDIT-01",
+      "ADMIN-REPORT-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/admin/partner-applications",
+    "category": "Admin",
+    "page": "apps/web/app/admin/partner-applications/page.tsx",
+    "sha256": "e8426aaf2b66f90ccfd042bc2ab386fd330b2e4571411e9dc07d7ae1539d1127",
+    "components": [
+      "AdminScreen",
+      "AdminShell"
+    ],
+    "apiEndpoints": [
+      "/api/admin/applications",
+      "/api/admin/card-replacements",
+      "/api/admin/card-requests",
+      "/api/admin/card-requests/:id/{identity,approve,reject,reconcile}"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "FIN-FINAL-03",
+      "FIN-FINAL-04",
+      "PAYMENT-DIAGNOSTICS",
+      "ADMIN-COMPANY-CONTRACT-APPROVAL",
+      "ADMIN-CREDIT-01",
+      "ADMIN-REPORT-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/admin/reports",
+    "category": "Admin",
+    "page": "apps/web/app/admin/reports/page.tsx",
+    "sha256": "65b70aabbb90c77e744f5ff2cd5d69482e9f036416823e6934766682595ca695",
+    "components": [
+      "AdminScreen",
+      "AdminShell"
+    ],
+    "apiEndpoints": [
+      "/api/admin/reports"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "FIN-FINAL-03",
+      "FIN-FINAL-04",
+      "PAYMENT-DIAGNOSTICS",
+      "ADMIN-COMPANY-CONTRACT-APPROVAL",
+      "ADMIN-CREDIT-01",
+      "ADMIN-REPORT-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/admin/staff",
+    "category": "Admin",
+    "page": "apps/web/app/admin/staff/page.tsx",
+    "sha256": "78f3a921321f360d80d9a83bdea23b3ff2b215dbdbf754f9cf522ac9da7d28d0",
+    "components": [
+      "AdminScreen",
+      "AdminShell"
+    ],
+    "apiEndpoints": [
+      "/api/admin/staff"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (4 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "FIN-FINAL-03",
+      "FIN-FINAL-04",
+      "PAYMENT-DIAGNOSTICS",
+      "ADMIN-COMPANY-CONTRACT-APPROVAL",
+      "ADMIN-CREDIT-01",
+      "ADMIN-REPORT-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 4,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/auth/company-invitation",
+    "category": "Auth",
+    "page": "apps/web/app/auth/company-invitation/page.tsx",
+    "sha256": "bdb0b53f489c38651b873ad4c60e479d873937524e00e50b19b9e9e4a99ea001",
+    "components": [],
+    "apiEndpoints": [
+      "/api/auth/company-invitations/:token",
+      "/api/auth/company-invitations/:token/accept",
+      "/api/auth/company-contexts",
+      "/api/auth/company-context"
+    ],
+    "sharedDependencies": [],
+    "status": "Local available state visited (3 observations; observed CSS widths 320, 390).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "AUTH-DISABLE-01",
+      "AUTH-LOCKOUT-01",
+      "AUTH-UI-SESSION-01",
+      "UI-MFA-BACKUP-01",
+      "AUTH-REFRESH-LIFETIME-01",
+      "AUTH-SIDLESS-ACCESS-01",
+      "AUTH-NAVIGATION",
+      "AUTH-PASSWORD-RESET",
+      "RETIRED-TEST-ACCESS",
+      "RES-DEV-01",
+      "RES-EMAIL-01",
+      "RES-SESSION-COPY-01",
+      "AUTH-NARROW-REFLOW"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        320,
+        390
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/auth/failure",
+    "category": "Auth",
+    "page": "apps/web/app/auth/failure/page.tsx",
+    "sha256": "013c5c3bb65a773428c2b9460fbf751254d6c5c943ef3242f286b01a06052bb5",
+    "components": [
+      "AuthShell",
+      "AuthStatus"
+    ],
+    "apiEndpoints": [],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (4 observations; observed CSS widths 320, 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "AUTH-DISABLE-01",
+      "AUTH-LOCKOUT-01",
+      "AUTH-UI-SESSION-01",
+      "UI-MFA-BACKUP-01",
+      "AUTH-REFRESH-LIFETIME-01",
+      "AUTH-SIDLESS-ACCESS-01",
+      "AUTH-NAVIGATION",
+      "AUTH-PASSWORD-RESET",
+      "RETIRED-TEST-ACCESS",
+      "RES-DEV-01",
+      "RES-EMAIL-01",
+      "RES-SESSION-COPY-01",
+      "AUTH-NARROW-REFLOW"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 4,
+      "observedCssWidths": [
+        320,
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/auth/in-progress",
+    "category": "Auth",
+    "page": "apps/web/app/auth/in-progress/page.tsx",
+    "sha256": "e2ff84dcbcc41fc95c8ce4bc74a2dfaa04d98d8b5034711ed46759c04b616a9d",
+    "components": [
+      "AuthShell",
+      "AuthStatus"
+    ],
+    "apiEndpoints": [],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 320, 390).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "AUTH-DISABLE-01",
+      "AUTH-LOCKOUT-01",
+      "AUTH-UI-SESSION-01",
+      "UI-MFA-BACKUP-01",
+      "AUTH-REFRESH-LIFETIME-01",
+      "AUTH-SIDLESS-ACCESS-01",
+      "AUTH-NAVIGATION",
+      "AUTH-PASSWORD-RESET",
+      "RETIRED-TEST-ACCESS",
+      "RES-DEV-01",
+      "RES-EMAIL-01",
+      "RES-SESSION-COPY-01",
+      "AUTH-NARROW-REFLOW"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        320,
+        390
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/auth/login",
+    "category": "Auth",
+    "page": "apps/web/app/auth/login/page.tsx",
+    "sha256": "498a584c42b6bed8df62da7789906f46bae51f3140e7db94c4fd836d4eff4ddb",
+    "components": [
+      "AuthForms",
+      "AuthShell"
+    ],
+    "apiEndpoints": [
+      "/api/auth/login"
+    ],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (4 observations; observed CSS widths 320, 390).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "AUTH-DISABLE-01",
+      "AUTH-LOCKOUT-01",
+      "AUTH-UI-SESSION-01",
+      "UI-MFA-BACKUP-01",
+      "AUTH-REFRESH-LIFETIME-01",
+      "AUTH-SIDLESS-ACCESS-01",
+      "AUTH-NAVIGATION",
+      "AUTH-PASSWORD-RESET",
+      "RETIRED-TEST-ACCESS",
+      "RES-DEV-01",
+      "RES-EMAIL-01",
+      "RES-SESSION-COPY-01",
+      "AUTH-NARROW-REFLOW"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 4,
+      "observedCssWidths": [
+        320,
+        390
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/auth/logout",
+    "category": "Auth",
+    "page": "apps/web/app/auth/logout/page.tsx",
+    "sha256": "b65216ad143c234756eebd267568322b88969418b3f9aa0aa0914b7e06d238cc",
+    "components": [
+      "AuthShell",
+      "Loader2"
+    ],
+    "apiEndpoints": [],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (1 observations; observed CSS widths 320).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "AUTH-DISABLE-01",
+      "AUTH-LOCKOUT-01",
+      "AUTH-UI-SESSION-01",
+      "UI-MFA-BACKUP-01",
+      "AUTH-REFRESH-LIFETIME-01",
+      "AUTH-SIDLESS-ACCESS-01",
+      "AUTH-NAVIGATION",
+      "AUTH-PASSWORD-RESET",
+      "RETIRED-TEST-ACCESS",
+      "RES-DEV-01",
+      "RES-EMAIL-01",
+      "RES-SESSION-COPY-01",
+      "AUTH-NARROW-REFLOW"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 1,
+      "observedCssWidths": [
+        320
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/auth/mfa/challenge",
+    "category": "Auth",
+    "page": "apps/web/app/auth/mfa/challenge/page.tsx",
+    "sha256": "125babe6c8e16d10ffde5ab084dd90b0e450efb84290fbfe7ab80c91b27ddf5a",
+    "components": [
+      "MFASetupUI"
+    ],
+    "apiEndpoints": [
+      "/api/auth/mfa/challenge"
+    ],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (4 observations; observed CSS widths 320, 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "AUTH-DISABLE-01",
+      "AUTH-LOCKOUT-01",
+      "AUTH-UI-SESSION-01",
+      "UI-MFA-BACKUP-01",
+      "AUTH-REFRESH-LIFETIME-01",
+      "AUTH-SIDLESS-ACCESS-01",
+      "AUTH-NAVIGATION",
+      "AUTH-PASSWORD-RESET",
+      "RETIRED-TEST-ACCESS",
+      "RES-DEV-01",
+      "RES-EMAIL-01",
+      "RES-SESSION-COPY-01",
+      "AUTH-NARROW-REFLOW"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 4,
+      "observedCssWidths": [
+        320,
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/auth/mfa/setup",
+    "category": "Auth",
+    "page": "apps/web/app/auth/mfa/setup/page.tsx",
+    "sha256": "970f35d9b8d8730ee820c39c16ee591319579ec7b7392b3028420834e83ea6fb",
+    "components": [
+      "MFASetupUI"
+    ],
+    "apiEndpoints": [
+      "/api/auth/mfa/{setup,enable}"
+    ],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (2 observations; observed CSS widths 320, 390).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "AUTH-DISABLE-01",
+      "AUTH-LOCKOUT-01",
+      "AUTH-UI-SESSION-01",
+      "UI-MFA-BACKUP-01",
+      "AUTH-REFRESH-LIFETIME-01",
+      "AUTH-SIDLESS-ACCESS-01",
+      "AUTH-NAVIGATION",
+      "AUTH-PASSWORD-RESET",
+      "RETIRED-TEST-ACCESS",
+      "RES-DEV-01",
+      "RES-EMAIL-01",
+      "RES-SESSION-COPY-01",
+      "AUTH-NARROW-REFLOW"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 2,
+      "observedCssWidths": [
+        320,
+        390
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/auth/session-expired",
+    "category": "Auth",
+    "page": "apps/web/app/auth/session-expired/page.tsx",
+    "sha256": "6a41f44508ab1922e3c8d1a962a8fe198b94a2778e78b2ac7bba05ba71b6446f",
+    "components": [
+      "AlertTriangle",
+      "ArrowLeft",
+      "AuthShell",
+      "Clock",
+      "Link"
+    ],
+    "apiEndpoints": [],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (2 observations; observed CSS widths 320, 390).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "AUTH-DISABLE-01",
+      "AUTH-LOCKOUT-01",
+      "AUTH-UI-SESSION-01",
+      "UI-MFA-BACKUP-01",
+      "AUTH-REFRESH-LIFETIME-01",
+      "AUTH-SIDLESS-ACCESS-01",
+      "AUTH-NAVIGATION",
+      "AUTH-PASSWORD-RESET",
+      "RETIRED-TEST-ACCESS",
+      "RES-DEV-01",
+      "RES-EMAIL-01",
+      "RES-SESSION-COPY-01",
+      "AUTH-NARROW-REFLOW"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 2,
+      "observedCssWidths": [
+        320,
+        390
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/auth/signup",
+    "category": "Auth",
+    "page": "apps/web/app/auth/signup/page.tsx",
+    "sha256": "b8ea0e8b28a454bc2f0469ec375ac129bffaa1b9032c702034cc8c1d6f3b1fcd",
+    "components": [
+      "AuthForms",
+      "AuthShell"
+    ],
+    "apiEndpoints": [
+      "/api/auth/signup"
+    ],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 320, 390).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "AUTH-DISABLE-01",
+      "AUTH-LOCKOUT-01",
+      "AUTH-UI-SESSION-01",
+      "UI-MFA-BACKUP-01",
+      "AUTH-REFRESH-LIFETIME-01",
+      "AUTH-SIDLESS-ACCESS-01",
+      "AUTH-NAVIGATION",
+      "AUTH-PASSWORD-RESET",
+      "RETIRED-TEST-ACCESS",
+      "RES-DEV-01",
+      "RES-EMAIL-01",
+      "RES-SESSION-COPY-01",
+      "AUTH-NARROW-REFLOW"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        320,
+        390
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/auth/success",
+    "category": "Auth",
+    "page": "apps/web/app/auth/success/page.tsx",
+    "sha256": "b8a1f8637f17406c041964151062721557bf96306521f90ab2ab0d0457eb0ca2",
+    "components": [
+      "AuthShell",
+      "SuccessAutoRedirect",
+      "SuccessHonesty",
+      "Suspense"
+    ],
+    "apiEndpoints": [],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (2 observations; observed CSS widths 320, 390).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "AUTH-DISABLE-01",
+      "AUTH-LOCKOUT-01",
+      "AUTH-UI-SESSION-01",
+      "UI-MFA-BACKUP-01",
+      "AUTH-REFRESH-LIFETIME-01",
+      "AUTH-SIDLESS-ACCESS-01",
+      "AUTH-NAVIGATION",
+      "AUTH-PASSWORD-RESET",
+      "RETIRED-TEST-ACCESS",
+      "RES-DEV-01",
+      "RES-EMAIL-01",
+      "RES-SESSION-COPY-01",
+      "AUTH-NARROW-REFLOW"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 2,
+      "observedCssWidths": [
+        320,
+        390
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/auth/verify-email",
+    "category": "Auth",
+    "page": "apps/web/app/auth/verify-email/page.tsx",
+    "sha256": "f8dac5915b966ebbe650ad6a1b7695322c0465942bbcbbe6fb504ee00727f596",
+    "components": [
+      "VerificationUI"
+    ],
+    "apiEndpoints": [
+      "/api/auth/verify/confirm",
+      "/api/auth/verify/send"
+    ],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (2 observations; observed CSS widths 320, 390).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "AUTH-DISABLE-01",
+      "AUTH-LOCKOUT-01",
+      "AUTH-UI-SESSION-01",
+      "UI-MFA-BACKUP-01",
+      "AUTH-REFRESH-LIFETIME-01",
+      "AUTH-SIDLESS-ACCESS-01",
+      "AUTH-NAVIGATION",
+      "AUTH-PASSWORD-RESET",
+      "RETIRED-TEST-ACCESS",
+      "RES-DEV-01",
+      "RES-EMAIL-01",
+      "RES-SESSION-COPY-01",
+      "AUTH-NARROW-REFLOW"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 2,
+      "observedCssWidths": [
+        320,
+        390
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/auth/verify-phone",
+    "category": "Auth",
+    "page": "apps/web/app/auth/verify-phone/page.tsx",
+    "sha256": "e60e79eeaa2cbf5688c45f45ef002d29b5a0611954bee28032755184bce1d271",
+    "components": [],
+    "apiEndpoints": [],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (2 observations; observed CSS widths 320, 390).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "AUTH-DISABLE-01",
+      "AUTH-LOCKOUT-01",
+      "AUTH-UI-SESSION-01",
+      "UI-MFA-BACKUP-01",
+      "AUTH-REFRESH-LIFETIME-01",
+      "AUTH-SIDLESS-ACCESS-01",
+      "AUTH-NAVIGATION",
+      "AUTH-PASSWORD-RESET",
+      "RETIRED-TEST-ACCESS",
+      "RES-DEV-01",
+      "RES-EMAIL-01",
+      "RES-SESSION-COPY-01",
+      "AUTH-NARROW-REFLOW"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 2,
+      "observedCssWidths": [
+        320,
+        390
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/careers",
+    "category": "Public",
+    "page": "apps/web/app/careers/page.tsx",
+    "sha256": "0a1826dacd7c27d3b6b9df0a2f26726febebc55cabaa053a874df0d71471998e",
+    "components": [
+      "CareersPage"
+    ],
+    "apiEndpoints": [
+      "/api/public/jobs",
+      "/api/public/jobs/apply"
+    ],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (2 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-LEGAL-COPY",
+      "PUBLIC-CONTROLS",
+      "UI-PU-06/FuelVista",
+      "LOCAL-BRAND-FONTS"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 2,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/company/billing",
+    "category": "Company",
+    "page": "apps/web/app/company/billing/page.tsx",
+    "sha256": "e194bd78194076d9dc4ed6087866c96dd2e2157acd3ab9a93d5d6cfb21258ba5",
+    "components": [
+      "CompanyScreen",
+      "CompanyShell"
+    ],
+    "apiEndpoints": [
+      "/api/company/billing"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (4 observations; observed CSS widths 320, 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "UI-CO-02",
+      "UI-CO-03",
+      "UI-CO-04",
+      "UI-CO-05",
+      "COMPANY-INVITATIONS",
+      "COMPANY-FUNDING-INTENTS",
+      "UI-CONTEXT-01",
+      "UI-CONTEXT-02",
+      "FIN-FINAL-01",
+      "REVIEW-COMPANY-SEARCH-01",
+      "REVIEW-COMPANY-MENU-01",
+      "COMPANY-CONTRACT-BILLING-01",
+      "COMPANY-APPROVAL-GATE-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 4,
+      "observedCssWidths": [
+        320,
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/company/cards",
+    "category": "Company",
+    "page": "apps/web/app/company/cards/page.tsx",
+    "sha256": "68016fbe743f28eb3cdec96da8f86c2c85cf8c6d2fe38298a7059fde0e29357d",
+    "components": [
+      "CompanyScreen",
+      "CompanyShell"
+    ],
+    "apiEndpoints": [
+      "/api/company/assignments",
+      "/api/company/cards",
+      "/api/company/cards/:id/{freeze,unfreeze}"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "UI-CO-02",
+      "UI-CO-03",
+      "UI-CO-04",
+      "UI-CO-05",
+      "COMPANY-INVITATIONS",
+      "COMPANY-FUNDING-INTENTS",
+      "UI-CONTEXT-01",
+      "UI-CONTEXT-02",
+      "FIN-FINAL-01",
+      "REVIEW-COMPANY-SEARCH-01",
+      "REVIEW-COMPANY-MENU-01",
+      "COMPANY-CONTRACT-BILLING-01",
+      "COMPANY-APPROVAL-GATE-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/company/maintenance",
+    "category": "Company",
+    "page": "apps/web/app/company/maintenance/page.tsx",
+    "sha256": "973293b4aff3691d169905cc7fb286b3169bfadf75fdd1b81bfbbece0b73bd78",
+    "components": [
+      "CompanyScreen",
+      "CompanyShell"
+    ],
+    "apiEndpoints": [
+      "/api/company/maintenance"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "UI-CO-02",
+      "UI-CO-03",
+      "UI-CO-04",
+      "UI-CO-05",
+      "COMPANY-INVITATIONS",
+      "COMPANY-FUNDING-INTENTS",
+      "UI-CONTEXT-01",
+      "UI-CONTEXT-02",
+      "FIN-FINAL-01",
+      "REVIEW-COMPANY-SEARCH-01",
+      "REVIEW-COMPANY-MENU-01",
+      "COMPANY-CONTRACT-BILLING-01",
+      "COMPANY-APPROVAL-GATE-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/company/notifications",
+    "category": "Company",
+    "page": "apps/web/app/company/notifications/page.tsx",
+    "sha256": "e665674b0564a6fe40465177cd29702b11868499fbc09f2fd64bf5ff3355972e",
+    "components": [
+      "CompanyScreen",
+      "CompanyShell"
+    ],
+    "apiEndpoints": [
+      "/api/company/notifications"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "UI-CO-02",
+      "UI-CO-03",
+      "UI-CO-04",
+      "UI-CO-05",
+      "COMPANY-INVITATIONS",
+      "COMPANY-FUNDING-INTENTS",
+      "UI-CONTEXT-01",
+      "UI-CONTEXT-02",
+      "FIN-FINAL-01",
+      "REVIEW-COMPANY-SEARCH-01",
+      "REVIEW-COMPANY-MENU-01",
+      "COMPANY-CONTRACT-BILLING-01",
+      "COMPANY-APPROVAL-GATE-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/company",
+    "category": "Company",
+    "page": "apps/web/app/company/page.tsx",
+    "sha256": "e4efb82e8503df1c9f33b0276a77bafdc2aa1126e9ce48dbf9ced312b40a6861",
+    "components": [
+      "CompanyScreen",
+      "CompanyShell"
+    ],
+    "apiEndpoints": [
+      "/api/company/overview"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "UI-CO-02",
+      "UI-CO-03",
+      "UI-CO-04",
+      "UI-CO-05",
+      "COMPANY-INVITATIONS",
+      "COMPANY-FUNDING-INTENTS",
+      "UI-CONTEXT-01",
+      "UI-CONTEXT-02",
+      "FIN-FINAL-01",
+      "REVIEW-COMPANY-SEARCH-01",
+      "REVIEW-COMPANY-MENU-01",
+      "COMPANY-CONTRACT-BILLING-01",
+      "COMPANY-APPROVAL-GATE-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/company/reports",
+    "category": "Company",
+    "page": "apps/web/app/company/reports/page.tsx",
+    "sha256": "3bd5d3773ae8244155e4d750b28e773f095de84e152c03c3b59d1a2d478cbbd9",
+    "components": [
+      "CompanyScreen",
+      "CompanyShell"
+    ],
+    "apiEndpoints": [
+      "/api/company/reports"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "UI-CO-02",
+      "UI-CO-03",
+      "UI-CO-04",
+      "UI-CO-05",
+      "COMPANY-INVITATIONS",
+      "COMPANY-FUNDING-INTENTS",
+      "UI-CONTEXT-01",
+      "UI-CONTEXT-02",
+      "FIN-FINAL-01",
+      "REVIEW-COMPANY-SEARCH-01",
+      "REVIEW-COMPANY-MENU-01",
+      "COMPANY-CONTRACT-BILLING-01",
+      "COMPANY-APPROVAL-GATE-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/company/roadside",
+    "category": "Company",
+    "page": "apps/web/app/company/roadside/page.tsx",
+    "sha256": "e26cbf3440a109aa436987a034c5e9be27ed7dffa8ef7f789dbd2156803738ba",
+    "components": [
+      "CompanyScreen",
+      "CompanyShell"
+    ],
+    "apiEndpoints": [
+      "/api/company/roadside"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "UI-CO-02",
+      "UI-CO-03",
+      "UI-CO-04",
+      "UI-CO-05",
+      "COMPANY-INVITATIONS",
+      "COMPANY-FUNDING-INTENTS",
+      "UI-CONTEXT-01",
+      "UI-CONTEXT-02",
+      "FIN-FINAL-01",
+      "REVIEW-COMPANY-SEARCH-01",
+      "REVIEW-COMPANY-MENU-01",
+      "COMPANY-CONTRACT-BILLING-01",
+      "COMPANY-APPROVAL-GATE-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/company/settings",
+    "category": "Company",
+    "page": "apps/web/app/company/settings/page.tsx",
+    "sha256": "ebef78c8503f5c55d3d98e688172278da91c02561d9ce58dac8dc61ea2a5d6dc",
+    "components": [
+      "CompanyScreen",
+      "CompanyShell"
+    ],
+    "apiEndpoints": [
+      "/api/company/settings"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "UI-CO-02",
+      "UI-CO-03",
+      "UI-CO-04",
+      "UI-CO-05",
+      "COMPANY-INVITATIONS",
+      "COMPANY-FUNDING-INTENTS",
+      "UI-CONTEXT-01",
+      "UI-CONTEXT-02",
+      "FIN-FINAL-01",
+      "REVIEW-COMPANY-SEARCH-01",
+      "REVIEW-COMPANY-MENU-01",
+      "COMPANY-CONTRACT-BILLING-01",
+      "COMPANY-APPROVAL-GATE-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/company/stations",
+    "category": "Company",
+    "page": "apps/web/app/company/stations/page.tsx",
+    "sha256": "2ba2ad64dff6f7164644235e84cb7f619bd57a18a277785c7e079310d38a2ee6",
+    "components": [
+      "CompanyScreen",
+      "CompanyShell"
+    ],
+    "apiEndpoints": [
+      "/api/company/stations"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "UI-CO-02",
+      "UI-CO-03",
+      "UI-CO-04",
+      "UI-CO-05",
+      "COMPANY-INVITATIONS",
+      "COMPANY-FUNDING-INTENTS",
+      "UI-CONTEXT-01",
+      "UI-CONTEXT-02",
+      "FIN-FINAL-01",
+      "REVIEW-COMPANY-SEARCH-01",
+      "REVIEW-COMPANY-MENU-01",
+      "COMPANY-CONTRACT-BILLING-01",
+      "COMPANY-APPROVAL-GATE-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/company/support",
+    "category": "Company",
+    "page": "apps/web/app/company/support/page.tsx",
+    "sha256": "44f9e5df5658f751fc99d96a3a11aecc881da3ebc0288d8808c0bdaf3cbafb2d",
+    "components": [
+      "CompanyScreen",
+      "CompanyShell"
+    ],
+    "apiEndpoints": [
+      "/api/company/support/tickets"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "UI-CO-02",
+      "UI-CO-03",
+      "UI-CO-04",
+      "UI-CO-05",
+      "COMPANY-INVITATIONS",
+      "COMPANY-FUNDING-INTENTS",
+      "UI-CONTEXT-01",
+      "UI-CONTEXT-02",
+      "FIN-FINAL-01",
+      "REVIEW-COMPANY-SEARCH-01",
+      "REVIEW-COMPANY-MENU-01",
+      "COMPANY-CONTRACT-BILLING-01",
+      "COMPANY-APPROVAL-GATE-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/company/team",
+    "category": "Company",
+    "page": "apps/web/app/company/team/page.tsx",
+    "sha256": "0e8e6d1f041bb78952a318a3dc51ffe3f9ed4efb6cd62289a7ff7143c0bf603e",
+    "components": [
+      "CompanyScreen",
+      "CompanyShell"
+    ],
+    "apiEndpoints": [
+      "/api/company/team"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (5 observations; observed CSS widths 320, 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "UI-CO-02",
+      "UI-CO-03",
+      "UI-CO-04",
+      "UI-CO-05",
+      "COMPANY-INVITATIONS",
+      "COMPANY-FUNDING-INTENTS",
+      "UI-CONTEXT-01",
+      "UI-CONTEXT-02",
+      "FIN-FINAL-01",
+      "REVIEW-COMPANY-SEARCH-01",
+      "REVIEW-COMPANY-MENU-01",
+      "COMPANY-CONTRACT-BILLING-01",
+      "COMPANY-APPROVAL-GATE-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 5,
+      "observedCssWidths": [
+        320,
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/company/transactions",
+    "category": "Company",
+    "page": "apps/web/app/company/transactions/page.tsx",
+    "sha256": "b90d6b71cd79a1a77683e396d80ecbf34467f1d5828724a4d0a9664c38be7576",
+    "components": [
+      "CompanyScreen",
+      "CompanyShell"
+    ],
+    "apiEndpoints": [
+      "/api/company/assignments",
+      "/api/company/reports/export",
+      "/api/company/transactions"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "UI-CO-02",
+      "UI-CO-03",
+      "UI-CO-04",
+      "UI-CO-05",
+      "COMPANY-INVITATIONS",
+      "COMPANY-FUNDING-INTENTS",
+      "UI-CONTEXT-01",
+      "UI-CONTEXT-02",
+      "FIN-FINAL-01",
+      "REVIEW-COMPANY-SEARCH-01",
+      "REVIEW-COMPANY-MENU-01",
+      "COMPANY-CONTRACT-BILLING-01",
+      "COMPANY-APPROVAL-GATE-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/company/vehicles",
+    "category": "Company",
+    "page": "apps/web/app/company/vehicles/page.tsx",
+    "sha256": "8f253f0700473d988ac0e51704f879bcd7325c1ae52ffaca03a2ac779d547409",
+    "components": [
+      "CompanyScreen",
+      "CompanyShell"
+    ],
+    "apiEndpoints": [
+      "/api/company/assignments",
+      "/api/company/drivers",
+      "/api/company/reports/export",
+      "/api/company/vehicles"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "UI-CO-02",
+      "UI-CO-03",
+      "UI-CO-04",
+      "UI-CO-05",
+      "COMPANY-INVITATIONS",
+      "COMPANY-FUNDING-INTENTS",
+      "UI-CONTEXT-01",
+      "UI-CONTEXT-02",
+      "FIN-FINAL-01",
+      "REVIEW-COMPANY-SEARCH-01",
+      "REVIEW-COMPANY-MENU-01",
+      "COMPANY-CONTRACT-BILLING-01",
+      "COMPANY-APPROVAL-GATE-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/cookie-policy",
+    "category": "Public",
+    "page": "apps/web/app/cookie-policy/page.tsx",
+    "sha256": "73f8b6a72f01f55449f29b3df97f74fe357ac7b6b35693ce794995aa229883e4",
+    "components": [
+      "LegalPage"
+    ],
+    "apiEndpoints": [
+      "/api/public/cookie-consent"
+    ],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (2 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-LEGAL-COPY",
+      "PUBLIC-CONTROLS",
+      "UI-PU-06/FuelVista",
+      "LOCAL-BRAND-FONTS"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 2,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/customer/card",
+    "category": "Customer",
+    "page": "apps/web/app/customer/card/page.tsx",
+    "sha256": "db55512860bbd27e979530577bce9313ebd87a65617d7e5dd912cf7db42ee174",
+    "components": [
+      "CustomerScreen",
+      "CustomerShell"
+    ],
+    "apiEndpoints": [
+      "/api/customer/card",
+      "/api/customer/card-plans",
+      "/api/customer/card-request",
+      "/api/customer/card-request/cancel",
+      "/api/customer/card-request/checkout",
+      "/api/customer/card-request/details",
+      "/api/customer/card-request/open",
+      "/api/customer/card-request/progress",
+      "/api/customer/card-request/resume",
+      "/api/customer/card-request/verify-payment",
+      "/api/customer/cards/:id/{freeze,unfreeze,replace,report-lost,pin}",
+      "/api/customer/fuel-checkout",
+      "/api/customer/subscription",
+      "/api/public/payments/config"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (5 observations; observed CSS widths 320, 390, 1280). Live available customer route also visited.",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "liveCustomerVerification": {
+      "visited": true,
+      "measuredLayoutWidths": [
+        320,
+        1280
+      ],
+      "expectedRedirects": [],
+      "limits": "Available account state/read-only forms; no active-card, subscription, PIN, provider or payment acceptance."
+    },
+    "relatedCategoryChangeIds": [
+      "UI-CU-01",
+      "UI-CU-02",
+      "UI-CU-03",
+      "UI-CU-04",
+      "UI-CU-05",
+      "UI-CU-06",
+      "UI-CU-07",
+      "UI-CU-08",
+      "UI-PASSWORD-CHANGE-01",
+      "FIN-FINAL-06",
+      "FUEL-SAVINGS",
+      "PUSH-BOUNDARIES",
+      "ROOT-CU-ACCESS",
+      "ROOT-CU-PHONE",
+      "ROOT-ISSUER",
+      "ROOT-OPTIONAL-SWEEP",
+      "REVIEW-PIN-TYPE-01",
+      "UI-CARD-REFUND-01",
+      "UI-CARD-REFUND-02",
+      "UI-CARD-REFUND-03",
+      "CUSTOMER-FIRST-PIN-01",
+      "RES-STATION-DISTANCE-01",
+      "RES-CUSTOMER-COPY-01",
+      "RES-MOBILE-LOGOUT-STACK-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 5,
+      "observedCssWidths": [
+        320,
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/customer/fuel-checkout",
+    "category": "Customer",
+    "page": "apps/web/app/customer/fuel-checkout/page.tsx",
+    "sha256": "64ba581484ebbdef43e86b7ed75e66acd813704a6505118ac248bbcf27de1a90",
+    "components": [
+      "CustomerReturnParams"
+    ],
+    "apiEndpoints": [],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280). Live available customer route also visited.",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Server redirect to /customer/card, preserving query and assigning paymentFlow for matching return reference",
+    "liveCustomerVerification": {
+      "visited": true,
+      "measuredLayoutWidths": [],
+      "expectedRedirects": [
+        "/customer/card"
+      ],
+      "limits": "Available account state/read-only forms; no active-card, subscription, PIN, provider or payment acceptance."
+    },
+    "relatedCategoryChangeIds": [
+      "UI-CU-01",
+      "UI-CU-02",
+      "UI-CU-03",
+      "UI-CU-04",
+      "UI-CU-05",
+      "UI-CU-06",
+      "UI-CU-07",
+      "UI-CU-08",
+      "UI-PASSWORD-CHANGE-01",
+      "FIN-FINAL-06",
+      "FUEL-SAVINGS",
+      "PUSH-BOUNDARIES",
+      "ROOT-CU-ACCESS",
+      "ROOT-CU-PHONE",
+      "ROOT-ISSUER",
+      "ROOT-OPTIONAL-SWEEP",
+      "REVIEW-PIN-TYPE-01",
+      "UI-CARD-REFUND-01",
+      "UI-CARD-REFUND-02",
+      "UI-CARD-REFUND-03",
+      "CUSTOMER-FIRST-PIN-01",
+      "RES-STATION-DISTANCE-01",
+      "RES-CUSTOMER-COPY-01",
+      "RES-MOBILE-LOGOUT-STACK-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/customer/notifications",
+    "category": "Customer",
+    "page": "apps/web/app/customer/notifications/page.tsx",
+    "sha256": "d77723df66970853fe6a74ea1baf17f3f9238e2cdddffd6dca712f6064320a69",
+    "components": [
+      "CustomerScreen",
+      "CustomerShell"
+    ],
+    "apiEndpoints": [
+      "/api/customer/notifications"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280). Live available customer route also visited.",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "liveCustomerVerification": {
+      "visited": true,
+      "measuredLayoutWidths": [
+        320,
+        1280
+      ],
+      "expectedRedirects": [],
+      "limits": "Available account state/read-only forms; no active-card, subscription, PIN, provider or payment acceptance."
+    },
+    "relatedCategoryChangeIds": [
+      "UI-CU-01",
+      "UI-CU-02",
+      "UI-CU-03",
+      "UI-CU-04",
+      "UI-CU-05",
+      "UI-CU-06",
+      "UI-CU-07",
+      "UI-CU-08",
+      "UI-PASSWORD-CHANGE-01",
+      "FIN-FINAL-06",
+      "FUEL-SAVINGS",
+      "PUSH-BOUNDARIES",
+      "ROOT-CU-ACCESS",
+      "ROOT-CU-PHONE",
+      "ROOT-ISSUER",
+      "ROOT-OPTIONAL-SWEEP",
+      "REVIEW-PIN-TYPE-01",
+      "UI-CARD-REFUND-01",
+      "UI-CARD-REFUND-02",
+      "UI-CARD-REFUND-03",
+      "CUSTOMER-FIRST-PIN-01",
+      "RES-STATION-DISTANCE-01",
+      "RES-CUSTOMER-COPY-01",
+      "RES-MOBILE-LOGOUT-STACK-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/customer",
+    "category": "Customer",
+    "page": "apps/web/app/customer/page.tsx",
+    "sha256": "0a6d2d8dabce05792158053aa118461420a3944c59257dd0d36026dca8088e2c",
+    "components": [
+      "CustomerScreen",
+      "CustomerShell"
+    ],
+    "apiEndpoints": [
+      "/api/customer/card",
+      "/api/customer/overview"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (4 observations; observed CSS widths 320, 390, 1280). Live available customer route also visited.",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "liveCustomerVerification": {
+      "visited": true,
+      "measuredLayoutWidths": [
+        320,
+        1280
+      ],
+      "expectedRedirects": [],
+      "limits": "Available account state/read-only forms; no active-card, subscription, PIN, provider or payment acceptance."
+    },
+    "relatedCategoryChangeIds": [
+      "UI-CU-01",
+      "UI-CU-02",
+      "UI-CU-03",
+      "UI-CU-04",
+      "UI-CU-05",
+      "UI-CU-06",
+      "UI-CU-07",
+      "UI-CU-08",
+      "UI-PASSWORD-CHANGE-01",
+      "FIN-FINAL-06",
+      "FUEL-SAVINGS",
+      "PUSH-BOUNDARIES",
+      "ROOT-CU-ACCESS",
+      "ROOT-CU-PHONE",
+      "ROOT-ISSUER",
+      "ROOT-OPTIONAL-SWEEP",
+      "REVIEW-PIN-TYPE-01",
+      "UI-CARD-REFUND-01",
+      "UI-CARD-REFUND-02",
+      "UI-CARD-REFUND-03",
+      "CUSTOMER-FIRST-PIN-01",
+      "RES-STATION-DISTANCE-01",
+      "RES-CUSTOMER-COPY-01",
+      "RES-MOBILE-LOGOUT-STACK-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 4,
+      "observedCssWidths": [
+        320,
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/customer/profile",
+    "category": "Customer",
+    "page": "apps/web/app/customer/profile/page.tsx",
+    "sha256": "80c892b5da5f2ba8460c22eb4ec7d953ebf0b3503bcf5ab2e7296b4e9fe5c9ef",
+    "components": [
+      "CustomerScreen",
+      "CustomerShell"
+    ],
+    "apiEndpoints": [
+      "/api/auth/change-password",
+      "/api/auth/mfa",
+      "/api/customer/profile",
+      "/api/push"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (4 observations; observed CSS widths 320, 390, 1280). Live available customer route also visited.",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "liveCustomerVerification": {
+      "visited": true,
+      "measuredLayoutWidths": [
+        320,
+        1280
+      ],
+      "expectedRedirects": [],
+      "limits": "Available account state/read-only forms; no active-card, subscription, PIN, provider or payment acceptance."
+    },
+    "relatedCategoryChangeIds": [
+      "UI-CU-01",
+      "UI-CU-02",
+      "UI-CU-03",
+      "UI-CU-04",
+      "UI-CU-05",
+      "UI-CU-06",
+      "UI-CU-07",
+      "UI-CU-08",
+      "UI-PASSWORD-CHANGE-01",
+      "FIN-FINAL-06",
+      "FUEL-SAVINGS",
+      "PUSH-BOUNDARIES",
+      "ROOT-CU-ACCESS",
+      "ROOT-CU-PHONE",
+      "ROOT-ISSUER",
+      "ROOT-OPTIONAL-SWEEP",
+      "REVIEW-PIN-TYPE-01",
+      "UI-CARD-REFUND-01",
+      "UI-CARD-REFUND-02",
+      "UI-CARD-REFUND-03",
+      "CUSTOMER-FIRST-PIN-01",
+      "RES-STATION-DISTANCE-01",
+      "RES-CUSTOMER-COPY-01",
+      "RES-MOBILE-LOGOUT-STACK-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 4,
+      "observedCssWidths": [
+        320,
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/customer/report-problem",
+    "category": "Customer",
+    "page": "apps/web/app/customer/report-problem/page.tsx",
+    "sha256": "d22fde5f7ed92aaba7ae7daf0a06d7ef60e975a5c66d8abe05eb04d1e79bd8e8",
+    "components": [
+      "CustomerScreen",
+      "CustomerShell"
+    ],
+    "apiEndpoints": [
+      "/api/customer/support/tickets"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280). Live available customer route also visited.",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "liveCustomerVerification": {
+      "visited": true,
+      "measuredLayoutWidths": [
+        320
+      ],
+      "expectedRedirects": [],
+      "limits": "Available account state/read-only forms; no active-card, subscription, PIN, provider or payment acceptance."
+    },
+    "relatedCategoryChangeIds": [
+      "UI-CU-01",
+      "UI-CU-02",
+      "UI-CU-03",
+      "UI-CU-04",
+      "UI-CU-05",
+      "UI-CU-06",
+      "UI-CU-07",
+      "UI-CU-08",
+      "UI-PASSWORD-CHANGE-01",
+      "FIN-FINAL-06",
+      "FUEL-SAVINGS",
+      "PUSH-BOUNDARIES",
+      "ROOT-CU-ACCESS",
+      "ROOT-CU-PHONE",
+      "ROOT-ISSUER",
+      "ROOT-OPTIONAL-SWEEP",
+      "REVIEW-PIN-TYPE-01",
+      "UI-CARD-REFUND-01",
+      "UI-CARD-REFUND-02",
+      "UI-CARD-REFUND-03",
+      "CUSTOMER-FIRST-PIN-01",
+      "RES-STATION-DISTANCE-01",
+      "RES-CUSTOMER-COPY-01",
+      "RES-MOBILE-LOGOUT-STACK-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/customer/stations",
+    "category": "Customer",
+    "page": "apps/web/app/customer/stations/page.tsx",
+    "sha256": "5e35582d9c7abec13dd7b38cdc2c6650bb39cd2f6cbdf7b4a3230cb721fb14da",
+    "components": [
+      "CustomerScreen",
+      "CustomerShell"
+    ],
+    "apiEndpoints": [
+      "/api/customer/stations"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (4 observations; observed CSS widths 320, 390, 1280). Live available customer route also visited.",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "liveCustomerVerification": {
+      "visited": true,
+      "measuredLayoutWidths": [
+        320,
+        1280
+      ],
+      "expectedRedirects": [],
+      "limits": "Available account state/read-only forms; no active-card, subscription, PIN, provider or payment acceptance."
+    },
+    "relatedCategoryChangeIds": [
+      "UI-CU-01",
+      "UI-CU-02",
+      "UI-CU-03",
+      "UI-CU-04",
+      "UI-CU-05",
+      "UI-CU-06",
+      "UI-CU-07",
+      "UI-CU-08",
+      "UI-PASSWORD-CHANGE-01",
+      "FIN-FINAL-06",
+      "FUEL-SAVINGS",
+      "PUSH-BOUNDARIES",
+      "ROOT-CU-ACCESS",
+      "ROOT-CU-PHONE",
+      "ROOT-ISSUER",
+      "ROOT-OPTIONAL-SWEEP",
+      "REVIEW-PIN-TYPE-01",
+      "UI-CARD-REFUND-01",
+      "UI-CARD-REFUND-02",
+      "UI-CARD-REFUND-03",
+      "CUSTOMER-FIRST-PIN-01",
+      "RES-STATION-DISTANCE-01",
+      "RES-CUSTOMER-COPY-01",
+      "RES-MOBILE-LOGOUT-STACK-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 4,
+      "observedCssWidths": [
+        320,
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/customer/subscription",
+    "category": "Customer",
+    "page": "apps/web/app/customer/subscription/page.tsx",
+    "sha256": "a284d60da54d714ba3e693263b9650b03a49f8668b4ca35b7efe55e2d7e22aa9",
+    "components": [
+      "CustomerReturnParams"
+    ],
+    "apiEndpoints": [],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280). Live available customer route also visited.",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Server redirect to /customer/card, preserving query and assigning paymentFlow for matching return reference",
+    "liveCustomerVerification": {
+      "visited": true,
+      "measuredLayoutWidths": [],
+      "expectedRedirects": [
+        "/customer/card"
+      ],
+      "limits": "Available account state/read-only forms; no active-card, subscription, PIN, provider or payment acceptance."
+    },
+    "relatedCategoryChangeIds": [
+      "UI-CU-01",
+      "UI-CU-02",
+      "UI-CU-03",
+      "UI-CU-04",
+      "UI-CU-05",
+      "UI-CU-06",
+      "UI-CU-07",
+      "UI-CU-08",
+      "UI-PASSWORD-CHANGE-01",
+      "FIN-FINAL-06",
+      "FUEL-SAVINGS",
+      "PUSH-BOUNDARIES",
+      "ROOT-CU-ACCESS",
+      "ROOT-CU-PHONE",
+      "ROOT-ISSUER",
+      "ROOT-OPTIONAL-SWEEP",
+      "REVIEW-PIN-TYPE-01",
+      "UI-CARD-REFUND-01",
+      "UI-CARD-REFUND-02",
+      "UI-CARD-REFUND-03",
+      "CUSTOMER-FIRST-PIN-01",
+      "RES-STATION-DISTANCE-01",
+      "RES-CUSTOMER-COPY-01",
+      "RES-MOBILE-LOGOUT-STACK-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/customer/support",
+    "category": "Customer",
+    "page": "apps/web/app/customer/support/page.tsx",
+    "sha256": "649c46d235e59f41749d7a4df2fc6290a7b9317d5381b66fa535632f24e49950",
+    "components": [
+      "CustomerScreen",
+      "CustomerShell"
+    ],
+    "apiEndpoints": [
+      "/api/customer/services",
+      "/api/customer/support/tickets",
+      "/api/customer/support/tickets/:id/messages"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280). Live available customer route also visited.",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "liveCustomerVerification": {
+      "visited": true,
+      "measuredLayoutWidths": [
+        320,
+        1280
+      ],
+      "expectedRedirects": [],
+      "limits": "Available account state/read-only forms; no active-card, subscription, PIN, provider or payment acceptance."
+    },
+    "relatedCategoryChangeIds": [
+      "UI-CU-01",
+      "UI-CU-02",
+      "UI-CU-03",
+      "UI-CU-04",
+      "UI-CU-05",
+      "UI-CU-06",
+      "UI-CU-07",
+      "UI-CU-08",
+      "UI-PASSWORD-CHANGE-01",
+      "FIN-FINAL-06",
+      "FUEL-SAVINGS",
+      "PUSH-BOUNDARIES",
+      "ROOT-CU-ACCESS",
+      "ROOT-CU-PHONE",
+      "ROOT-ISSUER",
+      "ROOT-OPTIONAL-SWEEP",
+      "REVIEW-PIN-TYPE-01",
+      "UI-CARD-REFUND-01",
+      "UI-CARD-REFUND-02",
+      "UI-CARD-REFUND-03",
+      "CUSTOMER-FIRST-PIN-01",
+      "RES-STATION-DISTANCE-01",
+      "RES-CUSTOMER-COPY-01",
+      "RES-MOBILE-LOGOUT-STACK-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/customer/transaction-detail",
+    "category": "Customer",
+    "page": "apps/web/app/customer/transaction-detail/page.tsx",
+    "sha256": "0a19172a6fca8417fdf3b5db1a100245d5326addcd4c76cc50b69948d3eda6ef",
+    "components": [
+      "CustomerScreen",
+      "CustomerShell"
+    ],
+    "apiEndpoints": [
+      "/api/customer/transactions/all"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280). Live available customer route also visited.",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "liveCustomerVerification": {
+      "visited": true,
+      "measuredLayoutWidths": [
+        320
+      ],
+      "expectedRedirects": [],
+      "limits": "Available account state/read-only forms; no active-card, subscription, PIN, provider or payment acceptance."
+    },
+    "relatedCategoryChangeIds": [
+      "UI-CU-01",
+      "UI-CU-02",
+      "UI-CU-03",
+      "UI-CU-04",
+      "UI-CU-05",
+      "UI-CU-06",
+      "UI-CU-07",
+      "UI-CU-08",
+      "UI-PASSWORD-CHANGE-01",
+      "FIN-FINAL-06",
+      "FUEL-SAVINGS",
+      "PUSH-BOUNDARIES",
+      "ROOT-CU-ACCESS",
+      "ROOT-CU-PHONE",
+      "ROOT-ISSUER",
+      "ROOT-OPTIONAL-SWEEP",
+      "REVIEW-PIN-TYPE-01",
+      "UI-CARD-REFUND-01",
+      "UI-CARD-REFUND-02",
+      "UI-CARD-REFUND-03",
+      "CUSTOMER-FIRST-PIN-01",
+      "RES-STATION-DISTANCE-01",
+      "RES-CUSTOMER-COPY-01",
+      "RES-MOBILE-LOGOUT-STACK-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/customer/transactions",
+    "category": "Customer",
+    "page": "apps/web/app/customer/transactions/page.tsx",
+    "sha256": "7c29318bc01abe06ad26b3e3a9285d00ad1dcc1674dcf5431267ac78dfadc8fc",
+    "components": [
+      "CustomerScreen",
+      "CustomerShell"
+    ],
+    "apiEndpoints": [
+      "/api/customer/transactions/all"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 390, 1280). Live available customer route also visited.",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "liveCustomerVerification": {
+      "visited": true,
+      "measuredLayoutWidths": [
+        320,
+        1280
+      ],
+      "expectedRedirects": [],
+      "limits": "Available account state/read-only forms; no active-card, subscription, PIN, provider or payment acceptance."
+    },
+    "relatedCategoryChangeIds": [
+      "UI-CU-01",
+      "UI-CU-02",
+      "UI-CU-03",
+      "UI-CU-04",
+      "UI-CU-05",
+      "UI-CU-06",
+      "UI-CU-07",
+      "UI-CU-08",
+      "UI-PASSWORD-CHANGE-01",
+      "FIN-FINAL-06",
+      "FUEL-SAVINGS",
+      "PUSH-BOUNDARIES",
+      "ROOT-CU-ACCESS",
+      "ROOT-CU-PHONE",
+      "ROOT-ISSUER",
+      "ROOT-OPTIONAL-SWEEP",
+      "REVIEW-PIN-TYPE-01",
+      "UI-CARD-REFUND-01",
+      "UI-CARD-REFUND-02",
+      "UI-CARD-REFUND-03",
+      "CUSTOMER-FIRST-PIN-01",
+      "RES-STATION-DISTANCE-01",
+      "RES-CUSTOMER-COPY-01",
+      "RES-MOBILE-LOGOUT-STACK-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/customer/wallet",
+    "category": "Customer",
+    "page": "apps/web/app/customer/wallet/page.tsx",
+    "sha256": "e40915d3c337ea1d62b52b16885df0c1543b98de631a0a064e7646d42cc05daf",
+    "components": [
+      "CustomerScreen",
+      "CustomerShell"
+    ],
+    "apiEndpoints": [
+      "/api/customer/overview",
+      "/api/customer/wallet",
+      "/api/customer/wallet/topup",
+      "/api/public/payments/config"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session"
+    ],
+    "status": "Local available state visited (4 observations; observed CSS widths 390, 1280). Live available customer route also visited.",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "liveCustomerVerification": {
+      "visited": true,
+      "measuredLayoutWidths": [
+        320,
+        1280
+      ],
+      "expectedRedirects": [],
+      "limits": "Available account state/read-only forms; no active-card, subscription, PIN, provider or payment acceptance."
+    },
+    "relatedCategoryChangeIds": [
+      "UI-CU-01",
+      "UI-CU-02",
+      "UI-CU-03",
+      "UI-CU-04",
+      "UI-CU-05",
+      "UI-CU-06",
+      "UI-CU-07",
+      "UI-CU-08",
+      "UI-PASSWORD-CHANGE-01",
+      "FIN-FINAL-06",
+      "FUEL-SAVINGS",
+      "PUSH-BOUNDARIES",
+      "ROOT-CU-ACCESS",
+      "ROOT-CU-PHONE",
+      "ROOT-ISSUER",
+      "ROOT-OPTIONAL-SWEEP",
+      "REVIEW-PIN-TYPE-01",
+      "UI-CARD-REFUND-01",
+      "UI-CARD-REFUND-02",
+      "UI-CARD-REFUND-03",
+      "CUSTOMER-FIRST-PIN-01",
+      "RES-STATION-DISTANCE-01",
+      "RES-CUSTOMER-COPY-01",
+      "RES-MOBILE-LOGOUT-STACK-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 4,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/dashboard/billing",
+    "category": "Partner",
+    "page": "apps/web/app/dashboard/billing/page.tsx",
+    "sha256": "47e305e2ad85119f00ffdddd105de126e0733eb23609ff067b35477723040520",
+    "components": [
+      "PartnershipShell",
+      "SubscriptionPanel"
+    ],
+    "apiEndpoints": [],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session",
+      "PartnerNotificationsProvider /api/partner/notifications",
+      "PartnerSubscriptionGate /api/partner/billing"
+    ],
+    "status": "Local available state visited (4 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-SETTLEMENT-RESPONSIVE",
+      "ROOT-MECHANIC-COMPATIBILITY",
+      "ROOT-PAYOUT-PROOF",
+      "PARTNER-TRANSACTION-INPUT-01",
+      "PARTNER-STAFF-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 4,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/dashboard/card-verification",
+    "category": "Partner",
+    "page": "apps/web/app/dashboard/card-verification/page.tsx",
+    "sha256": "e97051d53879eb8e00929162348a874c3fac7cd4310b2a3b39e3ba4a6c9d91b0",
+    "components": [
+      "DashboardScreen",
+      "PartnershipShell"
+    ],
+    "apiEndpoints": [
+      "/api/partner/pos/fulfill",
+      "/api/partner/pos/authorize",
+      "/api/partner/pricing"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session",
+      "PartnerNotificationsProvider /api/partner/notifications",
+      "PartnerSubscriptionGate /api/partner/billing"
+    ],
+    "status": "Local available state visited (4 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-SETTLEMENT-RESPONSIVE",
+      "ROOT-MECHANIC-COMPATIBILITY",
+      "ROOT-PAYOUT-PROOF",
+      "PARTNER-TRANSACTION-INPUT-01",
+      "PARTNER-STAFF-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 4,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/dashboard/disputes",
+    "category": "Partner",
+    "page": "apps/web/app/dashboard/disputes/page.tsx",
+    "sha256": "4dc3326d47593264db77e307cbdf37f1481a68c4701ef8299dc3d525713dc973",
+    "components": [
+      "DashboardScreen",
+      "PartnershipShell"
+    ],
+    "apiEndpoints": [
+      "/api/partner/disputes"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session",
+      "PartnerNotificationsProvider /api/partner/notifications",
+      "PartnerSubscriptionGate /api/partner/billing"
+    ],
+    "status": "Local available state visited (4 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-SETTLEMENT-RESPONSIVE",
+      "ROOT-MECHANIC-COMPATIBILITY",
+      "ROOT-PAYOUT-PROOF",
+      "PARTNER-TRANSACTION-INPUT-01",
+      "PARTNER-STAFF-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 4,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/dashboard/fuel-pricing",
+    "category": "Partner",
+    "page": "apps/web/app/dashboard/fuel-pricing/page.tsx",
+    "sha256": "0658e2b2bd971f72d639df733161577bc29e6a2d1df4014d4fcd0dc0fe8372d3",
+    "components": [
+      "DashboardScreen",
+      "PartnershipShell"
+    ],
+    "apiEndpoints": [
+      "/api/partner/discounts",
+      "/api/partner/pricing"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session",
+      "PartnerNotificationsProvider /api/partner/notifications",
+      "PartnerSubscriptionGate /api/partner/billing"
+    ],
+    "status": "Local available state visited (5 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-SETTLEMENT-RESPONSIVE",
+      "ROOT-MECHANIC-COMPATIBILITY",
+      "ROOT-PAYOUT-PROOF",
+      "PARTNER-TRANSACTION-INPUT-01",
+      "PARTNER-STAFF-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 5,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/dashboard/notifications",
+    "category": "Partner",
+    "page": "apps/web/app/dashboard/notifications/page.tsx",
+    "sha256": "7f4a7ffe9a600569f8d11ddfa99914a3b3180b528ac4427d27df96769f54cca6",
+    "components": [
+      "DashboardScreen",
+      "PartnershipShell"
+    ],
+    "apiEndpoints": [
+      "/api/partner/notifications"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session",
+      "PartnerNotificationsProvider /api/partner/notifications",
+      "PartnerSubscriptionGate /api/partner/billing"
+    ],
+    "status": "Local available state visited (4 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-SETTLEMENT-RESPONSIVE",
+      "ROOT-MECHANIC-COMPATIBILITY",
+      "ROOT-PAYOUT-PROOF",
+      "PARTNER-TRANSACTION-INPUT-01",
+      "PARTNER-STAFF-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 4,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/dashboard",
+    "category": "Partner",
+    "page": "apps/web/app/dashboard/page.tsx",
+    "sha256": "871ed39049d64215b6422679de7e9e62991e66d43b9572528de75a043289fc3f",
+    "components": [
+      "DashboardScreen",
+      "PartnershipShell"
+    ],
+    "apiEndpoints": [
+      "/api/partner/overview"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session",
+      "PartnerNotificationsProvider /api/partner/notifications",
+      "PartnerSubscriptionGate /api/partner/billing"
+    ],
+    "status": "Local available state visited (4 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-SETTLEMENT-RESPONSIVE",
+      "ROOT-MECHANIC-COMPATIBILITY",
+      "ROOT-PAYOUT-PROOF",
+      "PARTNER-TRANSACTION-INPUT-01",
+      "PARTNER-STAFF-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 4,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/dashboard/reports",
+    "category": "Partner",
+    "page": "apps/web/app/dashboard/reports/page.tsx",
+    "sha256": "d40f1948e92fc09291162fd4d58769801aee45ff53e7f4df3d4e3a3758892119",
+    "components": [
+      "DashboardScreen",
+      "PartnershipShell"
+    ],
+    "apiEndpoints": [
+      "/api/partner/reports",
+      "/api/partner/reports/export"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session",
+      "PartnerNotificationsProvider /api/partner/notifications",
+      "PartnerSubscriptionGate /api/partner/billing"
+    ],
+    "status": "Local available state visited (4 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-SETTLEMENT-RESPONSIVE",
+      "ROOT-MECHANIC-COMPATIBILITY",
+      "ROOT-PAYOUT-PROOF",
+      "PARTNER-TRANSACTION-INPUT-01",
+      "PARTNER-STAFF-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 4,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/dashboard/settings",
+    "category": "Partner",
+    "page": "apps/web/app/dashboard/settings/page.tsx",
+    "sha256": "a19705e0d352142cafbfc541107cb807a26c7c207a4da091149a3f2c06805585",
+    "components": [
+      "DashboardScreen",
+      "PartnershipShell"
+    ],
+    "apiEndpoints": [
+      "/api/partner/settings",
+      "/api/partner/settings/api-keys",
+      "/api/partner/settings/service-requests"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session",
+      "PartnerNotificationsProvider /api/partner/notifications",
+      "PartnerSubscriptionGate /api/partner/billing"
+    ],
+    "status": "Local available state visited (4 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-SETTLEMENT-RESPONSIVE",
+      "ROOT-MECHANIC-COMPATIBILITY",
+      "ROOT-PAYOUT-PROOF",
+      "PARTNER-TRANSACTION-INPUT-01",
+      "PARTNER-STAFF-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 4,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/dashboard/settlements",
+    "category": "Partner",
+    "page": "apps/web/app/dashboard/settlements/page.tsx",
+    "sha256": "178ef1e563ccb6953ed5e91dab1010139fc45c4127039fd22009d3865a728e63",
+    "components": [
+      "DashboardScreen",
+      "PartnershipShell"
+    ],
+    "apiEndpoints": [
+      "/api/partner/bank-accounts",
+      "/api/partner/settlements"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session",
+      "PartnerNotificationsProvider /api/partner/notifications",
+      "PartnerSubscriptionGate /api/partner/billing"
+    ],
+    "status": "Local available state visited (6 observations; observed CSS widths 320, 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-SETTLEMENT-RESPONSIVE",
+      "ROOT-MECHANIC-COMPATIBILITY",
+      "ROOT-PAYOUT-PROOF",
+      "PARTNER-TRANSACTION-INPUT-01",
+      "PARTNER-STAFF-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 6,
+      "observedCssWidths": [
+        320,
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/dashboard/staff",
+    "category": "Partner",
+    "page": "apps/web/app/dashboard/staff/page.tsx",
+    "sha256": "5b45446ee040b9c138adbca984edc14a10f09c300c004f812b02417fb9c8f1c5",
+    "components": [
+      "DashboardScreen",
+      "PartnershipShell"
+    ],
+    "apiEndpoints": [
+      "/api/partner/staff"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session",
+      "PartnerNotificationsProvider /api/partner/notifications",
+      "PartnerSubscriptionGate /api/partner/billing"
+    ],
+    "status": "Local available state visited (4 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-SETTLEMENT-RESPONSIVE",
+      "ROOT-MECHANIC-COMPATIBILITY",
+      "ROOT-PAYOUT-PROOF",
+      "PARTNER-TRANSACTION-INPUT-01",
+      "PARTNER-STAFF-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 4,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/dashboard/station-profile",
+    "category": "Partner",
+    "page": "apps/web/app/dashboard/station-profile/page.tsx",
+    "sha256": "01c1de454b3e80a22103de5eb6812e234df8f0de9e80f3fa1d0f6a2bb29709fd",
+    "components": [
+      "DashboardScreen",
+      "PartnershipShell"
+    ],
+    "apiEndpoints": [
+      "/api/partner/station",
+      "/api/partner/stations"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session",
+      "PartnerNotificationsProvider /api/partner/notifications",
+      "PartnerSubscriptionGate /api/partner/billing"
+    ],
+    "status": "Local available state visited (4 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-SETTLEMENT-RESPONSIVE",
+      "ROOT-MECHANIC-COMPATIBILITY",
+      "ROOT-PAYOUT-PROOF",
+      "PARTNER-TRANSACTION-INPUT-01",
+      "PARTNER-STAFF-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 4,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/dashboard/transactions",
+    "category": "Partner",
+    "page": "apps/web/app/dashboard/transactions/page.tsx",
+    "sha256": "17d7bd5b01c9d2cf17b7db40e87c73e068d4979c5bfb3bfc3c1cb53063c27cd9",
+    "components": [
+      "DashboardScreen",
+      "PartnershipShell"
+    ],
+    "apiEndpoints": [
+      "/api/partner/transactions",
+      "/api/partner/transactions/export"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session",
+      "PartnerNotificationsProvider /api/partner/notifications",
+      "PartnerSubscriptionGate /api/partner/billing"
+    ],
+    "status": "Local available state visited (4 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-SETTLEMENT-RESPONSIVE",
+      "ROOT-MECHANIC-COMPATIBILITY",
+      "ROOT-PAYOUT-PROOF",
+      "PARTNER-TRANSACTION-INPUT-01",
+      "PARTNER-STAFF-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 4,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/dashboard/verify",
+    "category": "Partner",
+    "page": "apps/web/app/dashboard/verify/page.tsx",
+    "sha256": "cc498dcc821fec7fd2f54bc519bc5f17e13978c6876732cb8b0f4845910118a6",
+    "components": [
+      "PartnerVerificationUI",
+      "PartnershipShell"
+    ],
+    "apiEndpoints": [],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session",
+      "PartnerNotificationsProvider /api/partner/notifications",
+      "PartnerSubscriptionGate /api/partner/billing"
+    ],
+    "status": "Local available state visited (4 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-SETTLEMENT-RESPONSIVE",
+      "ROOT-MECHANIC-COMPATIBILITY",
+      "ROOT-PAYOUT-PROOF",
+      "PARTNER-TRANSACTION-INPUT-01",
+      "PARTNER-STAFF-01"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 4,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/forgot-password",
+    "category": "Public",
+    "page": "apps/web/app/forgot-password/page.tsx",
+    "sha256": "10ba6220ecfef8624b9d8b01dca557ebbc19d5dbe11f822cc242120d979f70df",
+    "components": [
+      "AlertTriangle",
+      "ArrowLeft",
+      "AuthShell",
+      "HTMLFormElement",
+      "Link",
+      "Loader2",
+      "Mail",
+      "ShieldCheck"
+    ],
+    "apiEndpoints": [],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 320, 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-LEGAL-COPY",
+      "PUBLIC-CONTROLS",
+      "UI-PU-06/FuelVista",
+      "LOCAL-BRAND-FONTS"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        320,
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/login",
+    "category": "Public",
+    "page": "apps/web/app/login/page.tsx",
+    "sha256": "01c620f62c88f9a193f2d0d9370f627a63df670bd9c4c1fc9093718d4676e47a",
+    "components": [],
+    "apiEndpoints": [],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (2 observations; observed CSS widths 320, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-LEGAL-COPY",
+      "PUBLIC-CONTROLS",
+      "UI-PU-06/FuelVista",
+      "LOCAL-BRAND-FONTS"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 2,
+      "observedCssWidths": [
+        320,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/mechanic",
+    "category": "Mechanic",
+    "page": "apps/web/app/mechanic/page.tsx",
+    "sha256": "ab7245b8d5b62729033f62c33051f1f4d629cf2d0dafeaad0fd0ea1c4769d88e",
+    "components": [
+      "DashboardScreen",
+      "PartnershipShell"
+    ],
+    "apiEndpoints": [
+      "/api/partner/overview"
+    ],
+    "sharedDependencies": [
+      "AuthGuard",
+      "/api/auth/session",
+      "PartnerNotificationsProvider /api/partner/notifications",
+      "PartnerSubscriptionGate /api/partner/billing"
+    ],
+    "status": "Local available state visited (2 observations; observed CSS widths 320, 390).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-MECHANIC-COMPATIBILITY"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 2,
+      "observedCssWidths": [
+        320,
+        390
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/",
+    "category": "Public",
+    "page": "apps/web/app/page.tsx",
+    "sha256": "c69bc611b897b3221ec0d172bb8683215c61b94d0ec11f01119586052ec8adee",
+    "components": [
+      "ClosingCta",
+      "Footer",
+      "Header",
+      "Hero",
+      "Partners",
+      "Pricing",
+      "ProductShowcase",
+      "Story"
+    ],
+    "apiEndpoints": [],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 320, 390, 769).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-LEGAL-COPY",
+      "PUBLIC-CONTROLS",
+      "UI-PU-06/FuelVista",
+      "LOCAL-BRAND-FONTS"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        320,
+        390,
+        769
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/privacy-policy",
+    "category": "Public",
+    "page": "apps/web/app/privacy-policy/page.tsx",
+    "sha256": "119ff9a461a5ba0c87fde5d32218e27a9135fa40e1245d5703ab62ff00dcbe5d",
+    "components": [
+      "LegalPage"
+    ],
+    "apiEndpoints": [
+      "/api/public/data-requests"
+    ],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (2 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-LEGAL-COPY",
+      "PUBLIC-CONTROLS",
+      "UI-PU-06/FuelVista",
+      "LOCAL-BRAND-FONTS"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 2,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/reset-password",
+    "category": "Public",
+    "page": "apps/web/app/reset-password/page.tsx",
+    "sha256": "8e7d6232a752bb46ee69c3fa1c28c5b28378f42a0c6d8c4bf7c0145b73f169ca",
+    "components": [
+      "AlertTriangle",
+      "ArrowLeft",
+      "AuthShell",
+      "CheckCircle2",
+      "KeyRound",
+      "Link",
+      "Loader2",
+      "Record"
+    ],
+    "apiEndpoints": [],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (3 observations; observed CSS widths 320, 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-LEGAL-COPY",
+      "PUBLIC-CONTROLS",
+      "UI-PU-06/FuelVista",
+      "LOCAL-BRAND-FONTS"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 3,
+      "observedCssWidths": [
+        320,
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/solutions/energyvista",
+    "category": "Public",
+    "page": "apps/web/app/solutions/energyvista/page.tsx",
+    "sha256": "8b35904dc0b33a19a782fe5cbba3c699024116d5eb5e01117163f6aff0e8b328",
+    "components": [
+      "SolutionPage"
+    ],
+    "apiEndpoints": [],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (2 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-LEGAL-COPY",
+      "PUBLIC-CONTROLS",
+      "UI-PU-06/FuelVista",
+      "LOCAL-BRAND-FONTS"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 2,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/solutions/fuelvista",
+    "category": "Public",
+    "page": "apps/web/app/solutions/fuelvista/page.tsx",
+    "sha256": "7002e66a66a26699d46138ac0551c42974424a4f37abe27ab21cfe5396faff23",
+    "components": [
+      "SolutionPage"
+    ],
+    "apiEndpoints": [],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (2 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-LEGAL-COPY",
+      "PUBLIC-CONTROLS",
+      "UI-PU-06/FuelVista",
+      "LOCAL-BRAND-FONTS"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 2,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/solutions/genvista",
+    "category": "Public",
+    "page": "apps/web/app/solutions/genvista/page.tsx",
+    "sha256": "d6bf070f1dbcd4a7fa9b72a0c8e74ea14872135143e57845b8e60b24bc946e8e",
+    "components": [
+      "SolutionPage"
+    ],
+    "apiEndpoints": [],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (2 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-LEGAL-COPY",
+      "PUBLIC-CONTROLS",
+      "UI-PU-06/FuelVista",
+      "LOCAL-BRAND-FONTS"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 2,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/support",
+    "category": "Public",
+    "page": "apps/web/app/support/page.tsx",
+    "sha256": "49cdfbde574cf2f2612763806f0d2d217d5d939f5f5d97ac7c026f0e734196be",
+    "components": [
+      "Check",
+      "HTMLInputElement",
+      "Loader2",
+      "PageIntro",
+      "Send",
+      "SiteFooter",
+      "SiteHeader",
+      "Upload"
+    ],
+    "apiEndpoints": [
+      "/api/public/contact"
+    ],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (2 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-LEGAL-COPY",
+      "PUBLIC-CONTROLS",
+      "UI-PU-06/FuelVista",
+      "LOCAL-BRAND-FONTS"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 2,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  },
+  {
+    "route": "/terms-of-service",
+    "category": "Public",
+    "page": "apps/web/app/terms-of-service/page.tsx",
+    "sha256": "291a6ac15b8a89a255f9b112447eddd746ebb5ad3803c01a24a8918a0166c377",
+    "components": [
+      "LegalPage"
+    ],
+    "apiEndpoints": [
+      "/api/public/(static content)"
+    ],
+    "sharedDependencies": [
+      "AuthProvider /api/auth/session when tokens present",
+      "CookieConsentBanner /api/public/cookie-consent"
+    ],
+    "status": "Local available state visited (2 observations; observed CSS widths 390, 1280).",
+    "coverage": "Static route/dependency mapping plus related focused tests; not full semantic review of every interaction",
+    "compatibility": "Existing route retained",
+    "relatedCategoryChangeIds": [
+      "ROOT-LEGAL-COPY",
+      "PUBLIC-CONTROLS",
+      "UI-PU-06/FuelVista",
+      "LOCAL-BRAND-FONTS"
+    ],
+    "localBrowserVerification": {
+      "evidence": "evidence/browser-verification.json",
+      "observationCount": 2,
+      "observedCssWidths": [
+        390,
+        1280
+      ],
+      "scope": "Available rendered/guard/redirect and targeted states. Superseded reproductions and expected missing-proof/auth/negative-input states remain labelled in the receipt; not every interaction or device."
+    }
+  }
+]

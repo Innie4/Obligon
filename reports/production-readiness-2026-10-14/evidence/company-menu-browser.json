@@ -1,0 +1,17 @@
+{
+  "switchFocusProof": {
+    "activeLabel": "Open company menu",
+    "approvedTeam": true,
+    "dialogCount": 0,
+    "pendingGate": false,
+    "width": 320
+  },
+  "reopenedFocusProof": {
+    "activeLabel": "Close company menu",
+    "activeRole": null
+  },
+  "restoredFocusProof": {
+    "activeLabel": "Open company menu",
+    "dialogCount": 0
+  }
+}

@@ -1,0 +1,187 @@
+{
+  "date": "2026-10-14",
+  "role": "Independent read-only review; no application edits, commit, deployment, or real-money activity",
+  "baseline": "5914f6e",
+  "branch": "codex/production-readiness-2026-10-14",
+  "reviewed_scope": [
+    "AUTH-01 MFA password proof",
+    "MONEY-01 Flutterwave v3 verification and pending reconciliation",
+    "ACCESS-02 active company memberships",
+    "bounded additional password reset / OTP source traversal"
+  ],
+  "result": "Focused fixes materially improve behavior; whole auth/payment production release remains blocked by additional defects and missing qualified human/provider review.",
+  "verified_properties": [
+    "MFA challenge issued only after password validation; hashed random proof, five-minute expiry, account/role/secret binding, stored remember choice, atomic proof + backup-code consumption + session insertion.",
+    "Standalone email and valid MFA code cannot replace password proof; ten simultaneous proof completions create only one session; session insert failure rolls back proof and backup consumption.",
+    "Active company membership checked on every request; suspended and invited members denied; current permissions authoritative; owners retain intended ownership access.",
+    "Flutterwave v3 server response requires exact merchant reference and currency, successful status, explicit decimal major-unit amount, and positive integer expected kobo amount; malformed/sub-kobo/underpaid values denied; overpayment not misread as expected minor units.",
+    "Scheduler reconciliation retains provider-missing and unknown/pending outcomes past former eight-attempt threshold; confirmed failed outcomes retire intents; oldest-unchecked ordering prevents pending batch starvation; twenty concurrent confirmations credit once.",
+    "Corrected web harness freshly passes role redirects, session update ordering, missing/expired proof denial, genuine setup error, backup-code UI, session-only proof storage without password/email storage."
+  ],
+  "verification": [
+    {
+      "log": "/tmp/obligon-production-independent-api.log",
+      "tests": 76,
+      "passed": 76,
+      "failed": 0,
+      "skipped": 0,
+      "isolated_local_postgresql": true,
+      "external_provider": "mocked/prohibited"
+    },
+    {
+      "log": "/tmp/obligon-production-independent-web.log",
+      "result": "Initial harness failed parsing .ts as TSX; root corrected harness, not application behavior."
+    },
+    {
+      "log": "/tmp/obligon-production-independent-web-corrected.log",
+      "tests": 10,
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "log": "/tmp/obligon-independent-auth-edge-repro.log",
+      "script": "/tmp/obligon-independent-auth-edge-repro.mjs",
+      "reproductions": 3,
+      "confirmed": 3,
+      "note": "These temporary tests prove observed defects; passing repro assertions do not mean correct production behavior."
+    }
+  ],
+  "required_findings": [
+    {
+      "id": "AUTH-RESET-01",
+      "priority": "P1",
+      "title": "Reset-code guesses have no durable per-code cap",
+      "evidence": "Ten wrong reset-code requests all returned 400 while verification_codes.attempts remained 0 and consumed_at NULL. AuthLimiter applies only per process/IP; it does not substitute for a durable code cap.",
+      "citations": [
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/api/src/routes/auth.routes.js",
+          "start": 598,
+          "end": 603
+        }
+      ],
+      "disposition": "Root assigned focused AUTH02 implementer; not fixed at this review snapshot."
+    },
+    {
+      "id": "AUTH-RESET-02",
+      "priority": "P1",
+      "title": "Concurrent reset-code replay can change password repeatedly",
+      "evidence": "Four simultaneous reset-password requests using one code all returned 200. Code is read before transaction; consume UPDATE does not recheck unconsumed state under lock.",
+      "citations": [
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/api/src/routes/auth.routes.js",
+          "start": 598,
+          "end": 611
+        }
+      ],
+      "disposition": "Root assigned focused AUTH02 implementer; not fixed at this review snapshot."
+    },
+    {
+      "id": "AUTH-PROOF-02",
+      "priority": "P1",
+      "title": "Pending MFA proof survives password reset and opens a new session",
+      "evidence": "Real local HTTP: password login issued challenge; successful reset revoked sessions; old challenge and valid TOTP returned 200 and created one new unrevoked session. Challenge context binds MFA secret but not password revision; reset/change leaves it live.",
+      "citations": [
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/api/src/routes/auth.routes.js",
+          "start": 230,
+          "end": 234
+        },
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/api/src/routes/auth.routes.js",
+          "start": 265,
+          "end": 280
+        },
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/api/src/routes/auth.routes.js",
+          "start": 607,
+          "end": 611
+        },
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/api/src/routes/auth.routes.js",
+          "start": 993,
+          "end": 1001
+        }
+      ],
+      "disposition": "Root assigned AUTH02 proof invalidation; not fixed at this review snapshot."
+    },
+    {
+      "id": "OTP-ATTEMPTS-01",
+      "priority": "P1",
+      "title": "OTP attempt count is overwritten from stale reads and fifth wrong guess leaves code usable",
+      "evidence": "Source-confirmed: attempts = record.attempts + 1 followed by unconditional assignment races concurrent guesses; burn condition is >5, and valid-code consumption does not reject attempts>=5. No new HTTP reproduction run in this bounded review.",
+      "citations": [
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/api/src/routes/auth.routes.js",
+          "start": 144,
+          "end": 170
+        }
+      ],
+      "disposition": "Reported to root for focused OTP correction and regression evidence."
+    },
+    {
+      "id": "OTP-CONTACT-01",
+      "priority": "P1",
+      "title": "Old phone code can verify a replacement contact",
+      "evidence": "Source-confirmed: profile changes phone and clears phone_verified but leaves outstanding phone_verify codes; code records bind user/purpose without contact target, and confirm marks current phone verified. No new HTTP reproduction run in this bounded review.",
+      "citations": [
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/api/src/routes/customer.routes.js",
+          "start": 1775,
+          "end": 1785
+        },
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/api/src/routes/auth.routes.js",
+          "start": 814,
+          "end": 825
+        }
+      ],
+      "disposition": "Reported to root for OTP/contact invalidation coverage."
+    },
+    {
+      "id": "MONEY-PENDING-02",
+      "priority": "P1",
+      "title": "Customer confirm path still retires pending outcome despite scheduler fix",
+      "evidence": "Source-confirmed: wallet/topup/confirm sets failed for every !verification.paid response. A valid reference with processor pending status becomes excluded from scheduler pending selection and completeTopUp status=pending condition.",
+      "citations": [
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/api/src/routes/customer.routes.js",
+          "start": 621,
+          "end": 625
+        },
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/api/src/lib/reconcile.js",
+          "start": 38,
+          "end": 42
+        },
+        {
+          "file": "/home/inimfon-udoh/Obligon/checkout/apps/api/src/routes/customer.routes.js",
+          "start": 641,
+          "end": 645
+        }
+      ],
+      "disposition": "Root already owns customer-confirm terminal-state correction and legacy Paystack review."
+    }
+  ],
+  "official_sources": [
+    {
+      "url": "https://developer.flutterwave.com/docs/transaction-verification",
+      "checked": "Current docs explicitly require matching reference, successful status, expected currency, amount >= expected; v3 major units example and amount field agree with fix."
+    },
+    {
+      "url": "https://developer.flutterwave.com/docs/webhooks",
+      "checked": "Current v3 docs still describe verif-hash secret equality, require server requery before giving value, and recommend polling until successful or failed; no change to webhook protocol inferred."
+    }
+  ],
+  "blocked_release_evidence": [
+    "Qualified human review of authentication, authorization, tenant isolation, and money flows before production release.",
+    "Real provider sandbox/staging confirmation, webhook settings/retry access, bank/provider reconciliation, timeout-after-charge behavior, recovery and monitoring evidence.",
+    "Full browser and production build review after fixes; current bounded review ran client harness, not browser end-to-end.",
+    "Separate broader financial audit of integer arithmetic, balanced postings, refunds, payout recovery and money invariants; focused adapter tests do not establish those properties.",
+    "Supabase-managed password-change/reset provider+database partial failure/recovery not exercised: fixture explicitly disables external Supabase auth."
+  ],
+  "freshness": {
+    "tracked_diff_sha256": "b421563c64612684ada7770862007a359244e9effbb4814357f137e6254af7c5",
+    "note": "Parent and other implementers are actively changing files. Findings cite this snapshot and must be revalidated after corrections; initial test failures are marked resolved by fresh independent rerun."
+  }
+}

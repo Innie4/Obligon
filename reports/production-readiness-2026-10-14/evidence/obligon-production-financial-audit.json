@@ -1,0 +1,395 @@
+{
+  "date": "2026-10-14",
+  "scope": "Critical financial flow audit plus bounded MONEY-01 implementation",
+  "repo": "/home/inimfon-udoh/Obligon/checkout",
+  "productionActions": false,
+  "providers": "Mocked in all executed payment tests; no production credentials or funds used",
+  "invariants": [
+    "One principal credit and one ledger entry per top-up despite concurrent completion.",
+    "Every returned provider outcome is bound to the exact merchant reference and expected currency.",
+    "Flutterwave v3 amount uses fixed major units converted to integer kobo with decimal-string/BigInt arithmetic; overpayments remain explicit evidence.",
+    "Missing, pending and unknown processor outcomes remain recoverable; only explicit failed/cancelled/canceled verdicts retire an attempt.",
+    "A bounded sweep rotates unresolved rows so one old batch cannot starve later confirmed payments."
+  ],
+  "implementedIncrement": {
+    "id": "MONEY-01",
+    "status": "Implemented; focused tests pass; root integration and qualified release review outstanding",
+    "applicationFiles": [
+      "apps/api/src/lib/flutterwave.js",
+      "apps/api/src/lib/reconcile.js"
+    ],
+    "testFiles": [
+      "apps/api/tests/payment-verification-contract.test.mjs",
+      "apps/api/tests/reconciliation-fallback.integration.test.mjs",
+      "apps/api/tests/flutterwave-units.test.mjs",
+      "apps/api/tests/flutterwave-processor.test.mjs",
+      "apps/api/tests/late-settlement.test.mjs"
+    ],
+    "changes": [
+      "Removed expected-amount unit inference. Decimal provider amounts convert exactly once to safe integer kobo.",
+      "Rejected missing/foreign merchant reference, missing/foreign currency, absent amount and invalid/sub-kobo amounts. Actual overpayment is preserved.",
+      "Bound failed/pending provider outcomes to the expected reference too, preventing a caller-supplied foreign failed transaction ID from retiring an unrelated intent.",
+      "Kept not-found/pending top-up and card payment intents recoverable, with review at the former eight-attempt threshold rather than automatic failure.",
+      "Rotated global and per-user top-up sweeps using last_reconciled_at.",
+      "Guarded unsuccessful reconciliation writes against concurrently completed rows."
+    ],
+    "verification": {
+      "before": {
+        "command": "node --test tests/payment-verification-contract.test.mjs tests/reconciliation-fallback.integration.test.mjs",
+        "log": "/tmp/obligon-money01-before.log",
+        "exit": 1,
+        "tests": 20,
+        "passed": 10,
+        "failed": 10,
+        "skipped": 0,
+        "note": "Failures include new behavior reproductions and two error-text assertions; baseline reproduces missing reference/currency/amount accepted, overpayment inference, premature retirement and delayed explicit failure processing."
+      },
+      "after": {
+        "command": "node --test tests/payment-verification-contract.test.mjs tests/reconciliation-fallback.integration.test.mjs tests/flutterwave-units.test.mjs tests/flutterwave-processor.test.mjs tests/late-settlement.test.mjs tests/refund-ambiguity.integration.test.mjs tests/fuel-checkout.integration.test.mjs tests/fuel-sale.integration.test.mjs tests/settlement-accounting.integration.test.mjs",
+        "log": "/tmp/obligon-money01-final.log",
+        "exit": 0,
+        "tests": 119,
+        "passed": 119,
+        "failed": 0,
+        "skipped": 0,
+        "note": "Local disposable PostgreSQL, isolated schemas, mocked processors. Expected failure-injection logs occurred for notification failure and transfer amount mismatch."
+      }
+    }
+  },
+  "findings": [
+    {
+      "id": "FIN-01",
+      "severity": "P1",
+      "category": "Company / Billing",
+      "path": "apps/api/src/routes/company.routes.js",
+      "line": 711,
+      "status": "Root repair pending",
+      "issue": "Company wallet top-up inserts top_ups.currency, which no migration defines, and omits NOT NULL charged_kobo with no default.",
+      "trigger": "POST /api/company/wallet/topup with any valid positive amount on a fully migrated database produces PostgreSQL 42703 before provider checkout; removing currency alone then produces23502 forcharged_kobo.",
+      "fix": "Mirror the established customer funding intent/fee fields, validate bounds and checkout method, persist hosted reference; verify isolated real database endpoint."
+    },
+    {
+      "id": "FIN-02",
+      "severity": "P1",
+      "category": "Company / Wallet allocation",
+      "path": "apps/api/src/lib/money.js",
+      "line": 111,
+      "status": "Root repair pending",
+      "issue": "Company allocation has no durable caller-bound request identity. A browser retry after committed transfer creates a new reference and moves money again.",
+      "trigger": "Submit the same authorized company-to-member allocation twice or retry after notify/audit failure; each valid call debits the company and credits the member.",
+      "fix": "Bind a supplied stable key to organization, actor, destination and amount, atomically persist both ledger legs; replay must return the original result and conflicting payload reject. Add same-request10x and20concurrent attempts."
+    },
+    {
+      "id": "FIN-03",
+      "severity": "P1",
+      "category": "Shared payment verification / legacy accounts",
+      "path": "apps/api/src/lib/payments.js",
+      "line": 283,
+      "status": "Root repair pending",
+      "issue": "The Paystack simulated verification branch returns paid=true even in NODE_ENV=production and without a configured key.",
+      "trigger": "Mock/no-network deterministic proof: verifyCheckout(provider:'paystack', reference:'unpaid-legacy-proof', expectedAmountKobo:10000, simulated:true) returns paid:true under production. Customer routes accept simulated from request body for legacy stored provider rows.",
+      "fix": "Retained legacy provider verification must always call the real verification endpoint; reject simulation in production and reject foreign/missing currency/reference. Add production-mode tests that cannot contact a provider."
+    },
+    {
+      "id": "FIN-04",
+      "severity": "P1",
+      "category": "Customer / Wallet and My Card",
+      "path": "apps/api/src/lib/reconcile.js",
+      "line": 95,
+      "status": "Fixed in MONEY-01; customer confirm integration remains root-owned",
+      "issue": "First not-found lookup or eight pending lookups retired a top-up; later webhook only completed pending rows. Browser confirm also treated every non-paid status as failed at customer.routes.js621.",
+      "trigger": "Bank payment appears at processor after initial lookup or after40minutes of five-minute pending sweeps; wallet stays uncredited.",
+      "fix": "Retain uncertain intents and use explicit failure classification for cron, on-demand and browser confirmation. MONEY-01 adds10replays,20concurrent completion and queue fairness proofs."
+    },
+    {
+      "id": "FIN-05",
+      "severity": "P1",
+      "category": "Shared provider contract",
+      "path": "apps/api/src/lib/flutterwave.js",
+      "line": 293,
+      "status": "Fixed in MONEY-01; qualified human/provider sandbox review outstanding",
+      "issue": "Expected amount inference confused100-fold overpayment with minor units, and absent tx_ref/currency were fabricated from expected values.",
+      "trigger": "Expected100NGN while v3 reports10000NGN normalized to10000kobo; response withouttx_ref orcurrency accepted.",
+      "fix": "Strict v3 fixed-major contract, exact decimal parsing, require reference/currency/amount. Overpayments now stay visible as actual provider evidence; refund owner remains separate."
+    },
+    {
+      "id": "FIN-06",
+      "severity": "P1",
+      "category": "Partner / POS and Admin station approval",
+      "path": "apps/api/src/lib/fuel-sale.js",
+      "line": 11,
+      "status": "Root repair pending",
+      "issue": "Wallet POS station lookup checks organization ownership but does not require an active/open station, unlike direct checkout.",
+      "trigger": "Partner with paid subscription and verified default bank can publish pricing and submit a valid customer code at a pending or suspended station.",
+      "fix": "Apply established active/open station acceptance predicate inside the sale transaction and prove rejected station statuses leave wallet/code/ledger unchanged."
+    },
+    {
+      "id": "FIN-07",
+      "severity": "P2",
+      "category": "Customer / Overview savings",
+      "path": "apps/api/src/lib/savings.js",
+      "line": 56,
+      "status": "Root repair pending",
+      "issue": "Savings multiplies unweighted average unit price by total litres, exaggerating or understating unequal-volume purchases. It also compares historical transactions with mutable current network prices.",
+      "trigger": "At benchmark1000NGN/L, one litre paid500 and99litres paid1000 yields25000NGN claimed savings instead of500. A later listed-price change rewrites the claimed lifetime savings without a new purchase.",
+      "fix": "Choose honest product semantics: recorded applied discounts are historical savings; comparison to current network median is only an estimate. Sum per-transaction positive differences with exact numeric arithmetic; do not multiply simple AVGbytotalvolume."
+    },
+    {
+      "id": "FIN-08",
+      "severity": "P2",
+      "category": "Customer / Receipt and Savings, Company / Transactions",
+      "path": "apps/api/src/lib/fuel-sale.js",
+      "line": 32,
+      "status": "Root repair pending",
+      "issue": "New wallet and direct fuel transaction inserts omit unit_price_kobo although savings deliberately excludes rows without it. Direct fuel_orders store a quote but do not propagate it to transactions.",
+      "trigger": "Every newly recorded ordinary sale is absent from price-based savings; the012migration backfill only repairs rows existing when that migration ran.",
+      "fix": "Persist the authoritative quote/paid per-unit evidence or derive historical savings from immutable base_amount/amount. Include both wallet and direct checkout sale tests."
+    },
+    {
+      "id": "FIN-09",
+      "severity": "P2",
+      "category": "Shared / Refund recovery",
+      "path": "apps/api/src/lib/reconcile.js",
+      "line": 262,
+      "status": "Root repair pending",
+      "issue": "Refund reconciliation recognizes successful/completed only; documented completed-mpgs/completed-bank-transfer are left pending forever. It unconditionally calls Flutterwave even for retained Paystack refund rows.",
+      "trigger": "Provider reports documented successful card refund status completed-mpgs; UIrefund remains pending. A legacyPaystack refund row is queried against thewrongprovider.",
+      "fix": "Normalize documented provider refund states, correlate exact charge/refund IDs and amount, preserve uncertain outcomes, dispatch by recorded provider. Add provider-specific fixtures and failure/recovery tests."
+    },
+    {
+      "id": "FIN-10",
+      "severity": "P2",
+      "category": "Admin / Payment diagnostics",
+      "path": "apps/api/src/lib/flutterwave.js",
+      "line": 647,
+      "status": "Root repair pending",
+      "issue": "flutterwaveFetch unwraps response.data, while fetchPaymentPlans subsequently looks for raw.data/raw.meta. A normal API array is interpreted as no plans and pagination metadata is lost.",
+      "trigger": "Mock standard envelope status:success,data:[plan],meta.page_info.total_pages:2; fetchPaymentPlans returns zero plans and checked:true.",
+      "fix": "Preserve envelope for paginated endpoints or handle documented array+metadata shape explicitly. Fixture with two nonempty pages and one canceled plan must yield both pages and drift."
+    },
+    {
+      "id": "FIN-11",
+      "severity": "P1",
+      "category": "Shared / Retained Paystack webhook",
+      "path": "apps/api/src/routes/webhooks.routes.js",
+      "line": 35,
+      "status": "Root repair pending",
+      "issue": "A signed Paystack charge.success directly credits completeTopUp without server-side reference/provider/currency/amount verification. Flutterwave correctly re-verifies.",
+      "trigger": "Authenticated provider event for1kobo with reference of an expected10000kobo pending charge would credit10000kobo; webhook payload amount/status are never checked.",
+      "fix": "Route by stored provider, verify the transaction server-side, then call the idempotent owner. Duplicate/forged/wrongcurrency/underpayment/delayed replay tests."
+    },
+    {
+      "id": "FIN-12",
+      "severity": "P2",
+      "category": "Shared / Financial input precision",
+      "path": "apps/api/src/lib/payments.js",
+      "line": 123,
+      "status": "Root repair pending / provider precision proof blocked",
+      "issue": "priceWithFee silently rounds every total up to whole naira, including platform-borne fees; accepted100.25NGN produces101NGNcharged and0.75fee. Input andfuel price calculations also use binary multiplication and permit rounding excessive decimal precision.",
+      "trigger": "priceWithFee(10025) underplatformBearer [redacted] total10100/fee75. Customer and company amounts parsed with Math.round(Number(amount)*100) rather than decimal validation.",
+      "fix": "Validate integer minorunits/exactdecimal inputs and express fee math in integers. Verify v3 hosted NGN decimal support in provider sandbox before changing external precision policy; if unsupported reject rather than silently surcharge."
+    },
+    {
+      "id": "FIN-13",
+      "severity": "P1",
+      "category": "Shared / Money authorization and reporting",
+      "path": "apps/api/src/routes/webhooks.routes.js",
+      "line": 149,
+      "status": "Review-gated recovery design",
+      "issue": "Webhook claim is committed before side effects and has no processing/completed distinction. Process death after claim suppresses the provider replay as duplicate. Cron recovers common payment intents, but not every retained provider side effect.",
+      "trigger": "Terminate a worker afterclaimIdempotency butbeforeeventprocessing; retry receives200duplicate without having completed the original effect. Sudo spend event also only increments card counters, without corresponding wallet/transaction ledger posting.",
+      "fix": "Define durable event processing/recovery ownership for each supported provider. Do not invent a provider debit/custody model; qualified finance/auth review required before implementing ledger effects."
+    },
+    {
+      "id": "FIN-14",
+      "severity": "P1",
+      "category": "Customer / Wallet checkout retries",
+      "path": "apps/api/src/routes/customer.routes.js",
+      "line": 645,
+      "status": "Root integration / state-model review needed",
+      "issue": "A failed individual charge can leave the same hosted checkout link open for another attempt. Retiring a top-up checkout reference after one explicit failed charge may strand a later successful retry, because completeTopUp only accepts pending rows.",
+      "trigger": "First charge under a hosted reference fails; customer retries the same still-open link and pays successfully. Strict verification confirms the later charge but completion rejects the already-failed top-up.",
+      "fix": "Distinguish charge-attempt failure from checkout-intent terminal failure. Either retain the intent while its hosted session is payable, or allow strictly verified subsequent success to recover failed intent once. Add failed-then-paid, duplicate callback and restart recovery tests.",
+      "source": "https://developer.flutterwave.com/docs/flutterwave-standard-1#what-if-the-payment-fails"
+    }
+  ],
+  "releaseRequirements": [
+    {
+      "id": "FIN-R1",
+      "status": "Blocked / qualified architecture review",
+      "evidence": "wallet_ledger is per-wallet single-entry balance history, lacks currency on each posting/counterparty asset-liability postings; company transfer writes two related legs but no balanced journal-level constraint. wallets currency is unconstrained text. Existing reservations/settlements are separate tables.",
+      "needed": "Finance-approved currency/ledger/custody model, reconciliation of provider collections, liabilities, fees, refunds and payouts; immutable audit retention, compensating correction policy, explicit invariant proofs."
+    },
+    {
+      "id": "FIN-R2",
+      "status": "Blocked / provider and operational access",
+      "needed": "Provider sandbox/staging checks for exactNGNprecision, splitfees/merchantfee responsibility, settledbankdestination, duplicate/out-of-order events, refunds, timeoutaftercharge, recovery afterworker/db failure, statement reconciliation and alert delivery."
+    },
+    {
+      "id": "FIN-R3",
+      "status": "Blocked / qualified human release review",
+      "needed": "Qualified review of moneymovement, tenant authorization, sensitive flows; applicable PCI/regulatory assessment from current authoritative advice. Local green tests are not a production readiness certificate."
+    },
+    {
+      "id": "FIN-R4",
+      "status": "Missing proof",
+      "needed": "Adversarial same request10x/20withdrawals, providercharge+dbfailure, crash/restart midprocessing, duplicate/forged/replayed/delayed/outoforder callbacks, finalprovider/ledgeragreement. Existing isolated fuel andsettlement suites prove several narrower cases, not this entire matrix."
+    },
+    {
+      "id": "FIN-R5",
+      "status": "Blocked / production records and provider statements",
+      "needed": "Identify historically stranded already-failed top-ups and card charges against provider statements. Preserve evidence; correct only payments verified for the original merchant reference, currency and amount, with an attributable reconciliation record. MONEY-01 does not guess or mutate historical production records."
+    }
+  ],
+  "sources": [
+    {
+      "url": "https://developer.flutterwave.com/docs/transaction-verification",
+      "supports": "v3 verify reference/status/currency and amount>=due; overpayment may be refunded"
+    },
+    {
+      "url": "https://developer.flutterwave.com/reference/verify-transaction-with-tx_ref",
+      "supports": "v3 verification response includes amount/currency/tx_ref/id"
+    },
+    {
+      "url": "https://developer.flutterwave.com/docs/webhooks",
+      "supports": "v3 verif-hash shared secret and60second timeout/retry guidance; do not incorrectly apply v4HMACcontract"
+    },
+    {
+      "url": "https://developer.flutterwave.com/reference/get-all-refunds",
+      "supports": "refund idfilter and response status completed-mpgs example"
+    },
+    {
+      "url": "https://developer.flutterwave.com/docs/refunds",
+      "supports": "refund terminalstates and asyncstatusconfirmation"
+    },
+    {
+      "url": "https://developer.flutterwave.com/reference/get-all-transfers",
+      "supports": "stable merchant reference transfer lookup"
+    },
+    {
+      "url": "https://developer.flutterwave.com/docs/flutterwave-standard-1",
+      "supports": "hosted v3 checkout/uniquereference/verification/cancelledsession behavior; no explicitwhole-naira restriction in guide"
+    },
+    {
+      "url": "https://developer.flutterwave.com/reference/checkout",
+      "supports": "v3 APIreference labels checkoutamount int32; decimal hostedNGNsupport remains unproven"
+    }
+  ],
+  "coverage": {
+    "libraryFilesReadFully": [
+      "apps/api/src/lib/money.js",
+      "apps/api/src/lib/wallets.js",
+      "apps/api/src/lib/spend.js",
+      "apps/api/src/lib/fuel-sale.js",
+      "apps/api/src/lib/fuel-checkout.js",
+      "apps/api/src/lib/settlements.js",
+      "apps/api/src/lib/transfer-recovery.js",
+      "apps/api/src/lib/reconcile.js",
+      "apps/api/src/lib/payments.js",
+      "apps/api/src/lib/flutterwave.js",
+      "apps/api/src/lib/paystack.js",
+      "apps/api/src/lib/subscriptions.js",
+      "apps/api/src/lib/discounts.js",
+      "apps/api/src/lib/savings.js",
+      "apps/api/src/lib/plans.js",
+      "apps/api/src/lib/http.js",
+      "apps/api/src/lib/notify.js"
+    ],
+    "routeFilesReadFully": [
+      "apps/api/src/routes/webhooks.routes.js",
+      "apps/api/src/routes/fuel-checkout.routes.js",
+      "apps/api/src/routes/subscription.routes.js",
+      "apps/api/src/routes/discount.routes.js"
+    ],
+    "routeFilesReadSelectedMoneySections": [
+      {
+        "file": "apps/api/src/routes/customer.routes.js",
+        "sections": "wallet/topup/confirm/completion512-676; paymentmethods679-690; cardwithdraw/refund1113-1224; cardpaymentverify1264-1387; amount andbalance callsites via rg"
+      },
+      {
+        "file": "apps/api/src/routes/partner.routes.js",
+        "sections": "auth/plan gating80-126; overview/transactions128-270; bank/settlements265-626; POS988-1008; disputes1020-1110; amount andmoneycalls via rg"
+      },
+      {
+        "file": "apps/api/src/routes/company.routes.js",
+        "sections": "walletallocation/topup/split647-800"
+      },
+      {
+        "file": "apps/api/src/lib/scheduler.js",
+        "sections": "purge/automatictransfers/reconciliation/status1-360"
+      },
+      {
+        "file": "apps/api/src/db.js",
+        "sections": "45-107; transaction andidempotencyclaims"
+      }
+    ],
+    "schemaFilesRead": [
+      {
+        "file": "apps/api/src/migrations/001_init.sql",
+        "sections": "wallet/payment127-171; cards173-201; transactions306-327; settlements357-397; billing466-503"
+      },
+      {
+        "file": "apps/api/src/migrations/009_wallet_kinds.sql",
+        "sections": "full"
+      },
+      {
+        "file": "apps/api/src/migrations/011_refunds_reconciliation_settlement.sql",
+        "sections": "refunds/credittracking/reconciliation1-70; settlementaccounts/paymentsplits"
+      },
+      {
+        "file": "apps/api/src/migrations/012_transaction_unit_price.sql",
+        "sections": "full"
+      },
+      {
+        "file": "apps/api/src/migrations/013_payment_fee_bearer.sql",
+        "sections": "full"
+      },
+      {
+        "file": "apps/api/src/migrations/016_event_keys_and_ledger_reference.sql",
+        "sections": "full"
+      },
+      {
+        "file": "apps/api/src/migrations/018_flutterwave_processor.sql",
+        "sections": "full"
+      },
+      {
+        "file": "apps/api/src/migrations/019_settlement_accrual.sql",
+        "sections": "full"
+      },
+      {
+        "file": "apps/api/src/migrations/020_settlement_accounting.sql",
+        "sections": "full"
+      },
+      {
+        "file": "apps/api/src/migrations/022_dashboard_subscriptions_discounts.sql",
+        "sections": "full"
+      },
+      {
+        "file": "apps/api/src/migrations/023_fuel_orders.sql",
+        "sections": "full"
+      },
+      {
+        "file": "apps/api/src/migrations/024_bank_settlement_binding.sql",
+        "sections": "full"
+      }
+    ],
+    "testsReadFully": [
+      "apps/api/tests/money.test.mjs",
+      "apps/api/tests/flutterwave-units.test.mjs",
+      "apps/api/tests/flutterwave-processor.test.mjs",
+      "apps/api/tests/discount-math.test.mjs",
+      "apps/api/tests/late-settlement.test.mjs",
+      "apps/api/tests/savings-fee.test.mjs",
+      "apps/api/tests/customer-funding-methods.test.mjs",
+      "apps/api/tests/reconciliation-fallback.integration.test.mjs",
+      "apps/api/tests/refund-ambiguity.integration.test.mjs",
+      "apps/api/tests/payment-verification-contract.test.mjs"
+    ],
+    "additionalTestsExecuted": [
+      "apps/api/tests/fuel-checkout.integration.test.mjs",
+      "apps/api/tests/fuel-sale.integration.test.mjs",
+      "apps/api/tests/settlement-accounting.integration.test.mjs"
+    ],
+    "notClaimed": "No whole-project audit, no actual provider sandbox proof, no live money actions, no authenticated production company/admin testing, no release approval."
+  }
+}

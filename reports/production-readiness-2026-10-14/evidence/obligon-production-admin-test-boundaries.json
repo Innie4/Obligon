@@ -1,0 +1,139 @@
+{
+  "date": "2026-10-14",
+  "frozenAt": "2026-10-14T16:52:19.813644+00:00",
+  "branch": "codex/production-readiness-2026-10-14",
+  "scope": "Final bounded admin company credit-input/report-display correction plus existing test opt-in isolation and Sudo secret-classification correction. Refund/auth/scheduler/provider regions untouched; no dependencies, CI, new scan framework, commits, deployment or Learn.",
+  "findings": [
+    {
+      "id": "ADMIN-CREDIT-01",
+      "disposition": "Corrected in frozen source; independent review pending",
+      "before": "POST /companies rounded/coerced Number(creditLimit)||0 and admitted malformed, negative, sub-kobo and oversized credit limits before writing a new user/company and email.",
+      "after": "Uses existing exact nairaToKobo parser before user lookup/write and email. Minimum/default0; maximum100_000_000_000kobo. Missing/null defaults0; explicitly malformed inputs reject.",
+      "red": "Four actual HTTP invalid-input cases returned200 rather than400.",
+      "green": "Four invalid-input cases return400 with no new user/organization/email row; default, zero, 100.29 decimal and maximum1000000000.00naira persist exact expected integer kobo."
+    },
+    {
+      "id": "ADMIN-REPORT-01",
+      "disposition": "Corrected in frozen source; independent review pending",
+      "before": "Revenue >=1e9kobo used billion-naira suffix while dividing by1e11kobo, displaying10millionnaira as₦0.0B.",
+      "after": "Billion suffix starts at1e11kobo (one billion naira). Reporting only; no money movement.",
+      "red": "Actual HTTP10millionnaira metric was₦0.0B.",
+      "green": "Actual HTTP metrics are₦10,000,000 at1e9kobo and₦1.0B at1e11kobo."
+    },
+    {
+      "id": "TEST-MONEY-OPTIN-01",
+      "disposition": "Corrected in frozen source; independent review pending",
+      "before": "No OBLIGON_TEST_DATABASE_URL made before-hook return, but all9 tests and broad prefix DELETE cleanup still queried DATABASE_URL.",
+      "after": "All9 tests explicitly skip without opt-in; app DB/money/wallet modules import only after PostgreSQL protocol+localhost check and owned-schema setup. Fixtures use a synthetic plan and local delivery. Cleanup closes only created application/setup pools and drops only the schema whose successful creation was recorded; no prefix deletes or ambient fallback.",
+      "red": "Invalid DATABASE_URL without opt-in produces9 test Invalid URL failures plus after-hook Invalid URL, proving unintended DB paths. Invalid URL fails before any pool connection/query, so zero network/writes.",
+      "green": "Same safe invalid-URL command exits0, tests9/pass0/fail0/skipped9. With explicit local opt-in all9 money tests pass in owned schema."
+    },
+    {
+      "id": "TEST-SUDO-SECRET-01",
+      "disposition": "Corrected in frozen source; independent review pending",
+      "before": "SUDO_WEBHOOK_SECRET was excluded from sensitive values even though the Sudo verifier uses it as an HMAC signing secret.",
+      "after": "Removes that public exemption and adds synthetic classification test; public Sudo URL and Flutterwave public-key classification stays public.",
+      "red": "Synthetic Sudo secret isSensitive=false instead oftrue.",
+      "green": "Synthetic classification and gitignore tests pass;2 real-env/history comparison checks explicitly skip because no comparison.env file was supplied."
+    }
+  ],
+  "verification": [
+    {
+      "phase": "red-admin",
+      "command": "node --test --test-name-pattern='company provisioning|revenue report' tests/admin-support.integration.test.mjs",
+      "exitCode": 1,
+      "tests": 10,
+      "pass": 5,
+      "fail": 5,
+      "skipped": 0,
+      "log": "/tmp/obligon-production-admin-test-boundaries-red.log"
+    },
+    {
+      "phase": "red-money-safe-probe",
+      "command": "env -u OBLIGON_TEST_DATABASE_URL DATABASE_URL=not-a-connection-string NODE_ENV=test DOTENV_CONFIG_PATH=/dev/null node --test tests/money.test.mjs",
+      "exitCode": 1,
+      "tests": 10,
+      "pass": 0,
+      "fail": 10,
+      "skipped": 0,
+      "log": "/tmp/obligon-production-admin-test-money-red.log",
+      "note": "9 registered tests plus after-hook failure; invalid URL prevented network/write."
+    },
+    {
+      "phase": "red-secret",
+      "command": "OBLIGON_SECRET_SCAN_ENV_PATH=/tmp/obligon-deliberately-absent-secret-env NODE_ENV=test DOTENV_CONFIG_PATH=/dev/null node --test tests/no-secret-leak.test.mjs",
+      "exitCode": 1,
+      "tests": 4,
+      "pass": 1,
+      "fail": 1,
+      "skipped": 2,
+      "log": "/tmp/obligon-production-admin-test-secret-red.log"
+    },
+    {
+      "phase": "green-admin-money",
+      "command": "node --test tests/admin-support.integration.test.mjs tests/money.test.mjs",
+      "exitCode": 0,
+      "tests": 51,
+      "pass": 51,
+      "fail": 0,
+      "skipped": 0,
+      "log": "/tmp/obligon-production-admin-test-boundaries-green.log"
+    },
+    {
+      "phase": "green-no-optin-money",
+      "command": "env -u OBLIGON_TEST_DATABASE_URL DATABASE_URL=not-a-connection-string NODE_ENV=test DOTENV_CONFIG_PATH=/dev/null node --test tests/money.test.mjs",
+      "exitCode": 0,
+      "tests": 9,
+      "pass": 0,
+      "fail": 0,
+      "skipped": 9,
+      "log": "/tmp/obligon-production-admin-test-money-gate-green.log"
+    },
+    {
+      "phase": "green-secret",
+      "command": "OBLIGON_SECRET_SCAN_ENV_PATH=/tmp/obligon-deliberately-absent-secret-env NODE_ENV=test DOTENV_CONFIG_PATH=/dev/null node --test tests/no-secret-leak.test.mjs",
+      "exitCode": 0,
+      "tests": 4,
+      "pass": 2,
+      "fail": 0,
+      "skipped": 2,
+      "log": "/tmp/obligon-production-admin-test-secret-green.log"
+    },
+    {
+      "phase": "diff-check",
+      "command": "git diff --check -- [four allowed files]",
+      "exitCode": 0
+    }
+  ],
+  "environment": {
+    "execution": "require_escalated actual Node --test; PostgreSQL only when explicit opt-in is set, with unique owned schemas on isolated loopback URL",
+    "database": "[redacted local connection]",
+    "DOTENV_CONFIG_PATH": "/dev/null",
+    "NODE_ENV": "test",
+    "DATABASE_SSL": "false",
+    "delivery": "local/synthetic only for company provisioning and opted-in money fixtures; existing affected admin-support provider tests mock fetch boundary",
+    "authFixture": "Existing admin-support fixture sets synthetic identities through test-only x-test-role middleware and executes actual HTTP routes; this increment does not claim new authentication coverage"
+  },
+  "limits": [
+    "Qualified human review remains required before consequential production release; no production-readiness or application-security claim.",
+    "No real provider calls, outbound emails, real customer data or funds. Synthetic email delivery uses existing local outbox.",
+    "Real .env tracked/history comparisons were not executed and remain2 explicit skips; synthetic classifier proof is not a full secret scan or a credential-rotation claim.",
+    "Money suite no-optin9 skips are intentional safety behavior, not9 passed financial tests; opted-in run independently passedall9.",
+    "Revenue billion formatting is approximate display text; only boundary selection changed.",
+    "Root-owned other sections remain mutable; whole admin.routes.js hash includes integrated changes but this increment edits only POST companies/report metric."
+  ],
+  "hashes": {
+    "apps/api/src/routes/admin.routes.js": "af2407fda7e38cbcc9cf70e42051fe706e879008f8127fcde3ea7ec308174146",
+    "apps/api/tests/admin-support.integration.test.mjs": "9c6f4e5784fcfdf36c92a9d4771d4738408c7a501b18b70ee68d773ad12efe8b",
+    "apps/api/tests/money.test.mjs": "e8b26961a79a909aca8bec3325e1f6b588a42a9b24e17ce57ea35500b502e039",
+    "apps/api/tests/no-secret-leak.test.mjs": "7e1ea2be23adfbf0a0edee01a5a3994a43c5ec86ec2bf9dc3712579d0f4b46dc"
+  },
+  "evidenceHashes": {
+    "/tmp/obligon-production-admin-test-boundaries-red.log": "4afd5aed08897621f64082a817b4b8e2c07ef2e677c8652b2e52d7267797d521",
+    "/tmp/obligon-production-admin-test-money-red.log": "95b6f311e8b5c1dc35ee87a6db40040a7ad1ba2d4608238b4cce55e8205cbbd5",
+    "/tmp/obligon-production-admin-test-secret-red.log": "62af995f8211b442bd85b70810a6e59d0ec878e5854a8c4dcdff6ed2413d4239",
+    "/tmp/obligon-production-admin-test-boundaries-green.log": "c38370dde8da3b3d3fcd5b5b3327d18e7ccb6bf0c78155b2ddec251bfc95f4e0",
+    "/tmp/obligon-production-admin-test-money-gate-green.log": "62a8ef8f8f0b96f07e3065e8cac92a7ee6d69d66e5e734beed01d61c43d1be83",
+    "/tmp/obligon-production-admin-test-secret-green.log": "df3439d3da7ed0bf49014ccf924ae6438541d614cf5d55b9c05fd694112cc8d2"
+  }
+}

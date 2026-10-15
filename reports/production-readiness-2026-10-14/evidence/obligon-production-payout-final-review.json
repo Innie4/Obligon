@@ -1,0 +1,162 @@
+{
+  "date": "2026-10-14",
+  "frozenAt": "2026-10-14T17:02:51.816723+00:00",
+  "branch": "codex/production-readiness-2026-10-14",
+  "scope": "Independent bounded review of root Flutterwave payout terminal classification/exact evidence and scheduler reservation transitions. Review found two additional snapshot races, then root authorized narrow scheduler/test-only repairs. Company billing and partner parsing excluded. No commits, deployment, real providers/funds, dependencies, migrations, CI or Learn.",
+  "reviewedRootCorrections": [
+    {
+      "id": "PAYOUT-CLASSIFIER-01",
+      "verdict": "Verified",
+      "evidence": "Flutterwave fetchTransfer normalizes status to uppercase then uses lowercased failed-set comparison. Independent synthetic tests recognize FAILED, failed, ReVeRsEd, CANCELLED and canceled. Root pre-classifier test failed exact FAILED retirement (20/21); revised classifier passes."
+    },
+    {
+      "id": "PAYOUT-EXACT-EVIDENCE-01",
+      "verdict": "Verified for bounded cases",
+      "evidence": "fetchTransfer rejects mismatched processor transfer id; scheduler validates NGN, transfer identity, available stored merchant reference and exact bounded integer amount before success/failure effects. Independent success contradictions and root failed contradictions preserve processing/paid_kobo0. Missing amount becomes zero but integerKobo rejects terminal effect; malformed/sub-kobo amounts fail provider parser."
+    },
+    {
+      "id": "PAYOUT-SETTLED-RACE-01",
+      "verdict": "Verified",
+      "evidence": "Failure retirement requires statusprocessing, and success transaction locks payout and rechecks its amount/provider id/reference. Delayed FAILED cannot overwrite concurrently successful payout or add failed audit. Acceptance/timeout/missing identifier retains processing reservation."
+    }
+  ],
+  "additionalFindings": [
+    {
+      "id": "PAYOUT-RETRY-REVISION-01",
+      "priority": "P1",
+      "file": "apps/api/src/lib/scheduler.js",
+      "disposition": "Corrected and freshly tested; root independent recheck still required",
+      "before": "Old FAILED response can arrive after another observer marks old attempt failed and a new retry sets processing+new merchant reference. Existing provider id is retained until new POST returns. Failure UPDATE matched status/amount/provider id but omitted current reference, releasing the newer in-flight reservation.",
+      "redEvidence": "Independent PG probe recorded staleFailedCount1 and current statusfailed/referenceNEW-ATTEMPT/provider_reference101. Permanent test fails1!=0 before correction.",
+      "repair": "Add reference IS NOT DISTINCT FROM $5 bound to the verified snapshot to failed status conditional UPDATE. New reference makes old evidence obsolete without failing the new reservation.",
+      "greenEvidence": "Permanent retry interleaving passes; independent probe records staleFailedCount0/currentprocessing/referenceNEW-ATTEMPT."
+    },
+    {
+      "id": "PAYOUT-RECOVERY-REVISION-01",
+      "priority": "P1",
+      "file": "apps/api/src/lib/scheduler.js",
+      "disposition": "Corrected and freshly tested; root independent recheck still required",
+      "before": "Delayed missing-ID OLD-RECOVERY lookup used only payout id/statusprocessing when attaching recovered receipt. A newer retry with referenceNEW-RECOVERY/provider id202 was overwritten with old101; this loses the current transfer receipt and could apply old outcome.",
+      "redEvidence": "Permanent real-PG interleaving shows provider id101!=202 before correction.",
+      "repair": "Recovered identifier UPDATE requires currentprocessing, provider_reference stillNULL, unchanged amount and reference IS NOT DISTINCT FROM snapshot. If no row matches, skip obsolete continuation instead of fetching/applying old evidence.",
+      "greenEvidence": "Permanent test preserves processing/referenceNEW-RECOVERY/provider_reference202 after delayed old recovery."
+    }
+  ],
+  "verification": [
+    {
+      "role": "root prior red-classifier evidence read",
+      "log": "/tmp/obligon-final-payout-classifier-red.log",
+      "exitCode": 1,
+      "tests": 21,
+      "pass": 20,
+      "fail": 1,
+      "skipped": 0
+    },
+    {
+      "role": "root prior red-ordering evidence read",
+      "log": "/tmp/obligon-final-payout-ordering-red.log",
+      "exitCode": 1,
+      "tests": 21,
+      "pass": 19,
+      "fail": 2,
+      "skipped": 0
+    },
+    {
+      "role": "root prior corrected evidence read",
+      "log": "/tmp/obligon-final-payout-race-green.log",
+      "exitCode": 0,
+      "tests": 39,
+      "pass": 39,
+      "fail": 0,
+      "skipped": 0
+    },
+    {
+      "role": "independent initial focused probe",
+      "command": "node --test --test-name-pattern='review:' /tmp/obligon-payout-final-independent-probe.mjs",
+      "log": "/tmp/obligon-payout-final-independent-probe.log",
+      "exitCode": 1,
+      "tests": 7,
+      "pass": 6,
+      "fail": 1,
+      "skipped": 0
+    },
+    {
+      "role": "permanent retry/recovery reproduction before repairs",
+      "command": "node --test --test-name-pattern='delayed old failure|delayed provider id recovery' tests/settlement-accounting.integration.test.mjs",
+      "log": "/tmp/obligon-payout-final-retry-red.log",
+      "exitCode": 1,
+      "tests": 2,
+      "pass": 0,
+      "fail": 2,
+      "skipped": 0
+    },
+    {
+      "role": "fresh final affected suite",
+      "command": "node --test tests/settlement-accounting.integration.test.mjs tests/flutterwave-processor.test.mjs",
+      "log": "/tmp/obligon-payout-final-review-green.log",
+      "exitCode": 0,
+      "tests": 41,
+      "pass": 41,
+      "fail": 0,
+      "skipped": 0
+    },
+    {
+      "role": "fresh final independent casing/success-proof/retry probes",
+      "command": "node --test --test-name-pattern='review:' /tmp/obligon-payout-final-independent-probe.mjs",
+      "log": "/tmp/obligon-payout-final-independent-probe-green.log",
+      "exitCode": 0,
+      "tests": 7,
+      "pass": 7,
+      "fail": 0,
+      "skipped": 0
+    },
+    {
+      "role": "diff check",
+      "command": "git diff --check -- apps/api/src/lib/scheduler.js apps/api/tests/settlement-accounting.integration.test.mjs",
+      "exitCode": 0
+    }
+  ],
+  "environment": {
+    "execution": "require_escalated actual Node --test, disposable localhost PostgreSQL schemas and production scheduler/provider functions; external provider fetch is mocked. No production provider/account calls or real funds.",
+    "database": "[redacted local connection]",
+    "DOTENV_CONFIG_PATH": "/dev/null",
+    "NODE_ENV": "test",
+    "DATABASE_SSL": "false",
+    "cleanup": "Owned temporary test schemas dropped after each actual run; independent probes saved only in/tmp"
+  },
+  "priorFinanceReview": {
+    "artifact": "/tmp/obligon-production-finance-final-review.json",
+    "scope": "Independent bounded financial review of modified provider, wallet, fuel, refund and callback contracts. Source read-only by reviewer; only temporary dummy-data probes were authored outside the repository.",
+    "verdict": "Approve bounded reviewed financial corrections",
+    "note": "Prior bounded review approved seven wallet/fuel/refund/callback corrections; it is background evidence, not independent verification of these newly authored scheduler guards."
+  },
+  "codeVerdict": "Root payout classifier/proof changes verified. Two follow-up scheduler races repaired and green; root must independently recheck the self-authored fixes before acceptance.",
+  "remainingFindingsInReviewedSource": [],
+  "shipBanner": "DO NOT SHIP without qualified review and outstanding release evidence",
+  "limits": [
+    "This agent independently found the two races but also implemented root-authorized repairs; fresh tests do not replace a separate root/qualified review of its own code.",
+    "Interleavings model the retry owner durable SQL directly. Current legacy manual payout/retry HTTP handlers are guarded403; this does not claim active retry endpoint behavior or exercise real bank requests. Guards protect a later/operator retry revision.",
+    "Legacy payouts lacking a merchant reference can still use exact provider id/currency/amount; reference validation applies where an immutable stored reference is available.",
+    "No full provider sandbox/staging, bank reconciliation, operational crash exercise against real providers, regulatory/PCI review or production-readiness claim.",
+    "All received logs were read in full. Expected provider mismatch/notification failure logs in green suites are deliberate negative cases. Overlapping test counts must not be summed as independent coverage.",
+    "Partner/company billing, parsing, payout initiation product gating and other root-owned changes are outside this review snapshot."
+  ],
+  "hashes": {
+    "apps/api/src/lib/flutterwave.js": "bebdc0ea6054441b93ebb7f113bce6bb287d8985caf1255a7685a40c89738e95",
+    "apps/api/src/lib/scheduler.js": "fc976e14db2f62b4e9fb3e8cece6140d4d8cf1a8f81409abdc1cda233a4e7778",
+    "apps/api/src/lib/payments.js": "7148ad755f6afd03288f233c284239032d74522dc22b2cc8c57864a8b9c5df46",
+    "apps/api/src/lib/transfer-recovery.js": "0ca84ac162f8e574aec25c9e54fbd9d32e5ed25b4bb210ecaa38aacfdb969014",
+    "apps/api/tests/settlement-accounting.integration.test.mjs": "7589a0ce0e29a9ccb7a1eb9427662226954070ba1bb2c0bd3c659880ff067ee7",
+    "apps/api/tests/flutterwave-processor.test.mjs": "342fb675fed17e684a8a703502f18c962041e8ddea98579cdcf3dc3a3a6fa686"
+  },
+  "evidenceHashes": {
+    "/tmp/obligon-final-payout-classifier-red.log": "2e39afa09d687c43f85cbfba415feaeaf56e0c45ea8e74ac6c3d97180d3d9702",
+    "/tmp/obligon-final-payout-ordering-red.log": "6a7642fe96ac1dd33d628e5cf156a0c7f1e3beaa834235a0232be0b0424b58cd",
+    "/tmp/obligon-final-payout-race-green.log": "ad6c5d574d4fb666119d210fd130a19a1cead024b661b44d453e5d86e724631f",
+    "/tmp/obligon-payout-final-independent-probe.log": "40c2124a48b558f934333468ca158c621cd34cfe6a8a7f336f68f7828ffc5753",
+    "/tmp/obligon-payout-final-retry-red.log": "a23f253f651575442e3560aabd3651abbff55328029b05b18b9847155bddd919",
+    "/tmp/obligon-payout-final-review-green.log": "9ea751dc941e6f7e39255439c7672cfa9b3b966bf7db9e4a0d43328a1aa55de9",
+    "/tmp/obligon-payout-final-independent-probe-green.log": "8304c268bc1fdf0cf64ddf13dd328dea10086b2389fe72c25536ba9164403148"
+  },
+  "probeHash": "182d063abaa20575d8a1472f4c781a8503d221902e276d403b727c1b40b83fcb"
+}

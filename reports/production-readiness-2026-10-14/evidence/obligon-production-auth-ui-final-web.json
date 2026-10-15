@@ -1,0 +1,32 @@
+[
+  {
+    "suite": "mfa-password-proof",
+    "exitCode": 0,
+    "log": "/tmp/obligon-production-auth-ui-final-mfa-password-proof.log",
+    "output": "[raw content omitted; structured evidence retained]"
+  },
+  {
+    "suite": "auth-session-races",
+    "exitCode": 0,
+    "log": "/tmp/obligon-production-auth-ui-final-auth-session-races.log",
+    "output": "[raw content omitted; structured evidence retained]"
+  },
+  {
+    "suite": "production-company-invitations",
+    "exitCode": 0,
+    "log": "/tmp/obligon-production-auth-ui-final-production-company-invitations.log",
+    "output": "[raw content omitted; structured evidence retained]"
+  },
+  {
+    "suite": "production-company-workflows",
+    "exitCode": 0,
+    "log": "/tmp/obligon-production-auth-ui-final-production-company-workflows.log",
+    "output": "[raw content omitted; structured evidence retained]"
+  },
+  {
+    "suite": "production-shared-state",
+    "exitCode": 0,
+    "log": "/tmp/obligon-production-auth-ui-final-production-shared-state.log",
+    "output": "[raw content omitted; structured evidence retained]"
+  }
+]

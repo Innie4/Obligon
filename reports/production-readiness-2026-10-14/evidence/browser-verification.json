@@ -1,0 +1,4077 @@
+{
+  "date": "2026-10-14",
+  "environment": "isolated loopback application with synthetic accounts; live customer is separate",
+  "observations": [
+    {
+      "role": "public",
+      "route": "/careers",
+      "alerts": [],
+      "failedImages": [],
+      "headings": [
+        "Join the Energy Revolution.",
+        "Physical-world impact",
+        "Connected operations",
+        "Shared ownership",
+        "Life at Obligon LTD",
+        "Open Positions",
+        "Obligon LTD"
+      ],
+      "scroll": 1265,
+      "url": "/careers",
+      "width": 1280
+    },
+    {
+      "role": "public",
+      "route": "/cookie-policy",
+      "alerts": [],
+      "failedImages": [],
+      "headings": [
+        "Cookie Policy & Digital Preferences",
+        "1. What are Cookies?",
+        "2. Classification & Inventory",
+        "3. Types of Cookies",
+        "4. Policy Updates",
+        "Managing Your Privacy Controls",
+        "Obligon LTD"
+      ],
+      "scroll": 1265,
+      "url": "/cookie-policy",
+      "width": 1280
+    },
+    {
+      "role": "public",
+      "route": "/forgot-password",
+      "alerts": [],
+      "failedImages": [],
+      "headings": [
+        "Forgot Password?"
+      ],
+      "scroll": 1265,
+      "url": "/forgot-password",
+      "width": 1280
+    },
+    {
+      "role": "public",
+      "route": "/login",
+      "alerts": [],
+      "failedImages": [],
+      "headings": [
+        "Fueling Nigeria's Infrastructure.",
+        "Welcome back"
+      ],
+      "scroll": 1280,
+      "url": "/auth/login",
+      "width": 1280
+    },
+    {
+      "role": "public",
+      "route": "/privacy-policy",
+      "alerts": [],
+      "failedImages": [],
+      "headings": [
+        "Privacy Policy",
+        "1. Introduction",
+        "2. Data Collection",
+        "3. How We Use Your Data",
+        "4. User Rights",
+        "5. Security Protocol",
+        "6. Contact Us",
+        "Personal data request",
+        "Obligon LTD"
+      ],
+      "scroll": 1265,
+      "url": "/privacy-policy",
+      "width": 1280
+    },
+    {
+      "role": "public",
+      "route": "/reset-password",
+      "alerts": [],
+      "failedImages": [],
+      "headings": [
+        "Set a New Password"
+      ],
+      "scroll": 1265,
+      "url": "/reset-password",
+      "width": 1280
+    },
+    {
+      "role": "public",
+      "route": "/solutions/energyvista",
+      "alerts": [],
+      "failedImages": [],
+      "headings": [
+        "Intelligent supply planning for enterprise energy.",
+        "Designed for daily operators.",
+        "Operational workflow",
+        "Ready to deploy across your network?",
+        "Obligon LTD"
+      ],
+      "scroll": 1265,
+      "url": "/solutions/energyvista",
+      "width": 1280
+    },
+    {
+      "role": "public",
+      "route": "/solutions/fuelvista",
+      "alerts": [],
+      "failedImages": [],
+      "headings": [
+        "Elite control for fleet fuel operations.",
+        "Designed for daily operators.",
+        "Operational workflow",
+        "Ready to deploy across your network?",
+        "Obligon LTD"
+      ],
+      "scroll": 1265,
+      "url": "/solutions/fuelvista",
+      "width": 1280
+    },
+    {
+      "role": "public",
+      "route": "/solutions/genvista",
+      "alerts": [],
+      "failedImages": [],
+      "headings": [
+        "Generator intelligence for always-on facilities.",
+        "Designed for daily operators.",
+        "Operational workflow",
+        "Ready to deploy across your network?",
+        "Obligon LTD"
+      ],
+      "scroll": 1265,
+      "url": "/solutions/genvista",
+      "width": 1280
+    },
+    {
+      "role": "public",
+      "route": "/support",
+      "alerts": [],
+      "failedImages": [],
+      "headings": [
+        "Contact Obligon LTD",
+        "Send an Inquiry",
+        "Obligon LTD"
+      ],
+      "scroll": 1265,
+      "url": "/support",
+      "width": 1280
+    },
+    {
+      "role": "public",
+      "route": "/terms-of-service",
+      "alerts": [],
+      "failedImages": [],
+      "headings": [
+        "Terms of Service",
+        "1. Acceptance of Terms",
+        "2. User Obligations",
+        "3. Liability Limits",
+        "4. Termination of Partnership",
+        "5. Physical Copy",
+        "Obligon LTD"
+      ],
+      "scroll": 1265,
+      "url": "/terms-of-service",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard",
+      "alerts": [],
+      "headings": [],
+      "loading": false,
+      "scroll": 1280,
+      "url": "/dashboard",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/billing",
+      "alerts": [],
+      "headings": [
+        "Partner Subscription",
+        "Starter",
+        "Growth",
+        "Enterprise"
+      ],
+      "loading": false,
+      "scroll": 1280,
+      "url": "/dashboard/billing",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/card-verification",
+      "alerts": [],
+      "headings": [],
+      "loading": false,
+      "scroll": 1280,
+      "url": "/dashboard/card-verification",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/disputes",
+      "alerts": [],
+      "headings": [
+        "Disputes & Reconciliations"
+      ],
+      "loading": true,
+      "scroll": 1280,
+      "url": "/dashboard/disputes",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/fuel-pricing",
+      "alerts": [],
+      "headings": [],
+      "loading": false,
+      "scroll": 1280,
+      "url": "/dashboard/fuel-pricing",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/notifications",
+      "alerts": [],
+      "headings": [
+        "Notifications"
+      ],
+      "loading": true,
+      "scroll": 1280,
+      "url": "/dashboard/notifications",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/reports",
+      "alerts": [],
+      "headings": [
+        "Analytics & Fleet Reports"
+      ],
+      "loading": false,
+      "scroll": 1280,
+      "url": "/dashboard/reports",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/settings",
+      "alerts": [],
+      "headings": [
+        "Organisation Settings"
+      ],
+      "loading": true,
+      "scroll": 1280,
+      "url": "/dashboard/settings",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/settlements",
+      "alerts": [],
+      "headings": [],
+      "loading": true,
+      "scroll": 1280,
+      "url": "/dashboard/settlements",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/staff",
+      "alerts": [],
+      "headings": [],
+      "loading": false,
+      "scroll": 1280,
+      "url": "/dashboard/staff",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/station-profile",
+      "alerts": [],
+      "headings": [],
+      "loading": false,
+      "scroll": 1280,
+      "url": "/dashboard/station-profile",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/transactions",
+      "alerts": [],
+      "headings": [],
+      "loading": false,
+      "scroll": 1280,
+      "url": "/dashboard/transactions",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/verify",
+      "alerts": [],
+      "headings": [
+        "Verified"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/dashboard/verify",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Recent Dispenser Authorizations"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/dashboard",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/billing",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Partner Subscription",
+        "Starter",
+        "Growth",
+        "Enterprise"
+      ],
+      "loading": false,
+      "scroll": 1280,
+      "url": "/dashboard/billing",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/card-verification",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "POS Authorization Terminal"
+      ],
+      "loading": false,
+      "scroll": 1280,
+      "url": "/dashboard/card-verification",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/disputes",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Disputes & Reconciliations",
+        "Dispute Cases"
+      ],
+      "loading": false,
+      "scroll": 1280,
+      "url": "/dashboard/disputes",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/fuel-pricing",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Station Fuel Pricing",
+        "Scheduled station discounts"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/dashboard/fuel-pricing",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/notifications",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Notifications",
+        "YESTERDAY"
+      ],
+      "loading": false,
+      "scroll": 1280,
+      "url": "/dashboard/notifications",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/reports",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Analytics & Fleet Reports",
+        "Fleet Consumption"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/dashboard/reports",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/settings",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Organisation Settings",
+        "Organisation details",
+        "Support and plan services",
+        "Read-only API access"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/dashboard/settings",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/settlements",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Settlement Account",
+        "Settlement Periods",
+        "Payout History"
+      ],
+      "loading": false,
+      "scroll": 1502,
+      "url": "/dashboard/settlements",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/staff",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Station Staff",
+        "Staff Members"
+      ],
+      "loading": false,
+      "scroll": 1280,
+      "url": "/dashboard/staff",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/station-profile",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Station Profile",
+        "Location Details",
+        "Equipment",
+        "Recent Dispensing"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/dashboard/station-profile",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/transactions",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Fleet Transactions",
+        "Card Authorizations"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/dashboard/transactions",
+      "width": 1280
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/verify",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Verified"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/dashboard/verify",
+      "width": 1280
+    },
+    {
+      "role": "customer",
+      "route": "/customer/card",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "My Card",
+        "Card Management",
+        "Get your Fuelvista Card",
+        "Fuel Budget",
+        "Pay for fuel at a station",
+        "Use your fuel wallet",
+        "Your fuel orders"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/customer/card",
+      "width": 1280
+    },
+    {
+      "role": "customer",
+      "route": "/customer/fuel-checkout",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "My Card",
+        "Card Management",
+        "Get your Fuelvista Card",
+        "Fuel Budget",
+        "Pay for fuel at a station",
+        "Use your fuel wallet",
+        "Your fuel orders"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/customer/card",
+      "width": 1280
+    },
+    {
+      "role": "customer",
+      "route": "/customer/notifications",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Notifications",
+        "Notifications",
+        "Transaction Alert",
+        "Station Update",
+        "Security Alert"
+      ],
+      "loading": false,
+      "scroll": 1280,
+      "url": "/customer/notifications",
+      "width": 1280
+    },
+    {
+      "role": "customer",
+      "route": "/customer",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Dashboard Overview",
+        "Good evening, Femi",
+        "Recent Activity"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/customer",
+      "width": 1280
+    },
+    {
+      "role": "customer",
+      "route": "/customer/profile",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Profile and Settings",
+        "Profile & Settings",
+        "Notification Preferences",
+        "Security Settings"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/customer/profile",
+      "width": 1280
+    },
+    {
+      "role": "customer",
+      "route": "/customer/report-problem",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Report a Problem",
+        "Request a plan service",
+        "Customer Support Center",
+        "Support Messages",
+        "Transaction Dispute",
+        "Report an Issue"
+      ],
+      "loading": false,
+      "scroll": 1280,
+      "url": "/customer/report-problem",
+      "width": 1280
+    },
+    {
+      "role": "customer",
+      "route": "/customer/stations",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Nearby Stations"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/customer/stations",
+      "width": 1280
+    },
+    {
+      "role": "customer",
+      "route": "/customer/subscription",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "My Card",
+        "Card Management",
+        "Get your Fuelvista Card",
+        "Fuel Budget",
+        "Pay for fuel at a station",
+        "Use your fuel wallet",
+        "Your fuel orders"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/customer/card",
+      "width": 1280
+    },
+    {
+      "role": "customer",
+      "route": "/customer/support",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Support Center",
+        "Request a plan service",
+        "Customer Support Center",
+        "Support Messages",
+        "Transaction Dispute"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/customer/support",
+      "width": 1280
+    },
+    {
+      "role": "customer",
+      "route": "/customer/transaction-detail",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Transaction Detail",
+        "Transaction History"
+      ],
+      "loading": false,
+      "scroll": 1280,
+      "url": "/customer/transaction-detail",
+      "width": 1280
+    },
+    {
+      "role": "customer",
+      "route": "/customer/transactions",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Transaction History",
+        "Transaction History"
+      ],
+      "loading": false,
+      "scroll": 1280,
+      "url": "/customer/transactions",
+      "width": 1280
+    },
+    {
+      "role": "customer",
+      "route": "/customer/wallet",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Wallet Management",
+        "Wallet Management"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/customer/wallet",
+      "width": 1280
+    },
+    {
+      "role": "company",
+      "route": "/company/billing",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Contract & Billing",
+        "Company fuel wallet",
+        "Contract and billing",
+        "Saved payment methods",
+        "Invoice history"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/company/billing",
+      "width": 1280
+    },
+    {
+      "role": "company",
+      "route": "/company/cards",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Fuelvista Cards",
+        "All cards"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/company/cards",
+      "width": 1280
+    },
+    {
+      "role": "company",
+      "route": "/company/maintenance",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Maintenance Manager",
+        "Service schedules"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/company/maintenance",
+      "width": 1280
+    },
+    {
+      "role": "company",
+      "route": "/company/notifications",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Notifications",
+        "Support ticket received"
+      ],
+      "loading": false,
+      "scroll": 1280,
+      "url": "/company/notifications",
+      "width": 1280
+    },
+    {
+      "role": "company",
+      "route": "/company",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Obligon LTD Dashboard",
+        "Recent transactions"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/company",
+      "width": 1280
+    },
+    {
+      "role": "company",
+      "route": "/company/reports",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Reports & Analytics",
+        "Spend by vehicle and fuel",
+        "Station usage"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/company/reports",
+      "width": 1280
+    },
+    {
+      "role": "company",
+      "route": "/company/roadside",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Roadside Assistance",
+        "FLT-3310 · Flat tyre",
+        "Assistance history"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/company/roadside",
+      "width": 1280
+    },
+    {
+      "role": "company",
+      "route": "/company/settings",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Account Settings",
+        "Company profile",
+        "Account status"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/company/settings",
+      "width": 1280
+    },
+    {
+      "role": "company",
+      "route": "/company/stations",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Partner Stations",
+        "Metro Transit Station",
+        "Obligon Core Hub"
+      ],
+      "loading": false,
+      "scroll": 1280,
+      "url": "/company/stations",
+      "width": 1280
+    },
+    {
+      "role": "company",
+      "route": "/company/support",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Help & Support",
+        "Frequently asked questions",
+        "Support tickets"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/company/support",
+      "width": 1280
+    },
+    {
+      "role": "company",
+      "route": "/company/team",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Team & Access Control",
+        "Team members"
+      ],
+      "loading": false,
+      "scroll": 1280,
+      "url": "/company/team",
+      "width": 1280
+    },
+    {
+      "role": "company",
+      "route": "/company/transactions",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Transactions",
+        "Transactions"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/company/transactions",
+      "width": 1280
+    },
+    {
+      "role": "company",
+      "route": "/company/vehicles",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Fleet Overview",
+        "Fleet vehicles"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/company/vehicles",
+      "width": 1280
+    },
+    {
+      "role": "admin",
+      "route": "/admin/companies",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Company Oversight"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/admin",
+      "width": 1280
+    },
+    {
+      "role": "admin",
+      "route": "/admin/discount-approvals",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Station Discount Approvals"
+      ],
+      "loading": false,
+      "scroll": 1280,
+      "url": "/admin/discount-approvals",
+      "width": 1280
+    },
+    {
+      "role": "admin",
+      "route": "/admin/disputes",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Dispute Resolution"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/admin/disputes",
+      "width": 1280
+    },
+    {
+      "role": "admin",
+      "route": "/admin/intake",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Requests and activity",
+        "Station publication"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/admin/intake",
+      "width": 1280
+    },
+    {
+      "role": "admin",
+      "route": "/admin/login",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Fueling Nigeria's Infrastructure.",
+        "Admin Access"
+      ],
+      "loading": false,
+      "scroll": 1280,
+      "url": "/admin/login",
+      "width": 1280
+    },
+    {
+      "role": "admin",
+      "route": "/admin/operations",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Support and Settlement Review",
+        "Customer support",
+        "Paid fuel exceptions",
+        "Settlement exceptions",
+        "Partner bank verification"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/admin/operations",
+      "width": 1280
+    },
+    {
+      "role": "admin",
+      "route": "/admin",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Company Oversight"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/admin",
+      "width": 1280
+    },
+    {
+      "role": "admin",
+      "route": "/admin/partner-applications",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Application Review Queue",
+        "Customer card approval requests"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/admin/partner-applications",
+      "width": 1280
+    },
+    {
+      "role": "admin",
+      "route": "/admin/reports",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Platform Analytics"
+      ],
+      "loading": false,
+      "scroll": 1280,
+      "url": "/admin/reports",
+      "width": 1280
+    },
+    {
+      "role": "admin",
+      "route": "/admin/staff",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Staff & Access Control"
+      ],
+      "loading": false,
+      "scroll": 1265,
+      "url": "/admin/staff",
+      "width": 1280
+    },
+    {
+      "role": "admin",
+      "route": "/admin/companies",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Company Oversight"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/admin",
+      "width": 390
+    },
+    {
+      "role": "admin",
+      "route": "/admin/discount-approvals",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Station Discount Approvals"
+      ],
+      "loading": false,
+      "scroll": 390,
+      "url": "/admin/discount-approvals",
+      "width": 390
+    },
+    {
+      "role": "admin",
+      "route": "/admin/disputes",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Dispute Resolution"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/admin/disputes",
+      "width": 390
+    },
+    {
+      "role": "admin",
+      "route": "/admin/intake",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Requests and activity",
+        "Station publication"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/admin/intake",
+      "width": 390
+    },
+    {
+      "role": "admin",
+      "route": "/admin/operations",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Support and Settlement Review",
+        "Customer support",
+        "Paid fuel exceptions",
+        "Settlement exceptions",
+        "Partner bank verification"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/admin/operations",
+      "width": 390
+    },
+    {
+      "role": "admin",
+      "route": "/admin",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Company Oversight"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/admin",
+      "width": 390
+    },
+    {
+      "role": "admin",
+      "route": "/admin/partner-applications",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Application Review Queue",
+        "Customer card approval requests"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/admin/partner-applications",
+      "width": 390
+    },
+    {
+      "role": "admin",
+      "route": "/admin/reports",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Platform Analytics"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/admin/reports",
+      "width": 390
+    },
+    {
+      "role": "admin",
+      "route": "/admin/staff",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Staff & Access Control"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/admin/staff",
+      "width": 390
+    },
+    {
+      "role": "admin",
+      "route": "/admin/staff",
+      "width": 390,
+      "keyboard": "Mobile menu focus wraps; Escape closes; focus restored to Open admin menu"
+    },
+    {
+      "role": "mechanic",
+      "route": "/mechanic",
+      "url": "http://localhost:4310/mechanic",
+      "width": 390,
+      "readOnlyHome": true
+    },
+    {
+      "role": "mechanic",
+      "route": "/dashboard/fuel-pricing",
+      "width": 390,
+      "restrictedRedirect": "http://localhost:4310/dashboard"
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Recent Dispenser Authorizations"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/dashboard",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/billing",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Partner Subscription",
+        "Starter",
+        "Growth",
+        "Enterprise"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/dashboard/billing",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/card-verification",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "POS Authorization Terminal"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/dashboard/card-verification",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/disputes",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Disputes & Reconciliations",
+        "Dispute Cases"
+      ],
+      "loading": false,
+      "scroll": 390,
+      "url": "/dashboard/disputes",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/fuel-pricing",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Station Fuel Pricing",
+        "Scheduled station discounts"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/dashboard/fuel-pricing",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/notifications",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Notifications",
+        "YESTERDAY"
+      ],
+      "loading": false,
+      "scroll": 390,
+      "url": "/dashboard/notifications",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/reports",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Analytics & Fleet Reports",
+        "Fleet Consumption"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/dashboard/reports",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/settings",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Organisation Settings",
+        "Organisation details",
+        "Support and plan services",
+        "Read-only API access"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/dashboard/settings",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/settlements",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Settlement Account",
+        "Settlement Periods",
+        "Payout History"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/dashboard/settlements",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/staff",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Station Staff",
+        "Staff Members"
+      ],
+      "loading": false,
+      "scroll": 390,
+      "url": "/dashboard/staff",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/station-profile",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Station Profile",
+        "Location Details",
+        "Equipment",
+        "Recent Dispensing"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/dashboard/station-profile",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/transactions",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Fleet Transactions",
+        "Card Authorizations"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/dashboard/transactions",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/verify",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Verified"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/dashboard/verify",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/settlements",
+      "recheck": "after zero-min grid repair",
+      "scroll": 1265,
+      "tableContainers": [
+        {
+          "client": 0,
+          "scroll": 0
+        },
+        {
+          "client": 535,
+          "scroll": 820
+        },
+        {
+          "client": 535,
+          "scroll": 820
+        }
+      ],
+      "width": 1280
+    },
+    {
+      "role": "company",
+      "route": "/company/billing",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Contract & Billing",
+        "Company fuel wallet",
+        "Contract and billing",
+        "Saved payment methods",
+        "Invoice history"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/company/billing",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company/cards",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Fuelvista Cards",
+        "All cards"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/company/cards",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company/maintenance",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Maintenance Manager",
+        "Service schedules"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/company/maintenance",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company/notifications",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Notifications",
+        "Support ticket received"
+      ],
+      "loading": false,
+      "scroll": 390,
+      "url": "/company/notifications",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Obligon LTD Dashboard",
+        "Recent transactions"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/company",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company/reports",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Reports & Analytics",
+        "Spend by vehicle and fuel",
+        "Station usage"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/company/reports",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company/roadside",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Roadside Assistance",
+        "FLT-3310 · Flat tyre",
+        "Assistance history"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/company/roadside",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company/settings",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Account Settings",
+        "Company profile",
+        "Account status"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/company/settings",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company/stations",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Partner Stations",
+        "Metro Transit Station",
+        "Obligon Core Hub"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/company/stations",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company/support",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Help & Support",
+        "Frequently asked questions",
+        "Support tickets"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/company/support",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company/team",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Team & Access Control",
+        "Team members"
+      ],
+      "loading": false,
+      "scroll": 390,
+      "url": "/company/team",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company/transactions",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Transactions",
+        "Transactions"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/company/transactions",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company/vehicles",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Fleet Overview",
+        "Fleet vehicles"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/company/vehicles",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer/card",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "My Card",
+        "Card Management",
+        "Get your Fuelvista Card",
+        "Fuel Budget",
+        "Pay for fuel at a station",
+        "Use your fuel wallet",
+        "Your fuel orders"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/customer/card",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer/fuel-checkout",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "My Card",
+        "Card Management",
+        "Get your Fuelvista Card",
+        "Fuel Budget",
+        "Pay for fuel at a station",
+        "Use your fuel wallet",
+        "Your fuel orders"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/customer/card",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer/notifications",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Notifications",
+        "Notifications",
+        "Transaction Alert",
+        "Station Update",
+        "Security Alert"
+      ],
+      "loading": false,
+      "scroll": 390,
+      "url": "/customer/notifications",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Dashboard Overview",
+        "Good evening, Femi",
+        "Recent Activity"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/customer",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer/profile",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Profile and Settings",
+        "Profile & Settings",
+        "Notification Preferences",
+        "Security Settings"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/customer/profile",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer/report-problem",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Report a Problem",
+        "Request a plan service",
+        "Customer Support Center",
+        "Support Messages",
+        "Transaction Dispute",
+        "Report an Issue"
+      ],
+      "loading": false,
+      "scroll": 390,
+      "url": "/customer/report-problem",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer/stations",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Nearby Stations"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/customer/stations",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer/subscription",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "My Card",
+        "Card Management",
+        "Get your Fuelvista Card",
+        "Fuel Budget",
+        "Pay for fuel at a station",
+        "Use your fuel wallet",
+        "Your fuel orders"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/customer/card",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer/support",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Support Center",
+        "Request a plan service",
+        "Customer Support Center",
+        "Support Messages",
+        "Transaction Dispute"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/customer/support",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer/transaction-detail",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Transaction Detail",
+        "Transaction History"
+      ],
+      "loading": false,
+      "scroll": 390,
+      "url": "/customer/transaction-detail",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer/transactions",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Transaction History",
+        "Transaction History"
+      ],
+      "loading": false,
+      "scroll": 390,
+      "url": "/customer/transactions",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer/wallet",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Wallet Management",
+        "Wallet Management"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/customer/wallet",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer/wallet",
+      "width": 390,
+      "form": "100.01 rejected with whole-naira guidance; payment button disabled; Escape closes dialog; no payment submitted"
+    },
+    {
+      "role": "auth",
+      "route": "/auth/failure",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Authentication Failed",
+        "Nigeria's most trusted energy fintech infrastructure."
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/auth/failure",
+      "width": 390
+    },
+    {
+      "role": "auth",
+      "route": "/auth/in-progress",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Authentication Failed",
+        "Nigeria's most trusted energy fintech infrastructure."
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/auth/in-progress",
+      "width": 390
+    },
+    {
+      "role": "auth",
+      "route": "/auth/login",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Fueling Nigeria's Infrastructure.",
+        "Welcome back"
+      ],
+      "loading": false,
+      "scroll": 390,
+      "url": "/auth/login",
+      "width": 390
+    },
+    {
+      "role": "auth",
+      "route": "/auth/mfa/challenge",
+      "settled": true,
+      "alerts": [
+        "Your sign-in challenge is missing or expired. Sign in with your password again."
+      ],
+      "error": false,
+      "headings": [
+        "Two-Factor Authentication Required"
+      ],
+      "loading": false,
+      "scroll": 390,
+      "url": "/auth/mfa/challenge",
+      "width": 390
+    },
+    {
+      "role": "auth",
+      "route": "/auth/mfa/setup",
+      "settled": true,
+      "alerts": [
+        "Authentication required"
+      ],
+      "error": false,
+      "headings": [
+        "Enable Two-Factor Authentication"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/auth/mfa/setup",
+      "width": 390
+    },
+    {
+      "role": "auth",
+      "route": "/auth/session-expired",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Session Expired"
+      ],
+      "loading": false,
+      "scroll": 390,
+      "url": "/auth/session-expired",
+      "width": 390
+    },
+    {
+      "role": "auth",
+      "route": "/auth/signup",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Fueling Nigeria's Infrastructure.",
+        "Create your account"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/auth/signup",
+      "width": 390
+    },
+    {
+      "role": "auth",
+      "route": "/auth/success",
+      "settled": true,
+      "alerts": [],
+      "error": false,
+      "headings": [
+        "Fueling Nigeria's Infrastructure.",
+        "Welcome back"
+      ],
+      "loading": false,
+      "scroll": 390,
+      "url": "/auth/login",
+      "width": 390
+    },
+    {
+      "role": "auth",
+      "route": "/auth/verify-email",
+      "settled": true,
+      "alerts": [
+        "Authentication required"
+      ],
+      "error": false,
+      "headings": [
+        "Verify your account"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/auth/verify-email",
+      "width": 390
+    },
+    {
+      "role": "auth",
+      "route": "/auth/verify-phone",
+      "settled": true,
+      "alerts": [
+        "Authentication required"
+      ],
+      "error": false,
+      "headings": [
+        "Verify your account"
+      ],
+      "loading": false,
+      "scroll": 375,
+      "url": "/auth/verify-email",
+      "width": 390
+    },
+    {
+      "role": "auth",
+      "route": "/auth/company-invitation",
+      "settled": true,
+      "alerts": [
+        "This invitation link is invalid. Ask the company owner for a new invitation."
+      ],
+      "error": false,
+      "headings": [
+        "Join your company team"
+      ],
+      "loading": false,
+      "scroll": 390,
+      "url": "/auth/company-invitation",
+      "width": 390
+    },
+    {
+      "role": "auth",
+      "route": "/auth/login",
+      "settled": true,
+      "headings": [
+        "Fueling Nigeria's Infrastructure.",
+        "Welcome back"
+      ],
+      "scroll": 320,
+      "url": "/auth/login",
+      "width": 320
+    },
+    {
+      "role": "auth",
+      "route": "/auth/signup",
+      "settled": true,
+      "headings": [
+        "Fueling Nigeria's Infrastructure.",
+        "Create your account"
+      ],
+      "scroll": 305,
+      "url": "/auth/signup",
+      "width": 320
+    },
+    {
+      "role": "auth",
+      "route": "/auth/company-invitation",
+      "settled": true,
+      "headings": [
+        "Join your company team"
+      ],
+      "scroll": 320,
+      "url": "/auth/company-invitation",
+      "width": 320
+    },
+    {
+      "role": "auth",
+      "route": "/forgot-password",
+      "settled": true,
+      "headings": [
+        "Forgot Password?"
+      ],
+      "scroll": 305,
+      "url": "/forgot-password",
+      "width": 320
+    },
+    {
+      "role": "auth",
+      "route": "/reset-password",
+      "settled": true,
+      "headings": [
+        "Set a New Password"
+      ],
+      "scroll": 305,
+      "url": "/reset-password",
+      "width": 320
+    },
+    {
+      "role": "public",
+      "route": "/",
+      "settled": true,
+      "client": 303,
+      "height": 780,
+      "scroll": 303,
+      "width": 320,
+      "variant": "Organization",
+      "calibrated": true
+    },
+    {
+      "role": "public",
+      "route": "/",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "failedImages": [],
+      "headings": [
+        "Redefining\nAfrican\nEnergy through\nInnovation.",
+        "Innovation-led Narrative of Commitment",
+        "Elite Control for\nEvery Vehicle.",
+        "Built for Scaling Enterprises",
+        "Our Commitment to the Nation",
+        "Build the station network with us."
+      ],
+      "loading": false,
+      "scroll": 373,
+      "url": "/",
+      "width": 390
+    },
+    {
+      "role": "public",
+      "route": "/careers",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "failedImages": [],
+      "headings": [
+        "Join the Energy Revolution.",
+        "Physical-world impact",
+        "Connected operations",
+        "Shared ownership",
+        "Life at Obligon LTD",
+        "Open Positions",
+        "Obligon LTD"
+      ],
+      "loading": false,
+      "scroll": 373,
+      "url": "/careers",
+      "width": 390
+    },
+    {
+      "role": "public",
+      "route": "/cookie-policy",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "failedImages": [],
+      "headings": [
+        "Cookie Policy & Digital Preferences",
+        "1. What are Cookies?",
+        "2. Classification & Inventory",
+        "3. Types of Cookies",
+        "4. Policy Updates",
+        "Managing Your Privacy Controls",
+        "Obligon LTD"
+      ],
+      "loading": false,
+      "scroll": 373,
+      "url": "/cookie-policy",
+      "width": 390
+    },
+    {
+      "role": "public",
+      "route": "/forgot-password",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 390,
+      "failedImages": [],
+      "headings": [
+        "Forgot Password?"
+      ],
+      "loading": false,
+      "scroll": 390,
+      "url": "/forgot-password",
+      "width": 390
+    },
+    {
+      "role": "public",
+      "route": "/auth/login",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 390,
+      "failedImages": [],
+      "headings": [
+        "Fueling Nigeria's Infrastructure.",
+        "Welcome back"
+      ],
+      "loading": false,
+      "scroll": 390,
+      "url": "/auth/login",
+      "width": 390
+    },
+    {
+      "role": "public",
+      "route": "/privacy-policy",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "failedImages": [],
+      "headings": [
+        "Privacy Policy",
+        "1. Introduction",
+        "2. Data Collection",
+        "3. How We Use Your Data",
+        "4. User Rights",
+        "5. Security Protocol",
+        "6. Contact Us",
+        "Personal data request",
+        "Obligon LTD"
+      ],
+      "loading": false,
+      "scroll": 373,
+      "url": "/privacy-policy",
+      "width": 390
+    },
+    {
+      "role": "public",
+      "route": "/reset-password",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "failedImages": [],
+      "headings": [
+        "Set a New Password"
+      ],
+      "loading": false,
+      "scroll": 373,
+      "url": "/reset-password",
+      "width": 390
+    },
+    {
+      "role": "public",
+      "route": "/solutions/energyvista",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "failedImages": [],
+      "headings": [
+        "Intelligent supply planning for enterprise energy.",
+        "Designed for daily operators.",
+        "Operational workflow",
+        "Ready to deploy across your network?",
+        "Obligon LTD"
+      ],
+      "loading": false,
+      "scroll": 373,
+      "url": "/solutions/energyvista",
+      "width": 390
+    },
+    {
+      "role": "public",
+      "route": "/solutions/fuelvista",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "failedImages": [],
+      "headings": [
+        "Elite control for fleet fuel operations.",
+        "Designed for daily operators.",
+        "Operational workflow",
+        "Ready to deploy across your network?",
+        "Obligon LTD"
+      ],
+      "loading": false,
+      "scroll": 373,
+      "url": "/solutions/fuelvista",
+      "width": 390
+    },
+    {
+      "role": "public",
+      "route": "/solutions/genvista",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "failedImages": [],
+      "headings": [
+        "Generator intelligence for always-on facilities.",
+        "Designed for daily operators.",
+        "Operational workflow",
+        "Ready to deploy across your network?",
+        "Obligon LTD"
+      ],
+      "loading": false,
+      "scroll": 373,
+      "url": "/solutions/genvista",
+      "width": 390
+    },
+    {
+      "role": "public",
+      "route": "/support",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "failedImages": [],
+      "headings": [
+        "Contact Obligon LTD",
+        "Send an Inquiry",
+        "Obligon LTD"
+      ],
+      "loading": false,
+      "scroll": 373,
+      "url": "/support",
+      "width": 390
+    },
+    {
+      "role": "public",
+      "route": "/terms-of-service",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "failedImages": [],
+      "headings": [
+        "Terms of Service",
+        "1. Acceptance of Terms",
+        "2. User Obligations",
+        "3. Liability Limits",
+        "4. Termination of Partnership",
+        "5. Physical Copy",
+        "Obligon LTD"
+      ],
+      "loading": false,
+      "scroll": 373,
+      "url": "/terms-of-service",
+      "width": 390
+    },
+    {
+      "alerts": [
+        "The refund needs support review and has not been confirmed as paid."
+      ],
+      "calibrated": true,
+      "client": 373,
+      "dialogs": [],
+      "falsePaid": false,
+      "headings": [
+        "My Card",
+        "Card Management",
+        "Get your Fuelvista Card",
+        "Fuel Budget",
+        "Pay for fuel at a station",
+        "Use your fuel wallet",
+        "Your fuel orders"
+      ],
+      "review": true,
+      "role": "customer",
+      "route": "/customer/card",
+      "scroll": 373,
+      "settled": true,
+      "unsafeActions": [],
+      "url": "/customer/card",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Dashboard Overview",
+        "Good evening, Femi",
+        "Recent Activity"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/customer",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer/card",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [
+        "The refund needs support review and has not been confirmed as paid."
+      ],
+      "client": 373,
+      "headings": [
+        "My Card",
+        "Card Management",
+        "Get your Fuelvista Card",
+        "Fuel Budget",
+        "Pay for fuel at a station",
+        "Use your fuel wallet",
+        "Your fuel orders"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/customer/card",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer/transactions",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 390,
+      "headings": [
+        "Transaction History",
+        "Transaction History"
+      ],
+      "loading": [],
+      "scroll": 390,
+      "url": "/customer/transactions",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer/stations",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Nearby Stations"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/customer/stations",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer/support",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Support Center",
+        "Request a plan service",
+        "Customer Support Center",
+        "Support Messages",
+        "Transaction Dispute"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/customer/support",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer/notifications",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 390,
+      "headings": [
+        "Notifications",
+        "Notifications",
+        "Transaction Alert",
+        "Station Update",
+        "Security Alert"
+      ],
+      "loading": [],
+      "scroll": 390,
+      "url": "/customer/notifications",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer/profile",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Profile and Settings",
+        "Profile & Settings",
+        "Notification Preferences",
+        "Security Settings"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/customer/profile",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer/security",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 390,
+      "headings": [
+        "Page not found"
+      ],
+      "loading": [],
+      "scroll": 390,
+      "url": "/customer/security",
+      "width": 390,
+      "expectedNotFound": true,
+      "excludedFromKnownRouteCoverage": true
+    },
+    {
+      "role": "customer",
+      "route": "/customer/settings",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 390,
+      "headings": [
+        "Page not found"
+      ],
+      "loading": [],
+      "scroll": 390,
+      "url": "/customer/settings",
+      "width": 390,
+      "expectedNotFound": true,
+      "excludedFromKnownRouteCoverage": true
+    },
+    {
+      "role": "customer",
+      "route": "/customer/wallet",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Wallet Management",
+        "Wallet Management"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/customer/wallet",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer/subscription",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [
+        "The refund needs support review and has not been confirmed as paid."
+      ],
+      "client": 373,
+      "headings": [
+        "My Card",
+        "Card Management",
+        "Get your Fuelvista Card",
+        "Fuel Budget",
+        "Pay for fuel at a station",
+        "Use your fuel wallet",
+        "Your fuel orders"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/customer/card",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer/fuel-checkout",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [
+        "The refund needs support review and has not been confirmed as paid."
+      ],
+      "client": 373,
+      "headings": [
+        "My Card",
+        "Card Management",
+        "Get your Fuelvista Card",
+        "Fuel Budget",
+        "Pay for fuel at a station",
+        "Use your fuel wallet",
+        "Your fuel orders"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/customer/card",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer/report-problem",
+      "settled": true,
+      "calibrated": true,
+      "variant": "No selected transaction",
+      "alerts": [],
+      "client": 390,
+      "headings": [
+        "Report a Problem",
+        "Request a plan service",
+        "Customer Support Center",
+        "Support Messages",
+        "Transaction Dispute",
+        "Report an Issue"
+      ],
+      "scroll": 390,
+      "url": "/customer/report-problem",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer/transaction-detail",
+      "settled": true,
+      "calibrated": true,
+      "variant": "No selected transaction",
+      "alerts": [],
+      "client": 390,
+      "headings": [
+        "Transaction Detail",
+        "Transaction History"
+      ],
+      "scroll": 390,
+      "url": "/customer/transaction-detail",
+      "width": 390
+    },
+    {
+      "role": "customer",
+      "route": "/customer/profile",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 303,
+      "scroll": 303,
+      "url": "/customer/profile",
+      "width": 320
+    },
+    {
+      "role": "customer",
+      "route": "/customer/card",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [
+        "The refund needs support review and has not been confirmed as paid."
+      ],
+      "client": 303,
+      "scroll": 303,
+      "url": "/customer/card",
+      "width": 320
+    },
+    {
+      "role": "company",
+      "route": "/company",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Obligon LTD Dashboard",
+        "Recent transactions"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/company",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company/billing",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Contract & Billing",
+        "Company fuel wallet",
+        "Contract and billing",
+        "Saved payment methods",
+        "Invoice history"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/company/billing",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company/cards",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Fuelvista Cards",
+        "All cards"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/company/cards",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company/maintenance",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Maintenance Manager",
+        "Service schedules"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/company/maintenance",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company/notifications",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 390,
+      "headings": [
+        "Notifications",
+        "Support ticket received"
+      ],
+      "loading": [],
+      "scroll": 390,
+      "url": "/company/notifications",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company/reports",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Reports & Analytics",
+        "Spend by vehicle and fuel",
+        "Station usage"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/company/reports",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company/roadside",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Roadside Assistance",
+        "FLT-3310 · Flat tyre",
+        "Assistance history"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/company/roadside",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company/settings",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Account Settings",
+        "Company profile",
+        "Account status"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/company/settings",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company/stations",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Partner Stations",
+        "Metro Transit Station",
+        "Obligon Core Hub"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/company/stations",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company/support",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Help & Support",
+        "Frequently asked questions",
+        "Support tickets"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/company/support",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company/team",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 390,
+      "headings": [
+        "Team & Access Control",
+        "Team members"
+      ],
+      "loading": [],
+      "scroll": 390,
+      "url": "/company/team",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company/transactions",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Transactions",
+        "Transactions"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/company/transactions",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company/vehicles",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Fleet Overview",
+        "Fleet vehicles"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/company/vehicles",
+      "width": 390
+    },
+    {
+      "role": "company",
+      "route": "/company/billing",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 303,
+      "scroll": 303,
+      "url": "/company/billing",
+      "width": 320
+    },
+    {
+      "role": "company",
+      "route": "/company/team",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 320,
+      "scroll": 320,
+      "url": "/company/team",
+      "width": 320
+    },
+    {
+      "approvalRequired": true,
+      "calibrated": true,
+      "client": 320,
+      "oldFleetVisible": false,
+      "operationButtons": [],
+      "role": "company",
+      "route": "/company/team",
+      "scroll": 320,
+      "settled": true,
+      "url": "/company/team",
+      "variant": "Pending company",
+      "width": 320
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Recent Dispenser Authorizations"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/dashboard",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/billing",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Partner Subscription",
+        "Starter",
+        "Growth",
+        "Enterprise"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/dashboard/billing",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/card-verification",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "POS Authorization Terminal"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/dashboard/card-verification",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/disputes",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 390,
+      "headings": [
+        "Disputes & Reconciliations",
+        "Dispute Cases"
+      ],
+      "loading": [],
+      "scroll": 390,
+      "url": "/dashboard/disputes",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/fuel-pricing",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Station Fuel Pricing",
+        "Scheduled station discounts"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/dashboard/fuel-pricing",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/notifications",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 390,
+      "headings": [
+        "Notifications",
+        "YESTERDAY"
+      ],
+      "loading": [],
+      "scroll": 390,
+      "url": "/dashboard/notifications",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/reports",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Analytics & Fleet Reports",
+        "Fleet Consumption"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/dashboard/reports",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/settings",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Organisation Settings",
+        "Organisation details",
+        "Support and plan services",
+        "Read-only API access"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/dashboard/settings",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/settlements",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Settlement Account",
+        "Settlement Periods",
+        "Payout History"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/dashboard/settlements",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/staff",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 390,
+      "headings": [
+        "Station Staff",
+        "Staff Members"
+      ],
+      "loading": [],
+      "scroll": 390,
+      "url": "/dashboard/staff",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/station-profile",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Station Profile",
+        "Location Details",
+        "Equipment",
+        "Recent Dispensing"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/dashboard/station-profile",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/transactions",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Fleet Transactions",
+        "Card Authorizations"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/dashboard/transactions",
+      "width": 390
+    },
+    {
+      "role": "partner",
+      "route": "/dashboard/verify",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Verified"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/dashboard/verify",
+      "width": 390
+    },
+    {
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 303,
+      "role": "partner",
+      "route": "/dashboard/settlements",
+      "scroll": 303,
+      "url": "/dashboard/settlements",
+      "width": 320
+    },
+    {
+      "settled": true,
+      "calibrated": true,
+      "client": 303,
+      "headings": [
+        "Fueling Nigeria's Infrastructure.",
+        "Admin Access"
+      ],
+      "role": "admin",
+      "route": "/admin/login",
+      "scroll": 303,
+      "url": "/admin/login",
+      "width": 320
+    },
+    {
+      "role": "admin",
+      "route": "/admin",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Company Oversight"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/admin",
+      "width": 390
+    },
+    {
+      "role": "admin",
+      "route": "/admin/companies",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Company Oversight"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/admin",
+      "width": 390
+    },
+    {
+      "role": "admin",
+      "route": "/admin/discount-approvals",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 390,
+      "headings": [
+        "Station Discount Approvals"
+      ],
+      "loading": [],
+      "scroll": 390,
+      "url": "/admin/discount-approvals",
+      "width": 390
+    },
+    {
+      "role": "admin",
+      "route": "/admin/disputes",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Dispute Resolution"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/admin/disputes",
+      "width": 390
+    },
+    {
+      "role": "admin",
+      "route": "/admin/intake",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Requests and activity",
+        "Station publication"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/admin/intake",
+      "width": 390
+    },
+    {
+      "role": "admin",
+      "route": "/admin/operations",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Support and Settlement Review",
+        "Customer support",
+        "Paid fuel exceptions",
+        "Settlement exceptions",
+        "Partner bank verification"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/admin/operations",
+      "width": 390
+    },
+    {
+      "role": "admin",
+      "route": "/admin/partner-applications",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Application Review Queue",
+        "Customer card approval requests"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/admin/partner-applications",
+      "width": 390
+    },
+    {
+      "role": "admin",
+      "route": "/admin/reports",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Platform Analytics"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/admin/reports",
+      "width": 390
+    },
+    {
+      "role": "admin",
+      "route": "/admin/staff",
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 373,
+      "headings": [
+        "Staff & Access Control"
+      ],
+      "loading": [],
+      "scroll": 373,
+      "url": "/admin/staff",
+      "width": 390
+    },
+    {
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 303,
+      "role": "admin",
+      "route": "/admin/operations",
+      "scroll": 303,
+      "url": "/admin/operations",
+      "width": 320
+    },
+    {
+      "settled": true,
+      "calibrated": true,
+      "alerts": [],
+      "client": 303,
+      "headings": [
+        "Recent Dispenser Authorizations"
+      ],
+      "role": "mechanic",
+      "route": "/mechanic",
+      "scroll": 303,
+      "url": "/mechanic",
+      "width": 320,
+      "visibleReadOnlyPhrase": false
+    },
+    {
+      "settled": true,
+      "calibrated": true,
+      "activeSession": false,
+      "client": 320,
+      "role": "auth",
+      "route": "/auth/logout",
+      "scroll": 320,
+      "url": "/auth/login",
+      "width": 320
+    },
+    {
+      "role": "auth",
+      "route": "/auth/company-invitation",
+      "settled": true,
+      "calibrated": true,
+      "variant": "Unauthenticated or missing required proof/token",
+      "alerts": [
+        "This invitation link is invalid. Ask the company owner for a new invitation."
+      ],
+      "client": 320,
+      "headings": [
+        "Join your company team"
+      ],
+      "scroll": 320,
+      "url": "/auth/company-invitation",
+      "width": 320
+    },
+    {
+      "role": "auth",
+      "route": "/auth/failure",
+      "settled": true,
+      "calibrated": true,
+      "variant": "Unauthenticated or missing required proof/token",
+      "alerts": [],
+      "client": 303,
+      "headings": [
+        "Authentication Failed",
+        "Nigeria's most trusted energy fintech infrastructure."
+      ],
+      "scroll": 305,
+      "url": "/auth/failure",
+      "width": 320,
+      "supersededBy": "narrow-auth-after.json"
+    },
+    {
+      "role": "auth",
+      "route": "/auth/in-progress",
+      "settled": true,
+      "calibrated": true,
+      "variant": "Unauthenticated or missing required proof/token",
+      "alerts": [],
+      "client": 303,
+      "headings": [
+        "Authentication Failed",
+        "Nigeria's most trusted energy fintech infrastructure."
+      ],
+      "scroll": 305,
+      "url": "/auth/in-progress",
+      "width": 320,
+      "supersededBy": "narrow-auth-after.json"
+    },
+    {
+      "role": "auth",
+      "route": "/auth/login",
+      "settled": true,
+      "calibrated": true,
+      "variant": "Unauthenticated or missing required proof/token",
+      "alerts": [],
+      "client": 320,
+      "headings": [
+        "Fueling Nigeria's Infrastructure.",
+        "Welcome back"
+      ],
+      "scroll": 320,
+      "url": "/auth/login",
+      "width": 320
+    },
+    {
+      "role": "auth",
+      "route": "/auth/mfa/challenge",
+      "settled": true,
+      "calibrated": true,
+      "variant": "Unauthenticated or missing required proof/token",
+      "alerts": [
+        "Your sign-in challenge is missing or expired. Sign in with your password again."
+      ],
+      "client": 320,
+      "headings": [
+        "Two-Factor Authentication Required"
+      ],
+      "scroll": 368,
+      "url": "/auth/mfa/challenge",
+      "width": 320,
+      "supersededBy": "narrow-auth-after.json"
+    },
+    {
+      "role": "auth",
+      "route": "/auth/mfa/setup",
+      "settled": true,
+      "calibrated": true,
+      "variant": "Unauthenticated or missing required proof/token",
+      "alerts": [
+        "Authentication required"
+      ],
+      "client": 303,
+      "headings": [
+        "Enable Two-Factor Authentication"
+      ],
+      "scroll": 303,
+      "url": "/auth/mfa/setup",
+      "width": 320
+    },
+    {
+      "role": "auth",
+      "route": "/auth/session-expired",
+      "settled": true,
+      "calibrated": true,
+      "variant": "Unauthenticated or missing required proof/token",
+      "alerts": [],
+      "client": 303,
+      "headings": [
+        "Session Expired"
+      ],
+      "scroll": 303,
+      "url": "/auth/session-expired",
+      "width": 320
+    },
+    {
+      "role": "auth",
+      "route": "/auth/signup",
+      "settled": true,
+      "calibrated": true,
+      "variant": "Unauthenticated or missing required proof/token",
+      "alerts": [],
+      "client": 303,
+      "headings": [
+        "Fueling Nigeria's Infrastructure.",
+        "Create your account"
+      ],
+      "scroll": 303,
+      "url": "/auth/signup",
+      "width": 320
+    },
+    {
+      "role": "auth",
+      "route": "/auth/success",
+      "settled": true,
+      "calibrated": true,
+      "variant": "Unauthenticated or missing required proof/token",
+      "alerts": [],
+      "client": 320,
+      "headings": [
+        "Fueling Nigeria's Infrastructure.",
+        "Welcome back"
+      ],
+      "scroll": 320,
+      "url": "/auth/login",
+      "width": 320
+    },
+    {
+      "role": "auth",
+      "route": "/auth/verify-email",
+      "settled": true,
+      "calibrated": true,
+      "variant": "Unauthenticated or missing required proof/token",
+      "alerts": [
+        "Authentication required"
+      ],
+      "client": 303,
+      "headings": [
+        "Verify your account"
+      ],
+      "scroll": 303,
+      "url": "/auth/verify-email",
+      "width": 320
+    },
+    {
+      "role": "auth",
+      "route": "/auth/verify-phone",
+      "settled": true,
+      "calibrated": true,
+      "variant": "Unauthenticated or missing required proof/token",
+      "alerts": [
+        "Authentication required"
+      ],
+      "client": 303,
+      "headings": [
+        "Verify your account"
+      ],
+      "scroll": 303,
+      "url": "/auth/verify-email",
+      "width": 320
+    },
+    {
+      "role": "auth",
+      "route": "/login",
+      "settled": true,
+      "calibrated": true,
+      "variant": "Unauthenticated or missing required proof/token",
+      "alerts": [],
+      "client": 320,
+      "headings": [
+        "Fueling Nigeria's Infrastructure.",
+        "Welcome back"
+      ],
+      "scroll": 320,
+      "url": "/auth/login",
+      "width": 320
+    },
+    {
+      "settled": true,
+      "calibrated": true,
+      "client": 752,
+      "headings": [
+        "Redefining\nAfrican\nEnergy through\nInnovation.",
+        "Innovation-led Narrative of Commitment",
+        "Elite Control for\nEvery Vehicle.",
+        "Built for Scaling Enterprises",
+        "Our Commitment to the Nation",
+        "Build the station network with us."
+      ],
+      "role": "public",
+      "route": "/",
+      "scroll": 752,
+      "url": "/",
+      "width": 769
+    },
+    {
+      "category": "Auth",
+      "path": "/auth/mfa/challenge",
+      "alerts": [
+        "Your sign-in challenge is missing or expired. Sign in with your password again."
+      ],
+      "client": 320,
+      "heading": "Two-Factor Authentication Required",
+      "inputs": [
+        {
+          "autocomplete": "one-time-code",
+          "disabled": true,
+          "label": "Digit 1",
+          "width": 45.000003814697266
+        },
+        {
+          "autocomplete": "one-time-code",
+          "disabled": true,
+          "label": "Digit 2",
+          "width": 45.000003814697266
+        },
+        {
+          "autocomplete": "one-time-code",
+          "disabled": true,
+          "label": "Digit 3",
+          "width": 45.00868225097656
+        },
+        {
+          "autocomplete": "one-time-code",
+          "disabled": true,
+          "label": "Digit 4",
+          "width": 45.000003814697266
+        },
+        {
+          "autocomplete": "one-time-code",
+          "disabled": true,
+          "label": "Digit 5",
+          "width": 45.000003814697266
+        },
+        {
+          "autocomplete": "one-time-code",
+          "disabled": true,
+          "label": "Digit 6",
+          "width": 45.00868225097656
+        }
+      ],
+      "scroll": 320,
+      "url": "/auth/mfa/challenge",
+      "width": 320,
+      "calibrated": true,
+      "finalResponsiveRepair": true
+    },
+    {
+      "category": "Auth",
+      "path": "/auth/failure",
+      "alerts": [],
+      "client": 303,
+      "heading": "Authentication Failed",
+      "headingSize": "24px",
+      "scroll": 303,
+      "url": "/auth/failure",
+      "width": 320,
+      "calibrated": true,
+      "finalResponsiveRepair": true
+    },
+    {
+      "category": "Auth",
+      "path": "/auth/in-progress",
+      "alerts": [],
+      "client": 303,
+      "heading": "Authentication Failed",
+      "scroll": 303,
+      "sessionFailure": true,
+      "url": "/auth/in-progress",
+      "width": 320,
+      "calibrated": true,
+      "finalResponsiveRepair": true
+    },
+    {
+      "category": "Auth",
+      "path": "/auth/mfa/challenge",
+      "alerts": [
+        "Your sign-in challenge is missing or expired. Sign in with your password again."
+      ],
+      "client": 1280,
+      "inputs": [
+        {
+          "label": "Digit 1",
+          "width": 47.99479293823242
+        },
+        {
+          "label": "Digit 2",
+          "width": 47.99479293823242
+        },
+        {
+          "label": "Digit 3",
+          "width": 47.99479293823242
+        },
+        {
+          "label": "Digit 4",
+          "width": 47.99479293823242
+        },
+        {
+          "label": "Digit 5",
+          "width": 47.99479293823242
+        },
+        {
+          "label": "Digit 6",
+          "width": 47.99479293823242
+        }
+      ],
+      "rowDisplay": "flex",
+      "scroll": 1280,
+      "url": "/auth/mfa/challenge",
+      "width": 1280,
+      "calibrated": true,
+      "finalResponsiveRepair": true
+    },
+    {
+      "category": "Auth",
+      "path": "/auth/failure",
+      "alerts": [],
+      "client": 1280,
+      "heading": "Authentication Failed",
+      "headingSize": "30px",
+      "scroll": 1280,
+      "url": "/auth/failure",
+      "width": 1280,
+      "calibrated": true,
+      "finalResponsiveRepair": true
+    },
+    {
+      "category": "Customer",
+      "path": "/customer",
+      "interaction": "final mobile Sign Out",
+      "buttonReceivesPointer": true,
+      "client": 320,
+      "hitText": "Sign Out",
+      "scroll": 320,
+      "width": 320,
+      "escape": {
+        "activeText": "Sign Out",
+        "dialogs": 0
+      },
+      "logoutDestination": "/auth/login",
+      "finalStackingRepair": true
+    },
+    {
+      "category": "Customer",
+      "path": "/customer/stations",
+      "interaction": "final local station details",
+      "client": 320,
+      "falseAway": false,
+      "scroll": 320,
+      "unavailable": true,
+      "width": 320,
+      "finalStationRepair": true
+    }
+  ],
+  "routeCoverage": [
+    {
+      "route": "/admin/companies",
+      "category": "Admin",
+      "observationCount": 3
+    },
+    {
+      "route": "/admin/discount-approvals",
+      "category": "Admin",
+      "observationCount": 3
+    },
+    {
+      "route": "/admin/disputes",
+      "category": "Admin",
+      "observationCount": 3
+    },
+    {
+      "route": "/admin/intake",
+      "category": "Admin",
+      "observationCount": 3
+    },
+    {
+      "route": "/admin/login",
+      "category": "Admin",
+      "observationCount": 2
+    },
+    {
+      "route": "/admin/operations",
+      "category": "Admin",
+      "observationCount": 4
+    },
+    {
+      "route": "/admin",
+      "category": "Admin",
+      "observationCount": 3
+    },
+    {
+      "route": "/admin/partner-applications",
+      "category": "Admin",
+      "observationCount": 3
+    },
+    {
+      "route": "/admin/reports",
+      "category": "Admin",
+      "observationCount": 3
+    },
+    {
+      "route": "/admin/staff",
+      "category": "Admin",
+      "observationCount": 4
+    },
+    {
+      "route": "/auth/company-invitation",
+      "category": "Auth",
+      "observationCount": 3
+    },
+    {
+      "route": "/auth/failure",
+      "category": "Auth",
+      "observationCount": 4
+    },
+    {
+      "route": "/auth/in-progress",
+      "category": "Auth",
+      "observationCount": 3
+    },
+    {
+      "route": "/auth/login",
+      "category": "Auth",
+      "observationCount": 4
+    },
+    {
+      "route": "/auth/logout",
+      "category": "Auth",
+      "observationCount": 1
+    },
+    {
+      "route": "/auth/mfa/challenge",
+      "category": "Auth",
+      "observationCount": 4
+    },
+    {
+      "route": "/auth/mfa/setup",
+      "category": "Auth",
+      "observationCount": 2
+    },
+    {
+      "route": "/auth/session-expired",
+      "category": "Auth",
+      "observationCount": 2
+    },
+    {
+      "route": "/auth/signup",
+      "category": "Auth",
+      "observationCount": 3
+    },
+    {
+      "route": "/auth/success",
+      "category": "Auth",
+      "observationCount": 2
+    },
+    {
+      "route": "/auth/verify-email",
+      "category": "Auth",
+      "observationCount": 2
+    },
+    {
+      "route": "/auth/verify-phone",
+      "category": "Auth",
+      "observationCount": 2
+    },
+    {
+      "route": "/careers",
+      "category": "Public",
+      "observationCount": 2
+    },
+    {
+      "route": "/company/billing",
+      "category": "Company",
+      "observationCount": 4
+    },
+    {
+      "route": "/company/cards",
+      "category": "Company",
+      "observationCount": 3
+    },
+    {
+      "route": "/company/maintenance",
+      "category": "Company",
+      "observationCount": 3
+    },
+    {
+      "route": "/company/notifications",
+      "category": "Company",
+      "observationCount": 3
+    },
+    {
+      "route": "/company",
+      "category": "Company",
+      "observationCount": 3
+    },
+    {
+      "route": "/company/reports",
+      "category": "Company",
+      "observationCount": 3
+    },
+    {
+      "route": "/company/roadside",
+      "category": "Company",
+      "observationCount": 3
+    },
+    {
+      "route": "/company/settings",
+      "category": "Company",
+      "observationCount": 3
+    },
+    {
+      "route": "/company/stations",
+      "category": "Company",
+      "observationCount": 3
+    },
+    {
+      "route": "/company/support",
+      "category": "Company",
+      "observationCount": 3
+    },
+    {
+      "route": "/company/team",
+      "category": "Company",
+      "observationCount": 5
+    },
+    {
+      "route": "/company/transactions",
+      "category": "Company",
+      "observationCount": 3
+    },
+    {
+      "route": "/company/vehicles",
+      "category": "Company",
+      "observationCount": 3
+    },
+    {
+      "route": "/cookie-policy",
+      "category": "Public",
+      "observationCount": 2
+    },
+    {
+      "route": "/customer/card",
+      "category": "Customer",
+      "observationCount": 5
+    },
+    {
+      "route": "/customer/fuel-checkout",
+      "category": "Customer",
+      "observationCount": 3
+    },
+    {
+      "route": "/customer/notifications",
+      "category": "Customer",
+      "observationCount": 3
+    },
+    {
+      "route": "/customer",
+      "category": "Customer",
+      "observationCount": 4
+    },
+    {
+      "route": "/customer/profile",
+      "category": "Customer",
+      "observationCount": 4
+    },
+    {
+      "route": "/customer/report-problem",
+      "category": "Customer",
+      "observationCount": 3
+    },
+    {
+      "route": "/customer/stations",
+      "category": "Customer",
+      "observationCount": 4
+    },
+    {
+      "route": "/customer/subscription",
+      "category": "Customer",
+      "observationCount": 3
+    },
+    {
+      "route": "/customer/support",
+      "category": "Customer",
+      "observationCount": 3
+    },
+    {
+      "route": "/customer/transaction-detail",
+      "category": "Customer",
+      "observationCount": 3
+    },
+    {
+      "route": "/customer/transactions",
+      "category": "Customer",
+      "observationCount": 3
+    },
+    {
+      "route": "/customer/wallet",
+      "category": "Customer",
+      "observationCount": 4
+    },
+    {
+      "route": "/dashboard/billing",
+      "category": "Partner",
+      "observationCount": 4
+    },
+    {
+      "route": "/dashboard/card-verification",
+      "category": "Partner",
+      "observationCount": 4
+    },
+    {
+      "route": "/dashboard/disputes",
+      "category": "Partner",
+      "observationCount": 4
+    },
+    {
+      "route": "/dashboard/fuel-pricing",
+      "category": "Partner",
+      "observationCount": 5
+    },
+    {
+      "route": "/dashboard/notifications",
+      "category": "Partner",
+      "observationCount": 4
+    },
+    {
+      "route": "/dashboard",
+      "category": "Partner",
+      "observationCount": 4
+    },
+    {
+      "route": "/dashboard/reports",
+      "category": "Partner",
+      "observationCount": 4
+    },
+    {
+      "route": "/dashboard/settings",
+      "category": "Partner",
+      "observationCount": 4
+    },
+    {
+      "route": "/dashboard/settlements",
+      "category": "Partner",
+      "observationCount": 6
+    },
+    {
+      "route": "/dashboard/staff",
+      "category": "Partner",
+      "observationCount": 4
+    },
+    {
+      "route": "/dashboard/station-profile",
+      "category": "Partner",
+      "observationCount": 4
+    },
+    {
+      "route": "/dashboard/transactions",
+      "category": "Partner",
+      "observationCount": 4
+    },
+    {
+      "route": "/dashboard/verify",
+      "category": "Partner",
+      "observationCount": 4
+    },
+    {
+      "route": "/forgot-password",
+      "category": "Public",
+      "observationCount": 3
+    },
+    {
+      "route": "/login",
+      "category": "Public",
+      "observationCount": 2
+    },
+    {
+      "route": "/mechanic",
+      "category": "Mechanic",
+      "observationCount": 2
+    },
+    {
+      "route": "/",
+      "category": "Public",
+      "observationCount": 3
+    },
+    {
+      "route": "/privacy-policy",
+      "category": "Public",
+      "observationCount": 2
+    },
+    {
+      "route": "/reset-password",
+      "category": "Public",
+      "observationCount": 3
+    },
+    {
+      "route": "/solutions/energyvista",
+      "category": "Public",
+      "observationCount": 2
+    },
+    {
+      "route": "/solutions/fuelvista",
+      "category": "Public",
+      "observationCount": 2
+    },
+    {
+      "route": "/solutions/genvista",
+      "category": "Public",
+      "observationCount": 2
+    },
+    {
+      "route": "/support",
+      "category": "Public",
+      "observationCount": 2
+    },
+    {
+      "route": "/terms-of-service",
+      "category": "Public",
+      "observationCount": 2
+    }
+  ],
+  "knownPageRoutes": 73,
+  "observedKnownPageRoutes": 73,
+  "missingKnownPageRoutes": [],
+  "relatedEvidence": [
+    "company-context-browser.json",
+    "company-menu-browser.json",
+    "narrow-auth-after.json",
+    "customer-logout-browser.json",
+    "consent-layer-after.json",
+    "live-customer-browser.json"
+  ],
+  "limits": [
+    "Route smoke proves available rendered/guard states, not every interaction or data permutation.",
+    "Expected missing-proof/auth alerts, invalid-input guards and two intentional nonexistent-route probes are not application failures.",
+    "Earlier narrow layout reproductions are retained but superseded by final before/after receipts.",
+    "Provider, active issued card and qualified-human release checks remain explicitly blocked."
+  ]
+}

@@ -1,0 +1,127 @@
+{
+  "createdAt": "2026-10-14T16:03:44.459Z",
+  "repository": "/home/inimfon-udoh/Obligon/checkout",
+  "branch": "codex/production-readiness-2026-10-14",
+  "role": "Independent frozen-scope database permission and push boundary review; subsequently authorized to repair one confirmed customer Profile UI finding",
+  "scope": [
+    "Migration032 and private/catalog effective ACLs, helper function execute privileges, RLS policies, migration runner and recovery",
+    "Push registration and delivery URL/key validation, DNS pinning, HTTPS agent, redirect behavior, logs, owner removal and frontend contract"
+  ],
+  "codeVerdicts": {
+    "databaseMigration": "Approve within reviewed repository schema and modeled backend privileges",
+    "pushBoundary": "Approve within tested vendor/HTTPS/DNS model",
+    "customerProfileRepair": "Implemented and verified; independent root recheck pending because this reviewer authored the repair"
+  },
+  "shipBanner": "DO NOT SHIP",
+  "shipReason": "Qualified human review of database/auth sensitive boundaries and actual hosted access/rollout checks is still required. Local agent review is not production release authorization.",
+  "findings": [
+    {
+      "id": "UI-PUSH-STATE-01",
+      "priority": "P2",
+      "category": "customer",
+      "page": "Profile & Settings",
+      "title": "An account push preference is presented as a ready device subscription",
+      "originalEvidence": {
+        "component": "apps/web/components/customer-dashboard/CustomerScreen.tsx",
+        "region": "ProfilePage push effect and preference toggle",
+        "behavior": "Stored push=true, including the default, displays a checked toggle and device-ready copy while currentPushState reports subscribed=false for permission default/granted. The effect read permission but ignored subscribed. currentPushState also swallowed lookup failure into a false unsubscribe state.",
+        "probe": "/tmp/obligon-permissions-push-ui-probe.cjs",
+        "log": "/tmp/obligon-permissions-push-ui-probe.log"
+      },
+      "disposition": "Focused authorized repair completed; root independent review and rendered browser checks pending",
+      "repair": "Preserve account preference, explain that it applies to subscribed devices, show separate current-browser setup/blocked/unsupported/unknown status, and offer an explicit Enable on this device action plus Check this device again. Do not request permission or modify preference on load. Allow account opt-out when current browser is denied/unsupported. Propagate state lookup failures for honest retry. Missing server configuration no longer says preference was saved before its request succeeds.",
+      "tests": {
+        "before": "28 tests:23pass5fail0skip; four component scenarios and state-lookup helper failed",
+        "beforeLog": "/tmp/obligon-push-profile-before.log",
+        "after": "28 tests:28pass0fail0skip",
+        "afterLog": "/tmp/obligon-push-profile-after.log"
+      }
+    }
+  ],
+  "reviewedProperties": {
+    "database": [
+      "Explicit list covers all63 baseline application tables;59private and4published catalogs",
+      "Table and independently granted column privileges revoked for PUBLIC,anon,authenticated; private RLS enabled; direct Data API policies removed",
+      "Both UUID SECURITY DEFINER helper functions lose public/anon/authenticated EXECUTE; backend explicit execution retained",
+      "Catalog columns remain read-only and active/open filtered; private processor plan binding denied",
+      "Owner/non-owner BYPASSRLS backend reads/writes survive; backend-only policy survives; second migration execution is metadata-idempotent without row/ledger mutation",
+      "Migration runner applies SQL and migration ledger in one locked transaction; lock timeout5seconds, failures roll back before API startup. Rollback/source path reviewed; deployment lock-contention/failure drill not executed"
+    ],
+    "push": [
+      "Canonical HTTPS only, no credentials/nondefault port/fragment/control/suffix confusion, trusted vendor hostnames",
+      "Exact65-byte P256 curve point and16-byte auth key validation at registration and outbound delivery",
+      "Each socket gets only vetted public DNS answers from the guarded lookup, rejects any mixed/private/special-purpose answer, bounded DNS deadline",
+      "Normal HTTPS/TLS verification remains; actual installed web-push rejects redirects, with mocked307 proving no follow-up request",
+      "Owner-scoped unsubscribe and410cleanup; invalid stored subscriptions cannot reach provider; redacted diagnostics omit endpoint/key/payload",
+      "Browser unsubscribe failures propagate; account preference and browser subscription are now explained separately"
+    ],
+    "ui": [
+      "Existing Obligon tokens/layout retained; compact state and recovery actions use real buttons,44px minimum targets, wrapping layout, visible focus rings and polite status",
+      "No new dependency/library/animation/hosted generation; root owns actual desktop/mobile/keyboard/rendered verification"
+    ]
+  },
+  "verification": [
+    {
+      "command": "OBLIGON_TEST_DATABASE_URL=<local disposable PG> TEST_DATABASE_URL=<same> DOTENV_CONFIG_PATH=/dev/null DATABASE_SSL=false NODE_ENV=test node --test --test-isolation=none tests/database-private-access.integration.test.mjs tests/push-boundaries.test.mjs",
+      "cwd": "apps/api",
+      "exit": 0,
+      "tests": 85,
+      "pass": 85,
+      "fail": 0,
+      "skipped": 0,
+      "note": "3 actual PostgreSQL tests plus82 no-egress push tests; full output read. Disposable database/unique backend role cleaned by fixture."
+    },
+    {
+      "command": "node tests/push-subscription.test.cjs",
+      "cwd": "apps/web",
+      "exit": 0,
+      "tests": 7,
+      "pass": 7,
+      "fail": 0,
+      "skipped": 0,
+      "note": "Independent initial browser-helper verification before UI repair"
+    },
+    {
+      "command": "node --test --test-isolation=none tests/push-subscription.test.cjs tests/production-customer-controls.test.cjs",
+      "cwd": "apps/web",
+      "exit": 0,
+      "tests": 28,
+      "pass": 28,
+      "fail": 0,
+      "skipped": 0,
+      "log": "/tmp/obligon-push-profile-after.log",
+      "note": "After repair:20 component/customer controls tests plus8 browser-helper tests; not independent review of own authored UI"
+    },
+    {
+      "command": "pnpm exec tsc --noEmit",
+      "cwd": "apps/web",
+      "exit": 0,
+      "log": "/tmp/obligon-push-profile-types.log"
+    },
+    {
+      "command": "git diff --check -- scoped reviewed/repaired files",
+      "exit": 0
+    }
+  ],
+  "sourceHashes": {
+    "apps/api/src/migrations/032_private_database_access.sql": "e5b415c22997aa7f1bb6e6cd6bd66229257d259f134d91d795a7fc446e373f7b",
+    "apps/api/tests/database-private-access.integration.test.mjs": "9a1bfbc5afed941664921a19fba86887f7a69a4e6755bac344cb7c49e2f5fb55",
+    "apps/api/src/lib/push.js": "882bac8dab82a82621c5c0163d06d9efcaacb9ccf81b259df6b2f83d8fdad98a",
+    "apps/api/src/routes/push.routes.js": "a4657c44b1bdbd289776023a322f1f2610ac04b9b8a9365efd4e9b46d01ff47f",
+    "apps/api/tests/push-boundaries.test.mjs": "e6de9f1cea6e05b03c2584e8bb6580833d8679b742b862672a0dab4c500f28db",
+    "apps/web/components/customer-dashboard/CustomerScreen.tsx": "4035b1ccab589194d18211aebd0c627975539be5cf03d795b29ecac6b535ce47",
+    "apps/web/lib/push-subscription.ts": "ef65f4cd31ec2aeef1f8374ae4228a52e910fc01c3900471f7d0d32ae032b646",
+    "apps/web/tests/production-customer-controls.test.cjs": "76aee768c189da1b9432c175cafdb5b67a62c51eb47fb52634786bf9493afae8",
+    "apps/web/tests/push-subscription.test.cjs": "80dbc2e15f57fc175e54d034b0f96fb80529230ebbe4f8af92bd893f0e29829c"
+  },
+  "limitationsAndReleaseChecks": [
+    "Live Supabase schema exposure, inherited/custom roles, ownership, BYPASSRLS, helper function owners, hosted additional catalog/private policies and dependent grant paths were not inspected; unknown external direct Data API consumers must be checked before applying032.",
+    "No default owner ACL change; future application tables require explicit private/public review, and inventory regression detects repository additions.",
+    "API backend must be owner or preserve explicit privileges+BYPASSRLS. Shared access grants are not broadly restored for rollback; approved backend access or disabling exposed Data API is safer recovery.",
+    "No real browser push permission, live vendor request, real DNS resolution, production Data API exercise or provider acceptance. Tests intercept provider/DNS/HTTPS, use synthetic keys and dummy rows.",
+    "Socket timeout limits inactivity, not complete response wall-clock/body size; four sockets constrain concurrency but subscription/queue totals are unchanged. No literal provider-controlled response hang was observed; this is a remaining operational limit, not a claimed new exploit.",
+    "Browser has-a-subscription status does not prove API row/provider delivery. Explicit Enable sends registration to API; no new remote-state endpoint was introduced.",
+    "Whole-project build/full integration, actual rendered responsive/keyboard checks and qualified human release decision remain root-owned.",
+    "No commits/push/deployment, live credentials/data/funds, new infrastructure/scans/CI, outbound notifications, or separate Learn artifact. Root writes the one combined task breakdown."
+  ]
+}

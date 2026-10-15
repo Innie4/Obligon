@@ -1,0 +1,99 @@
+{
+  "createdAt": "2026-10-14T16:45:15.584Z",
+  "repository": "/home/inimfon-udoh/Obligon/checkout",
+  "branch": "codex/production-readiness-2026-10-14",
+  "category": "customer",
+  "page": "My Card",
+  "scope": "CustomerScreen CardPage region and existing production-customer-controls compiled-component tests only",
+  "findings": [
+    {
+      "id": "UI-CARD-REFUND-01",
+      "priority": "P1",
+      "title": "Terminal applications re-enter payment or identity collection",
+      "before": "Latest cancelled/unpaid request offered Complete payment. Withdrawn paid/not_started and refund_pending requests auto-opened identity details; returned paid checkout did the same.",
+      "repair": "Recognize cancelled/withdrawn/refunded/payment-refunded/issuance-refund-pending before initial auto-open, displayed payment/details branches, provider return, simulated verification, pending resume and details submission. Terminal applications expose status, Notifications/Support and the existing plan picker, subject to unchanged API guards."
+    },
+    {
+      "id": "UI-CARD-REFUND-02",
+      "priority": "P2",
+      "title": "Withdrawal ignores provider review/confirmation and promises future processing",
+      "before": "Withdraw caller discarded API result, refreshed request, and always toasted provider-will-process; a failed follow-up read hid successful recorded withdrawal.",
+      "repair": "Use server message, reviewRequired, refundStatus and returned request. Keep recorded outcome if subsequent application read fails, close stale detail/progress/pending dialogs, show honest unconfirmed/support-review/confirmed copy. Synchronous ref plus busy button prevents two clicks from starting duplicate HTTP requests."
+    },
+    {
+      "id": "UI-CARD-REFUND-03",
+      "priority": "P2",
+      "title": "Latest refund needs correct kind and current outcome before UI confirmation",
+      "before": "New caller probe showed a succeeded partial/excess refund could be mistaken for a completed full withdrawal, and failed status could retain stale pending copy.",
+      "repair": "Read existing /card-request/refund endpoint using owner reference; only full-kind status establishes withdrawal evidence. Succeeded full refund shows confirmed; failed/review-required outcomes show Support guidance. Explicit Check refund status refreshes the existing endpoint; errors remain visible and never claim refund settlement."
+    }
+  ],
+  "files": [
+    {
+      "path": "apps/web/components/customer-dashboard/CustomerScreen.tsx",
+      "sha256": "776d51bf16e84a1829fdb911d83934bfb4925ae7e8cbf8a670eafb8038eafcf4",
+      "change": "CardPage terminal lifecycle guards, recorded withdrawal result/busy handling, existing refund status read/retry, truthful terminal application/refund states and navigation"
+    },
+    {
+      "path": "apps/web/tests/production-customer-controls.test.cjs",
+      "sha256": "d7f41f00f1a687d6877f06387430fa62f4a63138c3c55b2f178b3312e817d73c",
+      "change": "Seven compiled-component regressions covering cancelled, withdrawn, refund_pending and refunded states; returned checkout; review-required actual response; duplicate clicks; successful withdrawal/reload failure; confirmed full status; partial refund exclusion; stale pending to failed update"
+    }
+  ],
+  "reproduction": [
+    {
+      "command": "node tests/production-customer-controls.test.cjs",
+      "cwd": "apps/web",
+      "exit": 1,
+      "tests": 25,
+      "pass": 20,
+      "fail": 5,
+      "skip": 0,
+      "log": "/tmp/obligon-customer-refund-ui-before.log",
+      "note": "Original five terminal/withdrawal scenarios failed before their source fix"
+    },
+    {
+      "command": "node tests/production-customer-controls.test.cjs",
+      "cwd": "apps/web",
+      "exit": 1,
+      "tests": 27,
+      "pass": 25,
+      "fail": 2,
+      "skip": 0,
+      "log": "/tmp/obligon-customer-refund-ui-status-before.log",
+      "note": "Two newly covered partial-refund/failed-status caller edge cases failed before focused correction"
+    }
+  ],
+  "verification": [
+    {
+      "command": "node --test --test-isolation=none tests/production-customer-controls.test.cjs tests/customer-my-card.test.cjs tests/push-subscription.test.cjs",
+      "cwd": "apps/web",
+      "exit": 0,
+      "tests": 49,
+      "pass": 49,
+      "fail": 0,
+      "skip": 0,
+      "log": "/tmp/obligon-customer-refund-ui-after.log",
+      "note": "27 customer controls+14 existing My Card flows+8 browser push helpers; full fresh output read after last source change"
+    },
+    {
+      "command": "pnpm exec tsc --noEmit",
+      "cwd": "apps/web",
+      "exit": 0,
+      "log": "/tmp/obligon-customer-refund-ui-types.log"
+    },
+    {
+      "command": "git diff --check -- apps/web/components/customer-dashboard/CustomerScreen.tsx apps/web/tests/production-customer-controls.test.cjs",
+      "exit": 0
+    }
+  ],
+  "contractsAndRisks": [
+    "Uses the existing authenticated card request/refund/withdraw endpoints; no new API, money movement helper, provider behavior, schema, dependency or security route change.",
+    "Shared CardRequestStatus still omits backend withdrawn/refunded states; parent was notified to correct the shared type separately if authorized. Region compares terminal string states using includes rather than widening an unrelated shared type.",
+    "Existing refund GET chooses latest provider_ref entry and returns kind; caller conservatively treats only full refunds as withdrawal evidence and never confirms from a partial/excess status. Missing/full-unconfirmed evidence directs the user to Notifications/Support.",
+    "Confirmed means the existing API records provider refund status succeeded or the application is explicitly refunded; real provider settlement is not independently exercised by this UI worker.",
+    "Real browser responsive/keyboard/actual API integration, final whole-web tests/build and independent review of this worker-authored repair remain parent-owned.",
+    "Qualified human financial/auth release gates remain. No production deployment/push/commit, real data/funds/provider requests, Profile/push source changes in this increment, separate Learn file or readiness/security guarantee."
+  ],
+  "freeze": "Source frozen after49passing tests and type/diff verification. Root must independently verify the two source/test hashes and integrate the increment."
+}

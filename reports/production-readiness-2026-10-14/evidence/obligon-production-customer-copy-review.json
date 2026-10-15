@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-14",
+  "reviewedAt": "2026-10-14T19:08:47.159717+00:00",
+  "reviewer": "/root/fix_partner_audit",
+  "scope": "Independent narrow two-line customer copy and legacy support payload review; no app edits or new tests executed.",
+  "codeVerdict": "Approve for these ordinary copy corrections; no new literal defect found",
+  "finding": {
+    "id": "CUSTOMER-PERSONAL-COPY-01",
+    "category": "Customer",
+    "pages": [
+      "Overview / mobile greeting",
+      "Support / report a card issue"
+    ],
+    "criticalHumanReviewRequired": false,
+    "before": "The personal customer greeting called the account a live fleet, and the customer issue choice displayed Lost / Stolen Fleet Card.",
+    "after": "The mobile greeting describes the personal account. The visible issue choice says Lost / Stolen Fuel Card while retaining the existing internal value and complaint payload.",
+    "verification": [
+      "The exact current greeting and issueTypes/selection/display/submit lines were independently read; state and handlers remain unchanged.",
+      "The temporary actual-component/native FormData probe output and full source were independently read:1/1 green proves selecting the new visible label submits the retained subject Lost / Stolen Fleet Card and category complaint. This probe is not added to full-suite totals or a production submission."
+    ],
+    "compatibility": "Only visible wording changed. Existing support categorization and API wire values remain compatible; no new product promise or role change.",
+    "recovery": "The existing report request validation, busy state, attachment handling and ticket-reference checks remain intact.",
+    "status": "Corrected and independently reviewed locally; current live deployment still uses the previous wording"
+  },
+  "sourceHashes": {
+    "apps/web/components/customer-dashboard/CustomerScreen.tsx": "3b2bfa6fd7e489c704660f6793e75096952de44d6f56f34fb68d255f8251f248",
+    "apps/web/components/customer-dashboard/CustomerModals.tsx": "b3aa054f4d02cf21b8ab44556d146b3708d6d78bd70dc894335fbca827a27c80"
+  },
+  "evidenceHashes": {
+    "/tmp/obligon-customer-copy-probe.log": "dea474d5608841cc2c0c8326ca34e0b904b72d8c6d55d6c0ff95f6b9c04dbeff",
+    "/tmp/obligon-customer-copy-probe.cjs": "5416a8354982b30afd7928111a12ca6b4f0918b895e181ce46ad1a0d969c450e"
+  },
+  "limits": [
+    "No production complaint was submitted; no credentials or private account content is recorded.",
+    "Overall qualified-human/external release gates remain."
+  ]
+}

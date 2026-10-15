@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-14",
+  "normal1024": {
+    "bannerLeft": 120.5,
+    "bannerRight": 888.5,
+    "client": 1009,
+    "scroll": 1009,
+    "textReceivesPointer": true,
+    "width": 1024,
+    "zIndex": "40"
+  },
+  "shortDesktopModal": {
+    "buttonReceivesPointer": true,
+    "cookieZ": "37",
+    "height": 500,
+    "hitText": "Sign Out",
+    "width": 1280
+  },
+  "escape": {
+    "activeText": "Sign Out",
+    "cookieZ": "38",
+    "dialogs": 0
+  },
+  "settledNormal": {
+    "transitionDuration": "0.3s",
+    "transitionProperty": "all",
+    "zIndex": "40"
+  },
+  "normalAfterLogout": {
+    "textReceivesPointer": true,
+    "zIndex": "40"
+  },
+  "actualDesktopPointerLogoutPassed": true,
+  "passed": true,
+  "consentRestoredByUI": "Essential Only on the owned fresh local origin",
+  "storageMutation": false
+}

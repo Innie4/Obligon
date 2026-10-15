@@ -1,0 +1,2006 @@
+{
+  "root": "/home/inimfon-udoh/Obligon/checkout",
+  "chunks": [
+    {
+      "path": "apps/api/.env.example",
+      "start": 1,
+      "end": 252,
+      "sha256": "078f6c7aa4af49b68fabb20fd7b83c1eab837aeb48c6e795a9f18cc92cec6bf9",
+      "read": true
+    },
+    {
+      "path": "apps/api/package.json",
+      "start": 1,
+      "end": 50,
+      "sha256": "9e095658f0cc7ecd4adf738d64f3a4d63c3226756ea01ac64a8d637ed3fc36e7",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/app.js",
+      "start": 1,
+      "end": 132,
+      "sha256": "943ab52c539117d5faa8233adfda7a2103ec55387cf69cedaa6d03c2ec3ef956",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/lib/card-approval.js",
+      "start": 1,
+      "end": 94,
+      "sha256": "2fb4131795de0c086523ea58eea2320f3dddec21de0636e5a64b9440a6a55147",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/lib/company-input.js",
+      "start": 1,
+      "end": 47,
+      "sha256": "7ee6f43a1362aca01dc7076d705c60ccb7005dabb2d60a9ab3ba3d097163351a",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/lib/flutterwave.js",
+      "start": 1,
+      "end": 356,
+      "sha256": "31fb11b9d525d830878f74c1f77e2ff34007744a413299ddccf64b48f4677025",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/lib/flutterwave.js",
+      "start": 357,
+      "end": 725,
+      "sha256": "31fb11b9d525d830878f74c1f77e2ff34007744a413299ddccf64b48f4677025",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/lib/flutterwave.js",
+      "start": 726,
+      "end": 730,
+      "sha256": "31fb11b9d525d830878f74c1f77e2ff34007744a413299ddccf64b48f4677025",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/lib/paystack.js",
+      "start": 1,
+      "end": 128,
+      "sha256": "cfc9401713912f8641d311b29da6340556066c5986c11aa27f8780d3ee6e2ab1",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/lib/plans.js",
+      "start": 1,
+      "end": 93,
+      "sha256": "296b5e1587dfa694e6350af03235d93534fec67a25ed27cf08a372e2381ef317",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/lib/push.js",
+      "start": 1,
+      "end": 111,
+      "sha256": "882bac8dab82a82621c5c0163d06d9efcaacb9ccf81b259df6b2f83d8fdad98a",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/lib/savings.js",
+      "start": 1,
+      "end": 57,
+      "sha256": "25348cba6e40c8d7cec21974148be19d112d25724528d3acaf1711ba0824c4cb",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/lib/scheduler.js",
+      "start": 1,
+      "end": 301,
+      "sha256": "ee21a1a5e1f520f7812d40369cf31d0252419d46d86364d014792b24cda5645c",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/lib/scheduler.js",
+      "start": 302,
+      "end": 380,
+      "sha256": "ee21a1a5e1f520f7812d40369cf31d0252419d46d86364d014792b24cda5645c",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/lib/settlements.js",
+      "start": 1,
+      "end": 85,
+      "sha256": "7a854828612af6de5336347eb86039e24d32a959ce46b12d6ba26d3812a4cb00",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/lib/spend.js",
+      "start": 1,
+      "end": 105,
+      "sha256": "669a258238055dc31414691ec178a59b25d08c7c4d44225ab205aa9151ad2f60",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/lib/subscriptions.js",
+      "start": 1,
+      "end": 49,
+      "sha256": "2c0f037dbd176e7e405b463a1114ac621fd8164b946e0a5384a3198c9ab16822",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/lib/sudo.js",
+      "start": 1,
+      "end": 108,
+      "sha256": "e9f12d0154991ece98acebac26c2e6ade5c683682d3e8b39835a846cc56cba28",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/lib/temporaryPartnerAccount.js",
+      "start": 1,
+      "end": 123,
+      "sha256": "836867bdec1b9321fe4c6da5b31f2913e77c57bc6d4ce739f90d83dbb386f1aa",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/lib/wallets.js",
+      "start": 1,
+      "end": 68,
+      "sha256": "80da62b6d34b0dcba2c6803b2a7f275e81a8347b3fd7fb834683584b18751899",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/migrations/001_init.sql",
+      "start": 1,
+      "end": 370,
+      "sha256": "afb063f5f7b29a90ba6287788ae88f51fa99ff7317090e477d2442edc2917407",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/migrations/001_init.sql",
+      "start": 371,
+      "end": 633,
+      "sha256": "afb063f5f7b29a90ba6287788ae88f51fa99ff7317090e477d2442edc2917407",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/migrations/002_staff_and_indexes.sql",
+      "start": 1,
+      "end": 13,
+      "sha256": "84a172191d832b6739245b318d3f7cf3177232c8339bf21c15634ae641d3caad",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/migrations/006_vehicle_driver_relation.sql",
+      "start": 1,
+      "end": 5,
+      "sha256": "c1d760eb6b63175b112074085e1087af017ebfce63612fe5bd970ba464b0740b",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/migrations/007_card_request_plans.sql",
+      "start": 1,
+      "end": 119,
+      "sha256": "1191c95c6f3618ed7964389aebb501d8f7afe8676193aab4e8ca8a872db87395",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/migrations/008_retire_legacy_card_requests.sql",
+      "start": 1,
+      "end": 14,
+      "sha256": "7a4e0df88ba53dfe0e68538551fd28611230be28e8fd14d9b680c2d2ea3a6404",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/migrations/009_wallet_kinds.sql",
+      "start": 1,
+      "end": 63,
+      "sha256": "3e214151853e7738e5fca2729ee1040d9b3c5ea3fd241da4aacf8a9052eb1a8b",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/migrations/010_expand_plan_features.sql",
+      "start": 1,
+      "end": 76,
+      "sha256": "354ce385056c832f29c90491c64e60a12f03896be7b237f98e795f8d78b21f25",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/migrations/012_transaction_unit_price.sql",
+      "start": 1,
+      "end": 58,
+      "sha256": "2daf4e05450b1669fbf207d1d73eac3730788b0ae8b55869b9c0ca072a9b7570",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/migrations/013_payment_fee_bearer.sql",
+      "start": 1,
+      "end": 58,
+      "sha256": "94385e69e3ee9f6106ad632bcdfa3b183c9b45f3dfcfb5f78d6a9a423a2cd47b",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/migrations/014_plan_not_wallet_funding.sql",
+      "start": 1,
+      "end": 78,
+      "sha256": "bffa9352eba04861eff7286ee1797cb20153663f23c28c03015675006bb15536",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/migrations/016_event_keys_and_ledger_reference.sql",
+      "start": 1,
+      "end": 148,
+      "sha256": "59bbd54b594f45ff5e9aa2626b44cbc237642d9c4b977acc3a073e0b8d3facf6",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/migrations/018_flutterwave_processor.sql",
+      "start": 1,
+      "end": 47,
+      "sha256": "56bda681b3051e35d294fb1b14e1f5339d7f1a0ff4d1c81016afcb96c4bf2d00",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/migrations/022_dashboard_subscriptions_discounts.sql",
+      "start": 1,
+      "end": 72,
+      "sha256": "5eb3f94875fb9a13ff9a012ff612413270995616cd7e738884c35aead0eedab6",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/migrations/023_fuel_orders.sql",
+      "start": 1,
+      "end": 38,
+      "sha256": "e01d8c16539106854c86b74eeeec041d373604810c8290e3a55a38936e6ad79e",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/migrations/025_station_coordinates.sql",
+      "start": 1,
+      "end": 13,
+      "sha256": "704e96c48fa3ed3714609f9bd183c43d32484d40eb784bfb258ded3f2cfd0b57",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/migrations/027_station_review.sql",
+      "start": 1,
+      "end": 6,
+      "sha256": "d2eb95d6bbf47ca6027b9fa884469c4859d48a7e847fa5593a4670179e24020a",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/migrations/031_card_payment_provider_reference.sql",
+      "start": 1,
+      "end": 4,
+      "sha256": "7656655c74828b0ba2e311d9aa2dc9efcb101fcb3259769eafb7066167473503",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/admin.routes.js",
+      "start": 1,
+      "end": 244,
+      "sha256": "eb5f4fe617621cca6e220db41983b44ab72839c5803eb1eb21bc9cc29097fd0c",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/admin.routes.js",
+      "start": 245,
+      "end": 529,
+      "sha256": "eb5f4fe617621cca6e220db41983b44ab72839c5803eb1eb21bc9cc29097fd0c",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/admin.routes.js",
+      "start": 530,
+      "end": 710,
+      "sha256": "eb5f4fe617621cca6e220db41983b44ab72839c5803eb1eb21bc9cc29097fd0c",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/auth.routes.js",
+      "start": 1,
+      "end": 304,
+      "sha256": "e170a881b681cc853b77be675760aab4a1740475d3bc00e63720a212adac4c81",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/auth.routes.js",
+      "start": 305,
+      "end": 593,
+      "sha256": "e170a881b681cc853b77be675760aab4a1740475d3bc00e63720a212adac4c81",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/auth.routes.js",
+      "start": 594,
+      "end": 859,
+      "sha256": "e170a881b681cc853b77be675760aab4a1740475d3bc00e63720a212adac4c81",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/auth.routes.js",
+      "start": 860,
+      "end": 1098,
+      "sha256": "e170a881b681cc853b77be675760aab4a1740475d3bc00e63720a212adac4c81",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/company.routes.js",
+      "start": 1,
+      "end": 263,
+      "sha256": "8d6422e329a74d5d5733e9b2ce18af5e1406ca6c1667f38afab5dd83f2987c1c",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/company.routes.js",
+      "start": 264,
+      "end": 487,
+      "sha256": "8d6422e329a74d5d5733e9b2ce18af5e1406ca6c1667f38afab5dd83f2987c1c",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/company.routes.js",
+      "start": 488,
+      "end": 735,
+      "sha256": "8d6422e329a74d5d5733e9b2ce18af5e1406ca6c1667f38afab5dd83f2987c1c",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/company.routes.js",
+      "start": 736,
+      "end": 990,
+      "sha256": "8d6422e329a74d5d5733e9b2ce18af5e1406ca6c1667f38afab5dd83f2987c1c",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/company.routes.js",
+      "start": 991,
+      "end": 1101,
+      "sha256": "8d6422e329a74d5d5733e9b2ce18af5e1406ca6c1667f38afab5dd83f2987c1c",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/customer.routes.js",
+      "start": 1,
+      "end": 324,
+      "sha256": "e92ba5caf1ffa9d6cd81fadacf7247c4592e2579cde66d2e567960614f80a061",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/customer.routes.js",
+      "start": 325,
+      "end": 647,
+      "sha256": "e92ba5caf1ffa9d6cd81fadacf7247c4592e2579cde66d2e567960614f80a061",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/customer.routes.js",
+      "start": 648,
+      "end": 988,
+      "sha256": "e92ba5caf1ffa9d6cd81fadacf7247c4592e2579cde66d2e567960614f80a061",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/customer.routes.js",
+      "start": 989,
+      "end": 1308,
+      "sha256": "e92ba5caf1ffa9d6cd81fadacf7247c4592e2579cde66d2e567960614f80a061",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/customer.routes.js",
+      "start": 1309,
+      "end": 1576,
+      "sha256": "e92ba5caf1ffa9d6cd81fadacf7247c4592e2579cde66d2e567960614f80a061",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/customer.routes.js",
+      "start": 1577,
+      "end": 1843,
+      "sha256": "e92ba5caf1ffa9d6cd81fadacf7247c4592e2579cde66d2e567960614f80a061",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/customer.routes.js",
+      "start": 1844,
+      "end": 1895,
+      "sha256": "e92ba5caf1ffa9d6cd81fadacf7247c4592e2579cde66d2e567960614f80a061",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/discount.routes.js",
+      "start": 1,
+      "end": 36,
+      "sha256": "4cf923cd4cae965fcc3bded40f679276512fcceb899237ff5a09ec770594802e",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/fuel-checkout.routes.js",
+      "start": 1,
+      "end": 45,
+      "sha256": "162e7f1469a23d9be9bc77407e7d38004469b9c820f37a3a76d33ebafa142c9d",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/partner.routes.js",
+      "start": 1,
+      "end": 300,
+      "sha256": "740f3b895cff2e48e1c53221bb0849787543143d78269d1902994d72352dbf91",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/partner.routes.js",
+      "start": 301,
+      "end": 585,
+      "sha256": "740f3b895cff2e48e1c53221bb0849787543143d78269d1902994d72352dbf91",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/partner.routes.js",
+      "start": 586,
+      "end": 828,
+      "sha256": "740f3b895cff2e48e1c53221bb0849787543143d78269d1902994d72352dbf91",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/partner.routes.js",
+      "start": 829,
+      "end": 1086,
+      "sha256": "740f3b895cff2e48e1c53221bb0849787543143d78269d1902994d72352dbf91",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/partner.routes.js",
+      "start": 1087,
+      "end": 1239,
+      "sha256": "740f3b895cff2e48e1c53221bb0849787543143d78269d1902994d72352dbf91",
+      "read": true
+    },
+    {
+      "path": "apps/api/src/routes/push.routes.js",
+      "start": 1,
+      "end": 42,
+      "sha256": "a4657c44b1bdbd289776023a322f1f2610ac04b9b8a9365efd4e9b46d01ff47f",
+      "read": true
+    },
+    {
+      "path": "apps/api/tests/activity-balance-and-otp.test.mjs",
+      "start": 1,
+      "end": 199,
+      "sha256": "609d7ba228b833d0ac6fb1567873d04bd341dc5453e5eb55b4ad420dfe5c9c17",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/admin-support.integration.test.mjs",
+      "start": 1,
+      "end": 133,
+      "sha256": "94ad4f63e8084f992e05c8c1ffdf5974b18174b347495d42fb124d4c3766f3cc",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/admin-support.integration.test.mjs",
+      "start": 134,
+      "end": 258,
+      "sha256": "94ad4f63e8084f992e05c8c1ffdf5974b18174b347495d42fb124d4c3766f3cc",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/admin-support.integration.test.mjs",
+      "start": 259,
+      "end": 306,
+      "sha256": "94ad4f63e8084f992e05c8c1ffdf5974b18174b347495d42fb124d4c3766f3cc",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/api.smoke.test.mjs",
+      "start": 1,
+      "end": 368,
+      "sha256": "501bc244d697b7c7cb93132c5b1d2e4e9f8d91cf6187f0763c38393f98657001",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/card-approval.integration.check.mjs",
+      "start": 1,
+      "end": 50,
+      "sha256": "e7ac0d80cc715b373694d7497408f5ec1f97efc01d0a48c607538b52bed994bc",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/card-approval.test.mjs",
+      "start": 1,
+      "end": 32,
+      "sha256": "6c1c5b15737b16574b33492cf76fc4d708618e11d355c7b8e3e1a29654dbaf48",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/card-request-flow.check.mjs",
+      "start": 1,
+      "end": 197,
+      "sha256": "0b9c60975d737425886c3a001caf047692d41599336e40a5fa6ea344914a0326",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/company-dashboard.integration.test.mjs",
+      "start": 1,
+      "end": 116,
+      "sha256": "4ab2da7aa6bb6272ddffc6979e7796db3400a6102f6b24f82a52ce78a35db991",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/company-dashboard.integration.test.mjs",
+      "start": 117,
+      "end": 175,
+      "sha256": "4ab2da7aa6bb6272ddffc6979e7796db3400a6102f6b24f82a52ce78a35db991",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/company-input.test.mjs",
+      "start": 1,
+      "end": 37,
+      "sha256": "8dde891ad7e546c73370ae9e67ceda3abd93075bf67baa3cedf9d34537967654",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/config-severity.test.mjs",
+      "start": 1,
+      "end": 100,
+      "sha256": "0e8be33e78e89f1038c827bfb6c47d25d859c5083268f0216807a6b98cce94a1",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/customer-audit.integration.test.mjs",
+      "start": 1,
+      "end": 128,
+      "sha256": "963b9c92c4c9148261495e3d467eaa1f8397b749bae06a2d42d6343e3c3069f9",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/customer-entitlement-gates.integration.test.mjs",
+      "start": 1,
+      "end": 52,
+      "sha256": "420c0609d3e35c49ecae143755d4a1564d73d6a7f5b55cbd861fd6d870902533",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/customer-funding-methods.test.mjs",
+      "start": 1,
+      "end": 49,
+      "sha256": "b86fb57d8e6c67232f996cf01666db3cc8220d9ada119e6730542e7e45b543c5",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/database-tls.test.mjs",
+      "start": 1,
+      "end": 94,
+      "sha256": "b5f13ac1ab93be114c746e2cc228b882f2c212695057bdb9f6bb03e530813234",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/deploy-config.test.mjs",
+      "start": 1,
+      "end": 158,
+      "sha256": "e075253f81ea51828a6660cb91e14400f62810b874604b8c9c12c3c32b3d7640",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/discount-math.test.mjs",
+      "start": 1,
+      "end": 22,
+      "sha256": "447e1c439a8ee79fc117b5bc795339c79ae594c85b9017009d114cc873aa2cb6",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/flutterwave-processor.test.mjs",
+      "start": 1,
+      "end": 214,
+      "sha256": "342fb675fed17e684a8a703502f18c962041e8ddea98579cdcf3dc3a3a6fa686",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/flutterwave-subaccount.test.mjs",
+      "start": 1,
+      "end": 25,
+      "sha256": "bd38878d3ee440d028c48158be61fa7b1a5cadf1e04c4c6122a4c584568334dd",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/flutterwave-units.test.mjs",
+      "start": 1,
+      "end": 76,
+      "sha256": "06504d363af3692ef4a80cdb80619d8c9889d4a68d163c5cc79ffa43a18780ca",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/fuel-checkout.integration.test.mjs",
+      "start": 1,
+      "end": 180,
+      "sha256": "cba27f7c25fd70bf314c8e1418893c8db2b23ca18210be09778a1e521f132611",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/fuel-checkout.integration.test.mjs",
+      "start": 181,
+      "end": 233,
+      "sha256": "cba27f7c25fd70bf314c8e1418893c8db2b23ca18210be09778a1e521f132611",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/fuel-sale.integration.test.mjs",
+      "start": 1,
+      "end": 170,
+      "sha256": "ee0c010096c6420f1792e71f1a87580ec97a0526da199d9e5dc2b6a96afc1da3",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/fuel-sale.integration.test.mjs",
+      "start": 171,
+      "end": 175,
+      "sha256": "ee0c010096c6420f1792e71f1a87580ec97a0526da199d9e5dc2b6a96afc1da3",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/history-settlement-and-scheduler.test.mjs",
+      "start": 1,
+      "end": 213,
+      "sha256": "3d98ba8739bcff5a0397c4dc38fc49fdbb729fea21ce568a3490d11f292f6839",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/late-settlement.test.mjs",
+      "start": 1,
+      "end": 136,
+      "sha256": "10dfc398271fae42fbaa172bb3cb2d2da8ba567277ce1241600435ad36ef8f92",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/local-outbox.test.mjs",
+      "start": 1,
+      "end": 18,
+      "sha256": "ff4c27480037813fefc197f7c153f20c01d50edf8a6a3083e5ec0eac7a55d40e",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/migration-startup.integration.test.mjs",
+      "start": 1,
+      "end": 223,
+      "sha256": "7ae1d8e23408711fe63e6e69f2494408e7165779fc908933017bb316be132c4f",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/minimum-topup.check.mjs",
+      "start": 1,
+      "end": 100,
+      "sha256": "4710a13e9fcb849e25c85e8b504bd87cd38a448f70adc0ececb9dd4561e67cf3",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/minimum-topup.test.mjs",
+      "start": 1,
+      "end": 103,
+      "sha256": "ef40f9d4dfb7c34d320e2f8913c6035bbf5d39b59054fb290f9804a62c299ccb",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/money.test.mjs",
+      "start": 1,
+      "end": 322,
+      "sha256": "545e28d43ea464cefe5808986c6d75be5ab06d6bd391cb5f0d0d153b5dab3c7f",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/nearest-stations.integration.test.mjs",
+      "start": 1,
+      "end": 104,
+      "sha256": "c2c7a39d3c5a0c9a58906e8c0b6add4ee45bc27aaee851d257ee6d9715838de9",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/no-secret-leak.test.mjs",
+      "start": 1,
+      "end": 148,
+      "sha256": "bb2b3afbff7a46fb8a49d7156fa1bcbbdc9d40fa11984ddac6c25b64a2734562",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/partner-authorization.test.mjs",
+      "start": 1,
+      "end": 195,
+      "sha256": "223de76586a9be91b9176e5c568ca7b51f97398f76b6cec1a6cc85d390a39c08",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/partner-dashboard-wiring.test.mjs",
+      "start": 1,
+      "end": 304,
+      "sha256": "150c026043486f6f6a510d05cf52e3bc1b3adc1e26c47c823acd958bfae8f8fa",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/partner-dashboard-wiring.test.mjs",
+      "start": 305,
+      "end": 474,
+      "sha256": "150c026043486f6f6a510d05cf52e3bc1b3adc1e26c47c823acd958bfae8f8fa",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/partner-pos-receipt.test.mjs",
+      "start": 1,
+      "end": 54,
+      "sha256": "462c3fa0a2d23fcc6ea5c8a93f65f4a90b400eb6478817c0f48eebaec5399beb",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/partner-production-readiness.test.mjs",
+      "start": 1,
+      "end": 311,
+      "sha256": "8c5a9959bbd8d74d639a3fa4765e09b38bd9b5bbd06d728546df3b91dde97111",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/partner-production-readiness.test.mjs",
+      "start": 312,
+      "end": 565,
+      "sha256": "8c5a9959bbd8d74d639a3fa4765e09b38bd9b5bbd06d728546df3b91dde97111",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/payment-error-visibility.test.mjs",
+      "start": 1,
+      "end": 115,
+      "sha256": "433b833ed2413f3b2935e5bd7c041925a4dc09ce3ccb2906e455a7c995234627",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/payment-methods.test.mjs",
+      "start": 1,
+      "end": 107,
+      "sha256": "7e0cf8880805cd83b8c0a89a03ef55a4c37bc496b74ef047d52af95ff542e68c",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/payments-hardening.check.mjs",
+      "start": 1,
+      "end": 236,
+      "sha256": "1b960345c2c25e2157ef485e0f8f592c85f890a6ffa0db13a3705b97f1839dca",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/payout-balance-guard.test.mjs",
+      "start": 1,
+      "end": 198,
+      "sha256": "f08e370ffd491a8d76eed721f9f14c910f9aba4af61de6e3228cea8068eb6ade",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/plan-wallet-separation.test.mjs",
+      "start": 1,
+      "end": 102,
+      "sha256": "508d85dddcf2c427cbea1d793ad3429306b249a3937e5d82e5222276637b0dfa",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/prefs-security.check.mjs",
+      "start": 1,
+      "end": 132,
+      "sha256": "9d9aebb42f09c57246be2ce5359b5abb9d32e5752aeb5f86b55b2b33c63fc7c8",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/reconciliation-fallback.integration.test.mjs",
+      "start": 1,
+      "end": 143,
+      "sha256": "2c5dc97d84da3778b78055f18e1277b88d166eed980b24242cdd2cf8cad54107",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/reconciliation-fallback.integration.test.mjs",
+      "start": 144,
+      "end": 155,
+      "sha256": "2c5dc97d84da3778b78055f18e1277b88d166eed980b24242cdd2cf8cad54107",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/refund-ambiguity.integration.test.mjs",
+      "start": 1,
+      "end": 29,
+      "sha256": "683b25c95f190ff3a7587a977dd9b01683d743030774994082a64ec694c46699",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/resume-payment.check.mjs",
+      "start": 1,
+      "end": 200,
+      "sha256": "68d7da3f79a2fc3225050cbcc9652cfb0117239fbf53a3f59b86a8ec3d84eb15",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/savings-fee.test.mjs",
+      "start": 1,
+      "end": 41,
+      "sha256": "2695355705f7d4dc1cb796524a7cb48bdbf08fc96aaea323fb6b3090db169a8b",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/settlement-accounting.integration.test.mjs",
+      "start": 1,
+      "end": 225,
+      "sha256": "e2e23362e8530aac1de7f236f0ed0b2e7bd2eaf5de4059b838e36c7761bad46a",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/settlement-accounting.integration.test.mjs",
+      "start": 226,
+      "end": 296,
+      "sha256": "e2e23362e8530aac1de7f236f0ed0b2e7bd2eaf5de4059b838e36c7761bad46a",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/spend-projection-and-activity.test.mjs",
+      "start": 1,
+      "end": 164,
+      "sha256": "6cc3b5378988109d419c3cebc8bc40c2665f3185b3476db1f7eba770d8cad567",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/subscription-entitlements.test.mjs",
+      "start": 1,
+      "end": 14,
+      "sha256": "c08aa0be9e0b689be165b3a545836091a57f6dd9dae55e19a636c4901d34b5be",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/subscription-routing.test.mjs",
+      "start": 1,
+      "end": 46,
+      "sha256": "71917c340cfd505068a1da785b4efe823f08a625433d83b38c6e99fde8274351",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/sudo-contract.test.mjs",
+      "start": 1,
+      "end": 35,
+      "sha256": "bc6e4b0505199da3c5d1c4a3beab41569ce42ebb17b07485ccb7b4e508f03c6b",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/temporary-partner-account.integration.test.mjs",
+      "start": 1,
+      "end": 270,
+      "sha256": "1809e2b375cda321bd527012e88139e21e620ee0ab2be6575f0386ee7c6bfb09",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/temporary-partner-account.integration.test.mjs",
+      "start": 271,
+      "end": 411,
+      "sha256": "1809e2b375cda321bd527012e88139e21e620ee0ab2be6575f0386ee7c6bfb09",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/unit.test.mjs",
+      "start": 1,
+      "end": 129,
+      "sha256": "86dffc15d6056e8465edde6ff0f3c6d2f6da37cc574932b3e80bb61d3a72ac1a",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/verification-flow.test.mjs",
+      "start": 1,
+      "end": 212,
+      "sha256": "75e4241d5bba3441da9ce6cecb08e2e9b29bbbc5a5acf382ad6d50924193d412",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/api/tests/wallet-payments.check.mjs",
+      "start": 1,
+      "end": 228,
+      "sha256": "d7baac595db0dbabbcdc4a20423163ca49d5658b8e52c71f25e6988bf25f4b58",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/web/app/admin/login/page.tsx",
+      "start": 1,
+      "end": 173,
+      "sha256": "a46868f3af88642d40d0c35e17d6db0966f6172c15f93af755057233e54b7ac8",
+      "read": true
+    },
+    {
+      "path": "apps/web/app/auth/failure/page.tsx",
+      "start": 1,
+      "end": 34,
+      "sha256": "013c5c3bb65a773428c2b9460fbf751254d6c5c943ef3242f286b01a06052bb5",
+      "read": true
+    },
+    {
+      "path": "apps/web/app/auth/in-progress/page.tsx",
+      "start": 1,
+      "end": 82,
+      "sha256": "e2ff84dcbcc41fc95c8ce4bc74a2dfaa04d98d8b5034711ed46759c04b616a9d",
+      "read": true
+    },
+    {
+      "path": "apps/web/app/auth/login/page.tsx",
+      "start": 1,
+      "end": 10,
+      "sha256": "498a584c42b6bed8df62da7789906f46bae51f3140e7db94c4fd836d4eff4ddb",
+      "read": true
+    },
+    {
+      "path": "apps/web/app/auth/logout/page.tsx",
+      "start": 1,
+      "end": 28,
+      "sha256": "b65216ad143c234756eebd267568322b88969418b3f9aa0aa0914b7e06d238cc",
+      "read": true
+    },
+    {
+      "path": "apps/web/app/auth/mfa/challenge/page.tsx",
+      "start": 1,
+      "end": 5,
+      "sha256": "125babe6c8e16d10ffde5ab084dd90b0e450efb84290fbfe7ab80c91b27ddf5a",
+      "read": true
+    },
+    {
+      "path": "apps/web/app/auth/mfa/setup/page.tsx",
+      "start": 1,
+      "end": 5,
+      "sha256": "970f35d9b8d8730ee820c39c16ee591319579ec7b7392b3028420834e83ea6fb",
+      "read": true
+    },
+    {
+      "path": "apps/web/app/auth/session-expired/page.tsx",
+      "start": 1,
+      "end": 126,
+      "sha256": "6a41f44508ab1922e3c8d1a962a8fe198b94a2778e78b2ac7bba05ba71b6446f",
+      "read": true
+    },
+    {
+      "path": "apps/web/app/auth/signup/page.tsx",
+      "start": 1,
+      "end": 16,
+      "sha256": "b8ea0e8b28a454bc2f0469ec375ac129bffaa1b9032c702034cc8c1d6f3b1fcd",
+      "read": true
+    },
+    {
+      "path": "apps/web/app/auth/success/page.tsx",
+      "start": 1,
+      "end": 24,
+      "sha256": "b8a1f8637f17406c041964151062721557bf96306521f90ab2ab0d0457eb0ca2",
+      "read": true
+    },
+    {
+      "path": "apps/web/app/auth/verify-email/page.tsx",
+      "start": 1,
+      "end": 15,
+      "sha256": "f8dac5915b966ebbe650ad6a1b7695322c0465942bbcbbe6fb504ee00727f596",
+      "read": true
+    },
+    {
+      "path": "apps/web/app/auth/verify-phone/page.tsx",
+      "start": 1,
+      "end": 17,
+      "sha256": "e60e79eeaa2cbf5688c45f45ef002d29b5a0611954bee28032755184bce1d271",
+      "read": true
+    },
+    {
+      "path": "apps/web/app/cookie-policy/page.tsx",
+      "start": 1,
+      "end": 69,
+      "sha256": "73f8b6a72f01f55449f29b3df97f74fe357ac7b6b35693ce794995aa229883e4",
+      "read": true
+    },
+    {
+      "path": "apps/web/app/error.tsx",
+      "start": 1,
+      "end": 13,
+      "sha256": "f3ab09ec893d5cd5fce0e10bfd078ff258b27d02c148ad223094785007d389ef",
+      "read": true
+    },
+    {
+      "path": "apps/web/app/forgot-password/page.tsx",
+      "start": 1,
+      "end": 187,
+      "sha256": "10ba6220ecfef8624b9d8b01dca557ebbc19d5dbe11f822cc242120d979f70df",
+      "read": true
+    },
+    {
+      "path": "apps/web/app/global-error.tsx",
+      "start": 1,
+      "end": 19,
+      "sha256": "a8c02d5929d94051d24bed26188079005158daa7b2c03d40479c7474af44db5b",
+      "read": true
+    },
+    {
+      "path": "apps/web/app/globals.css",
+      "start": 1,
+      "end": 41,
+      "sha256": "fb145a8261beb78a8aa8322a2486d0dc7ea209ac028ecc23b666510975771fc6",
+      "read": true
+    },
+    {
+      "path": "apps/web/app/icon.svg",
+      "start": 1,
+      "end": 40,
+      "sha256": "4ff8bd47e99b4a91868759903a8c8f92520bed2ce74adb1c754b659d3527e34a",
+      "read": true
+    },
+    {
+      "path": "apps/web/app/layout.tsx",
+      "start": 1,
+      "end": 48,
+      "sha256": "cd83cd692c9fac5aae72a849afb8c11c2bb1715556952b2c6c56f69b4903819b",
+      "read": true
+    },
+    {
+      "path": "apps/web/app/login/page.tsx",
+      "start": 1,
+      "end": 6,
+      "sha256": "01c620f62c88f9a193f2d0d9370f627a63df670bd9c4c1fc9093718d4676e47a",
+      "read": true
+    },
+    {
+      "path": "apps/web/app/not-found.tsx",
+      "start": 1,
+      "end": 19,
+      "sha256": "479baabf4b558de21c34c57c0e826ce98a0648029ba390cfffa0ae0d8deb9db2",
+      "read": true
+    },
+    {
+      "path": "apps/web/app/privacy-policy/page.tsx",
+      "start": 1,
+      "end": 97,
+      "sha256": "119ff9a461a5ba0c87fde5d32218e27a9135fa40e1245d5703ab62ff00dcbe5d",
+      "read": true
+    },
+    {
+      "path": "apps/web/app/reset-password/page.tsx",
+      "start": 1,
+      "end": 224,
+      "sha256": "8e7d6232a752bb46ee69c3fa1c28c5b28378f42a0c6d8c4bf7c0145b73f169ca",
+      "read": true
+    },
+    {
+      "path": "apps/web/app/support/page.tsx",
+      "start": 1,
+      "end": 221,
+      "sha256": "49cdfbde574cf2f2612763806f0d2d217d5d939f5f5d97ac7c026f0e734196be",
+      "read": true
+    },
+    {
+      "path": "apps/web/app/terms-of-service/page.tsx",
+      "start": 1,
+      "end": 84,
+      "sha256": "291a6ac15b8a89a255f9b112447eddd746ebb5ad3803c01a24a8918a0166c377",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/AdminHeader.tsx",
+      "start": 1,
+      "end": 109,
+      "sha256": "f05f5f4d84b276de419309bb8ceaef31135ec3e8ce0ddcd9b90be8865bff2f8d",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/AdminModals.tsx",
+      "start": 1,
+      "end": 318,
+      "sha256": "0ab2ee9d05afb6f77e95468c1803e34f57049d94ed5e5bb1113ade2fdb6479dd",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/AdminModals.tsx",
+      "start": 319,
+      "end": 503,
+      "sha256": "0ab2ee9d05afb6f77e95468c1803e34f57049d94ed5e5bb1113ade2fdb6479dd",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/AdminScreen.tsx",
+      "start": 1,
+      "end": 497,
+      "sha256": "0b4f1b23cfe825991ca36bae32c7eed4f1582722c0e70d8a6f56df8bfe4159d8",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/AdminShell.tsx",
+      "start": 1,
+      "end": 55,
+      "sha256": "1479701b030623cb543b94993ac2f83041a3ede46cb8271eee2e3eeb3abdd114",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/AdminSidebar.tsx",
+      "start": 1,
+      "end": 76,
+      "sha256": "ab053a573fb07491bb044f91749bcdc4d9496a58d0a1b2359e998087c3ad4690",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/CardApprovalQueue.tsx",
+      "start": 1,
+      "end": 19,
+      "sha256": "315515bd871ac0ad24e93a609ae626451f175d9453c9db3b4ff2a67d80fb9d1c",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/DiscountApprovals.tsx",
+      "start": 1,
+      "end": 11,
+      "sha256": "1c2184b4666d2a567912a84dbccfd9a6f13249fcd73cd6dff3812fbe644fddd5",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/IntakeConsole.tsx",
+      "start": 1,
+      "end": 474,
+      "sha256": "6f3dd9bd80f170801888c7e28e121aa309c4988716f7ac979b5415b7fe6fd77a",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/IntakeConsole.tsx",
+      "start": 475,
+      "end": 505,
+      "sha256": "6f3dd9bd80f170801888c7e28e121aa309c4988716f7ac979b5415b7fe6fd77a",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/OperationsInbox.tsx",
+      "start": 1,
+      "end": 330,
+      "sha256": "7fd4fe4fbbbf01ed299b99eab50ff2311e1c4e613b60a0d82dbe475742a345d2",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/auth/AuthForms.tsx",
+      "start": 1,
+      "end": 335,
+      "sha256": "d7d3ee47ceb73daaad5ff7de91f107ae379411f376455892fdfa3451dd1f9369",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/auth/AuthForms.tsx",
+      "start": 336,
+      "end": 701,
+      "sha256": "d7d3ee47ceb73daaad5ff7de91f107ae379411f376455892fdfa3451dd1f9369",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/auth/AuthForms.tsx",
+      "start": 702,
+      "end": 901,
+      "sha256": "d7d3ee47ceb73daaad5ff7de91f107ae379411f376455892fdfa3451dd1f9369",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/auth/AuthGuard.tsx",
+      "start": 1,
+      "end": 157,
+      "sha256": "7fb0c98abee4d48cc09a8b39d062b6dcffe3b1f9ffba201808a2be931ae2823f",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/auth/AuthShell.tsx",
+      "start": 1,
+      "end": 65,
+      "sha256": "57ea847a2e6ffd8e9381e7fc33f237cb86ee60c643f43402c054a0336d39ef71",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/auth/AuthStatus.tsx",
+      "start": 1,
+      "end": 146,
+      "sha256": "aa6928dfaa27a5e74f2749dd356090e8c0627cb3b4544b28432a06b54f335823",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/auth/DemoAccountPanel.tsx",
+      "start": 1,
+      "end": 150,
+      "sha256": "1434510aae09541755919e57f6714d1530d9cf6572ec449978b36fa2fc75e3dc",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/auth/LogoutButton.tsx",
+      "start": 1,
+      "end": 139,
+      "sha256": "86fa4fabc3d35a68f3c23f4f10a1b4952ad1fb4371c83393430256d07d8733f1",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/auth/MFAUI.tsx",
+      "start": 1,
+      "end": 321,
+      "sha256": "e1f308758f60a898120e1114a2cafaa2338fb9f6e12ee0e7f6281e9ced45d35b",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/auth/MFAUI.tsx",
+      "start": 322,
+      "end": 329,
+      "sha256": "e1f308758f60a898120e1114a2cafaa2338fb9f6e12ee0e7f6281e9ced45d35b",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/auth/SuccessAutoRedirect.tsx",
+      "start": 1,
+      "end": 79,
+      "sha256": "97ee67b5803e895e72efbb884135f6f5e58e45bae26160e3e2bfc0191f797d18",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/auth/SuccessHonesty.tsx",
+      "start": 1,
+      "end": 78,
+      "sha256": "528a3b24def3793ba8e23a7c1bef6ed358544d99452c4b78b07a0541c9e89dcc",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/auth/VerificationUI.tsx",
+      "start": 1,
+      "end": 312,
+      "sha256": "d3f8aa5efb5f3db5721746c0c85e1bc822ee4e9f50d91a04e4b7b37127d963ca",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/careers/CareersPage.tsx",
+      "start": 1,
+      "end": 293,
+      "sha256": "c123d530b1a3290ccd34a7fa9253d856409ce2660a14811a0007fc89e8961ee4",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/careers/CareersPage.tsx",
+      "start": 294,
+      "end": 393,
+      "sha256": "c123d530b1a3290ccd34a7fa9253d856409ce2660a14811a0007fc89e8961ee4",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/company-dashboard/CompanyModals.tsx",
+      "start": 1,
+      "end": 314,
+      "sha256": "97321118d5b87068fbfcb62bb962ff711b8a9807cbd95a6f2b33eb2d9b5ea207",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/company-dashboard/CompanyModals.tsx",
+      "start": 315,
+      "end": 572,
+      "sha256": "97321118d5b87068fbfcb62bb962ff711b8a9807cbd95a6f2b33eb2d9b5ea207",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/company-dashboard/CompanyModals.tsx",
+      "start": 573,
+      "end": 661,
+      "sha256": "97321118d5b87068fbfcb62bb962ff711b8a9807cbd95a6f2b33eb2d9b5ea207",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/company-dashboard/CompanyScreen.tsx",
+      "start": 1,
+      "end": 357,
+      "sha256": "e648228662a8266e543d266624307a8dff8acdd1d9f25147c030dc7a32c63cf2",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/company-dashboard/CompanyScreen.tsx",
+      "start": 358,
+      "end": 673,
+      "sha256": "e648228662a8266e543d266624307a8dff8acdd1d9f25147c030dc7a32c63cf2",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/company-dashboard/CompanyScreen.tsx",
+      "start": 674,
+      "end": 757,
+      "sha256": "e648228662a8266e543d266624307a8dff8acdd1d9f25147c030dc7a32c63cf2",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/company-dashboard/CompanyShell.tsx",
+      "start": 1,
+      "end": 206,
+      "sha256": "ab15bc37f7324e8e8ac9386306a83463316482f34c0684872e1095e2dbd56e01",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/customer-dashboard/CardRequestModals.tsx",
+      "start": 1,
+      "end": 372,
+      "sha256": "c297963edec3705a82d89c857f4bf90d3f1f6acdef4dc9453a667d0045840794",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/customer-dashboard/CardRequestModals.tsx",
+      "start": 373,
+      "end": 649,
+      "sha256": "c297963edec3705a82d89c857f4bf90d3f1f6acdef4dc9453a667d0045840794",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/customer-dashboard/CustomerFuelCheckout.tsx",
+      "start": 1,
+      "end": 84,
+      "sha256": "4310a63a4528ad904cca19b1b9728a3b1c0f6a35e6353e619f23ce27bf496cf2",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/customer-dashboard/CustomerModals.tsx",
+      "start": 1,
+      "end": 416,
+      "sha256": "6eecb4be6777ac93436d2df934b8a51570f464c35cb3ac2af69f7bec674a4251",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/customer-dashboard/CustomerModals.tsx",
+      "start": 417,
+      "end": 842,
+      "sha256": "6eecb4be6777ac93436d2df934b8a51570f464c35cb3ac2af69f7bec674a4251",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/customer-dashboard/CustomerModals.tsx",
+      "start": 843,
+      "end": 1149,
+      "sha256": "6eecb4be6777ac93436d2df934b8a51570f464c35cb3ac2af69f7bec674a4251",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/customer-dashboard/CustomerModals.tsx",
+      "start": 1150,
+      "end": 1520,
+      "sha256": "6eecb4be6777ac93436d2df934b8a51570f464c35cb3ac2af69f7bec674a4251",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/customer-dashboard/CustomerModals.tsx",
+      "start": 1521,
+      "end": 1560,
+      "sha256": "6eecb4be6777ac93436d2df934b8a51570f464c35cb3ac2af69f7bec674a4251",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/customer-dashboard/CustomerScreen.tsx",
+      "start": 1,
+      "end": 331,
+      "sha256": "776d51bf16e84a1829fdb911d83934bfb4925ae7e8cbf8a670eafb8038eafcf4",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/customer-dashboard/CustomerScreen.tsx",
+      "start": 332,
+      "end": 670,
+      "sha256": "776d51bf16e84a1829fdb911d83934bfb4925ae7e8cbf8a670eafb8038eafcf4",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/customer-dashboard/CustomerScreen.tsx",
+      "start": 671,
+      "end": 1057,
+      "sha256": "776d51bf16e84a1829fdb911d83934bfb4925ae7e8cbf8a670eafb8038eafcf4",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/customer-dashboard/CustomerScreen.tsx",
+      "start": 1058,
+      "end": 1374,
+      "sha256": "776d51bf16e84a1829fdb911d83934bfb4925ae7e8cbf8a670eafb8038eafcf4",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/customer-dashboard/CustomerScreen.tsx",
+      "start": 1375,
+      "end": 1658,
+      "sha256": "776d51bf16e84a1829fdb911d83934bfb4925ae7e8cbf8a670eafb8038eafcf4",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/customer-dashboard/CustomerScreen.tsx",
+      "start": 1659,
+      "end": 1915,
+      "sha256": "776d51bf16e84a1829fdb911d83934bfb4925ae7e8cbf8a670eafb8038eafcf4",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/customer-dashboard/CustomerScreen.tsx",
+      "start": 1916,
+      "end": 2242,
+      "sha256": "776d51bf16e84a1829fdb911d83934bfb4925ae7e8cbf8a670eafb8038eafcf4",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/customer-dashboard/CustomerScreen.tsx",
+      "start": 2243,
+      "end": 2584,
+      "sha256": "776d51bf16e84a1829fdb911d83934bfb4925ae7e8cbf8a670eafb8038eafcf4",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/customer-dashboard/CustomerShell.tsx",
+      "start": 1,
+      "end": 206,
+      "sha256": "4ea88718b70a5e5232f9e2bc941b9d25db7e2c39357e259b91c7a5f647c4c295",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/dashboard/DashboardScreen.tsx",
+      "start": 1,
+      "end": 374,
+      "sha256": "b46298faedaaa9f87d4efc5c34fd458717bb6333cac49634e8b68238f134db03",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/dashboard/DashboardScreen.tsx",
+      "start": 375,
+      "end": 669,
+      "sha256": "b46298faedaaa9f87d4efc5c34fd458717bb6333cac49634e8b68238f134db03",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/dashboard/DashboardScreen.tsx",
+      "start": 670,
+      "end": 971,
+      "sha256": "b46298faedaaa9f87d4efc5c34fd458717bb6333cac49634e8b68238f134db03",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/dashboard/DashboardScreen.tsx",
+      "start": 972,
+      "end": 1347,
+      "sha256": "b46298faedaaa9f87d4efc5c34fd458717bb6333cac49634e8b68238f134db03",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/dashboard/DashboardScreen.tsx",
+      "start": 1348,
+      "end": 1696,
+      "sha256": "b46298faedaaa9f87d4efc5c34fd458717bb6333cac49634e8b68238f134db03",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/dashboard/DashboardScreen.tsx",
+      "start": 1697,
+      "end": 2115,
+      "sha256": "b46298faedaaa9f87d4efc5c34fd458717bb6333cac49634e8b68238f134db03",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/dashboard/DashboardScreen.tsx",
+      "start": 2116,
+      "end": 2375,
+      "sha256": "b46298faedaaa9f87d4efc5c34fd458717bb6333cac49634e8b68238f134db03",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/dashboard/MobileDashboardNav.tsx",
+      "start": 1,
+      "end": 32,
+      "sha256": "e68e59be5bf5e63939c8a76f174c9d9b432d2e3676b0e2b17d4e2820ce2104e4",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/dashboard/PartnerApiKeys.tsx",
+      "start": 1,
+      "end": 163,
+      "sha256": "f9923e340623cb8405475815d9b97ae75843cf38aa3db2a74fd016246941a948",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/dashboard/PartnerNotificationsProvider.tsx",
+      "start": 1,
+      "end": 98,
+      "sha256": "0143382d0eef174629ac10449d86b537d45cc7722f7c87a9456f97c3d11412b8",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/dashboard/PartnerServiceRequests.tsx",
+      "start": 1,
+      "end": 164,
+      "sha256": "38ef7acb77545f5b20f323c5a11b26253f231bd6f4c129be52c4b23d923807d2",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/dashboard/PartnerSubscriptionGate.tsx",
+      "start": 1,
+      "end": 14,
+      "sha256": "90bffe5b54b339feda892a9e962d503c0f3af241af15a65ec0f351dd1f934ee3",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/dashboard/PartnerVerification.tsx",
+      "start": 1,
+      "end": 367,
+      "sha256": "441ef084d3c8a0971890f44f7d3863c8f3743c0d764b4a2160d51f8636f984c4",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/dashboard/PartnerVerification.tsx",
+      "start": 368,
+      "end": 380,
+      "sha256": "441ef084d3c8a0971890f44f7d3863c8f3743c0d764b4a2160d51f8636f984c4",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/dashboard/PartnershipShell.tsx",
+      "start": 1,
+      "end": 90,
+      "sha256": "26df7a6ed181d8f277c88e6e1307e39b92645bf55e74baf260c22f4a54db883b",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/dashboard/PartnershipSidebar.tsx",
+      "start": 1,
+      "end": 184,
+      "sha256": "f6d3b364ac29a8c4e0fe189cc7fc8d0dcc0f6a8a3d87ecf0f0927ab50f4855bc",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/dashboard/StationDiscounts.tsx",
+      "start": 1,
+      "end": 12,
+      "sha256": "4a65ddc2126b82c85f9848785f812fb87d63bc06feced04076fc404c9690027b",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/landing/Button.tsx",
+      "start": 1,
+      "end": 48,
+      "sha256": "7d99e86a18717c07cf4ad821f6b741acca06fb629d91ecdb852314811cc823d9",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/landing/ClosingCta.tsx",
+      "start": 1,
+      "end": 51,
+      "sha256": "5decd6b7dface0451f3ebc646fde9482092f53e1b2a1d21370990775c9077b40",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/landing/Footer.tsx",
+      "start": 1,
+      "end": 78,
+      "sha256": "ec85717f1577ba7af6539e498256ba1ac8b52568f03dfa4e9627dc40817b58a9",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/landing/Header.tsx",
+      "start": 1,
+      "end": 93,
+      "sha256": "a61b4ca7cc6b58c558ff954b2ebd6329d6eaef2d5e6a63a8416ba412efbc0cc9",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/landing/Hero.tsx",
+      "start": 1,
+      "end": 56,
+      "sha256": "4c6c8c71e9aba7b0d8c3cdf074594353dfd38750530065d94c2a4a3065e8569f",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/landing/Partners.tsx",
+      "start": 1,
+      "end": 1,
+      "sha256": "8dcbaaeee84cd97a83d2e75ad70d498971b80ccb487680170009c6504e21c5fa",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/landing/Pricing.tsx",
+      "start": 1,
+      "end": 353,
+      "sha256": "06507d6d9513bc0e6ad7196f6bc41c6a6200f544895e5a9b05b347ffdce5e55b",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/landing/ProductShowcase.tsx",
+      "start": 1,
+      "end": 50,
+      "sha256": "fa4cebdc680888accdc702fb4172b7a3d4e640bbc52f3a0cd3e221d88092db3a",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/landing/Story.tsx",
+      "start": 1,
+      "end": 75,
+      "sha256": "6b14b1e1e93ef5c0d44044b0cbbaa64a0c9ffb7b9162b0ec6d075b969349991e",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/legal/LegalPage.tsx",
+      "start": 1,
+      "end": 307,
+      "sha256": "7783e7dc9041da8c5515812a11097a38c00791ad393866cde9e650776abe4faf",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/legal/LegalPage.tsx",
+      "start": 308,
+      "end": 343,
+      "sha256": "7783e7dc9041da8c5515812a11097a38c00791ad393866cde9e650776abe4faf",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/shared/Calendar/Calendar.tsx",
+      "start": 1,
+      "end": 161,
+      "sha256": "18fe66f44d3ce413589a872448b0f009d3408dacaf9c6526bb0b766cf724d337",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/shared/DashboardLogo.tsx",
+      "start": 1,
+      "end": 65,
+      "sha256": "b455d667bd98e74065c44f3bf72f07485d42cf9e4ecbd666973fa98183db82d6",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/shared/Dialogs.tsx",
+      "start": 1,
+      "end": 220,
+      "sha256": "3e2f2bb12cbf060324e60af480f64a2d08342a402ae95d2c1a0d8a30101e6c42",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/shared/ErrorBoundary.tsx",
+      "start": 1,
+      "end": 74,
+      "sha256": "a765c1c05403723dfbc107db761f6f1ad51c3978d1874fda8d215b4d3259506f",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/shared/Providers.tsx",
+      "start": 1,
+      "end": 16,
+      "sha256": "3889aacf572bdc22bd2d59bd18ad224dc99ede204e57a100fc3ecb3323201d94",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/shared/States.tsx",
+      "start": 1,
+      "end": 107,
+      "sha256": "c91b6c653f959f1f7eddbb563eef98bdba878410808afa3ecbe4fe42c1abbb9a",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/shared/StationMap.tsx",
+      "start": 1,
+      "end": 122,
+      "sha256": "2de4cf0eb812e85820d82664d7bd5c4224b2df68b5d8fe09554a2dbd39bcbdb2",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/shared/SubscriptionPanel.tsx",
+      "start": 1,
+      "end": 159,
+      "sha256": "22ce3f69c7c203d6d92e0282d2e057724b42f0bc5f174dbd3edaa8c31fbfa98c",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/shared/Toast.tsx",
+      "start": 1,
+      "end": 95,
+      "sha256": "9148f46a225d2a90144df19804e41f6a3400f781187f5f2e16bd31a49f683c28",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/shared/Toggle.tsx",
+      "start": 1,
+      "end": 60,
+      "sha256": "62de924b2653fd43398defd41edf8c8762d8e64e230c49f8e92a260924a189a6",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/shared/useDialogFocus.ts",
+      "start": 1,
+      "end": 73,
+      "sha256": "fbfaa5edb2bd131b99452e577cfc7731f8b6840c1bb6c95b4072983c4dca1b6f",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/shared/usePolling.ts",
+      "start": 1,
+      "end": 54,
+      "sha256": "47b44ff37f22cb999defe665f6c0150b44ff3181314e61e91f9021449a89ec47",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/site/CookieConsentBanner.tsx",
+      "start": 1,
+      "end": 77,
+      "sha256": "9e01fb2eb3064d740f55e78e7dc77a3c51fd9083fdde2a436cba3586c776699d",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/site/Input.tsx",
+      "start": 1,
+      "end": 22,
+      "sha256": "7d01dab544abbc2a94b2cca3ed06eb8d2bf1f0697cdb34e587eec26c85522ff1",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/site/PageIntro.tsx",
+      "start": 1,
+      "end": 30,
+      "sha256": "f441f819e4e6ae412ad0f97e32180ba0a235dd0ab5307d132dea0c0deef46e51",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/site/SiteFooter.tsx",
+      "start": 1,
+      "end": 132,
+      "sha256": "eb045f9792735ce8e2c7f3871d7687ad3756b854feaf35a20e05f8560326e0f7",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/site/SiteHeader.tsx",
+      "start": 1,
+      "end": 51,
+      "sha256": "13d914838bb61c8c9db8fe3476159d71ac47848defbeaa2dc63b05ebfd202f9a",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/site/routes.ts",
+      "start": 1,
+      "end": 38,
+      "sha256": "7c61049022c94436dbc3c924ae196578e5a7cc6981eb3776175d91c719e1b3f2",
+      "read": true
+    },
+    {
+      "path": "apps/web/components/solutions/SolutionPage.tsx",
+      "start": 1,
+      "end": 163,
+      "sha256": "0941fbe58a28e6d1febc3e680992c5798ed2d43a9dc801daf79d85c380835b0e",
+      "read": true
+    },
+    {
+      "path": "apps/web/lib/demo/accounts.ts",
+      "start": 1,
+      "end": 107,
+      "sha256": "9fd5f30b16039ac7cb256174db4de4e1e8e058e1dcdabf29ddf7db2d21b7419f",
+      "read": true
+    },
+    {
+      "path": "apps/web/lib/push-subscription.ts",
+      "start": 1,
+      "end": 121,
+      "sha256": "ef65f4cd31ec2aeef1f8374ae4228a52e910fc01c3900471f7d0d32ae032b646",
+      "read": true
+    },
+    {
+      "path": "apps/web/lib/services/client.ts",
+      "start": 1,
+      "end": 452,
+      "sha256": "2aa375de4d7c935dafa6946a2dbc97520f6210f47d0b5431d707d0b35817d118",
+      "read": true
+    },
+    {
+      "path": "apps/web/lib/services/client.ts",
+      "start": 453,
+      "end": 839,
+      "sha256": "2aa375de4d7c935dafa6946a2dbc97520f6210f47d0b5431d707d0b35817d118",
+      "read": true
+    },
+    {
+      "path": "apps/web/lib/services/client.ts",
+      "start": 840,
+      "end": 1192,
+      "sha256": "2aa375de4d7c935dafa6946a2dbc97520f6210f47d0b5431d707d0b35817d118",
+      "read": true
+    },
+    {
+      "path": "apps/web/lib/services/client.ts",
+      "start": 1193,
+      "end": 1504,
+      "sha256": "2aa375de4d7c935dafa6946a2dbc97520f6210f47d0b5431d707d0b35817d118",
+      "read": true
+    },
+    {
+      "path": "apps/web/lib/services/client.ts",
+      "start": 1505,
+      "end": 1757,
+      "sha256": "2aa375de4d7c935dafa6946a2dbc97520f6210f47d0b5431d707d0b35817d118",
+      "read": true
+    },
+    {
+      "path": "apps/web/lib/services/client.ts",
+      "start": 1758,
+      "end": 1786,
+      "sha256": "2aa375de4d7c935dafa6946a2dbc97520f6210f47d0b5431d707d0b35817d118",
+      "read": true
+    },
+    {
+      "path": "apps/web/lib/services/company.ts",
+      "start": 1,
+      "end": 40,
+      "sha256": "06270673606cce5c2e48f8675dd94295a97e1da5f6de774c113e0ecbea1c6bd7",
+      "read": true
+    },
+    {
+      "path": "apps/web/lib/services/types.ts",
+      "start": 1,
+      "end": 557,
+      "sha256": "db2e39e29ed9bdd1bf79e2289c033b30c9d874f9ee28451de97e71c8334f6dff",
+      "read": true
+    },
+    {
+      "path": "apps/web/lib/services/types.ts",
+      "start": 558,
+      "end": 573,
+      "sha256": "db2e39e29ed9bdd1bf79e2289c033b30c9d874f9ee28451de97e71c8334f6dff",
+      "read": true
+    },
+    {
+      "path": "apps/web/package.json",
+      "start": 1,
+      "end": 29,
+      "sha256": "ced0d4bd1677e4d0925dc70331fa4c4e345915ab0e819ba7bfeaf274498868f4",
+      "read": true
+    },
+    {
+      "path": "apps/web/tests/async-location-regression.test.cjs",
+      "start": 1,
+      "end": 57,
+      "sha256": "a530de7db5cdc7dc8319c184c24efc850ccc5345c0e0bc4040e74f98072b921f",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/web/tests/auth-regression.test.cjs",
+      "start": 1,
+      "end": 51,
+      "sha256": "57879ac8b3c080e0226f852f62d069299800d1309f4a3950c2400702a4e4b18f",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/web/tests/company-empty-pages.test.cjs",
+      "start": 1,
+      "end": 74,
+      "sha256": "5d939a7835172bbd0295e7f46a1480ab16747c02e5d60a4b7a2bc3d3f5a2feec",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/web/tests/company-input.test.cjs",
+      "start": 1,
+      "end": 39,
+      "sha256": "a19b6ad13d284a628d4f20b1887eba84ea61b889c40375d3a91caa32728d57e4",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/web/tests/customer-audit.test.cjs",
+      "start": 1,
+      "end": 183,
+      "sha256": "246e14c91ade1a6af2904b168f34e65d4a0ec8d3871f6126adda5212db3d2418",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/web/tests/customer-entitlements.test.cjs",
+      "start": 1,
+      "end": 36,
+      "sha256": "11deebae3d3892b34f8d4973d96e0c16cc894c42e04a47ca82e2e634320a2660",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/web/tests/customer-my-card.test.cjs",
+      "start": 1,
+      "end": 297,
+      "sha256": "de54d43fb14df56116f583bc212647f75747c0a71f29a76f75bb0116f9fec0de",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/web/tests/customer-my-card.test.cjs",
+      "start": 298,
+      "end": 328,
+      "sha256": "de54d43fb14df56116f583bc212647f75747c0a71f29a76f75bb0116f9fec0de",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/web/tests/dialog-focus.test.cjs",
+      "start": 1,
+      "end": 88,
+      "sha256": "538b17d51342a76efde6e2dab4ae27a87f6b2cf2a6041ceb97bedd7d9c59ea32",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/web/tests/landing-plans-regression.test.cjs",
+      "start": 1,
+      "end": 88,
+      "sha256": "e02ab1edf5df7484a3ad87e07a50d84c504eb9355398f98fe40914cd640465c1",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/web/tests/partner-audit-regression.test.cjs",
+      "start": 1,
+      "end": 112,
+      "sha256": "5012eba892ed8854ba84eaa50ab4726ba0cfdcc019515e75d10e3a6717ee654b",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/web/tests/partner-verification.test.cjs",
+      "start": 1,
+      "end": 257,
+      "sha256": "5d3bee0a25d98d7d12c02b64157ee3368c076cf6999cd3e8cbf6e7bb0bf4e448",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/web/tests/station-fuels.test.cjs",
+      "start": 1,
+      "end": 16,
+      "sha256": "c4b8842f15a114f8194bde82cc1a8716418848de880c023f4f62ebd4fa700fa2",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    },
+    {
+      "path": "apps/web/tests/transport-regression.test.cjs",
+      "start": 1,
+      "end": 88,
+      "sha256": "cb00a46a38da5abd213eef902ed1e7bb5bcbb11d72d30a6bda0c352153307328",
+      "read": false,
+      "reservedFor": "fix_partner_audit"
+    }
+  ]
+}

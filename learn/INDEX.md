@@ -1,0 +1,2 @@
+- [2026-10-14] [Production readiness repairs](2026-10-14-production-readiness-repairs.md): How current authorization, exact money, recovery records, and truthful dashboard states work together.
+- [2026-10-13] [Repair the dashboard UI audit](2026-10-13-fix-dashboard-ui-audit.md): Connect audited controls to persisted records and accessible responsive interfaces.

@@ -1,0 +1,87 @@
+{
+  "task": "Focused Multer 2.4 compatibility and truthful upload failures",
+  "status": "Implemented and focused verification passed; review/deployment not performed",
+  "findings": [
+    {
+      "id": "UPLOAD-01",
+      "categories": [
+        "Public/Careers",
+        "Public/Support",
+        "Customer/Support",
+        "Partner/Station assets",
+        "Partner/Disputes"
+      ],
+      "before": "Multer typed oversized/unexpected file errors and Busboy malformed multipart errors returned masked HTTP 500.",
+      "after": "Known Multer file size errors return413; supported typed input limits and parser framing failures return400 with safe actionable messages. Unknown application/storage errors retain masked5xx."
+    },
+    {
+      "id": "PARTNER-DISPUTE-INSERT-01",
+      "categories": [
+        "Partner/Disputes"
+      ],
+      "before": "Valid dispute creation supplied ten bind parameters to an INSERT with nine placeholders, failing500 after file storage.",
+      "after": "Nine parameters map transaction fleet organization from the partner-scoped verified transaction, authenticated station organization and attributable partner actor. Foreign station references are refused before upload."
+    }
+  ],
+  "files": [
+    {
+      "path": "apps/api/src/app.js",
+      "sha256": "943ab52c539117d5faa8233adfda7a2103ec55387cf69cedaa6d03c2ec3ef956"
+    },
+    {
+      "path": "apps/api/src/routes/partner.routes.js",
+      "sha256": "740f3b895cff2e48e1c53221bb0849787543143d78269d1902994d72352dbf91"
+    },
+    {
+      "path": "apps/api/tests/upload-compatibility.integration.test.mjs",
+      "sha256": "658e66b03cc3a79d2b510751eda84962dd7b786acc3dfc7747edfe0522620ed4"
+    }
+  ],
+  "reproduction": {
+    "log": "/tmp/obligon-upload-compatibility-before.log",
+    "actualHttpFailures": [
+      "oversized resume500 instead413",
+      "unexpected resume field500 instead400",
+      "missing multipart boundary500 instead400",
+      "valid partner dispute500: bind message supplies10 parameters but prepared statement requires9"
+    ],
+    "counts": {
+      "pass": 4,
+      "fail": 4,
+      "skip": 0
+    },
+    "additionalPartnerProof": "/tmp/obligon-upload-valid-before.log",
+    "fixtureRepairExcluded": "Initial station assets reset used invalid JSON [] instead of PostgreSQL text[] {}; that run was not treated as defect proof."
+  },
+  "verification": {
+    "command": "OBLIGON_TEST_DATABASE_URL=[redacted local connection] DOTENV_CONFIG_PATH=/dev/null DATABASE_SSL=false NODE_ENV=test node --test apps/api/tests/upload-compatibility.integration.test.mjs apps/api/tests/payment-error-visibility.test.mjs",
+    "log": "/tmp/obligon-upload-compatibility-after.log",
+    "counts": {
+      "pass": 18,
+      "fail": 0,
+      "skip": 0,
+      "newUploadIntegrationTests": 9,
+      "existingErrorContractTests": 9
+    },
+    "durationMs": 1133.859381,
+    "coverage": [
+      "Allfive HTTP upload endpoints: limit10MiB+1 denial without files/records, wrong field/excess files, missing boundary/truncated file/bad multipart header, supported file persistence and existing disallowed type validation",
+      "Exactly10MiB accepted",
+      "Authenticated durable-session customer/partner/admin fixtures and unauthenticated/wrong-role denial",
+      "Admin private support attachment signed URL retrieval and customer denial",
+      "Dispute correct actor/partnerstation/verifiedfleet, foreignstation transaction blocked before storage",
+      "Genuine database error on multipart remains masked500, parser errors do not log API faults",
+      "HTTP health remains responsive after malformed multipart"
+    ],
+    "diffCheck": "git diff --check for allowed source/test files passed"
+  },
+  "officialDocumentation": "https://github.com/expressjs/multer#error-handling",
+  "limitations": [
+    "Supabase object upload/signing mocked with exactexisting SDK contract and syntheticisolateddata; hosted bucket permissions and provider uptime not verified.",
+    "MIME allowlist behavior covered, not a claim of binarycontent antivirus or malware detection.",
+    "Busboy plain Error classification is narrowly limited to known parser messages and originstack; future parser upgrades must retain regression verification.",
+    "Repository fullintegratedtest/build/qualifiedreview ownedbyparent and not asserted here."
+  ],
+  "scope": "Only app.js error mapping, confirmed partner disputes bind mismatch (parent explicitly authorized expansion), one new focused integration test. No dependencies, CI, commits, deploy, new infrastructure or learn files.",
+  "reviewGate": "Qualified human review required before production release where the broader change set affects authentication, tenants or money."
+}

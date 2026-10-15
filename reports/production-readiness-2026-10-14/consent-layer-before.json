@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-14",
+  "environment": "isolated fresh loopback origin; providers disabled",
+  "normal1024": {
+    "bannerLeft": 120.5,
+    "bannerRight": 888.5,
+    "client": 1009,
+    "scroll": 1009,
+    "textReceivesPointer": true,
+    "width": 1024,
+    "zIndex": "40"
+  },
+  "shortDesktopModal": {
+    "buttonReceivesPointer": false,
+    "cookieZ": "40",
+    "height": 500,
+    "hitTag": "ASIDE",
+    "hitText": "Privacy & Cookie ConsentWe use essential cookies to maintain secure sessions and optimize ",
+    "width": 1280
+  },
+  "storageMutation": false,
+  "notes": [
+    "Raw CDP storage removal was unsupported and made no change. A fresh local origin supplied ordinary first-visit consent state.",
+    "The modal was opened with its real keyboard control because the consent notice is normally visible above navigation."
+  ]
+}

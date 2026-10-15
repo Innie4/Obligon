@@ -1,0 +1,155 @@
+{
+  "task": "Bounded admin company contract approval gate",
+  "date": "2026-10-14",
+  "repository": "/home/inimfon-udoh/Obligon/checkout",
+  "branch": "codex/production-readiness-2026-10-14",
+  "status": "verified-source-frozen",
+  "scope": "Admin companies GET/POST/PUT, AdminScreen.tsx and focused API/component tests only. Root owns signup, company operational authorization, session types and shell; earlier payout source remains frozen.",
+  "findings": [
+    {
+      "id": "COMPANY-ADMIN-01",
+      "before": "Admin provisioning immediately verified/activated the company and described an operationally ready account.",
+      "after": "Provisioning writes pending verification plus canceled subscription with no billing date/subscription trial. Existing owner membership and organization-owned zero NGN wallet are created with the organization and attributable provisioning audit in one transaction. Invitation text and response truthfully explain pending contract approval and report local/provider delivery result.",
+      "disposition": "fixed-focused-and-integrated-verification-green"
+    },
+    {
+      "id": "COMPANY-ADMIN-02",
+      "before": "Pending companies with canceled subscriptions appeared Frozen, and pending status filtering queried subscription state rather than verification.",
+      "after": "Verification pending/unverified precedes subscription badges and filtering; rejected verification is explicit. Raw subscriptionStatus is returned separately for preserving existing subscription edits.",
+      "disposition": "fixed-focused-and-integrated-verification-green"
+    },
+    {
+      "id": "COMPANY-ADMIN-03",
+      "before": "Verification could become verified without explicit company contract confirmation, invalid enums reached database errors, and audit failure did not roll back approval.",
+      "after": "Verification/subscription enums and boolean confirmation are validated before writes. A locked company row transition from any nonverified state to verified requires contractAgreed === true. Approval and a company.approved audit containing actor and old/new state plus confirmation commit in the same transaction; audit failure keeps verification pending. Editing an already verified company can preserve its existing state without a new approval.",
+      "disposition": "fixed-focused-and-integrated-verification-green"
+    },
+    {
+      "id": "COMPANY-ADMIN-04",
+      "before": "Admin review offered no explicit verification/contract approval controls.",
+      "after": "Existing inline review form has labeled native verification/subscription selects and a required conditional contract checkbox with associated help. The actual submit handler rejects absent confirmation and serializes the checked value to boolean true bound to the selected company. Backend failure retains the form and accessible alert; provisioning feedback explains pending approval.",
+      "disposition": "fixed-focused-and-integrated-verification-green"
+    },
+    {
+      "id": "COMPANY-ADMIN-05",
+      "before": "Admin provisioning omitted the organization wallet, so a subsequently approved fleet could not top up its account.",
+      "after": "The existing createWalletForAccount helper receives userId, organizationId and the same transaction executor. The permanent actual HTTP/PG provisioning test requires exactly the organization-owned company wallet with NGN currency and zero opening balance.",
+      "disposition": "fixed-focused-and-integrated-verification-green"
+    },
+    {
+      "id": "COMPANY-ADMIN-06",
+      "before": "Historical verified fleets created through admin provisioning could remain without an organization wallet.",
+      "after": "An explicit admin company review whose resulting state is verified calls the existing idempotent wallet helper in the same transaction. A missing wallet opens at zero NGN; existing funded wallets retain their identity and balance across retries. Audit failure rolls back both restoration and organization edits.",
+      "disposition": "fixed-focused-and-integrated-verification-green"
+    }
+  ],
+  "evidence": {
+    "approvalRed": {
+      "log": "/tmp/obligon-company-admin-approval-red.log",
+      "runner": "actual isolated PostgreSQL and loopback HTTP with local email delivery",
+      "tests": 7,
+      "passed": 1,
+      "failed": 6,
+      "skipped": 0,
+      "observations": [
+        "automatic verified provisioning",
+        "pending listed Frozen",
+        "missing confirmation admitted with 200",
+        "attributable approval audit missing",
+        "audit failure still admitted with 200",
+        "invalid enum reached 500"
+      ]
+    },
+    "walletRed": {
+      "log": "/tmp/obligon-final-admin-wallet-red.log",
+      "runner": "root actual isolated PostgreSQL/HTTP focused provisioning probe before helper repair",
+      "tests": 1,
+      "passed": 0,
+      "failed": 1,
+      "skipped": 0,
+      "exitCode": 1,
+      "observation": "organization wallet lookup returned undefined instead of owned company/NGN/zero balance record"
+    },
+    "uiGreen": {
+      "command": "node tests/admin-company-approval.test.cjs",
+      "log": "/tmp/obligon-company-admin-ui-green.log",
+      "runner": "direct Node, actual TSX compiled in controlled React hook fixture with synthetic service boundary",
+      "tests": 6,
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0
+    },
+    "typeCheck": {
+      "command": "node ./node_modules/typescript/bin/tsc --noEmit --incremental false",
+      "exitCode": 0,
+      "qualification": "sandbox stream/bus warnings; root final integrated build/types remain authoritative release evidence"
+    },
+    "diffCheck": {
+      "command": "git diff --check -- apps/api/src/routes/admin.routes.js apps/api/tests/admin-support.integration.test.mjs apps/web/components/admin-dashboard/AdminScreen.tsx apps/web/tests/admin-company-approval.test.cjs",
+      "exitCode": 0
+    },
+    "finalApi": {
+      "status": "passed",
+      "command": "node --env-file-if-exists=../../.env --test tests/*.test.mjs",
+      "log": "/tmp/obligon-production-api-verified.log",
+      "runner": "root actual isolated localhost PostgreSQL API suite with loopback HTTP, 13 actual local API smoke cases and mocked/local provider delivery",
+      "tests": 1018,
+      "passed": 1016,
+      "failed": 0,
+      "skipped": 2,
+      "exitCode": 0,
+      "durationMs": 33092.201477,
+      "latestAffectedCompanyCasesPassed": 10,
+      "skips": [
+        "no real credential appears in any tracked file: no .env to compare against",
+        "webhook secret hash is not committed anywhere in history: no .env"
+      ],
+      "inspection": "Read actual named affected cases and summaries; parsed the entire 98,771-byte/1,260-line log and verified 1,016 named pass records, zero named failure records and expected summaries."
+    },
+    "excludedEvidence": [
+      "Automatic approval review timed out for both focused escalated commands, including one allowed retry; these commands did not run.",
+      "Sandbox node --test component runner reported one outer file success; excluded because it did not prove the six actual cases."
+    ],
+    "historicalWalletRed": {
+      "log": "/tmp/obligon-final-admin-wallet-repair-red.log",
+      "runner": "root actual isolated PostgreSQL/HTTP focused admin review tests before repair",
+      "tests": 3,
+      "passed": 2,
+      "failed": 1,
+      "skipped": 0,
+      "exitCode": 1,
+      "observation": "legacy missing wallet remained undefined; permanent existing-funded retry preservation and audit rollback characterizations passed before repair and will be rechecked after actual helper call"
+    },
+    "hashes": {
+      "/tmp/obligon-production-api-verified.log": "fd7607d8a20269741b34f7cc10dbc24e351523c74c4942c16a2ffc8e0f1d148a",
+      "/tmp/obligon-company-admin-approval-red.log": "fb34061b4ff35dc709bd117f64cdb499ebaa20831bea34faed25bd9a905b7b50",
+      "/tmp/obligon-final-admin-wallet-red.log": "1537e37e4756084e00385db4ed4ded57825eb0ac51a04626ea19c8cf1e63949b",
+      "/tmp/obligon-final-admin-wallet-repair-red.log": "f8133c60977778645561a2c179c13f62bcae1d3d4c4c505a8e44b241b48c463c",
+      "/tmp/obligon-company-admin-ui-green.log": "154ce1d4a0edb977816ded23de779c301396796f6ef0f06b3501a754ab9cd5e1"
+    }
+  },
+  "sourceHashes": {
+    "apps/api/src/routes/admin.routes.js": "9ecdb24e33857af71f7a4db2410624f735a0e71fa9bc4d72bd5ba0b771de7122",
+    "apps/api/tests/admin-support.integration.test.mjs": "1a3d0fb7946e6fa90bfa9584297183e48a0b5ddae8ff844dadf405e56383e5f9",
+    "apps/web/components/admin-dashboard/AdminScreen.tsx": "da50325ea79ea72d9306278ccbbd0463bf9d42f5f6748d7ca36e44c2ef6f50e1",
+    "apps/web/tests/admin-company-approval.test.cjs": "0f19bf0d282cf9de833304308cd9718d576427162b5cd547076afcc2842e0943"
+  },
+  "limits": [
+    "Historical company/wallet inventory and qualified operator review remain necessary before live repairs or deployment. No live backfill was performed, no historical balance was inferred, and organizations with missing owners or inconsistent existing wallets require operator resolution.",
+    "All company fixtures, HTTP requests and invitations are synthetic/local; no actual company was granted approval or contacted externally.",
+    "Component tests prove actual compiled handlers and native control attributes in a controlled fixture, not a real browser, screen reader, keyboard/focus or visual rendering audit.",
+    "No new contract fields, migrations, external contract engine, dependencies, scan frameworks, CI, commits or deployment. Existing audit metadata records explicit admin contract confirmation, not legal execution or a document signature.",
+    "Qualified human review remains required before production authorization or financial release. Root owns final integration/review and one consolidated Learn breakdown."
+  ],
+  "uiReferences": "Read all ten installed UI-reference catalog entries; selected local DesignTaste accessibility and UX-copy patterns while preserving existing brand and controls. No hosted design accounts or assets used.",
+  "previousFrozenEvidence": [
+    "/tmp/obligon-production-payout-final-review.json",
+    "/tmp/obligon-production-admin-test-boundaries.json"
+  ],
+  "review": {
+    "independentAgent": "/root",
+    "record": "Root independently confirmed the company approval row-lock/boolean confirmation/same-TX audit gate, identified missing new and historical company wallets, required exact failing real PG probes, and ran the final integrated suite. Current source hashes are supplied for root final completion recheck.",
+    "qualifiedHumanProductionReview": "required, not performed by this agent"
+  }
+}

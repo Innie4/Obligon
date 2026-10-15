@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-14",
+  "frozenAt": "2026-10-14T19:15:58.779999+00:00",
+  "scope": "CustomerShell mobile account dropdown stacking class only; no logout/auth/session, shared dialog/focus implementation, portal architecture or desktop layout changes.",
+  "beforeEvidence": {
+    "source": "Root live320 browser observation and source hierarchy; root is capturing DOM hit-target evidence.",
+    "observed": "Confirm Sign Out tap navigated to underlying Stations and no auth/logout network call occurred.",
+    "stacking": "LogoutButton/ConfirmModal/DialogFrame(z50) is rendered inside account dropdown nav(z40). Later sibling MobileBottomNav(z40) creates a peer stacking context painted above the nav group, so descendant dialog z50 cannot escape the nav context."
+  },
+  "sourceChange": {
+    "path": "apps/web/components/customer-dashboard/CustomerShell.tsx",
+    "region": "MobileHeader accountOpen nav className",
+    "before": "z-40",
+    "after": "z-50",
+    "retained": "absolute right5/top72px/width/brand styles and lg:hidden mobile-only header. MobileBottomNav remainsz40; shared dialog staysz50."
+  },
+  "representativeSourcesInspected": [
+    "apps/web/components/auth/LogoutButton.tsx",
+    "apps/web/components/shared/Dialogs.tsx",
+    "apps/web/components/shared/useDialogFocus.ts",
+    "apps/web/components/company-dashboard/CompanyShell.tsx",
+    "apps/web/components/dashboard/PartnershipShell.tsx",
+    "apps/web/components/admin-dashboard/AdminShell.tsx"
+  ],
+  "focusContract": "Existing shared useDialogFocus still traps keyboard focus, handles Escape on topmost dialog, and returns focus to its opener; no handler/ARIA/input changes. Actual keyboard acceptance is root-owned after local render.",
+  "verification": {
+    "typecheck": {
+      "command": "./apps/web/node_modules/.bin/tsc --noEmit --project apps/web/tsconfig.json",
+      "exitCode": 0,
+      "log": "/tmp/obligon-mobile-logout-stacking-types.log"
+    },
+    "focusedDiffCheckExitCode": 0,
+    "testsAdded": 0,
+    "testsReason": "Localized reversible CSS stacking correction; source/layout mirror tests would not prove real browser paint/hit behavior.",
+    "browserAfter": "Root-owned pending: elementFromPoint Sign Out center must hit modal button, actual logout network/session result, Escape focus return, desktop unchanged.",
+    "productionBuild": "Root-owned final local build after this source freeze"
+  },
+  "sourceHashBefore": "4ea88718b70a5e5232f9e2bc941b9d25db7e2c39357e259b91c7a5f647c4c295",
+  "sourceHashAfter": "10fed346875d78302656f3e65e61830b289fd5cf39da709b654848f0c0fabed8",
+  "limits": [
+    "Source stacking reasoning and typecheck do not substitute for actual browser hit-target acceptance; pending after proof is explicit.",
+    "No production release/readiness or auth-security claim; application critical review gates remain."
+  ]
+}

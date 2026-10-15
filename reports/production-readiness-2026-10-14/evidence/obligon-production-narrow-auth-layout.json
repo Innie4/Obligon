@@ -1,0 +1,84 @@
+{
+  "date": "2026-10-14",
+  "frozenAt": "2026-10-14T18:41:41.254845+00:00",
+  "scope": "Responsive CSS class repair only for known actual320px auth overflow. No authentication, challenge/proof, event handler, input property, data flow or API logic changes.",
+  "beforeEvidence": "reports/production-readiness-2026-10-14/narrow-auth-before.json",
+  "before": [
+    {
+      "route": "/auth/mfa/challenge",
+      "viewportWidth": 320,
+      "clientWidth": 320,
+      "scrollWidth": 368,
+      "offender": "sixth fixed48px OTP input",
+      "right": 367.9513969421387
+    },
+    {
+      "route": "/auth/failure",
+      "viewportWidth": 320,
+      "clientWidth": 303,
+      "scrollWidth": 305,
+      "offender": "intrinsic grid auth card with32px padding",
+      "right": 305.5208435058594
+    }
+  ],
+  "implementation": [
+    {
+      "path": "apps/web/components/auth/MFAUI.tsx",
+      "delta": "Mobile6-column minmax grid,2px gap, full-width min-w-0 inputs; sm and above retain original flex48px boxes/12px gaps.",
+      "preserved": [
+        "Digit labels",
+        "one-time-code autocomplete",
+        "numeric inputMode",
+        "disabled proof/busy state",
+        "autofocus",
+        "onChange digit handling/focus advance",
+        "Backspace focus handling",
+        "56px field height"
+      ]
+    },
+    {
+      "path": "apps/web/components/auth/AuthStatus.tsx",
+      "delta": "Min-width0 grid and status card,20px padding and24px/32px heading below640px, original32px padding and30px/40px heading from640px, local word wrapping for heading/body.",
+      "preserved": [
+        "status/message/proof behavior",
+        "existing colors/font families",
+        "desktop spacing/type",
+        "retry/redirect actions",
+        "no global overflow mask"
+      ]
+    }
+  ],
+  "references": {
+    "catalog": "/home/inimfon-udoh/.codex/skills/ui-reference-guide/references/catalog.md",
+    "focusedGuidance": "/home/inimfon-udoh/.codex/ui-reference-library/design-taste/skills/taste-accessibility/SKILL.md",
+    "selection": "Existing product design retained; focused keyboard/target/reflow guidance selected after reviewing all ten catalog summaries. No effects/component library/dependency/design services were introduced.",
+    "targetFloor": "Reference guidance is24×24 AA minimum and44×44 recommended touch. OTP height remains56px; expected width45px at known320px/280px form width. Final actual target measurements are root browser-owned."
+  },
+  "verification": {
+    "typecheck": {
+      "command": "./apps/web/node_modules/.bin/tsc --noEmit --project apps/web/tsconfig.json",
+      "exitCode": 0,
+      "log": "/tmp/obligon-narrow-auth-types.log"
+    },
+    "focusedDiffCheck": {
+      "command": "git diff --check -- apps/web/components/auth/MFAUI.tsx apps/web/components/auth/AuthStatus.tsx",
+      "exitCode": 0
+    },
+    "testsAdded": 0,
+    "testsReason": "Localized reversible CSS fix; source-string layout mirror tests intentionally omitted. Existing auth logic was unchanged.",
+    "browserAfter": "Root-owned pending320px and desktop evidence",
+    "productionBuild": "Root-owned fresh build after source freeze"
+  },
+  "sourceHashesBefore": {
+    "apps/web/components/auth/AuthStatus.tsx": "ee96974884ee572a57713bd49b00ee7bca1eeac37cfd0165576deffc65b36872",
+    "apps/web/components/auth/MFAUI.tsx": "e1f308758f60a898120e1114a2cafaa2338fb9f6e12ee0e7f6281e9ced45d35b"
+  },
+  "sourceHashesAfter": {
+    "apps/web/components/auth/MFAUI.tsx": "aa3fe0c79e2ca79d9bbd2b534c295d8fb3a0e31fdbdbead0b2932b187d1cb48b",
+    "apps/web/components/auth/AuthStatus.tsx": "262f5412a3bbe236e942acb88c852b83a43fb33ec8fe6c6702c41cb2ab8257f7"
+  },
+  "limits": [
+    "Actual after-layout overflow, input target/focus/paste/autofill and desktop browser checks are not claimed by this source/typecheck receipt; root owns live browser operation.",
+    "A full application accessibility or authentication-security approval is not implied; consequential production gates remain."
+  ]
+}

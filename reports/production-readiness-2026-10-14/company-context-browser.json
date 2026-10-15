@@ -1,0 +1,13 @@
+{
+  "route": "/company",
+  "samePage": true,
+  "beforeContainsSixVehicles": true,
+  "beforeHasOriginalVehicle": true,
+  "afterHasEmptyState": true,
+  "afterHasOriginalVehicle": false,
+  "afterCompany": true,
+  "images": [
+    "company-a-before-switch.jpg",
+    "company-b-after-switch.jpg"
+  ]
+}

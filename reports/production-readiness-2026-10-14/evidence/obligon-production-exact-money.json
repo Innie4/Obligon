@@ -1,0 +1,245 @@
+{
+  "date": "2026-10-14",
+  "increment": "MONEY-EXACT",
+  "repository": "/home/inimfon-udoh/Obligon/checkout",
+  "branch": "codex/production-readiness-2026-10-14",
+  "status": "Implemented and focused tests pass; shared integration failures notified to owners; independent and qualified release review remain outstanding",
+  "sourceFrozen": true,
+  "productionActions": false,
+  "invariants": [
+    "Monetary products use integer minor units and BigInt intermediate arithmetic; no binary decimal price-times-litres, basis-point discount or split-fee product.",
+    "A litre/percentage input is parsed to integer hundredths from its string/number representation; excess precision, coercible objects/arrays, scientific notation and unsupported bounds are rejected.",
+    "Discount/fuel/split ratios retain explicit nonnegative half-up rounding exactly once after multiplication.",
+    "All monetary returned values are bounded safe integer kobo; invalid ratios or out-of-range final results are refused.",
+    "Provider transfer and plan amounts use the already established documented v3 major-unit decimal parser; missing, malformed, sub-kobo or oversized provider evidence never becomes a rounded matching payment/plan.",
+    "Invalid transfer evidence remains unknown without initiating another transfer; invalid plan money produces checked:false/stale:true with a review error.",
+    "Existing wallet station/code integrity, immutable quote persistence, transaction locks/idempotency and historical recorded-discount semantics remain intact."
+  ],
+  "changes": [
+    {
+      "files": [
+        "apps/api/src/lib/money-amounts.js"
+      ],
+      "detail": "Appended quantityHundredths, scaledKobo and fuelAmountKobo. Original exact nairaToKobo and integerKobo exports are byte-identical (normalizing added trailing blank line only)."
+    },
+    {
+      "files": [
+        "apps/api/src/lib/fuel-sale.js",
+        "apps/api/src/lib/fuel-checkout.js"
+      ],
+      "detail": "Replaced decimal price multiplication with fuelAmountKobo; direct checkout validates raw quantity precision. Preserved existing wallet100000L and direct10000L maxima, original quote propagation and state locks."
+    },
+    {
+      "files": [
+        "apps/api/src/lib/discounts.js"
+      ],
+      "detail": "Basis-point price product uses scaledKobo; discountPercent is parsed exactly into1..4999 basis points. Valid0.07% no longer fails due binary multiplication."
+    },
+    {
+      "files": [
+        "apps/api/src/lib/company-input.js",
+        "apps/api/src/lib/spend.js"
+      ],
+      "detail": "Card limit and monthly spend inputs use existing exact bounded nairaToKobo parser. Projected spend no longer silently rounds sub-kobo input."
+    },
+    {
+      "files": [
+        "apps/api/src/lib/plans.js",
+        "apps/api/src/lib/flutterwave.js (payment-plan amount field only)"
+      ],
+      "detail": "Preserved raw provider plan amount, validated once with strict major-unit toKobo, and returned explicit stale/review result for invalid price evidence."
+    },
+    {
+      "files": [
+        "apps/api/src/lib/transfer-recovery.js"
+      ],
+      "detail": "Strict-major toKobo amount comparison replaces Math.round(Number(amount)*100); invalid financial evidence remains unresolved."
+    },
+    {
+      "files": [
+        "apps/api/src/lib/flutterwave.js (split calculation and requested-refund returned amount)"
+      ],
+      "detail": "Explicit split ratio/fee bounds and integer half-up fee computation; explicit fee cannot exceed principal. Requested refund returns validated integer kobo without a rounding operation."
+    }
+  ],
+  "helperContracts": {
+    "quantityHundredths": "string|number decimal with0..2 fraction digits; returns nonnegative integer hundredths subject to min/max; defaultmin1max1000000",
+    "scaledKobo": "existing integer kobo + nonnegative safe integer numerator + positive safe integer denominator; rounded=(BigInt(amount)*numerator+denominator/2n)/denominator; default maxMAX_SAFE_INTEGER",
+    "fuelAmountKobo": "positive safe integer price x parsed quantity /100 with half-up; maxHundredths configurable to preserve existing purchase limits"
+  },
+  "concreteBeforeAfter": [
+    {
+      "trigger": "9950kobo/L x1.13L",
+      "before": 11243,
+      "after": 11244
+    },
+    {
+      "trigger": "9007199254740989kobo x4999bp/10000",
+      "before": 4502698907445021,
+      "after": 4502698907445020
+    },
+    {
+      "trigger": "discountPercent0.07",
+      "before": "Rejected valid input",
+      "after": "7bp accepted"
+    },
+    {
+      "trigger": "transfer receipt1.001NGN expected100kobo",
+      "before": "Returned matching provider ID123",
+      "after": "Unknown/null; no fabricated exact amount"
+    }
+  ],
+  "verification": {
+    "before": {
+      "command": "node --test tests/discount-math.test.mjs tests/company-input.test.mjs tests/fuel-sale.integration.test.mjs tests/fuel-checkout.integration.test.mjs tests/exact-money-provider.test.mjs tests/exact-money-projection.integration.test.mjs tests/payment-plans.integration.test.mjs",
+      "log": "/tmp/obligon-exact-money-before.log",
+      "exit": 1,
+      "tests": 110,
+      "passed": 91,
+      "failed": 19,
+      "skipped": 0,
+      "note": "19 actual behavior reproductions failed before implementation, including one-kobo misroundings and accepted invalid input."
+    },
+    "focusedAfter": {
+      "command": "node --test tests/money-amounts.test.mjs tests/discount-math.test.mjs tests/company-input.test.mjs tests/fuel-sale.integration.test.mjs tests/fuel-checkout.integration.test.mjs tests/exact-money-provider.test.mjs tests/exact-money-projection.integration.test.mjs tests/payment-plans.integration.test.mjs",
+      "log": "/tmp/obligon-exact-money-after.log",
+      "exit": 0,
+      "tests": 118,
+      "passed": 118,
+      "failed": 0,
+      "skipped": 0
+    },
+    "downstream": {
+      "command": "node --test tests/company-money.integration.test.mjs tests/settlement-accounting.integration.test.mjs tests/reconciliation-fallback.integration.test.mjs tests/flutterwave-units.test.mjs tests/flutterwave-processor.test.mjs tests/spend-projection-and-activity.test.mjs tests/partner-pos-receipt.test.mjs tests/partner-production-readiness.test.mjs",
+      "log": "/tmp/obligon-exact-money-downstream.log",
+      "exit": 1,
+      "tests": 156,
+      "passed": 132,
+      "failed": 24,
+      "skipped": 0,
+      "failures": [
+        {
+          "count": 23,
+          "file": "apps/api/tests/company-money.integration.test.mjs",
+          "detail": "Requests fail403 Select a company before opening its dashboard before reaching money handler. Company context changed concurrently; owner must provide current organization-selection header/token context in fixture."
+        },
+        {
+          "count": 1,
+          "file": "apps/api/tests/partner-production-readiness.test.mjs:542",
+          "detail": "Old source-only assertion requires literal allowedRoles list inside CompanyShell; current UI uses named COMPANY_DASHBOARD_ROLES constant. Owner notified."
+        }
+      ],
+      "passingPaths": "Provider amount contract, transfer recovery, periodic payment recovery, settlement invariants, spend projection source checks, POS receipts and other partner readiness checks all passed."
+    },
+    "priorGreenReuse": {
+      "sourceReport": "/tmp/obligon-production-fuel-integrity.json",
+      "sourceLog": "/tmp/obligon-fuel-integrity-after.log",
+      "previousFocusedPassed": 59,
+      "reuse": "Historical savings.js hash is unchanged; reuse its8 passing recorded-discount tests rather than repeat. Fuel/code invariants, direct idempotency and plan envelope/pagination are rerun in new focused suite because callers or normalization changed.",
+      "savingsSha256": "929196f0fe44e25ec8b8204b720c2e6600b89e2bcdd4eefd5df6344bb907e2b1"
+    },
+    "diffCheck": "git diff --check exit0 after changes",
+    "environment": "Disposable local PostgreSQL with random isolated per-test schemas, DOTENV_CONFIG_PATH=/dev/null DATABASE_SSL=false NODE_ENV=test; mocked provider requests; require_escalated for Node network tests; no external provider credentials/funds."
+  },
+  "callerCoordination": [
+    {
+      "owner": "root",
+      "path": "apps/api/src/routes/partner.routes.js:1002",
+      "required": "Preserve original req.body.litres when passing to authorizeWalletFuelSale; current requirePositiveNumber coerces raw precision before exact helper. Root queued update."
+    },
+    {
+      "owner": "root/UI owner",
+      "required": "Company maintenance monetary conversion and remaining route monetary parsing remain separate ownership; no route edits by this increment."
+    }
+  ],
+  "changeImpact": {
+    "database": "No migration or persisted-data rewrite; quantity pricing/discounts may correct new quotes by1kobo at formerly misrounded boundaries. Existing amount_kobo/base_amount_kobo fields store authoritative new quote totals.",
+    "contracts": "Original integer helpers unchanged; new library exports. Public API valid decimal amounts/quantities retain intent and supported limits; malformed inputs are refused. Internal payment-plan amount remains raw string/number until strict major conversion.",
+    "moneyMovement": "Fuel checkout/ledger state ownership and recovery not changed. Invalid transfers remain uncertain instead of falsely matched. Root-owned fee/refund/provider verification changes preserved.",
+    "reversibility": "Localized source/test changes, no commits/production/deploy."
+  },
+  "review": {
+    "selfReview": "Inspected integer bounds/rounding formula incl odd denominator; helper original export hash; import graphs; upstream raw-input preservation need; transfer invalid-evidence behavior; plan malformed error path; fresh per-path tests and impacted downstream output.",
+    "independentReview": "Root must dispatch independent review after this source freeze; active agent slots occupied during implementation.",
+    "qualifiedReleaseReview": "Required before real money/auth production release."
+  },
+  "limitations": [
+    "Existing toProviderAmount outbound numeric serializer was outside assigned edits: MAX_SAFE_INTEGERkobo serializes as90071992547409.9NGN and loses1kobo. Normal business caps100b kobo are lower, but a separate strict round-trip check or documented decimal-string provider serializer is needed before unrestricted extreme-value use; root notified.",
+    "Root partner raw litre caller update remains necessary to preserve textual precision at HTTP boundary.",
+    "The downstream run has24 unrelated/contextual failures described above; no claim the whole project is passing.",
+    "Provider sandbox NGN precision/limits and fee/refund destination verification remain untested live; local exact arithmetic is not a provider settlement proof or production readiness claim.",
+    "Money ledger/custody architecture, statement reconciliation and qualified human operational review remain release requirements."
+  ],
+  "unchangedOriginalHelperSha256": "da128db2b274a71422d020e9b884e3377aa294d1db757540308ae1eb54b27f16",
+  "files": [
+    {
+      "path": "apps/api/src/lib/money-amounts.js",
+      "sha256": "00dc5ea6395a29249ab2bc922c12fb3712289bb28274f673e7a1740dedf2a194"
+    },
+    {
+      "path": "apps/api/src/lib/fuel-sale.js",
+      "sha256": "be4943a329a5cfdbaded29f1dc4d449831ec61b7fcb9b69f46b0fc0e3c84b322"
+    },
+    {
+      "path": "apps/api/src/lib/fuel-checkout.js",
+      "sha256": "46f82c0d0a84b50fe839c028fb13e56203e2ab3cd5bd71e421948c2eea4f50bb"
+    },
+    {
+      "path": "apps/api/src/lib/discounts.js",
+      "sha256": "14019adfd3cd9e5ea9cde61ca1e04aa419957dd4a4ed731851fcf9e48c6628f0"
+    },
+    {
+      "path": "apps/api/src/lib/company-input.js",
+      "sha256": "7ee6f43a1362aca01dc7076d705c60ccb7005dabb2d60a9ab3ba3d097163351a"
+    },
+    {
+      "path": "apps/api/src/lib/spend.js",
+      "sha256": "669a258238055dc31414691ec178a59b25d08c7c4d44225ab205aa9151ad2f60"
+    },
+    {
+      "path": "apps/api/src/lib/plans.js",
+      "sha256": "296b5e1587dfa694e6350af03235d93534fec67a25ed27cf08a372e2381ef317"
+    },
+    {
+      "path": "apps/api/src/lib/transfer-recovery.js",
+      "sha256": "0ca84ac162f8e574aec25c9e54fbd9d32e5ed25b4bb210ecaa38aacfdb969014"
+    },
+    {
+      "path": "apps/api/src/lib/flutterwave.js",
+      "sha256": "cd1e80c13f70275b74b0e11e4b21a89fe8ebd073ee482e63df2d136333411048"
+    },
+    {
+      "path": "apps/api/tests/money-amounts.test.mjs",
+      "sha256": "244901385449a8e7b82222339f34543f857011af3f95da2bf83d59fbb73161fa"
+    },
+    {
+      "path": "apps/api/tests/discount-math.test.mjs",
+      "sha256": "447e1c439a8ee79fc117b5bc795339c79ae594c85b9017009d114cc873aa2cb6"
+    },
+    {
+      "path": "apps/api/tests/company-input.test.mjs",
+      "sha256": "8dde891ad7e546c73370ae9e67ceda3abd93075bf67baa3cedf9d34537967654"
+    },
+    {
+      "path": "apps/api/tests/fuel-sale.integration.test.mjs",
+      "sha256": "14da3491a14bc331975f5a750994680f1dba21f05f5980738e7a6012c78b8220"
+    },
+    {
+      "path": "apps/api/tests/fuel-checkout.integration.test.mjs",
+      "sha256": "c8d068a925e05b96db84f3c8c45b47fbc507bdd0566693d0e385eaa1491f0e49"
+    },
+    {
+      "path": "apps/api/tests/exact-money-provider.test.mjs",
+      "sha256": "2409b8c770dfc27c1ba2a929345e1a8ab55394613ef34232c40bcb09f6abce65"
+    },
+    {
+      "path": "apps/api/tests/exact-money-projection.integration.test.mjs",
+      "sha256": "79e2699464744b9ff2e8c39c4e04840f74ab7ac315ee6ed93f96f5b1cc45fafb"
+    },
+    {
+      "path": "apps/api/tests/payment-plans.integration.test.mjs",
+      "sha256": "c35d8ac8ce8e9580743343a83ed52678465aa624dc0ec7fce753fac961e93573"
+    }
+  ],
+  "ediraeLearn": "Root owns one task-wide learning breakdown."
+}

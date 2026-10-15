@@ -1,0 +1,247 @@
+{
+  "date": "2026-10-14",
+  "release": "Local review branch; qualified critical review and external acceptance pending",
+  "findings": [
+    {
+      "id": "ROOT-CU-ACCESS",
+      "category": "Customer",
+      "pages": [
+        "Overview",
+        "Wallet",
+        "Transactions",
+        "My Card",
+        "Notifications",
+        "Support"
+      ],
+      "change": "Personal APIs clear selected fleet context and scope wallet/card/history/savings/support/notification actions to owned personal records; notification dismissal now checks ownership and dismissal state.",
+      "evidence": [
+        "customer-production-boundaries.integration.test.mjs",
+        "/tmp/obligon-customer-notification-before.log",
+        "/tmp/obligon-root-final-boundaries.log"
+      ]
+    },
+    {
+      "id": "ROOT-CU-PHONE",
+      "category": "Customer",
+      "pages": [
+        "Profile",
+        "Verification"
+      ],
+      "change": "Changing a phone number atomically clears verification and invalidates contact codes.",
+      "evidence": [
+        "customer-production-boundaries.integration.test.mjs"
+      ]
+    },
+    {
+      "id": "ROOT-FUEL-CODES",
+      "category": "Customer/Company/Partner",
+      "pages": [
+        "My Card",
+        "Company Cards",
+        "Partner POS"
+      ],
+      "change": "Cryptographic single-use codes share transaction advisory locking and uniqueness checking; personal code issuance rechecks card/PIN/subscription under lock, returns actual expiry and attributable audit. Non-NGN wallets cannot be debited as naira.",
+      "evidence": [
+        "/tmp/obligon-root-final-boundaries.log",
+        "/tmp/obligon-fuel-currency-after.log"
+      ]
+    },
+    {
+      "id": "ROOT-COMPANY-CONTEXT",
+      "category": "Company",
+      "pages": [
+        "All company pages",
+        "Billing/Allocation"
+      ],
+      "change": "Company subtree remounts by stable organization ID; uncertain allocations persist the actual organization ID and server rejects mismatched context before posting. Invited managers can allocate without changing primary account role.",
+      "evidence": [
+        "/tmp/obligon-company-context-after.log",
+        "/tmp/obligon-company-primary-role-after.log"
+      ]
+    },
+    {
+      "id": "ROOT-SHARED-REFRESH",
+      "category": "Shared",
+      "pages": [
+        "Polling dashboards"
+      ],
+      "change": "An overlapping same-input refresh no longer cancels the successful response already in flight.",
+      "evidence": [
+        "/tmp/obligon-shared-overlap-after.log"
+      ]
+    },
+    {
+      "id": "ROOT-WEBHOOKS",
+      "category": "API/Customer/Partner/Admin",
+      "pages": [
+        "Payment callbacks",
+        "Reconciliation",
+        "Wallet",
+        "My Card"
+      ],
+      "change": "Authentic callbacks reverify immutable provider/reference/currency/amount, atomically claim event and money effect, recover old receipt-only claims, roll back failures and preserve exact overpayment debt. Paid transitions store authoritative verified attempt IDs.",
+      "evidence": [
+        "payment-webhook-recovery.integration.test.mjs",
+        "reconciliation-fallback.integration.test.mjs",
+        "/tmp/obligon-root-final-boundaries.log"
+      ]
+    },
+    {
+      "id": "ROOT-ISSUER",
+      "category": "Customer/Admin",
+      "pages": [
+        "My Card",
+        "Card approval",
+        "Issuer callbacks"
+      ],
+      "change": "Unsupported account-backed issuer spending fails closed; issuer transactions become durable reconciliation-review records; inactive maps to frozen and late activation cannot revive terminal cards.",
+      "evidence": [
+        "sudo-contract.test.mjs",
+        "payment-webhook-recovery.integration.test.mjs"
+      ]
+    },
+    {
+      "id": "ROOT-LEGAL-COPY",
+      "category": "Public",
+      "pages": [
+        "Privacy Policy",
+        "Personal data requests"
+      ],
+      "change": "Removed unsupported regulatory-compliance badges and unverified response/DPO promises; reports request receipt and actual next steps.",
+      "evidence": [
+        "production-public-controls.test.cjs"
+      ]
+    },
+    {
+      "id": "ROOT-SETTLEMENT-RESPONSIVE",
+      "category": "Partner",
+      "pages": [
+        "Settlements"
+      ],
+      "change": "Grid uses a zero minimum for the table column and confines wide tables to their horizontal scroll container.",
+      "evidence": [
+        "Browser before:1280 viewport,1502document width; final browser check pending"
+      ]
+    },
+    {
+      "id": "ROOT-OPTIONAL-SWEEP",
+      "category": "Customer",
+      "pages": [
+        "Overview",
+        "Wallet"
+      ],
+      "change": "Missing checkout configuration cannot make optional reconciliation reject a normal read; payment actions still fail closed.",
+      "evidence": [
+        "reconciliation-fallback.integration.test.mjs",
+        "Browser pending final source reload"
+      ]
+    },
+    {
+      "id": "ROOT-MECHANIC-COMPATIBILITY",
+      "category": "Mechanic/Partner",
+      "pages": [
+        "Mechanic home",
+        "Allowed station reads"
+      ],
+      "change": "An active mechanic may resolve the existing partner station membership; signed organization type/current membership must match, suspended access and mutation routes remain denied.",
+      "evidence": [
+        "company-invitations.integration.test.mjs",
+        "/tmp/obligon-mechanic-role-before.log",
+        "/tmp/obligon-integrated-fixture-corrections.log"
+      ]
+    },
+    {
+      "id": "ROOT-PIN-BOUNDARY",
+      "category": "Customer",
+      "pages": [
+        "My Card",
+        "Change transaction PIN",
+        "First transaction PIN setup"
+      ],
+      "change": "Card metadata exposes pinSet only. Four-digit string PIN validation, current ownership/hash revalidation under a row lock, atomic action/audit records, and fuel-code revocation prevent first-setup races and stale credential authorization.",
+      "evidence": [
+        "apps/api/tests/customer-production-boundaries.integration.test.mjs",
+        "/tmp/obligon-final-pin-red.log",
+        "/tmp/obligon-final-pin-green.log",
+        "/tmp/obligon-production-company-approval-review.json"
+      ]
+    },
+    {
+      "id": "ROOT-COMPANY-CONTRACT",
+      "category": "Company/Admin",
+      "pages": [
+        "Company signup",
+        "Company navigation",
+        "Contract and billing",
+        "Admin company review",
+        "Company wallet allocation",
+        "Partner POS company redemption"
+      ],
+      "change": "Company signup remains pending without a free trial. Current server approval gates operations, while onboarding support remains available. Contract changes cannot manufacture paid invoices; admin confirmation/audit controls approval. Locked company approval is rechecked for allocations and fuel-code redemption.",
+      "evidence": [
+        "/tmp/obligon-production-final-company-partner-contracts.json",
+        "/tmp/obligon-production-company-admin-approval.json",
+        "/tmp/obligon-final-company-approval-money-red.log",
+        "/tmp/obligon-production-api-verified.log"
+      ]
+    },
+    {
+      "id": "ROOT-PARTNER-QUERY",
+      "category": "Partner",
+      "pages": [
+        "Transactions",
+        "Transaction export"
+      ],
+      "change": "Reject malformed integer pagination, non-text/oversized filters and impossible dates with400 beforeSQL; parameterize limits and order equal timestamps by ID so filtered pagination/export remains stable.",
+      "evidence": [
+        "apps/api/tests/upload-compatibility.integration.test.mjs",
+        "/tmp/obligon-production-final-contracts-red.log",
+        "/tmp/obligon-production-final-contracts-green.log"
+      ]
+    },
+    {
+      "id": "ROOT-PAYOUT-PROOF",
+      "category": "Partner/Shared",
+      "pages": [
+        "Settlements",
+        "Payout reconciliation"
+      ],
+      "change": "Recognize provider failed status consistently; require exact receipt ID, merchant reference, NGN and amount before outcomes; compare durable attempt identity for delayed failure and missing-ID recovery so stale responses cannot retire or replace newer reservations.",
+      "evidence": [
+        "apps/api/tests/settlement-accounting.integration.test.mjs",
+        "/tmp/obligon-final-payout-classifier-red.log",
+        "/tmp/obligon-final-payout-ordering-red.log",
+        "/tmp/obligon-production-payout-final-review.json"
+      ]
+    },
+    {
+      "id": "ROOT-STALE-PROOF",
+      "category": "Shared",
+      "pages": [
+        "Payment regression tests",
+        "Partner wiring regression tests"
+      ],
+      "change": "Negative posting assertion now requires the real applyLedgerEntry block and checks principal rather than slicing a missing function; export assertions follow validated filter helpers and remain backed by actual HTTP scoped export checks.",
+      "evidence": [
+        "apps/api/tests/late-settlement.test.mjs",
+        "apps/api/tests/partner-dashboard-wiring.test.mjs",
+        "apps/api/tests/partner-production-readiness.test.mjs",
+        "/tmp/obligon-production-api-verified.log"
+      ]
+    },
+    {
+      "id": "ROOT-COMPANY-MOBILE-FOCUS",
+      "category": "Company",
+      "pages": [
+        "Company mobile navigation",
+        "Company workspace selector"
+      ],
+      "change": "Company switching closes the replaced mobile dialog and restores focus to the newly mounted menu opener, preventing the old dialog focus trap from holding Tab.",
+      "evidence": [
+        "/tmp/obligon-final-company-menu-red.log",
+        "/tmp/obligon-final-company-menu-green.log",
+        "reports/production-readiness-2026-10-14/browser-verification.json"
+      ]
+    }
+  ]
+}

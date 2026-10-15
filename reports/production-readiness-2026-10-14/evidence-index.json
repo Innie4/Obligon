@@ -1,0 +1,513 @@
+[
+  {
+    "path": "evidence/obligon-production-admin-test-boundaries.json",
+    "source": "/tmp/obligon-production-admin-test-boundaries.json",
+    "sourceSha256": "36cbec3852282db201ce35f750e8332c37f4742146a7ccb9bd35280e49366e64",
+    "sanitizedSha256": "baff9532a58ec5a1d668e513fcfb516cd6a6b610095545bb40a103292392d8cf",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-all-dependency-audit-final.json",
+    "source": "/tmp/obligon-production-all-dependency-audit-final.json",
+    "sourceSha256": "b688b9eb83801430911b57aa6897270d7b23b02031bd97883b0f6014b3a1bb89",
+    "sanitizedSha256": "b688b9eb83801430911b57aa6897270d7b23b02031bd97883b0f6014b3a1bb89",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-all-dependency-audit.json",
+    "source": "/tmp/obligon-production-all-dependency-audit.json",
+    "sourceSha256": "e3bed85dffec32e6468786fc8129cf2feec12045a466a775f35a26c16157a743",
+    "sanitizedSha256": "e3bed85dffec32e6468786fc8129cf2feec12045a466a775f35a26c16157a743",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-auth-navigation.json",
+    "source": "/tmp/obligon-production-auth-navigation.json",
+    "sourceSha256": "483779c6c5b4997897aff06da0a518115bd8f914da4f74a6b9b071cd2d95ded3",
+    "sanitizedSha256": "9770cc57f866482c0dd459ac95d44bc6ec39c2188ad798bd408c66201e547c54",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-auth-session-final.json",
+    "source": "/tmp/obligon-production-auth-session-final.json",
+    "sourceSha256": "d6ae10a3a9136255c107bed935e319bd168157eb6ce890b4d245b2881c513ab8",
+    "sanitizedSha256": "715dcce6ea2860ecb9080240b8204561ec0342b7764d97801fae8a5a867c1315",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-auth-session-races.json",
+    "source": "/tmp/obligon-production-auth-session-races.json",
+    "sourceSha256": "c256945d6dab05939bd94f5bf1bfc69645b32a0b419c924ca7ad1b458a2d2a3f",
+    "sanitizedSha256": "dd2c6f42502067964997397520ab5d6ae862e09a32ca7d6d72365eb705c34a49",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-auth-ui-direct-tests.json",
+    "source": "/tmp/obligon-production-auth-ui-direct-tests.json",
+    "sourceSha256": "1f7a213055c703915382d6376a12f9b733b0b3f201c7b9c9721eab0979754123",
+    "sanitizedSha256": "050eaaaed0c603fbc5a9bce68c6a76c4ec0b33f3b6b5a73e3c8859035a666edb",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-auth-ui-final-review.json",
+    "source": "/tmp/obligon-production-auth-ui-final-review.json",
+    "sourceSha256": "14f480788cd2f50b00c437c84ef921173ff7e064832463335f21b7ca98abd59a",
+    "sanitizedSha256": "14f480788cd2f50b00c437c84ef921173ff7e064832463335f21b7ca98abd59a",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-auth-ui-final-web.json",
+    "source": "/tmp/obligon-production-auth-ui-final-web.json",
+    "sourceSha256": "96e85a0f0f055b709b921d1429cf38fc7b3abc74d8925577cdd956f5b50cf767",
+    "sanitizedSha256": "00f49c54082a6a634ebce0a251ba350ccceca4ab6c087298d7204d96d8916110",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-auth-ui-review.json",
+    "source": "/tmp/obligon-production-auth-ui-review.json",
+    "sourceSha256": "70eb26d41ca4673ffea1c8ad8a8c4d74a7b0839dfe297ddb17f3b1985fb59fa1",
+    "sanitizedSha256": "70eb26d41ca4673ffea1c8ad8a8c4d74a7b0839dfe297ddb17f3b1985fb59fa1",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-company-admin-approval.json",
+    "source": "/tmp/obligon-production-company-admin-approval.json",
+    "sourceSha256": "7d61517b603720a97631d18975019cee5aa3b815054eaa62c882660775c0bdbf",
+    "sanitizedSha256": "7d61517b603720a97631d18975019cee5aa3b815054eaa62c882660775c0bdbf",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-company-approval-review.json",
+    "source": "/tmp/obligon-production-company-approval-review.json",
+    "sourceSha256": "adb82eb0771a6c453e8050c0677bf2de8d0f4aed3347c1a24c9f038528e3dc07",
+    "sanitizedSha256": "adb82eb0771a6c453e8050c0677bf2de8d0f4aed3347c1a24c9f038528e3dc07",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-company-invitations.json",
+    "source": "/tmp/obligon-production-company-invitations.json",
+    "sourceSha256": "b981ea9d790cfba42fa1b277f175145f51d8d50819fc499d079d6e5803ced6ee",
+    "sanitizedSha256": "b981ea9d790cfba42fa1b277f175145f51d8d50819fc499d079d6e5803ced6ee",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-company-workflows.json",
+    "source": "/tmp/obligon-production-company-workflows.json",
+    "sourceSha256": "8480bf146af8cc6ab2887306fe32ef61e5dba46488ff8813781555ce345050f7",
+    "sanitizedSha256": "8480bf146af8cc6ab2887306fe32ef61e5dba46488ff8813781555ce345050f7",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-consent-layer-review.json",
+    "source": "/tmp/obligon-production-consent-layer-review.json",
+    "sourceSha256": "827d8cb88a8315087f6e239d8b6f746a28021839eac49451638a6fda8d0fb0e2",
+    "sanitizedSha256": "827d8cb88a8315087f6e239d8b6f746a28021839eac49451638a6fda8d0fb0e2",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-customer-copy-review.json",
+    "source": "/tmp/obligon-production-customer-copy-review.json",
+    "sourceSha256": "df1ec27af5cd13f9510475b75892bc23ccd90cd7c6d339c9b17c387f7771baaa",
+    "sanitizedSha256": "df1ec27af5cd13f9510475b75892bc23ccd90cd7c6d339c9b17c387f7771baaa",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-customer-copy.json",
+    "source": "/tmp/obligon-production-customer-copy.json",
+    "sourceSha256": "6c2b6b5cfd863fefd3e510fe58bbcf108a6445e46b032a5858912f3e18511d4a",
+    "sanitizedSha256": "6c2b6b5cfd863fefd3e510fe58bbcf108a6445e46b032a5858912f3e18511d4a",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-customer-fixes.json",
+    "source": "/tmp/obligon-production-customer-fixes.json",
+    "sourceSha256": "7f5a2e90748612a3bbb40c8817ea9bed88c112c8a319b149ac6be06f0bfdb397",
+    "sanitizedSha256": "5b6a89b8893497815ffc703cbf9caa4afcce35de1d6f165bc9002781146caef6",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-customer-logout-stacking.json",
+    "source": "/tmp/obligon-production-customer-logout-stacking.json",
+    "sourceSha256": "92b1faaddf6662c1431c98b6b87b0e6a2acb67bd0596ad985d542c9407263dd9",
+    "sanitizedSha256": "3ff86e6d7e5b72f2b9b01c6f1864c30cb26e6fce1475755af5262cd0fccd0ba8",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-customer-refund-ui.json",
+    "source": "/tmp/obligon-production-customer-refund-ui.json",
+    "sourceSha256": "7766fd0cfb8b2ee6682695e52d11d8cdfa50201074475bc3dcf0c9afce7827b3",
+    "sanitizedSha256": "7766fd0cfb8b2ee6682695e52d11d8cdfa50201074475bc3dcf0c9afce7827b3",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-database-access-fix.json",
+    "source": "/tmp/obligon-production-database-access-fix.json",
+    "sourceSha256": "1f67408ebdf9dd061ebffbde38698a7b0a9f9f4d37da3254437a571d22eb6146",
+    "sanitizedSha256": "c6abeac47f7b9940d60eabbf2bcc25a61501873d1e5e9ee7e831d0358e76e82e",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-dependency-audit.json",
+    "source": "/tmp/obligon-production-dependency-audit.json",
+    "sourceSha256": "0a2e51514b7b5ae5743f965fa381c2ef527d8ca6131478e0759e327953812fed",
+    "sanitizedSha256": "0a2e51514b7b5ae5743f965fa381c2ef527d8ca6131478e0759e327953812fed",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-exact-money.json",
+    "source": "/tmp/obligon-production-exact-money.json",
+    "sourceSha256": "3174819fc43634d60f7e1b4aef6da9d836583d1e254a695a5e45ff5c570d0e16",
+    "sanitizedSha256": "3174819fc43634d60f7e1b4aef6da9d836583d1e254a695a5e45ff5c570d0e16",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-final-company-partner-contracts.json",
+    "source": "/tmp/obligon-production-final-company-partner-contracts.json",
+    "sourceSha256": "9bc196235e4b91ee6880bcff158fb094772031f52714d5b3a8fd6d80c2e0490b",
+    "sanitizedSha256": "9bc196235e4b91ee6880bcff158fb094772031f52714d5b3a8fd6d80c2e0490b",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-final-coverage-drift.json",
+    "source": "/tmp/obligon-production-final-coverage-drift.json",
+    "sourceSha256": "bb8f8998cea28003a6247ddcc89126817eb1d560a984b67251843cb134703b8a",
+    "sanitizedSha256": "bb8f8998cea28003a6247ddcc89126817eb1d560a984b67251843cb134703b8a",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-final-refund-boundaries.json",
+    "source": "/tmp/obligon-production-final-refund-boundaries.json",
+    "sourceSha256": "972f0f9b5d96c2342ebb9bbb3f7f81f1ee4a4ce2e4a34226a2f5309ac5c9d240",
+    "sanitizedSha256": "9cbfa3cd63190cc67b04630eb7bcad67df456c7521f119c1f9a61d00296d62d8",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-finance-final-review.json",
+    "source": "/tmp/obligon-production-finance-final-review.json",
+    "sourceSha256": "432fd72f6c0f3c19f24c26fdab4175714217997a4ac273a89ef76d894ddc6aaf",
+    "sanitizedSha256": "4a980aacea78bb7a8c99f53185ebd941778f212f15823bd9b071684a1fd3374c",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-financial-audit.json",
+    "source": "/tmp/obligon-production-financial-audit.json",
+    "sourceSha256": "ae6ef283fc6992ebdab3333543024999924baa20ea3e9290755e51bf99436c6c",
+    "sanitizedSha256": "fe21e78f6eb607aab12ff055915d54f497ec1fe2e8422856d87b6320f49fa305",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-fuel-integrity.json",
+    "source": "/tmp/obligon-production-fuel-integrity.json",
+    "sourceSha256": "3b2461db6f11084301858f03d7ea5559eb5072389f3c7c01f59588da45a7bd6e",
+    "sanitizedSha256": "1b90e8e72d755e62fd15799318983131e83b4bedd4c756f6975161ecb74913c6",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-full-read-plan.json",
+    "source": "/tmp/obligon-production-full-read-plan.json",
+    "sourceSha256": "082762f2c2e695bc3e70385aa08e103a385a8df5b7922acad6e6789370693041",
+    "sanitizedSha256": "082762f2c2e695bc3e70385aa08e103a385a8df5b7922acad6e6789370693041",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-independent-review.json",
+    "source": "/tmp/obligon-production-independent-review.json",
+    "sourceSha256": "850bbb53f28407fbc68861e1b61313e490e2f9e137f3c50f0cdc0e34ffffcc7e",
+    "sanitizedSha256": "850bbb53f28407fbc68861e1b61313e490e2f9e137f3c50f0cdc0e34ffffcc7e",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-local-fonts.json",
+    "source": "/tmp/obligon-production-local-fonts.json",
+    "sourceSha256": "ece6cf15a4559570e749ee3349b41b2ef90c1dc6f117866b7c610388c2a6f121",
+    "sanitizedSha256": "4cd94b4c966ec4a5eb84a954211ddca907aff287ca893fc46b2639455b1c8b7e",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-mobile-logout-review.json",
+    "source": "/tmp/obligon-production-mobile-logout-review.json",
+    "sourceSha256": "1b6bf98e419d00d4bcba93a5ab863eb16538b70a82fb94d03d8fd70e6beea7c7",
+    "sanitizedSha256": "1b6bf98e419d00d4bcba93a5ab863eb16538b70a82fb94d03d8fd70e6beea7c7",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-mobile-logout-stacking.json",
+    "source": "/tmp/obligon-production-mobile-logout-stacking.json",
+    "sourceSha256": "5b617907dbedc6ad3f9b510e25ae7591d36309b445eb1b7c1a44bbf1d2a5b92d",
+    "sanitizedSha256": "5b617907dbedc6ad3f9b510e25ae7591d36309b445eb1b7c1a44bbf1d2a5b92d",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-narrow-auth-layout.json",
+    "source": "/tmp/obligon-production-narrow-auth-layout.json",
+    "sourceSha256": "605b5b901ac756c0df3c708cdaa57b66b46fabd1d17a57f01ea9fdba203c232d",
+    "sanitizedSha256": "60ba4830f2387a65bf3a1fbdd979a0ffb280dfc11b33c7105558a0960a689d7d",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-password-reset-fix.json",
+    "source": "/tmp/obligon-production-password-reset-fix.json",
+    "sourceSha256": "170abfc49a51c2db32715869375f3a586b10194c3179a02e3d58a5d188651d5f",
+    "sanitizedSha256": "0ed31c02f1ecefb282f13f5cbfa0e1d8fa80310eff8c940c3e4ca697259b2153",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-payout-final-review.json",
+    "source": "/tmp/obligon-production-payout-final-review.json",
+    "sourceSha256": "a789294571170fde20837f5f90b3881d2e648b4fdfbfc746b02768bfb908eca2",
+    "sanitizedSha256": "c926c7b336e6181f59b3fc60900ddc2c8102f7ab6734dd2006f1a1cc01eaed78",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-permissions-review.json",
+    "source": "/tmp/obligon-production-permissions-review.json",
+    "sourceSha256": "254561ad66f9bdb50c3eb19c2a7608426e006f75dade167e83c2164b3b51470e",
+    "sanitizedSha256": "254561ad66f9bdb50c3eb19c2a7608426e006f75dade167e83c2164b3b51470e",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-prod-dependency-audit-final.json",
+    "source": "/tmp/obligon-production-prod-dependency-audit-final.json",
+    "sourceSha256": "184c916f439d314b3de61f9931cd7a8d39e8e05dcf78ca6c4430ffbe39a9e401",
+    "sanitizedSha256": "184c916f439d314b3de61f9931cd7a8d39e8e05dcf78ca6c4430ffbe39a9e401",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-public-fixes.json",
+    "source": "/tmp/obligon-production-public-fixes.json",
+    "sourceSha256": "8505c52b62663c9d6109ed2c49de4f3d9d8f6921a5c35150d7a28f43bc85404f",
+    "sanitizedSha256": "7f6b3ce3e1dfcb298e0d144ef38089a8b5b61399a5d8e2810a832d38571ed06c",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-push-boundaries.json",
+    "source": "/tmp/obligon-production-push-boundaries.json",
+    "sourceSha256": "cf771e1455c389cf8e1effb30ed19d9d9360035e2d6830b6d84201422ebb3c24",
+    "sanitizedSha256": "be32b32697f83bfa640a8c4c218c920da10b3b7ce90e72a0b7b9c33bb55c6369",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-refund-recovery.json",
+    "source": "/tmp/obligon-production-refund-recovery.json",
+    "sourceSha256": "3c03bce97b9a3ef744815d7a21f595302cf6fef0659d280aa9242e7437ad989f",
+    "sanitizedSha256": "3c03bce97b9a3ef744815d7a21f595302cf6fef0659d280aa9242e7437ad989f",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-remaining-access-audit.json",
+    "source": "/tmp/obligon-production-remaining-access-audit.json",
+    "sourceSha256": "2bbc62252822cde9582684d19e2850ee744ca8a5d5e600ba92a2870c46159a56",
+    "sanitizedSha256": "2bbc62252822cde9582684d19e2850ee744ca8a5d5e600ba92a2870c46159a56",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-residual-coverage.json",
+    "source": "/tmp/obligon-production-residual-coverage.json",
+    "sourceSha256": "cb482c442e9cfbb64ede8d67aa47ab3b22cc3efe7134b1e01574d26a54815122",
+    "sanitizedSha256": "8c34d644d69624b1c820b96674b890e3027947dc06f1508286e6ed3705ac9c2b",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-residual-svg-metadata.json",
+    "source": "/tmp/obligon-production-residual-svg-metadata.json",
+    "sourceSha256": "659cb7d1cb85b3ff7d4a607e2bed6398c3a80bda4a3552889c70643f4c1e6053",
+    "sanitizedSha256": "f4a526c8603204ced032578fe17ecd9db82e78bd458e77dcb8a670e28b280f4e",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-residual-wrapper-paths.json",
+    "source": "/tmp/obligon-production-residual-wrapper-paths.json",
+    "sourceSha256": "4b4baaf4aaad73bbb36d35cd15018477ced7eddf64f04f84ad4dfe56a98b7720",
+    "sanitizedSha256": "1b308ddd6fd3ae537ffd37cffef2b40dbdb06a0e16358db457f112bef4a040e4",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-station-distance-review.json",
+    "source": "/tmp/obligon-production-station-distance-review.json",
+    "sourceSha256": "26d46ff3f3c876e1498fdadf3928afe1a05a7eb56d165aadd5d35ae0a179a42c",
+    "sanitizedSha256": "26d46ff3f3c876e1498fdadf3928afe1a05a7eb56d165aadd5d35ae0a179a42c",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-station-distance.json",
+    "source": "/tmp/obligon-production-station-distance.json",
+    "sourceSha256": "16400b963a9095595e84c08a2074dbf23143d63eec4a5faf38c33e2c01d99ebd",
+    "sanitizedSha256": "16400b963a9095595e84c08a2074dbf23143d63eec4a5faf38c33e2c01d99ebd",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-test-full-reads.json",
+    "source": "/tmp/obligon-production-test-full-reads.json",
+    "sourceSha256": "7da7301d3289b8db65504eadc1545a5aade05bbb9cb66f74163e9bad01a10a16",
+    "sanitizedSha256": "7da7301d3289b8db65504eadc1545a5aade05bbb9cb66f74163e9bad01a10a16",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-test-read-assignment.json",
+    "source": "/tmp/obligon-production-test-read-assignment.json",
+    "sourceSha256": "1b41c51a3e79e36671ff879c762b37e9502d9fa59e0f03692821e6c82ff190e6",
+    "sanitizedSha256": "1b41c51a3e79e36671ff879c762b37e9502d9fa59e0f03692821e6c82ff190e6",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-test-read-chunks.json",
+    "source": "/tmp/obligon-production-test-read-chunks.json",
+    "sourceSha256": "3d4815862453792cbbe6cb5f7137622d2b06a5b5459ccab17a6e1f618a2ac37c",
+    "sanitizedSha256": "83710cdc954126406aa9721323510d32b976a14ae541e52f08736df1a24e2946",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-test-read-progress.json",
+    "source": "/tmp/obligon-production-test-read-progress.json",
+    "sourceSha256": "40193617cd7ef065f9b1abe271f5097c7adc5921f020ce721f6e03d7bcc001b8",
+    "sanitizedSha256": "40193617cd7ef065f9b1abe271f5097c7adc5921f020ce721f6e03d7bcc001b8",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-test-source-coverage.json",
+    "source": "/tmp/obligon-production-test-source-coverage.json",
+    "sourceSha256": "7da7301d3289b8db65504eadc1545a5aade05bbb9cb66f74163e9bad01a10a16",
+    "sanitizedSha256": "7da7301d3289b8db65504eadc1545a5aade05bbb9cb66f74163e9bad01a10a16",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-trivy-final.json",
+    "source": "/tmp/obligon-production-trivy-final.json",
+    "sourceSha256": "2b6bfb0b780cbcd4aa404fda49c0a48a14d50be8bb9a786418d2fc41bdcb9806",
+    "sanitizedSha256": "b9fd1b7c8b15abaa389a53a0e2e3134595cc2a985f97a4746741d4f0fca5aa31",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-trivy-verified.json",
+    "source": "/tmp/obligon-production-trivy-verified.json",
+    "sourceSha256": "073d1e6de45ee1aa1a41f21134d5953735d9839f181c62301d468e4907d1423d",
+    "sanitizedSha256": "b0a86625e572278a849ce54362b4e6c7520b6c85b558cca236cae9094d5a12b5",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-trivy.json",
+    "source": "/tmp/obligon-production-trivy.json",
+    "sourceSha256": "e197633679a58e89962794874daa43498da730b88561f3bf6a53c21f2754d99e",
+    "sanitizedSha256": "c47bf29bcfd6937de46a1e83e087b893ba587cf450f6e0cc749f21cae3ea29fe",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-ui-audit.json",
+    "source": "/tmp/obligon-production-ui-audit.json",
+    "sourceSha256": "946e95f949ffdbdbd1a8e8677ce9192620fa3096639d4a193b8dabf4370704b3",
+    "sanitizedSha256": "e1d49f86062808365f28753579302f26c9f59c41250a95ecd3fe5210156a3837",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/obligon-production-upload-compatibility.json",
+    "source": "/tmp/obligon-production-upload-compatibility.json",
+    "sourceSha256": "9c50d887c06f3cf42b78a9c7f9e6785d0a893f18774eba4e2f83c4619b9c621b",
+    "sanitizedSha256": "415f04fba14717519f38f69dff519d4727aa39fd292e6bc6bbbcebe9755c3eba",
+    "note": "Historical worker snapshot; use later final reviews for disposition. Raw outputs and sensitive values omitted."
+  },
+  {
+    "path": "evidence/brief.json",
+    "source": "reports/production-readiness-2026-10-14/brief.json",
+    "sourceSha256": "23dbca1f82841e594c35ff35e1fbe7ed0ffee942ee6022cd6f9a79526c9d9d1b",
+    "sanitizedSha256": "1d1c60f11c75f226687d26107c113c3a8cd64190ab47b32c3d46a4667e146b01",
+    "note": "Sanitized root evidence snapshot"
+  },
+  {
+    "path": "evidence/root-increments.json",
+    "source": "reports/production-readiness-2026-10-14/root-increments.json",
+    "sourceSha256": "e07362699d53bd9dcc70e19d1dfc703881d8d8d87441d209a014059047c3b924",
+    "sanitizedSha256": "e07362699d53bd9dcc70e19d1dfc703881d8d8d87441d209a014059047c3b924",
+    "note": "Sanitized root evidence snapshot"
+  },
+  {
+    "path": "evidence/company-context-browser.json",
+    "source": "reports/production-readiness-2026-10-14/company-context-browser.json",
+    "sourceSha256": "ff172364eafa97218e50da9a6abf3df4137fa34635fe2f485e27e27f5d55b4f6",
+    "sanitizedSha256": "c0c9b75a12cbff53979286646a6be261ca8ba4bfa8af105165017f592a6863c6",
+    "note": "Sanitized root evidence snapshot"
+  },
+  {
+    "path": "evidence/company-menu-browser.json",
+    "source": "reports/production-readiness-2026-10-14/company-menu-browser.json",
+    "sourceSha256": "134812f434c3e1a36a721e9636b3000151e004e297fa956faacadafba538b286",
+    "sanitizedSha256": "52357b4bdb047f5e577085f8fca7f992fc280a5eba41e50a7e3986886700af87",
+    "note": "Sanitized root evidence snapshot"
+  },
+  {
+    "path": "evidence/narrow-auth-before.json",
+    "source": "reports/production-readiness-2026-10-14/narrow-auth-before.json",
+    "sourceSha256": "bd25ca45143d6396a52b653da815553b24ca32a1b727f715abe04b861a279961",
+    "sanitizedSha256": "406f06874aa929f5138875cdbf6e289d2278b0b3164c334645b14aa37d618099",
+    "note": "Sanitized root evidence snapshot"
+  },
+  {
+    "path": "evidence/narrow-auth-after.json",
+    "source": "reports/production-readiness-2026-10-14/narrow-auth-after.json",
+    "sourceSha256": "4cf07fec89cd0cf3c9cff63ff9c8ee071fca446e12b15d4cb5b9fe671a152970",
+    "sanitizedSha256": "4cf07fec89cd0cf3c9cff63ff9c8ee071fca446e12b15d4cb5b9fe671a152970",
+    "note": "Sanitized root evidence snapshot"
+  },
+  {
+    "path": "evidence/live-customer-browser.json",
+    "source": "reports/production-readiness-2026-10-14/live-customer-browser.json",
+    "sourceSha256": "e0e4cf67581ab168d180904b659674ab323edb7421f13dfd12ccd1c32cee2919",
+    "sanitizedSha256": "e0e4cf67581ab168d180904b659674ab323edb7421f13dfd12ccd1c32cee2919",
+    "note": "Sanitized root evidence snapshot"
+  },
+  {
+    "path": "evidence/consent-layer-before.json",
+    "source": "reports/production-readiness-2026-10-14/consent-layer-before.json",
+    "sourceSha256": "0823126c2439a07a4d45f11749d3636aeeb9fd03150fb50b4cb3975a0ff582e4",
+    "sanitizedSha256": "0823126c2439a07a4d45f11749d3636aeeb9fd03150fb50b4cb3975a0ff582e4",
+    "note": "Sanitized root evidence snapshot"
+  },
+  {
+    "path": "evidence/consent-layer-after.json",
+    "source": "reports/production-readiness-2026-10-14/consent-layer-after.json",
+    "sourceSha256": "62407df8412c7ad6809a99cbe0197607a302bd926239b96abc2d19e575eca228",
+    "sanitizedSha256": "62407df8412c7ad6809a99cbe0197607a302bd926239b96abc2d19e575eca228",
+    "note": "Sanitized root evidence snapshot"
+  },
+  {
+    "path": "evidence/customer-logout-browser.json",
+    "source": "reports/production-readiness-2026-10-14/customer-logout-browser.json",
+    "sourceSha256": "80f9731b025786217e50125d38b94c2ab6d2d7d6b12a13b9f87eee18e6184645",
+    "sanitizedSha256": "80f9731b025786217e50125d38b94c2ab6d2d7d6b12a13b9f87eee18e6184645",
+    "note": "Sanitized root evidence snapshot"
+  },
+  {
+    "path": "evidence/tracked-files.json",
+    "source": "reports/production-readiness-2026-10-14/tracked-files.json",
+    "sourceSha256": "7271dc118a315ed29ab2d9048cefd5f4d526db823ce6a1216d239766ba0990ef",
+    "sanitizedSha256": "7271dc118a315ed29ab2d9048cefd5f4d526db823ce6a1216d239766ba0990ef",
+    "note": "Sanitized root evidence snapshot"
+  },
+  {
+    "path": "evidence/final-verification.json",
+    "source": "reports/production-readiness-2026-10-14/final-verification.json",
+    "sourceSha256": "06cb7a0a6abed46e6ac8b4cc0e2a961468b002bf6b0cd8d4d31da9151c3dd806",
+    "sanitizedSha256": "1799c112d6c305fc36bc6b7ac453bbc61e3a36de1bf13faadcef60e3316db05f",
+    "note": "Sanitized root evidence snapshot"
+  },
+  {
+    "path": "evidence/integrated-verification.json",
+    "source": "reports/production-readiness-2026-10-14/integrated-verification.json",
+    "sourceSha256": "06cb7a0a6abed46e6ac8b4cc0e2a961468b002bf6b0cd8d4d31da9151c3dd806",
+    "sanitizedSha256": "1799c112d6c305fc36bc6b7ac453bbc61e3a36de1bf13faadcef60e3316db05f",
+    "note": "Sanitized root evidence snapshot"
+  },
+  {
+    "path": "evidence/browser-verification.json",
+    "source": "reports/production-readiness-2026-10-14/browser-verification.json",
+    "sourceSha256": "4cead875d154b516f5e8fd0b5d3241ecee4077144fabda8f2155558db3dd5d72",
+    "sanitizedSha256": "4cead875d154b516f5e8fd0b5d3241ecee4077144fabda8f2155558db3dd5d72",
+    "note": "Sanitized root evidence snapshot"
+  },
+  {
+    "path": "evidence/cleanup.json",
+    "source": "reports/production-readiness-2026-10-14/cleanup.json",
+    "sourceSha256": "38c88731abc5ecb1c345cec271e5f93728115ecfe358c4512f05f7143c7016a8",
+    "sanitizedSha256": "38c88731abc5ecb1c345cec271e5f93728115ecfe358c4512f05f7143c7016a8",
+    "note": "Sanitized root evidence snapshot"
+  }
+]

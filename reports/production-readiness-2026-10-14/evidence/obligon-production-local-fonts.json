@@ -1,0 +1,287 @@
+{
+  "date": "2026-10-14",
+  "frozenAt": "2026-10-14T18:03:35.568591+00:00",
+  "scope": "Bounded existing-font build reliability correction only: normal Inter and Plus Jakarta Sans, existing CSS variables/swap and actual400–800 weight range. No typography redesign, repository/runtime dependency or CI changes.",
+  "reproduction": {
+    "log": "/tmp/obligon-production-web-build-verified.log",
+    "error": "next/font/google failed fetching Inter with ETIMEDOUT during actual production build; no redundant pre-fix build retried."
+  },
+  "implementation": {
+    "file": "apps/web/app/layout.tsx",
+    "loader": "next/font/local",
+    "display": "swap",
+    "style": "normal",
+    "weight": "400 800",
+    "variables": [
+      "--font-inter",
+      "--font-plus-jakarta"
+    ],
+    "fontAssets": [
+      {
+        "path": "apps/web/app/fonts/Inter-variable.woff2",
+        "magic": "wOF2",
+        "fontFamily": "Inter",
+        "subfamily": "Regular",
+        "axes": [
+          {
+            "tag": "opsz",
+            "min": 14.0,
+            "default": 14.0,
+            "max": 32.0
+          },
+          {
+            "tag": "wght",
+            "min": 100.0,
+            "default": 400.0,
+            "max": 900.0
+          }
+        ],
+        "normalStyle": true,
+        "glyphCount": 2933,
+        "nairaGlyph": "uni20A6",
+        "verticalMetrics": {
+          "unitsPerEm": 2048,
+          "ascent": 1984,
+          "descent": -494,
+          "lineGap": 0
+        },
+        "bytes": 364748,
+        "sha256": "351f50d53207a6a7d8643edfa2520468627b141466d572493c0ef1b3075d0311"
+      },
+      {
+        "path": "apps/web/app/fonts/PlusJakartaSans-variable.woff2",
+        "magic": "wOF2",
+        "fontFamily": "Plus Jakarta Sans",
+        "subfamily": "Regular",
+        "axes": [
+          {
+            "tag": "wght",
+            "min": 200.0,
+            "default": 400.0,
+            "max": 800.0
+          }
+        ],
+        "normalStyle": true,
+        "glyphCount": 1188,
+        "nairaGlyph": "uni20A6",
+        "verticalMetrics": {
+          "unitsPerEm": 1000,
+          "ascent": 1038,
+          "descent": -222,
+          "lineGap": 0
+        },
+        "bytes": 60612,
+        "sha256": "49c62cf1fb70f225ea113361f0134a48858c3a7d0175173aa3e38a0c6c8539d2"
+      }
+    ],
+    "retainedGlyphCoverage": "Original full glyph sets retain Latin text and U+20A6 naira; Latin-only Google CSS subsets were not bundled because they omit naira."
+  },
+  "provenance": {
+    "googleFontsRepositoryCommit": "67bc647ce1910e92f461bcc82aae30f21d21a9cc",
+    "downloadReceipt": "/tmp/obligon-official-font-assets/download-receipt.json",
+    "interSource": "https://github.com/google/fonts/blob/67bc647ce1910e92f461bcc82aae30f21d21a9cc/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf",
+    "jakartaSource": "https://github.com/tokotype/PlusJakartaSans/blob/18d1cd2f7ea10481919d2f05c1f7064b7307fc26/fonts/webfonts/PlusJakartaSans%5Bwght%5D.woff2",
+    "jakartaUpstreamRevisionEvidence": "Pinned Google Fonts ofl/plusjakartasans/METADATA.pb names this exact official vendor revision.",
+    "fontLicenseSources": [
+      "https://github.com/google/fonts/blob/67bc647ce1910e92f461bcc82aae30f21d21a9cc/ofl/inter/OFL.txt",
+      "https://github.com/google/fonts/blob/67bc647ce1910e92f461bcc82aae30f21d21a9cc/ofl/plusjakartasans/OFL.txt"
+    ],
+    "officialLoadingDocs": "https://nextjs.org/docs/15/app/getting-started/fonts",
+    "compressionDocs": "https://fonttools.readthedocs.io/en/latest/ttLib/woff2.html",
+    "headCompressionFlagSpecification": "https://www.w3.org/TR/WOFF2/#DataFormat"
+  },
+  "licenses": {
+    "type": "SIL Open Font License1.1",
+    "copyrightAndCompleteLicenseRetained": true,
+    "publicPaths": [
+      "/fonts/Inter-OFL.txt",
+      "/fonts/PlusJakartaSans-OFL.txt"
+    ],
+    "hashes": {
+      "apps/web/public/fonts/Inter-OFL.txt": "5b9321a4298cfeb6b34354164a1c3afc3db114569984c502b9b35d988fd58c57",
+      "apps/web/public/fonts/PlusJakartaSans-OFL.txt": "995c7199cab65954f545996326755daee7b63cc6b42b06c13da1f9502ab08a99"
+    },
+    "rightsEvidence": "Official OFL condition2 permits bundling/redistribution with software when copyright and license are included. No separate font sale or vendor endorsement; complete original licenses are public and font metadata retains attribution."
+  },
+  "compressionProof": {
+    "sourceSHA256": "29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031",
+    "outputSHA256": "351f50d53207a6a7d8643edfa2520468627b141466d572493c0ef1b3075d0311",
+    "sourceBytes": 876576,
+    "outputBytes": 364748,
+    "tablesByteIdenticalExceptHeadChecksumAndWOFF2CompressionFlag": [
+      "GDEF",
+      "GPOS",
+      "GSUB",
+      "HVAR",
+      "MVAR",
+      "OS/2",
+      "STAT",
+      "avar",
+      "cmap",
+      "fvar",
+      "gasp",
+      "glyf",
+      "gvar",
+      "head",
+      "hhea",
+      "hmtx",
+      "loca",
+      "maxp",
+      "name",
+      "post",
+      "prep"
+    ],
+    "glyphOrderAndCmapExact": true,
+    "allDefaultHorizontalMetricsExact": true,
+    "weightOpticalChecks": [
+      {
+        "weight": 400,
+        "opticalSize": 14,
+        "glyphWidthsCompared": 2933
+      },
+      {
+        "weight": 400,
+        "opticalSize": 32,
+        "glyphWidthsCompared": 2933
+      },
+      {
+        "weight": 500,
+        "opticalSize": 14,
+        "glyphWidthsCompared": 2933
+      },
+      {
+        "weight": 500,
+        "opticalSize": 32,
+        "glyphWidthsCompared": 2933
+      },
+      {
+        "weight": 600,
+        "opticalSize": 14,
+        "glyphWidthsCompared": 2933
+      },
+      {
+        "weight": 600,
+        "opticalSize": 32,
+        "glyphWidthsCompared": 2933
+      },
+      {
+        "weight": 700,
+        "opticalSize": 14,
+        "glyphWidthsCompared": 2933
+      },
+      {
+        "weight": 700,
+        "opticalSize": 32,
+        "glyphWidthsCompared": 2933
+      },
+      {
+        "weight": 800,
+        "opticalSize": 14,
+        "glyphWidthsCompared": 2933
+      },
+      {
+        "weight": 800,
+        "opticalSize": 32,
+        "glyphWidthsCompared": 2933
+      }
+    ],
+    "tools": {
+      "fonttools": "4.67.0",
+      "brotli": "1.2.0",
+      "zopfli": "0.4.3"
+    },
+    "conversion": "fontTools.ttLib.woff2.compress(original, output, transform_tables=[])",
+    "temporaryToolsOnly": "/tmp/obligon-font-tools"
+  },
+  "jakartaProof": {
+    "originalGoogleSourceSHA256": "89b3fb38aa0d275d7a731d0d817a4f1622b316b4d7fbdedcf02ee9099ff68bc8",
+    "vendorWOFF2SHA256": "49c62cf1fb70f225ea113361f0134a48858c3a7d0175173aa3e38a0c6c8539d2",
+    "glyphOrderAndCmapExact": true,
+    "defaultHorizontalAndVerticalMetricsExact": true,
+    "axesExact": true,
+    "weightChecks": [
+      {
+        "weight": 400,
+        "glyphWidthsCompared": 1188
+      },
+      {
+        "weight": 500,
+        "glyphWidthsCompared": 1188
+      },
+      {
+        "weight": 600,
+        "glyphWidthsCompared": 1188
+      },
+      {
+        "weight": 700,
+        "glyphWidthsCompared": 1188
+      },
+      {
+        "weight": 800,
+        "glyphWidthsCompared": 1188
+      }
+    ]
+  },
+  "discardedOption": {
+    "asset": "Original vendor InterVariable.woff2",
+    "reason": "Same family/release/axes but digit5 advance differed from pinned Google TTF (1245 versus1215 at default). It was not bundled; exact Google source was compressed instead."
+  },
+  "sizes": {
+    "originalTwoTTFsBytes": 1052864,
+    "bundledFontBytes": 425360,
+    "fontBytesSavedComparedWithUncompressedOriginals": 627504,
+    "reductionPercent": 59.6,
+    "licensesBytes": 8779,
+    "actualNextLoaderEmittedFontBytes": 425360,
+    "productionBuiltAssetBytes": "Root actual production build measurement pending; no whole JS bundle size claim."
+  },
+  "temporaryTooling": {
+    "installTarget": "/tmp/obligon-font-tools",
+    "index": "https://pypi.org/simple",
+    "boundedInstallTimeoutSeconds": 40,
+    "installLog": "/tmp/obligon-font-tools-install.log",
+    "versions": {
+      "fonttools": "4.67.0",
+      "brotli": "1.2.0",
+      "zopfli": "0.4.3"
+    },
+    "repositoryAndRuntimeDependenciesChanged": false
+  },
+  "verification": [
+    {
+      "command": "node apps/web/tests/local-fonts.test.cjs",
+      "tests": 3,
+      "pass": 3,
+      "fail": 0,
+      "skip": 0,
+      "exitCode": 0,
+      "log": "/tmp/obligon-local-fonts-green.log",
+      "kind": "Parses actual font bytes with installed Next fontkit, validates original asset hashes/variable axes/ASCII+naira, then invokes actual Next local font loader against real filesystem and emitted bytes; no fake fonts or network mocks."
+    },
+    {
+      "kind": "Actual fontTools decode/table and all-glyph metrics comparison",
+      "interComparisons": 29330,
+      "jakartaComparisons": 5940,
+      "result": "Exact at actualweights400–800 and Inter optical endpoints14/32; no glyph removals."
+    },
+    {
+      "command": "node --check local-fonts.test.cjs and focused git diff --check",
+      "exitCode": 0
+    }
+  ],
+  "sourceHashes": {
+    "apps/web/app/layout.tsx": "1ad1ba2343c6d7ec3c28e085c500a9502a1682a5d355e2034ff04506662e3561",
+    "apps/web/app/fonts/Inter-variable.woff2": "351f50d53207a6a7d8643edfa2520468627b141466d572493c0ef1b3075d0311",
+    "apps/web/app/fonts/PlusJakartaSans-variable.woff2": "49c62cf1fb70f225ea113361f0134a48858c3a7d0175173aa3e38a0c6c8539d2",
+    "apps/web/app/fonts/README.md": "5a19b6e344ac5511ff84ebbad75b2e001d27e77ecfe54fb506f1a3e928b698b3",
+    "apps/web/public/fonts/Inter-OFL.txt": "5b9321a4298cfeb6b34354164a1c3afc3db114569984c502b9b35d988fd58c57",
+    "apps/web/public/fonts/PlusJakartaSans-OFL.txt": "995c7199cab65954f545996326755daee7b63cc6b42b06c13da1f9502ab08a99",
+    "apps/web/tests/local-fonts.test.cjs": "1320cb695d93245cfe89a5143a7bd6f1f7839ad244c1709c359464772c4be273"
+  },
+  "limits": [
+    "Root owns actual fresh Next production compilation after source freeze and browser verification. This focused loader check is not a completed whole-production build.",
+    "Core Web Vitals on deployed slow networks/device classes remain unmeasured;426KB full-glyph font payload is disclosed, and no flawless-performance claim is made.",
+    "Temporary compressor libraries are not committed, shipped, or required to build; original/download/compression receipts remain in/tmp for reproducibility.",
+    "Application auth/money/provider/qualified human release gates are unchanged; no commit/push/deployment/browser operation by this worker."
+  ]
+}

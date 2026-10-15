@@ -1,0 +1,104 @@
+{
+  "date": "2026-10-14",
+  "reviewedAt": "2026-10-14T19:44:19.238517+00:00",
+  "reviewer": "/root/fix_partner_audit",
+  "scope": "Independent full45-line current globals.css read and bounded Cookie/RootLayout/CustomerShell/modal attribute applicability review; no source edit or browser execution.",
+  "codeVerdict": "Approve for bounded source correction; actual final normal/modal/closed browser acceptance recorded",
+  "finding": {
+    "id": "SHARED-CONSENT-MODAL-LAYER-01",
+    "category": "Shared",
+    "pages": [
+      "Cookie Consent / first visit",
+      "Customer Sign Out confirmation",
+      "Company/Partner/Admin shared dialogs",
+      "Public/Auth modal surfaces"
+    ],
+    "affectedCategories": [
+      "Shared",
+      "Customer",
+      "Partner",
+      "Company",
+      "Admin",
+      "Public",
+      "Auth"
+    ],
+    "criticalHumanReviewRequired": false,
+    "before": "A later global Cookie Consent context atz40 painted above a sidebar-owned modal also contained atz40. Actual fresh-origin short-desktop hit test hit Cookie Consent instead of Sign Out. Lowering cookie unconditionally would put its normal1024px banner behind the sidebar.",
+    "after": "The banner retains its defaultz40 and existing dimensions/text/handlers. Exactly one body:has([aria-modal=\"true\"]) descendant selector lowers only that banner toz30 while a modal exists. Removing the dialog returns the banner to its unchanged utilityz40.",
+    "verification": [
+      "Full current45-line globals stylesheet, exact default bannerz40/ARIA label, RootLayout sibling order and mobilez50/desktopz40 CustomerShell contexts independently read. The selector targets only Cookie Consent under a body containing an actual aria-modal=true element; it does not match the banner itself or alter layout, overflow, consent/auth/session handlers.",
+      "Saved final browser receipt independently read: normal1024px bannerz40/text hittrue; short1280x500 modal confirmation hittrue while cookie framez37 (below sidebar40); after closing/logout settlednormalz40/text hittrue. Existing300ms transition produces intermediate values, so computed30 was not asserted."
+    ],
+    "compatibility": "Existing normal cookie position/layer and shared dialog contract remain; source does not add a portal, dependency or persistent four-sidebar changes. Actual local Chromium state acceptance and other-browser/device release checks remain explicit.",
+    "recovery": "When the modal DOM is removed, the state selector ceases to match and normal consent visibility/layer returns. No consent preferences or session storage are modified by this CSS.",
+    "status": "Implemented and independently reviewed; actual final first-visit normal/modal/closed acceptance passed"
+  },
+  "sourceHashes": {
+    "apps/web/app/globals.css": "4e27f9d47fbbbbf6982265684f4c6bb4c815914186521827df9130371f8167eb",
+    "apps/web/components/site/CookieConsentBanner.tsx": "9e01fb2eb3064d740f55e78e7dc77a3c51fd9083fdde2a436cba3586c776699d",
+    "apps/web/components/customer-dashboard/CustomerShell.tsx": "4aa800c0b12475876360841d181420c54e3703d1680ae4fb4baece13bd1915fd",
+    "apps/web/app/layout.tsx": "1ad1ba2343c6d7ec3c28e085c500a9502a1682a5d355e2034ff04506662e3561"
+  },
+  "coverageRecord": {
+    "path": "apps/web/app/globals.css",
+    "depth": "full-source-current-revalidated",
+    "currentSha256": "4e27f9d47fbbbbf6982265684f4c6bb4c815914186521827df9130371f8167eb",
+    "priorReviewedSha256": "fb145a8261beb78a8aa8322a2486d0dc7ea209ac028ecc23b666510975771fc6",
+    "fullReadRanges": [
+      [
+        1,
+        45
+      ]
+    ],
+    "fullSourceRead": true,
+    "evidence": [
+      "Complete untruncated45-line current source read by /root/fix_partner_audit after conditional Cookie layer change; parent receives this receipt to refresh the residual ledger."
+    ]
+  },
+  "evidenceHashes": {
+    "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-14/consent-layer-before.json": "0823126c2439a07a4d45f11749d3636aeeb9fd03150fb50b4cb3975a0ff582e4",
+    "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-14/consent-layer-after.json": "62407df8412c7ad6809a99cbe0197607a302bd926239b96abc2d19e575eca228"
+  },
+  "limits": [
+    "No application edit, provider/private-data action or browser execution by this reviewer.",
+    "Code approval is not actual after render/hit proof, human release authority or complete authentication/security approval.",
+    "Final frozen root web/build/browser receipts pass; qualified-human, provider, hosted ACL/config/recovery and device acceptance remain external."
+  ],
+  "finalBrowserReceipt": {
+    "date": "2026-10-14",
+    "normal1024": {
+      "bannerLeft": 120.5,
+      "bannerRight": 888.5,
+      "client": 1009,
+      "scroll": 1009,
+      "textReceivesPointer": true,
+      "width": 1024,
+      "zIndex": "40"
+    },
+    "shortDesktopModal": {
+      "buttonReceivesPointer": true,
+      "cookieZ": "37",
+      "height": 500,
+      "hitText": "Sign Out",
+      "width": 1280
+    },
+    "escape": {
+      "activeText": "Sign Out",
+      "cookieZ": "38",
+      "dialogs": 0
+    },
+    "settledNormal": {
+      "transitionDuration": "0.3s",
+      "transitionProperty": "all",
+      "zIndex": "40"
+    },
+    "normalAfterLogout": {
+      "textReceivesPointer": true,
+      "zIndex": "40"
+    },
+    "actualDesktopPointerLogoutPassed": true,
+    "passed": true,
+    "consentRestoredByUI": "Essential Only on the owned fresh local origin",
+    "storageMutation": false
+  }
+}

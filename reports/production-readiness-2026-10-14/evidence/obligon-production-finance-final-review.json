@@ -1,0 +1,410 @@
+{
+  "date": "2026-10-14",
+  "repository": "/home/inimfon-udoh/Obligon/checkout",
+  "branch": "codex/production-readiness-2026-10-14",
+  "scope": "Independent bounded financial review of modified provider, wallet, fuel, refund and callback contracts. Source read-only by reviewer; only temporary dummy-data probes were authored outside the repository.",
+  "sourceEdits": false,
+  "productionActions": false,
+  "coverage": {
+    "fullSourceReads": [
+      "apps/api/src/lib/money-amounts.js",
+      "apps/api/src/lib/money.js",
+      "apps/api/src/lib/payments.js",
+      "apps/api/src/lib/reconcile.js",
+      "apps/api/src/lib/fuel-checkout.js",
+      "apps/api/src/lib/fuel-sale.js",
+      "apps/api/src/lib/discounts.js",
+      "apps/api/src/lib/transfer-recovery.js",
+      "apps/api/src/routes/subscription.routes.js",
+      "apps/api/src/routes/webhooks.routes.js"
+    ],
+    "targetedSourceReads": [
+      {
+        "path": "apps/api/src/lib/flutterwave.js",
+        "sections": "1-365 exact amounts/hostedcheckout/verification;392-464refunds;488-561transfer"
+      },
+      {
+        "path": "apps/api/src/routes/customer.routes.js",
+        "sections": "522-717topup/confirmation/atomicsettlement;1162-1258withdrawal;1306-1378manualcardverification"
+      },
+      {
+        "path": "apps/api/src/routes/company.routes.js",
+        "sections": "639-838companywallet/allocations/topup/confirm"
+      },
+      {
+        "path": "apps/api/src/routes/admin.routes.js",
+        "sections": "1-60auth/middleware;231-286refundauthorization"
+      },
+      {
+        "path": "apps/api/src/middleware/auth.js",
+        "sections": "fullcompanycontext/roles/authmiddleware"
+      },
+      {
+        "path": "apps/api/src/lib/scheduler.js",
+        "sections": "1-221existingpayoutreconciliationreference context only"
+      }
+    ],
+    "testsRead": [
+      "apps/api/tests/company-money.integration.test.mjs",
+      "apps/api/tests/fuel-sale.integration.test.mjs",
+      "apps/api/tests/refund-recovery.integration.test.mjs",
+      "apps/api/tests/refund-boundaries.integration.test.mjs",
+      "apps/api/tests/payment-webhook-recovery.integration.test.mjs",
+      "apps/api/tests/reconciliation-fallback.integration.test.mjs"
+    ],
+    "evidenceRead": [
+      "/tmp/obligon-root-final-boundaries.log",
+      "/tmp/obligon-production-financial-audit.json",
+      "/tmp/obligon-production-fuel-integrity.json",
+      "/tmp/obligon-production-exact-money.json",
+      "/tmp/obligon-production-refund-recovery.json"
+    ],
+    "notClaimed": "Not a whole-project audit or production/provider certificate; no real financial data, no credentials, no provider egress, no human release approval.",
+    "finalChangedRegionReads": [
+      "money.js refund original binding, aggregate cap and source lock order",
+      "admin.routes.js atomic refund reservation and pending/review response",
+      "customer.routes.js atomic withdrawal/clawback, immutable quote and successful transaction identity",
+      "reconcile.js fair refund sweep, exact aggregate card settlement, debt attention and optional unavailable-provider read guard",
+      "webhooks.routes.js full final source, first-paid transaction identity and replay guards"
+    ]
+  },
+  "redVerification": {
+    "totalTests": 6,
+    "passed": 0,
+    "failed": 6,
+    "skipped": 0,
+    "environment": "Local PostgreSQL per-probe disposable schemas, no real funds; provider mocks and synthetic example.invalid fixture identities.",
+    "commands": [
+      {
+        "name": "Preserved primary role allocation",
+        "command": "node --test --test-name-pattern='review: an invited' /tmp/obligon-finance-allocation-role-probe.mjs",
+        "exit": 1,
+        "tests": 1,
+        "passed": 0,
+        "failed": 1
+      },
+      {
+        "name": "Wallet POS currency",
+        "command": "node --test --test-name-pattern='review: non NGN' /tmp/obligon-finance-wallet-currency-probe.mjs",
+        "exit": 1,
+        "tests": 1,
+        "passed": 0,
+        "failed": 1
+      },
+      {
+        "name": "Refund sweep fairness",
+        "command": "node --test --test-name-pattern='review: old manual' /tmp/obligon-finance-refund-fairness-probe.mjs",
+        "exit": 1,
+        "tests": 1,
+        "passed": 0,
+        "failed": 1
+      },
+      {
+        "name": "Admin original-charge limits and dispatch honesty",
+        "command": "node --test /tmp/obligon-finance-admin-refund-probe.mjs",
+        "exit": 1,
+        "tests": 3,
+        "passed": 0,
+        "failed": 3
+      }
+    ],
+    "countNote": "Seven findings; six independently executed red tests. Source-only quote and transaction-id findings have no initial executable probe."
+  },
+  "releaseGaps": [
+    "Qualified human review is mandatory before any real-money or authorization release; this agent review cannot provide that.",
+    "No live Flutterwave/Paystack/Sudo sandbox contracts, provider statements, configured merchant split/fee liability, refund destination or issuer authorization model were available.",
+    "Existing wallet_ledger remains single-entry wallet balance history; balanced currency journal/counterparty accounting and provider-bank reconciliation need qualified finance architecture review.",
+    "Uncertain provider effects are retained for manual/provider reconciliation rather than blindly retried. Operational ownership, monitoring/alert delivery and historical stranded-payment reconciliation are unverified.",
+    "Provider refund lookup samples may omit currency; exact-correlation integration intentionally remains pending/manual-review until sandbox evidence confirms it.",
+    "Fractional/subminimum Flutterwave refund debt is retained for manual review. Provider support/access is needed to return it without unsupported rounding.",
+    "Build/full-project tests, production migration, hosted runtime configuration, data recovery/rollback exercise and browser financial UI acceptance are root-owned and outside this bounded review."
+  ],
+  "findings": [
+    {
+      "id": "FIN-FINAL-01",
+      "severity": "P1",
+      "category": "Company / Billing and wallet allocations",
+      "path": "apps/api/src/lib/money.js",
+      "line": 130,
+      "trigger": "A signed-in customer or partner retains that primary role after accepting an active company invitation with wallet.manage permission, then allocates company budget.",
+      "issue": "Money helper demanded primary account role company, contradicting current company-context and membership authorization.",
+      "evidence": "Fresh isolated HTTP/PostgreSQL probe expected200,received403 An authorized company actor is required;0/1passed before repair.",
+      "probe": "/tmp/obligon-finance-allocation-role-probe.mjs",
+      "status": "Resolved and independently verified",
+      "after": "Current active account plus company type and live owner/admin/wallet.manage membership authorize allocation independently of primary account role. Actual role remains attributable in audit; idempotency/payload binding is unchanged."
+    },
+    {
+      "id": "FIN-FINAL-02",
+      "severity": "P1",
+      "category": "Customer / My Card and Partner / POS; Company / Fleet cards",
+      "path": "apps/api/src/lib/fuel-sale.js",
+      "line": 26,
+      "trigger": "A valid active card code resolves a wallet whose stored currency is USD, with published NGN station pricing.",
+      "issue": "POS debited that wallet using naira-denominated minor units without checking wallet currency.",
+      "evidence": "Fresh isolated PostgreSQL probe expected currency rejection, but sale succeeded;0/1passed before repair.",
+      "probe": "/tmp/obligon-finance-wallet-currency-probe.mjs",
+      "status": "Resolved and independently verified",
+      "after": "Locked wallet selection includes currency, and NGN pricing cannot debit non-NGN personal or company wallet. Rejection preserves code, balances and ledger."
+    },
+    {
+      "id": "FIN-FINAL-03",
+      "severity": "P1",
+      "category": "Admin / Support and settlements refunds",
+      "path": "apps/api/src/routes/admin.routes.js",
+      "line": 244,
+      "trigger": "For an original100000kobo card charge, submit a200000kobo partial refund or sequential70000and50000kobo partial refunds.",
+      "issue": "Neither individual nor aggregate original-charge cap existed, so unsupported over-refund requests reached the provider.",
+      "evidence": "Fresh isolated HTTP/PG probes returned200 and sent mocked provider refund200000 against100000, or aggregate120000 against100000;0/2passed before repair. This proves authorization sent excessive amounts, not that a real provider would pay them.",
+      "probe": "/tmp/obligon-finance-admin-refund-probe.mjs",
+      "status": "Resolved and independently verified",
+      "after": "Refund helper binds immutable paid card/fuel owner, provider, reference and transaction ID. Exact BigInt aggregate full/partial reserved debt cannot exceed original charge under purchase-row and common charge advisory locks. Existing failed/uncertain debts conservatively retain capacity; explicit verified excess remains separate."
+    },
+    {
+      "id": "FIN-FINAL-04",
+      "severity": "P1",
+      "category": "Admin / Refunds and Customer / My Card withdrawal",
+      "path": "apps/api/src/routes/admin.routes.js",
+      "line": 270,
+      "trigger": "A full Flutterwave refund is below minimum or fractional, so dispatchRefund returns reviewRequired without submitting it.",
+      "issue": "Caller still marked original payment refunded, returned success and notified that money was on its way despite no provider POST.",
+      "evidence": "Fresh isolated HTTP/PG probe charged5000kobo; providerPOST0,route200,card payment_status refunded;0/1passed before repair.",
+      "probe": "/tmp/obligon-finance-admin-refund-probe.mjs",
+      "status": "Resolved and independently verified",
+      "after": "Admin/customer reserve issuance, withdrawal and durable debt in the same transaction; historical wallet-credit clawback is included. Paid charge and refund_pending issuance remain until exact successful provider lookup, with cumulative settled full/partial amount equal to original charge. Pending/manual-review API/notification copy does not claim disbursement."
+    },
+    {
+      "id": "FIN-FINAL-05",
+      "severity": "P1",
+      "category": "Shared / Refund reconciliation and Admin / Payment diagnostics",
+      "path": "apps/api/src/lib/reconcile.js",
+      "line": 268,
+      "trigger": "Older manual-review pending refunds fill the bounded sweep, followed by a newer queued refund.",
+      "issue": "ORDER BY created_at never rotates unresolvable rows, starving future refundable debts. Summary ignored refund reviewRequired/errored.",
+      "evidence": "Fresh isolated PG probe with limit1: older review_required row selected across3sweeps; newer queued refund generated0mockPOST;0/1passed before repair.",
+      "probe": "/tmp/obligon-finance-refund-fairness-probe.mjs",
+      "status": "Resolved and independently verified",
+      "after": "Refund sweeps order by updated_at/created_at/id and rotate every unresolved row in finally. Global manual/failed debt counts include items outside the batch and contribute to attention. Lost-response claims never automatically resubmit."
+    },
+    {
+      "id": "FIN-FINAL-06",
+      "severity": "P1",
+      "category": "Customer / My Card withdrawal",
+      "path": "apps/api/src/routes/customer.routes.js",
+      "line": 1220,
+      "trigger": "A historical card request has no charged_kobo, and its plan's current catalog price has changed.",
+      "issue": "Withdrawal substituted mutable plan amount for the missing original charge, inconsistent with stricter verify/admin/reconcile quote handling.",
+      "evidence": "Source-confirmed fallback ternary at withdrawal amount derivation; no production historical rows inspected.",
+      "status": "Resolved and independently verified",
+      "after": "Customer withdrawal requires a positive bounded charged_kobo before reservation/clawback. Missing original charge rejects without current catalog fallback."
+    },
+    {
+      "id": "FIN-FINAL-07",
+      "severity": "P2",
+      "category": "Customer / Wallet and My Card; Company / Billing; Shared callbacks/recovery",
+      "path": "apps/api/src/routes/customer.routes.js",
+      "line": 666,
+      "trigger": "A failed hosted checkout attempt has stored transaction ID A; a later strictly verified successful attempt returns different ID B.",
+      "issue": "COALESCE(existing,verified) preserves old failed/init identifier when recognizing the successful charge, violating receipt traceability.",
+      "evidence": "Source-confirmed successful-transition SQL in completeTopUp, card manual verification, card reconciliation and webhook. No claim credit amount was wrong.",
+      "status": "Resolved and independently verified",
+      "after": "Verified successful processor ID replaces old failed/init ID on the first paid transition in top-up/card manual/webhook/cron owners. Already-paid duplicate guards preserve the recognized successful identity. Independent card probes and top-up webhook failed→paid test exercise this."
+    }
+  ],
+  "status": "Final bounded independent financial review complete; all seven findings resolved in the pinned local source. Real-money production release remains withheld.",
+  "codeVerdict": "Approve bounded reviewed financial corrections",
+  "shipBanner": "DO NOT SHIP",
+  "independentContractVerification": {
+    "command": "node --test apps/api/tests/money-amounts.test.mjs apps/api/tests/payment-verification-contract.test.mjs apps/api/tests/fuel-checkout.integration.test.mjs apps/api/tests/legacy-provider-verification.test.mjs apps/api/tests/exact-money-provider.test.mjs",
+    "log": "/tmp/obligon-finance-independent-provider-fuel.log",
+    "exit": 0,
+    "tests": 63,
+    "passed": 63,
+    "failed": 0,
+    "skipped": 0
+  },
+  "repairVerification": [
+    {
+      "finding": "FIN-FINAL-01",
+      "log": "/tmp/obligon-finance-allocation-role-recheck.log",
+      "command": "node --test --test-name-pattern='review: an invited' /tmp/obligon-finance-allocation-role-probe.mjs",
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "finding": "FIN-FINAL-02",
+      "log": "/tmp/obligon-finance-wallet-currency-recheck.log",
+      "command": "node --test --test-name-pattern='review: non NGN' /tmp/obligon-finance-wallet-currency-probe.mjs",
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "shipReason": "Qualified human review, provider sandbox/statement reconciliation and financial ledger/custody release requirements remain unverified. This code review is not a deployment authorization.",
+  "unresolvedCodeFindings": [],
+  "independentFinalVerification": {
+    "command": "node --test apps/api/tests/refund-boundaries.integration.test.mjs apps/api/tests/refund-recovery.integration.test.mjs apps/api/tests/refund-ambiguity.integration.test.mjs apps/api/tests/company-money.integration.test.mjs apps/api/tests/fuel-sale.integration.test.mjs apps/api/tests/fuel-checkout.integration.test.mjs apps/api/tests/reconciliation-fallback.integration.test.mjs apps/api/tests/payment-webhook-recovery.integration.test.mjs",
+    "log": "/tmp/obligon-finance-independent-final-contracts.log",
+    "exit": 0,
+    "tests": 141,
+    "passed": 141,
+    "failed": 0,
+    "skipped": 0,
+    "environment": "Actual Node test runner using disposable localhost PostgreSQL schemas and loopback HTTP, provider mocks only; no real accounts, funds or provider network calls.",
+    "fullOutputRead": true
+  },
+  "independentProbesFinal": {
+    "tests": 9,
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0,
+    "logs": [
+      "/tmp/obligon-finance-allocation-role-final.log",
+      "/tmp/obligon-finance-wallet-currency-final.log",
+      "/tmp/obligon-finance-refund-fairness-final.log",
+      "/tmp/obligon-finance-admin-refund-final.log",
+      "/tmp/obligon-finance-card-webhook-id-final.log",
+      "/tmp/obligon-finance-card-cron-id-final.log",
+      "/tmp/obligon-finance-card-manual-id-final.log"
+    ],
+    "note": "Six original independently authored reproductions now pass. Three additional card receipt probes separately exercise manual verification, webhook (including delayed duplicate identity preservation) and cron with a different old failed transaction ID."
+  },
+  "supportingRootEvidence": [
+    {
+      "path": "/tmp/obligon-production-final-refund-boundaries.json",
+      "tests": 107,
+      "passed": 107,
+      "failed": 0,
+      "skipped": 0,
+      "note": "Evidence read, current six source/test hashes verified unchanged. Overlaps independent final suite; do not sum these counts."
+    },
+    {
+      "path": "/tmp/obligon-root-integrated-final-proofs.log",
+      "tests": 55,
+      "passed": 55,
+      "failed": 0,
+      "skipped": 0,
+      "note": "Entire output read; root-owned migration, callback/recovery and contact-code checks. Overlaps independent final suite; do not sum these counts."
+    }
+  ],
+  "diffCheck": {
+    "command": "git diff --check",
+    "exit": 0
+  },
+  "sourceSnapshotNote": "Final current source snapshot after independent tests; source/test hashes compared against root refund worker freeze and unchanged.",
+  "sourceSnapshot": [
+    {
+      "path": "apps/api/src/lib/money-amounts.js",
+      "sha256": "00dc5ea6395a29249ab2bc922c12fb3712289bb28274f673e7a1740dedf2a194"
+    },
+    {
+      "path": "apps/api/src/lib/money.js",
+      "sha256": "7d9441ca7f9f095d3522653514bc6bd409746ff7af582ffca48a6d21a45c0f44"
+    },
+    {
+      "path": "apps/api/src/lib/payments.js",
+      "sha256": "7148ad755f6afd03288f233c284239032d74522dc22b2cc8c57864a8b9c5df46"
+    },
+    {
+      "path": "apps/api/src/lib/reconcile.js",
+      "sha256": "ba18cfca3739d3f0d77b9a5ee83dd067067fbdd5ae6942b52a1bd9c460a3f31f"
+    },
+    {
+      "path": "apps/api/src/lib/fuel-checkout.js",
+      "sha256": "52c059d8ed289be47612bcbbdcd4ab1523bd228a3baef2e2b5725b59b1ea43b9"
+    },
+    {
+      "path": "apps/api/src/lib/fuel-sale.js",
+      "sha256": "0eae1765b9fe7850befcb803362769963823ed7c1f76ae096a79e6062cf83568"
+    },
+    {
+      "path": "apps/api/src/lib/discounts.js",
+      "sha256": "14019adfd3cd9e5ea9cde61ca1e04aa419957dd4a4ed731851fcf9e48c6628f0"
+    },
+    {
+      "path": "apps/api/src/lib/transfer-recovery.js",
+      "sha256": "0ca84ac162f8e574aec25c9e54fbd9d32e5ed25b4bb210ecaa38aacfdb969014"
+    },
+    {
+      "path": "apps/api/src/routes/subscription.routes.js",
+      "sha256": "3894e22e9463bc57e054672ad7dfe21156db6cb021ac8442d71eab610becc4eb"
+    },
+    {
+      "path": "apps/api/src/routes/webhooks.routes.js",
+      "sha256": "669fe223ded403b8c8ffe66a6dc08cd141002ded15a37270c301d4866fc63574"
+    },
+    {
+      "path": "apps/api/src/lib/flutterwave.js",
+      "sha256": "31fb11b9d525d830878f74c1f77e2ff34007744a413299ddccf64b48f4677025"
+    },
+    {
+      "path": "apps/api/src/routes/customer.routes.js",
+      "sha256": "e92ba5caf1ffa9d6cd81fadacf7247c4592e2579cde66d2e567960614f80a061"
+    },
+    {
+      "path": "apps/api/src/routes/company.routes.js",
+      "sha256": "8d6422e329a74d5d5733e9b2ce18af5e1406ca6c1667f38afab5dd83f2987c1c"
+    },
+    {
+      "path": "apps/api/src/routes/admin.routes.js",
+      "sha256": "eb5f4fe617621cca6e220db41983b44ab72839c5803eb1eb21bc9cc29097fd0c"
+    },
+    {
+      "path": "apps/api/src/middleware/auth.js",
+      "sha256": "d85d648df02bb35503e63533d522e772c4aa668360d34c48f1ed9a8b345d33b8"
+    },
+    {
+      "path": "apps/api/src/lib/scheduler.js",
+      "sha256": "ee21a1a5e1f520f7812d40369cf31d0252419d46d86364d014792b24cda5645c"
+    },
+    {
+      "path": "apps/api/tests/company-money.integration.test.mjs",
+      "sha256": "2d81bd7a325122973baaead3c041f4dd11f039bfead843881506ba9f338b6ecf"
+    },
+    {
+      "path": "apps/api/tests/fuel-sale.integration.test.mjs",
+      "sha256": "ee0c010096c6420f1792e71f1a87580ec97a0526da199d9e5dc2b6a96afc1da3"
+    },
+    {
+      "path": "apps/api/tests/refund-recovery.integration.test.mjs",
+      "sha256": "2087e3ee1d9271fa3714b2737fb572655a1aba195ea50eedfe35b121748fee29"
+    },
+    {
+      "path": "apps/api/tests/refund-boundaries.integration.test.mjs",
+      "sha256": "29fa2552ac91476160c1105475e42f5e81437ff678617c36b4ad27ac04d33a93"
+    },
+    {
+      "path": "apps/api/tests/payment-webhook-recovery.integration.test.mjs",
+      "sha256": "86419d3e1306b44bbaa7bbc326c70f03460d9dfe3fc06fdf96211471aa84bea4"
+    },
+    {
+      "path": "apps/api/tests/reconciliation-fallback.integration.test.mjs",
+      "sha256": "2c5dc97d84da3778b78055f18e1277b88d166eed980b24242cdd2cf8cad54107"
+    },
+    {
+      "path": "apps/api/tests/refund-ambiguity.integration.test.mjs",
+      "sha256": "683b25c95f190ff3a7587a977dd9b01683d743030774994082a64ec694c46699"
+    },
+    {
+      "path": "apps/api/tests/fuel-checkout.integration.test.mjs",
+      "sha256": "cba27f7c25fd70bf314c8e1418893c8db2b23ca18210be09778a1e521f132611"
+    }
+  ],
+  "evidenceHashes": {
+    "/tmp/obligon-finance-allocation-role-final.log": "9e0c4bf0aed97274ad6033669b8ee1f418a4d10e9b608ed91eeb93813092960e",
+    "/tmp/obligon-finance-wallet-currency-final.log": "3ed2d5767d920d195f06a02faa5ad213f19d8cbf6185fa7cef3612d521972f51",
+    "/tmp/obligon-finance-refund-fairness-final.log": "c8dcf0be717ba0bf491e120091155bc08e4a5ee7b7538c853dc477c0c3551ec7",
+    "/tmp/obligon-finance-admin-refund-final.log": "32c0364daf64529924bf82cc105c297ae5ae851db325493b2a63a526bc1110f2",
+    "/tmp/obligon-finance-card-webhook-id-final.log": "86feba191cf5fbec80765ee7dd325c482356f45d8f1ce2a67f230cee365e0302",
+    "/tmp/obligon-finance-card-cron-id-final.log": "bd5888be45ab6347975fcf6c65346f87c7c93e5619f6ecd85a69709d71b8954a",
+    "/tmp/obligon-finance-card-manual-id-final.log": "c984160a00aff77ecc2d887db3c6fc2c64daeb04442685d1127d6d4542c7f579",
+    "/tmp/obligon-finance-independent-final-contracts.log": "20cc29b8f31ce783e624e963fe0a46f325437cf0d7697c63f00e5f6308ab8527",
+    "/tmp/obligon-finance-independent-provider-fuel.log": "9abcbe4575f957edc1717a0f279520741b05ae2a97fd66595e98712cc0b4e7de"
+  },
+  "completedAt": "2026-10-14T16:25:24.072380+00:00"
+}

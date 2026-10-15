@@ -1,0 +1,173 @@
+{
+  "date": "2026-10-14",
+  "scope": "Bounded FIN06 FIN07 FIN08 FIN10 application fixes",
+  "repository": "/home/inimfon-udoh/Obligon/checkout",
+  "branch": "codex/production-readiness-2026-10-14",
+  "status": "Implemented and focused verification passed; root integration and independent/qualified release review outstanding",
+  "productionActions": false,
+  "sourceFrozen": true,
+  "invariants": [
+    "Only a partner-owned active/open approved station may use a wallet authorization code; status is locked through the sale transaction.",
+    "Rejected station leaves wallet balance, wallet ledger, card code expiry and counters, transactions, and fueling logs unchanged.",
+    "A committed sale records its original authoritative published quote in unit_price_kobo; later station price updates cannot change it.",
+    "Historical savings are exact integer sum of each positive recorded base_amount_kobo minus charged amount_kobo, bounded by customer, successful status, and optional date.",
+    "Missing historical base evidence is excluded; no synthetic old station prices or current market estimate is presented as historical savings.",
+    "A payment plan catalogue is only cached after a complete valid documented v3 envelope with all bounded pages; malformed, throttled and over-limit outcomes stay stale."
+  ],
+  "findings": [
+    {
+      "id": "FIN-06",
+      "status": "Implemented; focused proof passed",
+      "files": [
+        "apps/api/src/lib/fuel-sale.js"
+      ],
+      "change": "Added partner ownership plus status='active' and is_open=TRUE predicate with FOR SHARE inside existing transaction.",
+      "evidence": "Pending, suspended and closed station rejections prove unchanged code validity/counters, wallet/ledger and sale/log counts; existing active happy path and concurrency single-use-code test pass."
+    },
+    {
+      "id": "FIN-07",
+      "status": "Implemented; root overview copy integrated separately",
+      "files": [
+        "apps/api/src/lib/savings.js"
+      ],
+      "change": "Removed AVG price x SUM litres and mutable network benchmark. PostgreSQL numeric sums immutable base minus actual charged totals per successful purchase; BigInt validates exact JavaScript reporting bounds.",
+      "evidence": "Unequal one-litre/99-litre fixture now gives 50000 kobo rather than 2500000; later fuel_prices updates leave result exactly unchanged; date/customer/status, missing base, fractional litres, multiple fuels and overflow tested."
+    },
+    {
+      "id": "FIN-08",
+      "status": "Implemented; focused proof passed",
+      "files": [
+        "apps/api/src/lib/fuel-sale.js",
+        "apps/api/src/lib/fuel-checkout.js"
+      ],
+      "change": "Wallet POS inserts original price.price_kobo; direct confirmation propagates locked fuel_orders.unit_price_kobo. Existing migration 012 already defines column; no migration or historical backfill added.",
+      "evidence": "Both paths preserve original 1000 kobo quote after listed price becomes 2000; discount actuals remain base=10000 and charged=9000. Repeat direct confirmation still writes one transaction."
+    },
+    {
+      "id": "FIN-10",
+      "status": "Implemented; focused proof passed",
+      "files": [
+        "apps/api/src/lib/flutterwave.js (fetchPaymentPlans only)"
+      ],
+      "change": "Fetched documented v3 envelope directly with existing providerFetch retry/timeout boundary to retain data array and meta.page_info.total_pages. Validates envelope/pages and reports supported page-limit overflow stale instead of truncating silently.",
+      "evidence": "Official-shaped two-page fixture returns both plans including cancelled matching local token and reconciliation exposes processor_plan_inactive drift. Empty caching, malformed envelope, invalid metadata, bounded excess pages and throttled prior-cache preservation pass."
+    }
+  ],
+  "publicContract": {
+    "customerSavings": {
+      "savedKobo": "Recorded applied fuel discounts, not market-price estimate",
+      "basis": "recorded_discount",
+      "recordedCount": "Known successful fuel purchases with recorded positive base and nonnegative charged amount",
+      "pricedCount": "Compatibility alias of recordedCount",
+      "byFuel": "fuelType, litres, transactions, savedKobo; former avgPaidKobo and benchmarkKobo omitted (no callers use them)"
+    },
+    "callerEdits": "Root updates customer overview comment/helper to Recorded fuel discounts and coverage to recorded purchases."
+  },
+  "verification": {
+    "before": {
+      "log": "/tmp/obligon-fuel-integrity-before.log",
+      "command": "node --test tests/fuel-sale.integration.test.mjs tests/fuel-checkout.integration.test.mjs tests/savings.integration.test.mjs tests/payment-plans.integration.test.mjs",
+      "exit": 1,
+      "tests": 59,
+      "passed": 41,
+      "failed": 18,
+      "skipped": 0,
+      "note": "17 behavior reproductions failed; one pre-existing-budget helper assertion failed after strengthening helper to expect zero ledger, corrected to expect its preseeded one row."
+    },
+    "focusedAfter": {
+      "log": "/tmp/obligon-fuel-integrity-after.log",
+      "sameCommandAsBefore": true,
+      "exit": 0,
+      "tests": 59,
+      "passed": 59,
+      "failed": 0,
+      "skipped": 0
+    },
+    "downstreamFinal": {
+      "log": "/tmp/obligon-fuel-integrity-final.log",
+      "command": "node --test tests/fuel-sale.integration.test.mjs tests/fuel-checkout.integration.test.mjs tests/savings.integration.test.mjs tests/payment-plans.integration.test.mjs tests/reconciliation-fallback.integration.test.mjs tests/partner-production-readiness.test.mjs tests/partner-authorization.test.mjs tests/flutterwave-processor.test.mjs tests/settlement-accounting.integration.test.mjs",
+      "exit": 1,
+      "tests": 185,
+      "passed": 184,
+      "failed": 1,
+      "skipped": 0,
+      "unresolvedFailure": {
+        "file": "apps/api/tests/partner-production-readiness.test.mjs:126",
+        "test": "an undelivered code is not left live",
+        "cause": "Existing source-only assertion expects old now()/user_id/purpose SQL; root auth changes revoke only issued record.id using clock_timestamp(). Independent of fuel increment; root notified."
+      }
+    },
+    "environment": "Disposable PostgreSQL on loopback with random per-file isolated schemas and local fake provider fixtures; DOTENV_CONFIG_PATH=/dev/null DATABASE_SSL=false NODE_ENV=test; require_escalated used for Node test networking; no live money or external provider calls.",
+    "diffCheck": "git diff --check exit 0 after changes"
+  },
+  "changeImpact": {
+    "authorization": "[redacted sensitive value]",
+    "callerScope": "Partner POS uses stricter check; direct payment completion records one additional immutable transaction column; only customer overview consumes savings result.",
+    "schema": "All fields already provided by migrations 001, 012, 022, 023; focused/minimal fixture schemas aligned with unit_price_kobo.",
+    "operationalRecovery": "No provider checkout or fulfillment state transitions changed; duplicate confirmation and reconciliation recovery tests pass.",
+    "reversibility": "Localized source changes without production or data actions."
+  },
+  "review": {
+    "selfReview": "Checked scoped SQL insert parameter order, null evidence exclusion, exact numeric monetary sum, row-lock lifetime, retained provider retry/timeout/cache/error behavior and downstream fixture callers.",
+    "independentReview": "Pending root independent audit; concurrency slots occupied during this increment.",
+    "humanReview": "Qualified review still required before any real-money production release."
+  },
+  "limitations": [
+    "Legacy transaction unit_price_kobo was migration-backfilled from charged amount per litre; new unit_price_kobo is the immutable original quote, and historical savings deliberately uses actual recorded base/amount totals rather than relying on mixed old unit-price semantics.",
+    "Legacy rows without base_amount_kobo cannot prove discounts and are excluded; no production records were changed.",
+    "Existing fuel price x litres and discount pricing arithmetic remain broader FIN12 precision work; this increment changes historical monetary aggregation, not all money arithmetic.",
+    "Live Flutterwave sandbox/staging, provider statement reconciliation, financial architecture/custody review and complete production release checks remain outside this local proof.",
+    "Expanded verification contains the unrelated auth source-assertion failure described above; no claim that all project tests pass or production readiness has been reached."
+  ],
+  "sources": [
+    {
+      "url": "https://developer.flutterwave.com/reference/get-payment-plans",
+      "supports": "v3 GET /payment-plans page query with data array and top-level meta.page_info envelope; verified via official reference search response on 2026-10-14."
+    }
+  ],
+  "baselineSha256": {
+    "apps/api/src/lib/fuel-sale.js": "91b55e312bf83abdcadf1fcd4b706fb4c0a49d05c5c91382c1d230317f323de9",
+    "apps/api/src/lib/savings.js": "ce82dd140b46023e8651f12cf40a89e283853556f79194fb115458257715be67",
+    "apps/api/src/lib/flutterwave.js": "bfdba0aed7c6ff98a0b44b2e298d4becaeab90ac8b8d6f6b3d27282bf851a9eb",
+    "apps/api/src/lib/fuel-checkout.js": "d593ace8846f6779b347a3bec6e59566204d13cd245d2f32fc2c7cd857bd3acb"
+  },
+  "files": [
+    {
+      "path": "apps/api/src/lib/fuel-sale.js",
+      "sha256": "21bdede6c1cd8b73d3d5af60ea051f9b5bfce46dc757e8577faa1c19dab9924e"
+    },
+    {
+      "path": "apps/api/src/lib/fuel-checkout.js",
+      "sha256": "3a6eb33783e160b01f0a93b423755fc1a2410848641fc1f1cbe4190e23bb63f5"
+    },
+    {
+      "path": "apps/api/src/lib/savings.js",
+      "sha256": "929196f0fe44e25ec8b8204b720c2e6600b89e2bcdd4eefd5df6344bb907e2b1"
+    },
+    {
+      "path": "apps/api/src/lib/flutterwave.js",
+      "sha256": "ecfd86811c06d63e65da7d1d3681e095b9588d42c4f03c46a392ab541ea79748"
+    },
+    {
+      "path": "apps/api/tests/fuel-sale.integration.test.mjs",
+      "sha256": "08d78bbe8cc87b8e8beb2f28a5826b1e58977c2774330f902e408e4b4fc4f43e"
+    },
+    {
+      "path": "apps/api/tests/fuel-checkout.integration.test.mjs",
+      "sha256": "572952b7a84be768369c44ddb54d83384a3eb7120f05c68a3a5fa00bccbb7370"
+    },
+    {
+      "path": "apps/api/tests/reconciliation-fallback.integration.test.mjs",
+      "sha256": "4a90ff45a842348574b455d167dcd39c811b0b9280f0b188e484b25fba8903e3"
+    },
+    {
+      "path": "apps/api/tests/savings.integration.test.mjs",
+      "sha256": "fe34114019ecad09522c3253b7ba0d175cdff7f48524c11066809c9b0b3a0e36"
+    },
+    {
+      "path": "apps/api/tests/payment-plans.integration.test.mjs",
+      "sha256": "259de25ddcbd66f07e92e3d1ede412510674ad370e366cbd8224e0ba46594079"
+    }
+  ],
+  "ediraeLearn": "Root owns one task-wide learning breakdown; no child duplicate created."
+}

@@ -1,0 +1,163 @@
+{
+  "date": "2026-10-14",
+  "reviewedAt": "2026-10-14T18:25:31.272765+00:00",
+  "reviewer": "/root/fix_partner_audit",
+  "scope": "Bounded independent source/contract review of newly added company admin-approval gate, signup/session state, shell navigation, direct allocation/fuel spending, PIN atomicity and terminal card refund UI. No application edits, provider/production actions or deployment.",
+  "codeVerdict": "Approve for the bounded reviewed corrections; qualified human release authority and external acceptance remain required",
+  "releaseDecision": "DO NOT SHIP: qualified human review and external acceptance remain required",
+  "findings": [
+    {
+      "id": "REVIEW-COMPANY-SEARCH-01",
+      "priority": "P2",
+      "status": "Closed in current source; affected local proof recorded",
+      "before": "Topbar search filtered raw companyNav while sidebar/mobile hid operations for unapproved companies.",
+      "after": "Topbar search now uses approval-aware visibleNav; pending destinations omit Vehicles and retain Support, verified destinations retain operational navigation.",
+      "evidence": "CompanyShell.tsx104..111; production-company-invitations.test.cjs actual rendered fixture query results."
+    },
+    {
+      "id": "REVIEW-PIN-TYPE-01",
+      "priority": "P2",
+      "status": "Closed in current source; affected local proof recorded",
+      "before": "String(newPin) regex accepted numeric/array inputs but bcrypt.hash received original non-string, allowing masked500.",
+      "after": "Strict four-digit string validation occurs before bcrypt for new/current PIN. The locked transaction updates hash, clears active fuel code/expiry and commits action/audit together.",
+      "evidence": "customer.routes.js1572..1587; customer-production-boundaries.integration.test.mjs malformed types, concurrent initial setup, wrong/correct current PIN and codeNULL assertions."
+    },
+    {
+      "id": "REVIEW-ADMIN-COMPANY-WALLET-01",
+      "priority": "P1",
+      "status": "Closed in current source; affected local proof recorded",
+      "before": "Admin-created company provisioning does not create a company wallet; approved company funding requires it and explicitly returns404 when absent.",
+      "evidence": "Current admin.routes.js transaction and admin-support.integration.test.mjs explicit new-wallet/legacy-zero/funded-preservation/audit-rollback cases; final actual API1018/1016pass/0fail/2envskips log confirms these cases.",
+      "after": "Admin provisioning creates the zero NGN company wallet inside its existing transaction. Approved admin review also conditionally restores a missing legacy company wallet through the same idempotent helper, preserving an existing funded wallet and rolling back restoration/edits if audit fails."
+    },
+    {
+      "id": "REVIEW-COMPANY-MENU-01",
+      "priority": "P2",
+      "category": "Company",
+      "status": "Closed in current source; actual compiled22/22 and320px browser keyboard proof recorded",
+      "before": "An open mobile menu was replaced by the main subtree organization key while useDialogFocus retained the disconnected previous dialog; Tab navigation could remain on the replacement container.",
+      "after": "Stable organization ID change closes the open menu and focuses the new connected topbar menu button via its ref. Same-company rerenders keep the open menu. Reopening lets useDialogFocus capture the new dialog; existing topmost/cleanup behavior is retained.",
+      "pages": [
+        "Company mobile navigation",
+        "Company selector"
+      ],
+      "criticalHumanReviewRequired": false,
+      "evidence": "Current CompanyShell ref/effect and unmodified useDialogFocus capture/cleanup independently reviewed. Compiled component reproduced21pass1fail then22/22green. Saved320px browser proof records selected-company switch closes the old drawer (dialogCount0), focuses the new Open company menu button, reopened Tab focuses Close company menu, and Escape restores Open company menu."
+    }
+  ],
+  "verifiedProperties": [
+    "Company common guard checks current server-loaded req.org.verification_status, not stale client session metadata, after authenticated current company membership/context checks. Pending/unverified/rejected operational paths deny, onboarding allowlist remains owner/organization scoped.",
+    "Auth signup persists company pending/canceled metadata and zero wallet without any trial/subscription INSERT; session payload carries organizationVerificationStatus from current organization.",
+    "Company shell remount uses stable organization ID. Missing selected company context renders explicit chooser; pending operational children are suppressed and Support/settings/notifications remain usable.",
+    "Direct company allocation checks company type/current verified status and active actor/member permissions with shared row locks inside the balance/idempotency transaction. Replays cannot bypass a revoked company approval.",
+    "Wallet fuel sale locks the card and current company organization; prior-issued company codes cannot spend while company approval is pending. Verified fixtures retain expected lawful transaction sequencing.",
+    "PIN setup/change checks actual current locked hash/ownership, stores no plaintext PIN metadata, exposes only pinSet, and invalidates active wallet fuel code atomically with the new hash.",
+    "CardPage terminal cancelled/withdrawn/refunded/payment-refunded/issuance-refund-pending branches cannot resume payment or collect identity; withdrawal outcome survives subsequent read error; only full-kind succeeded refund or explicit refunded request state confirms full refund.",
+    "Shared dialog hook intentionally captures the open dialog in its effect keyed by ref/open. Closing on organization key change releases the old listener/scroll-lock capture; reopening captures the current connected container. The new topbar ref provides a visible focus recovery target for an open mobile drawer."
+  ],
+  "freshProof": [
+    {
+      "artifact": "/tmp/obligon-production-final-company-partner-contracts.json",
+      "scope": "Affected real local HTTP/PostgreSQL three-file run",
+      "tests": 63,
+      "passed": 63,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0
+    },
+    {
+      "artifact": "/tmp/obligon-final-company-approval-money-red.log",
+      "scope": "Root real missing-approval direct allocation/fuel reproduction",
+      "tests": 2,
+      "passed": 0,
+      "failed": 2,
+      "skipped": 0,
+      "status": "Pre-fix reproduction; not a final failing-state assertion"
+    },
+    {
+      "artifact": "/tmp/obligon-production-api-verified.log",
+      "scope": "Root final frozen API source run, including PIN and approved company wallet recovery cases",
+      "tests": 1018,
+      "passed": 1016,
+      "failed": 0,
+      "skipped": 2,
+      "skipReason": "Only missing.env credential comparisons",
+      "status": "Root reports actual exit0; final summary and specific new case lines independently read"
+    },
+    {
+      "artifact": "/tmp/obligon-production-web-case-verification.log",
+      "scope": "Fresh frozen whole-web actual individual-case proof after all ordinary font/mobile/auth/station/copy corrections",
+      "tests": 260,
+      "passed": 260,
+      "failed": 0,
+      "skipped": 0,
+      "status": "Final frozen260-case summary and source-binding receipt independently read/hash checked; full prior260-case output read before the final ordinary CSS increment. Root final current-source run passes260/260 with no skips/failures."
+    },
+    {
+      "artifact": "/tmp/obligon-final-company-menu-green.log",
+      "scope": "Compiled component selection/menu lifecycle assertions only",
+      "tests": 22,
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "status": "Full output independently read; no DOM keyboard/focus or final production build claim from this fixture."
+    },
+    {
+      "artifact": "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-14/company-menu-browser.json",
+      "scope": "Actual local320px company switch and reopened drawer focus",
+      "observations": {
+        "switchFocusProof": {
+          "activeLabel": "Open company menu",
+          "approvedTeam": true,
+          "dialogCount": 0,
+          "pendingGate": false,
+          "width": 320
+        },
+        "reopenedFocusProof": {
+          "activeLabel": "Close company menu",
+          "activeRole": null
+        },
+        "restoredFocusProof": {
+          "activeLabel": "Open company menu",
+          "dialogCount": 0
+        }
+      },
+      "status": "Saved structured proof independently read; full application browser ledger remains root-owned."
+    }
+  ],
+  "limits": [
+    "This is bounded agent source/contract review, not qualified human release authority or complete financial architecture validation.",
+    "Existing admin verification with explicit contractAgreed attestation is a product workflow; signed contract, regulated provider acceptance and operator responsibility require qualified owner/legal review.",
+    "Provider boundaries are mocked; hosted ACL/config/device/role/rollback/recovery/observability acceptance remains external.",
+    "Source hashes and pending proof must be refreshed after any correction; no all-perfect or production-ready claim.",
+    "Approved legacy wallet restoration creates only a zero NGN wallet when missing; it does not infer historical balances or reconcile earlier provider/accounting data."
+  ],
+  "sourceHashes": {
+    "apps/api/src/routes/company.routes.js": "22075c3794292b1d2aa7f6fe970f24bde3f96f98af84afda9114c1ad55cb5574",
+    "apps/api/src/routes/auth.routes.js": "56644e49366f4a85b0ce11e624e81e5d5f4e15f067fb21b73062d4cd87488b0b",
+    "apps/api/src/routes/admin.routes.js": "9ecdb24e33857af71f7a4db2410624f735a0e71fa9bc4d72bd5ba0b771de7122",
+    "apps/api/src/lib/money.js": "646ced224c6acc63367a435d7800f3c70a1017c913e01a6097ebfdb9f5302e08",
+    "apps/api/src/lib/fuel-sale.js": "6b05aecaee203bec2d6c64b4f1ace9dc27db2986ae8af79d143edda967856ee2",
+    "apps/api/src/routes/customer.routes.js": "836218ba3c8f9c76012234d56504f23afddd00ecba344cd2771ed46e5b156be9",
+    "apps/web/components/company-dashboard/CompanyShell.tsx": "dc3bd1bf1780bce0beaab283e4fd710441e2a1b2f81ca4e02883e659a4f8cb27",
+    "apps/web/components/customer-dashboard/CustomerScreen.tsx": "3b2bfa6fd7e489c704660f6793e75096952de44d6f56f34fb68d255f8251f248",
+    "apps/web/lib/services/types.ts": "23693aeb863addfaf368aec1a10943e6561154d24688e95a06622cd34ecaeac6",
+    "apps/web/components/shared/useDialogFocus.ts": "fbfaa5edb2bd131b99452e577cfc7731f8b6840c1bb6c95b4072983c4dca1b6f"
+  },
+  "evidenceHashes": {
+    "/tmp/obligon-production-final-company-partner-contracts.json": "9bc196235e4b91ee6880bcff158fb094772031f52714d5b3a8fd6d80c2e0490b",
+    "/tmp/obligon-final-company-approval-money-red.log": "47a06b50b364aa6eba98dda8b89de6f8084a20c8deb19a1eb3669b4c1edd5765",
+    "/tmp/obligon-production-api-verified.log": "fd7607d8a20269741b34f7cc10dbc24e351523c74c4942c16a2ffc8e0f1d148a",
+    "/tmp/obligon-final-company-menu-green.log": "7afafed86c3102559b03890577c8cd777b520b66344b2ea6cfb8a10fde5f258e",
+    "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-14/company-menu-browser.json": "134812f434c3e1a36a721e9636b3000151e004e297fa956faacadafba538b286",
+    "/tmp/obligon-production-station-distance-review.json": "980ba7dc8f8046e54ae2b48eae4adff83e1c694958f402ea38916816edde9dad",
+    "/tmp/obligon-production-web-case-verification.log": "f1be06d0523196d60117089d34abf35a0937f3648650732766abca81cd832aa7"
+  },
+  "sourceHashProvenance": {
+    "apps/web/components/customer-dashboard/CustomerScreen.tsx": {
+      "priorReviewedHash": "776d51bf16e84a1829fdb911d83934bfb4925ae7e8cbf8a670eafb8038eafcf4",
+      "currentHash": "3b2bfa6fd7e489c704660f6793e75096952de44d6f56f34fb68d255f8251f248",
+      "changedRegionReview": "Only later optional station-distance metadata and conditional label changed; actual current detail state, card/map selections, display and backend contract separately reviewed in obligon-production-station-distance-review.json. Previously reviewed card/PIN/refund regions unchanged."
+    }
+  }
+}

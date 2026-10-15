@@ -1,0 +1,147 @@
+{
+  "date": "2026-10-14",
+  "frozenAt": "2026-10-14T15:28:02.843774+00:00",
+  "branch": "codex/production-readiness-2026-10-14",
+  "scope": "Bounded AUTH03 correction of five exact independently confirmed auth/session/backup/password-change findings; no commits, pushes, dependencies, migrations, deployments, CI changes or real funds; Learn owned by root.",
+  "sourceReview": "/tmp/obligon-production-auth-ui-review.json",
+  "preFixEvidence": [
+    "/tmp/obligon-production-auth-ui-auth-edge-repro.mjs",
+    "/tmp/obligon-production-auth-ui-auth-edge-repro.log",
+    "/tmp/obligon-production-auth-ui-session-repro.cjs",
+    "/tmp/obligon-production-auth-ui-session-repro.log"
+  ],
+  "findings": [
+    {
+      "id": "AUTH-DISABLE-01",
+      "disposition": "Corrected; independent recheck pending",
+      "change": "Lock current account, require unchanged credential revision/provider identity and an unrevoked unexpired signed session, then verify password and atomically disable MFA and consume pending proofs. The local session policy is preserved.",
+      "evidence": [
+        "a reset queued before MFA disable rejects the old credential and preserves MFA",
+        "MFA disable rechecks a session revoked while the request waits for its account",
+        "legitimate MFA disable invalidates pending proofs without ending the current session"
+      ]
+    },
+    {
+      "id": "AUTH-LOCKOUT-01",
+      "disposition": "Corrected; independent recheck pending",
+      "change": "Database increment uses current failed_login_attempts and current committed threshold, conditional on the verified credential snapshot. Old password failures cannot penalize a new revision.",
+      "evidence": [
+        "five concurrent wrong passwords count durably and lock the account",
+        "a password failure from an obsolete credential does not increment the new credential"
+      ]
+    },
+    {
+      "id": "AUTH-UI-SESSION-01",
+      "disposition": "Corrected; independent recheck pending",
+      "change": "Auth service binds completions to operation revision plus unchanged refresh-session identity, and MFA additionally binds to exact still-live pending proof. Login/signup/logout advance revision. UI checks service result identity and component lifetime. AuthProvider login and catch compare its existing sessionGeneration.",
+      "evidence": [
+        "pending MFA after logout/new-login cannot restore original account",
+        "replaced pending proof and concurrent MFA replay cannot overwrite newer proof/session",
+        "late login/logout cannot overwrite or delete newer account",
+        "older AuthProvider login success/failure preserves later authenticated React state",
+        "MFA UI completion after invalidation/unmount has no session update or navigation"
+      ]
+    },
+    {
+      "id": "UI-MFA-BACKUP-01",
+      "disposition": "Corrected; independent recheck pending",
+      "change": "Accepted separator-free and lowercase backup input is submitted as generated uppercase XXXX-XXXX.",
+      "evidence": [
+        "separator-free backup codes are normalized to the generated server representation",
+        "saved hexadecimal backup codes have a reachable input and are submitted intact"
+      ]
+    },
+    {
+      "id": "UI-PASSWORD-CHANGE-01",
+      "disposition": "Corrected; independent recheck pending",
+      "change": "Server response exposes reauthenticationRequired true for provider and false for local credentials. Provider success clears old tokens/proof/persisted user and UI clears current React user and routes to sign-in with accurate toast/copy. Stale provider response cannot clear a new login.",
+      "evidence": [
+        "provider password change explicitly requires reauthentication and revokes every session",
+        "local password change preserves current session and returns false",
+        "client clears only required session, rejects stale account response",
+        "modal clears React session before sign-in navigation and explains possible sign-in"
+      ]
+    }
+  ],
+  "verification": [
+    {
+      "command": "OBLIGON_TEST_DATABASE_URL=[redacted local connection] TEST_DATABASE_URL=[redacted local connection] DOTENV_CONFIG_PATH=/dev/null NODE_ENV=test DATABASE_SSL=false node --test tests/password-reset-claim.integration.test.mjs tests/mfa-password-proof.integration.test.mjs",
+      "cwd": "/home/inimfon-udoh/Obligon/checkout/apps/api",
+      "sandbox": "require_escalated; actual Node with real isolated PostgreSQL schema and loopback HTTP",
+      "exitCode": 0,
+      "tests": 35,
+      "pass": 35,
+      "fail": 0,
+      "skipped": 0,
+      "toolOutputChunks": [
+        "229612",
+        "a33c45"
+      ],
+      "note": "Full output read. Synthetic password/session-write errors and provider timeouts are expected negative-case evidence. Provider fetch is stubbed; no live Supabase calls."
+    },
+    {
+      "command": "node --test tests/mfa-password-proof.test.cjs tests/auth-session-races.test.cjs",
+      "cwd": "/home/inimfon-udoh/Obligon/checkout/apps/web",
+      "sandbox": "require_escalated; actual Node compiled production TypeScript/TSX, controlled fetch and React hook fixtures",
+      "exitCode": 0,
+      "tests": 26,
+      "pass": 26,
+      "fail": 0,
+      "skipped": 0,
+      "toolOutputChunks": [
+        "728785",
+        "fa091c"
+      ]
+    },
+    {
+      "command": "node --test tests/*.test.cjs",
+      "cwd": "/home/inimfon-udoh/Obligon/checkout/apps/web",
+      "sandbox": "require_escalated; actual Node",
+      "exitCode": 0,
+      "tests": 220,
+      "pass": 220,
+      "fail": 0,
+      "skipped": 0,
+      "log": "/tmp/obligon-production-auth03-web-tests.log",
+      "note": "Fresh full output read after updating three mock-only failures to revised auth API contract. Earlier suite was 217/220; remaining three failures were missing fixture methods."
+    },
+    {
+      "command": "node ./node_modules/typescript/bin/tsc --noEmit --incremental false",
+      "cwd": "/home/inimfon-udoh/Obligon/checkout/apps/web",
+      "sandbox": "require_escalated; actual Node",
+      "exitCode": 0,
+      "toolOutputChunks": [
+        "ce564c",
+        "594749"
+      ]
+    },
+    {
+      "command": "git diff --check -- [all AUTH03 files]",
+      "cwd": "/home/inimfon-udoh/Obligon/checkout",
+      "exitCode": 0,
+      "toolOutputChunks": [
+        "66d612"
+      ]
+    }
+  ],
+  "knownLimits": [
+    "Independent review still required before a resolved finding claim is accepted by root.",
+    "Qualified human review required before production release of authentication/authorization changes.",
+    "Provider credential mutation is exercised only via documented server fetch boundary with synthetic responses; live Supabase/staging validation is not claimed.",
+    "No real browser, screen-reader or cross-tab session behavior verification. UI tests execute compiled real component code with controlled hook fixtures.",
+    "Full API/financial suite and deployment readiness remain root scope; no application security/readiness claim.",
+    "Other root-owned files remain mutable; hashes cover only this bounded auth correction snapshot."
+  ],
+  "hashes": {
+    "apps/api/src/routes/auth.routes.js": "7e495bb14238c14a163b0197e78d7e91fcd678d6420155fbe055efeaf51c34a5",
+    "apps/api/tests/password-reset-claim.integration.test.mjs": "ed99a82748009c4db002b7f51777d7e920cbf9ebd47bda943cd2413bf6b8f2e0",
+    "apps/web/lib/services/client.ts": "2aa375de4d7c935dafa6946a2dbc97520f6210f47d0b5431d707d0b35817d118",
+    "apps/web/components/shared/AuthContext.tsx": "21a4ea9fa75f556228c697c01fc283e9cd34fc4f7fb74eb31b12de144b63c307",
+    "apps/web/components/auth/MFAUI.tsx": "e1f308758f60a898120e1114a2cafaa2338fb9f6e12ee0e7f6281e9ced45d35b",
+    "apps/web/components/customer-dashboard/CustomerModals.tsx": "6eecb4be6777ac93436d2df934b8a51570f464c35cb3ac2af69f7bec674a4251",
+    "apps/web/tests/auth-session-races.test.cjs": "ed6002b6d1de745461fe4f0637ea54a1a636ab2e502c19359e1ab20d46757fb4",
+    "apps/web/tests/mfa-password-proof.test.cjs": "ad11f275e636cc0354c7c5d765c0ade8a969d7d3c9c11bdd8ae28365c217c1fd",
+    "apps/web/tests/auth-regression.test.cjs": "57879ac8b3c080e0226f852f62d069299800d1309f4a3950c2400702a4e4b18f",
+    "apps/web/tests/production-company-invitations.test.cjs": "0080175ccce25b2008ff427d8513a8ea766ad50d023b7af2c5794d48887977c7"
+  }
+}
