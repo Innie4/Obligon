@@ -59,14 +59,14 @@ export const companyNav: Array<{ key: CompanyPageKey; label: string; href: strin
 ];
 
 export const pageCopy: Record<CompanyPageKey, { title: string; description?: string; search?: string }> = {
-  overview: { title: "Obligon LTD Dashboard", search: "Search..." },
+  overview: { title: "Company dashboard", search: "Search..." },
   vehicles: { title: "Fleet Overview", description: "Manage and track your active vehicles and assigned fuel cards.", search: "Search vehicles..." },
   cards: { title: "Fuelvista Cards", description: "Manage your fleet fuel cards, limits, and assignments.", search: "Search cards..." },
   transactions: { title: "Transactions", description: "View and manage fleet transaction history.", search: "Search transactions..." },
   reports: { title: "Reports & Analytics", search: "Search reports..." },
   stations: { title: "Partner Stations", description: "Find network stations, published fuel prices, and directions.", search: "Search locations, zip codes..." },
   roadside: { title: "Roadside Assistance", description: "Manage and track active emergency requests.", search: "Search..." },
-  billing: { title: "Contract & Billing", description: "Review recorded billing details and invoices for your company contract.", search: "Search Obligon LTD..." },
+  billing: { title: "Contract & Billing", description: "Review recorded billing details and invoices for your company contract.", search: "Search company billing..." },
   team: { title: "Team & Access Control", description: "Manage permissions and internal access for your organization.", search: "Search staff..." },
   notifications: { title: "Notifications", description: "Alerts & Updates" },
   support: { title: "Help & Support", description: "Manage your support tickets and find answers quickly." },
@@ -163,4 +163,3 @@ export const maintenanceRows: Row[] = [
   { cells: ["Oct 15, 2023", "VAN-204", "Standard PM A Service", "Mobile Tech - Unit 4", "₦120.50"], status: "COMPLETED", tone: "green" },
   { cells: ["Oct 12, 2023", "TRK-8802", "Emergency Brake Repair", "HeavyDuty Pros Inc.", "₦1,245.00"], status: "INVOICED", tone: "blue" }
 ];
-

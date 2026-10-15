@@ -5,12 +5,13 @@ import type { CompanyModalKey } from "@/lib/mock/company-data";
 import { useToast } from "@/components/shared/Toast";
 import { useDialogFocus } from "@/components/shared/useDialogFocus";
 import { api, mutationsApi, publicApi, ApiError, saveBlob } from "@/lib/services";
-import { companyApi, type FleetChoices, type CompanyWallet, type CompanyTicketMessages } from "@/lib/services/company";
+import { companyApi, type FleetChoices, type CompanyWallet, type CompanyTicketMessages, type CompanyVehicle } from "@/lib/services/company";
 import { useSession } from "@/components/shared/AuthContext";
 import type { PaymentConfig } from "@/lib/services/types";
 import { fundingQuote, fundingMoney, wholeNairaKobo, validFundingConfig } from "@/lib/customer-funding-quote";
 import { companyAssignmentKnown, companyAssignmentPayload, companyAssignmentSelection, companyCardPayload, companyExportQuery } from "@/lib/company-input";
 export type CompanyModalContext = {
+  editVehicle?: CompanyVehicle;
   cardId?: string;
   vehicleId?: string;
   scope?: string;
@@ -44,6 +45,13 @@ function Field({ label, children }: {
 
   </label>;
 }
+function vehicleOptions(values: string[], current: string) {
+  const known = values.find(value => value.toLowerCase() === current.toLowerCase());
+  return <>
+    {values.map(value => <option key={value} value={value === known ? current : value}>{value}</option>)}
+    {!known && current ? <option value={current}>{current} (current)</option> : null}
+  </>;
+}
 const titles: Record<Exclude<CompanyModalKey, null>, string> = {
   vehicle: "Add Fleet Vehicle", driver: "Add Fleet Driver", assign: "Assign Card", newCard: "Issue Fuel Card", cardConfirm: "Manage Card",
   service: "Schedule Maintenance", roadside: "Request Roadside Assistance", teamMember: "Invite Team Member", supportTicket: "Raise Support Ticket", export: "Export Fleet Data", action: "Fleet Operations"
@@ -61,8 +69,10 @@ function CompanyFleetModal({ modal, context = {}, onClose, onSaved }: Props & { 
   const [choices, setChoices] = React.useState<FleetChoices>({ cards: [], vehicles: [], drivers: [], issuerCustomerConfigured: false });
   const [loadingChoices, setLoadingChoices] = React.useState(false);
   const [choicesError, setChoicesError] = React.useState<string | null>(null);
+  const editingVehicle = modal === "vehicle" ? context.editVehicle : undefined;
+  const vehicleDetailsUnavailable = Boolean(editingVehicle && (!editingVehicle.id || !editingVehicle.plate || typeof editingVehicle.model !== "string" || !editingVehicle.vehicleType || !editingVehicle.fuelType || editingVehicle.tankCapacity == null || !Object.hasOwn(editingVehicle, "driverId") || !editingVehicle.statusRaw));
   const [form, setForm] = React.useState({
-    make: "", model: "", plate: "", vehicleType: "pickup", fuelType: "Diesel", tankCapacity: "100", driverId: "", vehicleId: context.vehicleId ?? "", cardId: context.cardId ?? "",
+    make: "", model: editingVehicle?.model ?? "", plate: editingVehicle?.plate ?? "", vehicleType: editingVehicle?.vehicleType ?? "pickup", fuelType: editingVehicle?.fuelType ?? "Diesel", tankCapacity: String(editingVehicle?.tankCapacity ?? "100"), driverId: editingVehicle?.driverId ?? "", vehicleId: context.vehicleId ?? "", cardId: context.cardId ?? "", vehicleStatus: editingVehicle?.statusRaw ?? "active",
     name: "", phone: "", licenseNo: "", label: "", dailyLimit: "", monthlyLimit: "", note: "", serviceType: "Engine Oil & Filter Service", scheduledDate: "",
     location: "", issueType: "Flat tyre", email: "", role: "dispatcher", subject: "", category: "general", message: "", priority: "normal",
     range: context.range ?? "30", scope: context.scope ?? "transactions", firstName: "", lastName: "", dob: "", bvn: "", address: "", city: "", state: "", postalCode: ""
@@ -97,6 +107,7 @@ function CompanyFleetModal({ modal, context = {}, onClose, onSaved }: Props & { 
   }, [needsChoices, modal, context.cardId, context.vehicleId]);
   const selectedCard = choices.cards.find(card => card.id === form.cardId);
   const assignmentUnavailable = modal === "assign" && !companyAssignmentKnown(selectedCard);
+  const issuerUnavailable = modal === "newCard" && choices.issuerReady !== true;
   const field = (label: string, key: keyof typeof form, type = "text", required = true) => <Field label={label}>
 
     <input className={inputClass} type={type} autoComplete={key === "bvn" ? "off" : undefined} inputMode={key === "bvn" ? "numeric" : undefined} maxLength={key === "bvn" ? 11 : undefined} value={form[key]} required={required} onChange={e => update(key, e.target.value)} />
@@ -120,6 +131,7 @@ function CompanyFleetModal({ modal, context = {}, onClose, onSaved }: Props & { 
       <option value="">Unassigned</option>
 
       {choices.drivers.map(driver => <option key={driver.id} value={driver.id}>{driver.name} · {driver.phone || driver.licenseNo || `Driver ${driver.id.slice(-8)}`}</option>)}
+      {editingVehicle?.driverId && !choices.drivers.some(driver => driver.id === editingVehicle.driverId) ? <option value={editingVehicle.driverId}>{editingVehicle.driverName || "Current driver"} (not currently active)</option> : null}
 
     </select>
 
@@ -137,16 +149,22 @@ function CompanyFleetModal({ modal, context = {}, onClose, onSaved }: Props & { 
   </Field>;
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (submitting || loadingChoices || choicesError || assignmentUnavailable)
+    if (submitting || loadingChoices || choicesError || assignmentUnavailable || vehicleDetailsUnavailable || issuerUnavailable)
       return;
     setSubmitting(true);
     try {
       let message = "Changes saved.";
       switch (modal) {
-        case "vehicle":
-          await mutationsApi.createVehicle({ plate: form.plate.trim(), model: `${form.make.trim()} ${form.model.trim()}`.trim(), vehicleType: form.vehicleType, fuelType: form.fuelType, tankCapacity: Number(form.tankCapacity), driverId: form.driverId || undefined });
-          message = `Vehicle ${form.plate.trim()} added to the fleet.`;
+        case "vehicle": {
+          const payload = { plate: form.plate.trim(), model: `${form.make.trim()} ${form.model.trim()}`.trim(), vehicleType: form.vehicleType, fuelType: form.fuelType, tankCapacity: Number(form.tankCapacity) };
+          if (editingVehicle) {
+            await mutationsApi.updateVehicle(editingVehicle.id, { ...payload, status: form.vehicleStatus, ...(form.driverId !== (editingVehicle.driverId ?? "") ? { driverId: form.driverId || null } : {}) });
+          } else {
+            await mutationsApi.createVehicle({ ...payload, driverId: form.driverId || undefined });
+          }
+          message = `Vehicle ${form.plate.trim()} ${editingVehicle ? "updated" : "added to the fleet"}.`;
           break;
+        }
         case "driver":
           await mutationsApi.createDriver({ name: form.name.trim(), phone: form.phone.trim(), licenseNo: form.licenseNo.trim() });
           message = `Driver ${form.name.trim()} registered.`;
@@ -219,7 +237,7 @@ function CompanyFleetModal({ modal, context = {}, onClose, onSaved }: Props & { 
 
       <header className="flex items-center justify-between gap-3 border-b border-[#e1e6ee] p-5">
 
-        <h2 id="company-dialog-title" className="font-display text-xl font-extrabold text-obligon-navy">{titles[modal]}</h2>
+        <h2 id="company-dialog-title" className="font-display text-xl font-extrabold text-obligon-navy">{editingVehicle ? "Edit Fleet Vehicle" : titles[modal]}</h2>
 
         <button type="button" disabled={submitting} onClick={onClose} className="grid size-11 shrink-0 place-items-center rounded-lg bg-[#f3f6fa]" aria-label="Close dialog">
 
@@ -249,20 +267,22 @@ function CompanyFleetModal({ modal, context = {}, onClose, onSaved }: Props & { 
 
           {choicesError ? <p role="alert" className="text-sm text-red-700">{choicesError} Close and reopen to retry.</p> : null}
           {modal === "assign" && selectedCard && assignmentUnavailable ? <p role="alert" className="text-sm text-red-700">Card assignment details are unavailable. Reopen this form before saving.</p> : null}
+          {vehicleDetailsUnavailable ? <p role="alert" className="text-sm text-red-700">Vehicle details are unavailable. Refresh the fleet page before editing.</p> : null}
+          {issuerUnavailable && !loadingChoices && !choicesError ? <p role="status" className="text-sm text-obligon-text">Card issuing is currently unavailable. Contact Support to confirm when issuer setup is complete. Identity details are only requested when card issuing is available.</p> : null}
 
 
           <div className="grid min-w-0 gap-4 sm:grid-cols-2">
 
 
             {modal === "vehicle" ? <>
-              {field("Make", "make")}
-              {field("Model", "model")}
+              {!editingVehicle ? field("Make", "make") : null}
+              {field(editingVehicle ? "Make and model" : "Model", "model")}
               {field("Plate number", "plate")}
               <Field label="Vehicle type">
 
                 <select className={inputClass} value={form.vehicleType} onChange={e => update("vehicleType", e.target.value)}>
 
-                  {["pickup", "truck", "van", "car", "bus"].map(type => <option key={type}>{type}</option>)}
+                  {vehicleOptions(["pickup", "truck", "van", "car", "bus"], form.vehicleType)}
 
                 </select>
 
@@ -271,7 +291,7 @@ function CompanyFleetModal({ modal, context = {}, onClose, onSaved }: Props & { 
 
                 <select className={inputClass} value={form.fuelType} onChange={e => update("fuelType", e.target.value)}>
 
-                  {["Diesel", "Petrol", "CNG", "Electric"].map(fuel => <option key={fuel}>{fuel}</option>)}
+                  {vehicleOptions(["Diesel", "Petrol", "CNG", "Electric"], form.fuelType)}
 
                 </select>
 
@@ -282,6 +302,7 @@ function CompanyFleetModal({ modal, context = {}, onClose, onSaved }: Props & { 
 
               </Field>
               {driverSelect()}
+              {editingVehicle ? <Field label="Status"><select className={inputClass} value={form.vehicleStatus} onChange={event => update("vehicleStatus", event.target.value)}>{vehicleOptions(["active", "maintenance", "inactive"], form.vehicleStatus)}</select></Field> : null}
             </> : null}
 
 
@@ -299,7 +320,7 @@ function CompanyFleetModal({ modal, context = {}, onClose, onSaved }: Props & { 
               {field("Daily spend limit (₦)", "dailyLimit")}
               {field("Monthly spend limit (₦)", "monthlyLimit")}
               {choices.issuerCustomerConfigured ? <p className="text-sm text-obligon-text sm:col-span-2">Your existing issuer billing contact is reused for this fleet card. Vehicle and driver assignments control who operates it.</p> : null}
-              {!choices.issuerCustomerConfigured && !loadingChoices ? <>
+              {!choices.issuerCustomerConfigured && !loadingChoices && !issuerUnavailable ? <>
                 <h3 className="mt-2 font-bold sm:col-span-2">First card: issuer identity setup</h3>
                 <p className="text-sm text-obligon-text sm:col-span-2">Enter the authorized card holder’s identity. BVN is sent to the card issuer for verification and is not stored by Obligon. Issuance depends on issuer approval.</p>
                 {field("Card holder first name", "firstName")}
@@ -442,7 +463,7 @@ function CompanyFleetModal({ modal, context = {}, onClose, onSaved }: Props & { 
 
             <button type="button" disabled={submitting} onClick={onClose} className="min-h-11 rounded-xl border border-[#dfe5ec] px-5 font-bold">Cancel</button>
 
-            <button type="submit" disabled={submitting || loadingChoices || Boolean(choicesError) || assignmentUnavailable} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-obligon-green px-5 font-bold text-white disabled:opacity-50">
+            <button type="submit" disabled={submitting || loadingChoices || Boolean(choicesError) || assignmentUnavailable || vehicleDetailsUnavailable || issuerUnavailable} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-obligon-green px-5 font-bold text-white disabled:opacity-50">
 
               {submitting ? <Loader2 size={16} className="animate-spin" /> : null}
 

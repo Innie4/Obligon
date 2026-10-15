@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { before, after, test } from 'node:test';
 import { randomUUID } from 'node:crypto';
+import { createRequire } from 'node:module';
+import { execFileSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 import pg from 'pg';
 import express from 'express';
 const url = process.env.OBLIGON_TEST_DATABASE_URL;
@@ -9,6 +12,7 @@ const check = (name, fn) => test(name, { skip: !url }, fn);
 const schema = `company_dashboard_${process.pid}_${randomUUID().replaceAll('-', '')}`;
 const userId = randomUUID(), orgId = randomUUID(), otherOrgId = randomUUID(), vehicleId = randomUUID(), driverId = randomUUID(), cardId = randomUUID();
 let admin, pool, server, base;
+let config;
 const actualFetch = globalThis.fetch;
 const issuerCalls = [];
 let issuerFailure = false;
@@ -29,6 +33,7 @@ before(async () => {
     return actualFetch(input, init);
   };
   pool=(await import('../src/db.js')).getPool();
+  config=(await import('../src/config/env.js')).env;
   await pool.query(`CREATE TABLE users(id uuid PRIMARY KEY, full_name text,email text, phone text, notification_prefs jsonb DEFAULT '{"email":false,"sms":false,"push":false}'::jsonb);
     CREATE TABLE organizations(id uuid PRIMARY KEY,owner_user_id uuid,name text,type text DEFAULT 'company',rc_number text,address text,city text,website text,description text,credit_limit_kobo bigint DEFAULT 0,plan_code text,fleet_id text,verification_status text DEFAULT 'verified',updated_at timestamptz DEFAULT now());
     CREATE TABLE memberships(id uuid DEFAULT gen_random_uuid(),organization_id uuid,user_id uuid,role text,status text DEFAULT 'active',permissions jsonb DEFAULT '[]');
@@ -52,7 +57,15 @@ before(async () => {
   await pool.query('INSERT INTO drivers(id,organization_id,name) VALUES($1,$2,$3)',[driverId,orgId,'Ada']);
   await pool.query("INSERT INTO cards(id,organization_id,owner_user_id,vehicle_id,driver_id,label,status,masked_pan,daily_limit_kobo,monthly_limit_kobo,sudo_card_id,sudo_customer_id) VALUES($1,$2,$3,$4,$5,'Existing','active','•••• 1111',10000,100000,'existing-issuer-card','verified-issuer-customer')",[cardId,orgId,userId,vehicleId,driverId]);
   const app=express(); app.use(express.json()); app.use((req,res,next)=>{ req.user={id:userId,orgId,orgType:'company',role:'company',email:'owner@example.invalid'}; next(); });
-  app.use('/api/company',(await import('../src/routes/company.routes.js')).default);
+  let router;
+  if (process.env.COMPANY_REPORT_BASELINE === 'true') {
+    const require = createRequire(import.meta.url);
+    const source = execFileSync('git', ['show', 'HEAD:apps/api/src/routes/company.routes.js'], { cwd: new URL('../../..', import.meta.url), encoding: 'utf8' })
+      .replace(/(["'])(\.\.\/[^"']+)\1/g, (_, quote, path) => `${quote}${new URL(path, new URL('../src/routes/company.routes.js', import.meta.url))}${quote}`)
+      .replace('from "express"', `from ${JSON.stringify(pathToFileURL(require.resolve('express')).href)}`);
+    router = (await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`)).default;
+  } else router = (await import('../src/routes/company.routes.js')).default;
+  app.use('/api/company',router);
   app.use((error,req,res,next)=>res.status(error.status??500).json({message:error.message}));
   await new Promise(resolve=>{server=app.listen(0,'127.0.0.1',resolve);}); base=`http://127.0.0.1:${server.address().port}/api/company`;
 });
@@ -172,4 +185,57 @@ check('duplicate driver names are filtered and exported by distinct stable IDs',
 });
 check('malformed stable driver IDs return a validation error instead of a database 500',async()=>{
   for(const value of ['Sam%20Example','bad-id','1','']) for(const path of ['/transactions?driverId=','/reports/export?driverId=']) assert.equal((await request(path+value)).status,400);
+});
+
+check('vehicle editing exposes the full draft and persists a driver change without a fuel card',async()=>{
+  const vehicle=randomUUID(),driver=randomUUID();
+  await pool.query("INSERT INTO vehicles(id,organization_id,plate,model,vehicle_type,fuel_type,tank_capacity_l) VALUES($1,$2,'EDIT-VEHICLE','Toyota Hilux','pickup','Diesel',80)",[vehicle,orgId]);
+  await pool.query("INSERT INTO drivers(id,organization_id,name) VALUES($1,$2,'New vehicle driver')",[driver,orgId]);
+  const listed=(await request('/vehicles?search=EDIT-VEHICLE')).data.vehicles[0];
+  assert.equal(listed.id,vehicle);assert.equal(listed.vehicleType,'pickup');assert.equal(listed.model,'Toyota Hilux');assert.equal(listed.driverId,null);
+  assert.equal((await request(`/vehicles/${vehicle}`,'PUT',{model:'Updated Hilux',driverId:driver,tankCapacity:85})).status,200);
+  const saved=(await pool.query('SELECT * FROM vehicles WHERE id=$1',[vehicle])).rows[0];
+  assert.equal(saved.model,'Updated Hilux');assert.equal(saved.driver_id,driver);assert.equal(Number(saved.tank_capacity_l),85);assert.equal(saved.vehicle_type,'pickup');
+  assert.equal((await pool.query('SELECT count(*)::int AS n FROM cards WHERE vehicle_id=$1',[vehicle])).rows[0].n,0);
+});
+check('omitted vehicle driver preserves assignment while explicit null clears it',async()=>{
+  const vehicle=randomUUID();
+  await pool.query("INSERT INTO vehicles(id,organization_id,plate,driver_id) VALUES($1,$2,'CLEAR-DRIVER',$3)",[vehicle,orgId,driverId]);
+  assert.equal((await request(`/vehicles/${vehicle}`,'PUT',{model:'Driver unchanged'})).status,200);
+  assert.equal((await pool.query('SELECT driver_id FROM vehicles WHERE id=$1',[vehicle])).rows[0].driver_id,driverId);
+  assert.equal((await request(`/vehicles/${vehicle}`,'PUT',{driverId:null})).status,200);
+  assert.equal((await pool.query('SELECT driver_id FROM vehicles WHERE id=$1',[vehicle])).rows[0].driver_id,null);
+});
+check('vehicle updates reject malformed and foreign drivers without changing the fleet',async()=>{
+  const vehicle=randomUUID(),foreignDriver=randomUUID();
+  await pool.query("INSERT INTO vehicles(id,organization_id,plate) VALUES($1,$2,'DRIVER-BOUNDARY')",[vehicle,orgId]);
+  await pool.query("INSERT INTO drivers(id,organization_id,name) VALUES($1,$2,'Foreign driver')",[foreignDriver,otherOrgId]);
+  for(const driver of ['',false,42,{},[],[driverId],foreignDriver])assert.equal((await request(`/vehicles/${vehicle}`,'PUT',{driverId:driver})).status,400,JSON.stringify(driver));
+  assert.equal((await pool.query('SELECT driver_id FROM vehicles WHERE id=$1',[vehicle])).rows[0].driver_id,null);
+});
+check('vehicle driver UUID arrays cannot be coerced into a scalar assignment',async()=>{
+  const vehicle=randomUUID();
+  await pool.query("INSERT INTO vehicles(id,organization_id,plate) VALUES($1,$2,'DRIVER-ARRAY')",[vehicle,orgId]);
+  const response=await request(`/vehicles/${vehicle}`,'PUT',{driverId:[driverId]});
+  assert.equal(response.status,400);assert.equal((await pool.query('SELECT driver_id FROM vehicles WHERE id=$1',[vehicle])).rows[0].driver_id,null);
+});
+check('unavailable issuer is disclosed before identity collection and cannot create any card or customer',async()=>{
+  const beforeCalls=issuerCalls.length, beforeCards=(await pool.query('SELECT count(*)::int AS n FROM cards')).rows[0].n;
+  const previous={key:config.SUDO_SECRET_API_KEY,debit:config.SUDO_DEBIT_ACCOUNT_ID,source:config.SUDO_FUNDING_SOURCE_ID,node:config.NODE_ENV,url:config.SUDO_BASE_URL};
+  try {
+    for(const unavailable of [
+      {SUDO_SECRET_API_KEY:''},
+      {SUDO_SECRET_API_KEY:previous.key,SUDO_DEBIT_ACCOUNT_ID:''},
+      {SUDO_DEBIT_ACCOUNT_ID:previous.debit,SUDO_FUNDING_SOURCE_ID:'unsupported-fixture-source'},
+      {SUDO_FUNDING_SOURCE_ID:'',NODE_ENV:'production',SUDO_BASE_URL:'https://api.sandbox.sudo.cards'},
+    ]){
+      Object.assign(config,unavailable);
+      const choices=await request('/assignments');assert.equal(choices.status,200);assert.equal(choices.data.issuerReady,false);
+      assert.equal(Object.hasOwn(choices.data,'SUDO_SECRET_API_KEY'),false);
+      const denied=await request('/cards','POST',{label:'Unavailable issuer',dailyLimit:1000,monthlyLimit:2000,holder:firstHolder});
+      assert.equal(denied.status,503);assert.match(denied.data.message,/Card issuing is currently unavailable/);
+    }
+    assert.equal(issuerCalls.length,beforeCalls);assert.equal((await pool.query('SELECT count(*)::int AS n FROM cards')).rows[0].n,beforeCards);
+  } finally {Object.assign(config,{SUDO_SECRET_API_KEY:previous.key,SUDO_DEBIT_ACCOUNT_ID:previous.debit,SUDO_FUNDING_SOURCE_ID:previous.source,NODE_ENV:previous.node,SUDO_BASE_URL:previous.url});}
+  assert.equal((await request('/assignments')).data.issuerReady,true);
 });

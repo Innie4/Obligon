@@ -73,7 +73,7 @@ function CompanySidebar() {
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r border-[#dfe5ec] bg-white px-6 py-8 lg:flex">
-      <Link href="/company" className="block" aria-label="Obligon LTD company dashboard">
+      <Link href="/company" className="block" aria-label="Obligon company dashboard">
         <DashboardLogo priority />
       </Link>
       <nav className="mt-10 flex-1 space-y-1 overflow-y-auto pr-1">
@@ -172,7 +172,7 @@ function CompanyTopbar({ onOpenMenu, menuButtonRef }: { onOpenMenu: () => void; 
           </Link>
           <Link href="/company/settings" className="hidden text-right sm:block">
             <p className="text-sm font-extrabold text-[#07162f]">{user?.name || "Your account"}</p>
-            <p className="text-xs text-obligon-text">Obligon LTD Dashboard</p>
+            <p className="max-w-[240px] break-words text-xs text-obligon-text">{user?.organization || "Company dashboard"}</p>
           </Link>
         </div>
       </div>

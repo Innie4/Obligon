@@ -5,7 +5,7 @@ import { asyncHandler, badRequest, notFound, forbidden, misconfigured, serviceUn
 import { requireAuth, requireOrg, requirePermission, requireCompanyMembership, companyContext } from "../middleware/auth.js";
 import { naira, fmtDate, fmtDateTime, relativeTime, reference } from "../lib/format.js";
 import { notify, audit } from "../lib/notify.js";
-import { issueSudoCard, createSudoCustomer, setSudoCardStatus } from "../lib/sudo.js";
+import { issueSudoCard, createSudoCustomer, setSudoCardStatus, sudoEnabled } from "../lib/sudo.js";
 import { uploadFile, signedUrl } from "../lib/storage.js";
 import { toCsv } from "../lib/format.js";
 import { providerCardDetails } from "../lib/card-approval.js";
@@ -115,7 +115,7 @@ router.get("/vehicles", requireOrg, asyncHandler(async (req, res) => {
       ],
       status: capitalize(v.status),
       tone: v.status === "active" ? "green" : v.status === "maintenance" ? "amber" : "muted",
-      plate: v.plate, model: v.model, fuelType: v.fuel_type, statusRaw: v.status,
+      plate: v.plate, model: v.model, vehicleType: v.vehicle_type, fuelType: v.fuel_type, statusRaw: v.status,
       assignedCard: v.card_pan ?? null,
       driverId: v.driver_id ?? null, driverName: v.driver_name ?? null,
       tankCapacity: v.tank_capacity_l
@@ -145,15 +145,20 @@ router.post("/vehicles", requireOrg, requirePermission("fleet.manage"), asyncHan
 
 router.put("/vehicles/:id", requireOrg, requirePermission("fleet.manage"), asyncHandler(async (req, res) => {
   const { plate, model, vehicleType, fuelType, tankCapacity, driverId, status } = req.body ?? {};
+  const driverChanged = Object.hasOwn(req.body ?? {}, "driverId");
+  if (driverChanged && driverId !== null) {
+    if (typeof driverId !== "string") throw badRequest("Select a valid fleet driver or choose Unassigned");
+    companyResourceId(driverId);
+  }
   if (tankCapacity != null && (!Number.isFinite(Number(tankCapacity)) || Number(tankCapacity) <= 0 || Number(tankCapacity) > 5000)) throw badRequest("Tank capacity must be between 1 and 5,000 litres");
   if (driverId && !(await one("SELECT id FROM drivers WHERE id = $1 AND organization_id = $2 AND status = 'active'", [driverId, req.user.orgId]))) throw badRequest("Selected driver is not part of this fleet");
   const vehicle = await one(
     `UPDATE vehicles SET
        plate = COALESCE($2, plate), model = COALESCE($3, model),
        vehicle_type = COALESCE($4, vehicle_type), fuel_type = COALESCE($5, fuel_type),
-       tank_capacity_l = COALESCE($6, tank_capacity_l), driver_id = COALESCE($7, driver_id), status = COALESCE($8, status)
+       tank_capacity_l = COALESCE($6, tank_capacity_l), driver_id = CASE WHEN $10 THEN $7::uuid ELSE driver_id END, status = COALESCE($8, status)
      WHERE id = $1 AND organization_id = $9 RETURNING *`,
-    [req.params.id, plate ? plate.toUpperCase() : null, model ?? null, vehicleType ?? null, fuelType ?? null, tankCapacity == null ? null : Number(tankCapacity), driverId ?? null, status ?? null, req.user.orgId]
+    [req.params.id, plate ? plate.toUpperCase() : null, model ?? null, vehicleType ?? null, fuelType ?? null, tankCapacity == null ? null : Number(tankCapacity), driverId || null, status ?? null, req.user.orgId, driverChanged]
   );
   if (!vehicle) throw notFound("Vehicle not found");
   audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "vehicle.updated", entityType: "vehicle", entityId: vehicle.id });
@@ -204,6 +209,9 @@ router.delete("/drivers/:id", requireOrg, requirePermission("fleet.manage"), asy
 }));
 
 // ============ ASSIGNMENTS (vehicle-card-driver) ============
+// Configuration readiness is intentionally distinct from provider acceptance and
+// from whether this company already has an issuer customer.
+const companyIssuerReady = () => sudoEnabled() && Boolean(env.SUDO_DEBIT_ACCOUNT_ID) && !env.SUDO_FUNDING_SOURCE_ID && !(env.NODE_ENV === "production" && /sandbox/i.test(env.SUDO_BASE_URL));
 router.get("/assignments", requireOrg, asyncHandler(async (req, res) => {
   const cards = await q(
     `SELECT c.id, c.label, c.masked_pan, c.status, c.vehicle_id, c.driver_id, v.plate AS assigned_vehicle, d.name AS assigned_driver
@@ -216,7 +224,7 @@ router.get("/assignments", requireOrg, asyncHandler(async (req, res) => {
     q(`SELECT id, name, phone, license_no AS "licenseNo" FROM drivers WHERE organization_id = $1 AND status = 'active'`, [req.user.orgId])
   ]);
   const issuerCustomer = await one("SELECT id FROM cards WHERE organization_id = $1 AND sudo_customer_id IS NOT NULL LIMIT 1", [req.user.orgId]);
-  res.json({ cards, vehicles, drivers, issuerCustomerConfigured: Boolean(issuerCustomer), capabilities: { stableDriverFilters: true } });
+  res.json({ cards, vehicles, drivers, issuerCustomerConfigured: Boolean(issuerCustomer), issuerReady: companyIssuerReady(), capabilities: { stableDriverFilters: true } });
 }));
 
 router.post("/assignments", requireOrg, requirePermission("fleet.manage"), asyncHandler(async (req, res) => {
@@ -293,6 +301,7 @@ router.get("/cards", requireOrg, asyncHandler(async (req, res) => {
 }));
 
 router.post("/cards", requireOrg, requirePermission("cards.manage"), asyncHandler(async (req, res) => {
+  if (!companyIssuerReady()) throw misconfigured("Card issuing is currently unavailable. Contact Support to confirm when issuer setup is complete.");
   const { label, vehicleId, driverId, dailyLimit, monthlyLimit, holder } = req.valid ?? req.body ?? {};
   if (typeof label !== "string" || !label.trim() || label.length > 120) throw badRequest("Card label is required");
   const { dailyKobo, monthlyKobo } = cardLimits(dailyLimit, monthlyLimit);

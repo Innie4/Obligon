@@ -1,7 +1,8 @@
 import { api } from './client';
 import type { Metric, Row } from '@/lib/mock/company-data';
 
-export type CompanyRow = Row & { id?: string; cardId?: string; statusRaw?: string; plate?: string; dailyLimit?: number; monthlyLimit?: number; vehicleId?: string; driverId?: string; reference?: string; notes?: string };
+export type CompanyVehicle = { id: string; plate: string; model: string; vehicleType: string; fuelType: string; tankCapacity: number | string; driverId: string | null; driverName?: string | null; statusRaw: string };
+export type CompanyRow = Row & { id?: string; cardId?: string; statusRaw?: string; plate?: string; model?: string; vehicleType?: string; fuelType?: string; tankCapacity?: number | string; dailyLimit?: number; monthlyLimit?: number; vehicleId?: string; driverId?: string | null; driverName?: string | null; reference?: string; notes?: string };
 export type CompanyWallet = {
   company: { balanceKobo: number; balanceLabel: string };
   members: Array<{ userId: string; role: string; name: string; email: string; balanceKobo: number; balanceLabel: string }>;
@@ -10,6 +11,7 @@ export type CompanyWallet = {
 export type CompanyTicketMessages = { status: string; messages: Array<{ id: string; sender: string; role: string; body: string; time: string }> };
 export type FleetChoices = {
   issuerCustomerConfigured: boolean;
+  issuerReady?: boolean;
   capabilities?: { stableDriverFilters?: boolean };
   cards: Array<{ id: string; label: string; masked_pan: string; status: string; vehicle_id?: string | null; driver_id?: string | null }>;
   vehicles: Array<{ id: string; plate: string; model: string }>;
@@ -22,7 +24,7 @@ export type CompanyBilling = { plan: null | { name: string; priceLabel: string; 
 const get = <T>(path: string) => api.request<T>(`/api/company${path}`);
 export const companyApi = {
   overview: () => get<{ metrics: Metric[]; recentTransactions: CompanyRow[] }>('/overview'),
-  vehicles: (query = 'limit=20&offset=0') => get<{ vehicles: CompanyRow[]; total: number }>(`/vehicles?${query}`),
+  vehicles: (query = 'limit=20&offset=0') => get<{ vehicles: Array<CompanyRow & CompanyVehicle>; total: number }>(`/vehicles?${query}`),
   cards: (query = 'limit=20&offset=0') => get<{ cards: CompanyRow[]; metrics: Metric[]; total: number }>(`/cards?${query}`),
   choices: () => get<FleetChoices>('/assignments'),
   transactions: (query: string) => get<{ transactions: CompanyRow[]; total: number }>(`/transactions?${query}`),

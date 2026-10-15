@@ -45,8 +45,10 @@ test('support ticket modal presents subject and message fields',()=>{
   assert.match(html,/<form/);assert.match(html,/Subject/);assert.match(html,/Message/);assert.match(html,/<textarea/);
 });
 test('first card modal presents complete issuer identity setup and two separate limits',()=>{
-  const html=renderToStaticMarkup(React.createElement(CompanyModals,{modal:'newCard',onClose(){},onSaved(){}}));
-  for(const label of ['Daily spend limit','Monthly spend limit','Card holder first name','Card holder last name','Date of birth','BVN','Residential address','Postal code'])assert.match(html,new RegExp(label, 'i'));
+  choicesOverride={cards:[],vehicles:[],drivers:[],issuerCustomerConfigured:false,issuerReady:true};
+  try {const html=renderToStaticMarkup(React.createElement(CompanyModals,{modal:'newCard',onClose(){},onSaved(){}}));
+    for(const label of ['Daily spend limit','Monthly spend limit','Card holder first name','Card holder last name','Date of birth','BVN','Residential address','Postal code'])assert.match(html,new RegExp(label, 'i'));
+  } finally {choicesOverride=null;}
 });
 test('station locator renders a previous API response without per-fuel prices',()=>{
   const original=emptyResult.data;

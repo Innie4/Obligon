@@ -30,13 +30,14 @@ function Header({ pageKey, action, onModal }: {
   onModal: OpenModal;
 }) {
   const page = pageCopy[pageKey];
+  const { user } = useSession();
   return <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
 
     <div>
 
       <p className="text-xs font-extrabold uppercase tracking-wide text-obligon-green">Company dashboard</p>
 
-      <h1 className="mt-2 font-display text-3xl font-extrabold text-obligon-navy lg:text-4xl">{page.title}</h1>
+      <h1 className="mt-2 break-words font-display text-3xl font-extrabold text-obligon-navy lg:text-4xl">{pageKey === "overview" ? user?.organization || "Company dashboard" : page.title}</h1>
 
       {page.description ? <p className="mt-2 max-w-2xl text-sm leading-6 text-obligon-text">{page.description}</p> : null}
 
@@ -208,7 +209,7 @@ function Vehicles({ onModal }: PageProps) {
 
     <DataBoundary result={result}>
 
-      <Table title="Fleet vehicles" columns={["Vehicle", "Plate", "Assigned card"]} rows={result.data?.vehicles ?? []} empty="No vehicles. Add your first vehicle above." onRowAction={row => onModal("assign", { vehicleId: row.id })} />
+      <Table title="Fleet vehicles" columns={["Vehicle", "Plate", "Assigned card"]} rows={result.data?.vehicles ?? []} empty="No vehicles. Add your first vehicle above." rowActionLabel="Edit vehicle" onRowAction={row => onModal("vehicle", { editVehicle: result.data?.vehicles.find(vehicle => vehicle.id === row.id) })} />
       <CompanyPagination page={page} total={result.data?.total ?? 0} count={result.data?.vehicles.length ?? 0} onPageChange={setPage} />
 
     </DataBoundary>
