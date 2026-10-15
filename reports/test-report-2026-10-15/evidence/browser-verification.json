@@ -1,0 +1,251 @@
+{
+  "date": "2026-10-15",
+  "observations": [
+    {
+      "clientWidth": 305,
+      "heroCard": {
+        "left": 21,
+        "right": 284,
+        "width": 263,
+        "withinViewport": true
+      },
+      "heroGlow": [
+        "none",
+        "none"
+      ],
+      "kind": "local-after",
+      "logoCenterDelta": -0.5,
+      "page": "/",
+      "pricing": [
+        {
+          "cta": "Choose Bronze",
+          "gap": 32
+        },
+        {
+          "cta": "Choose Gold",
+          "gap": 32
+        },
+        {
+          "cta": "Choose Platinum",
+          "gap": 32
+        }
+      ],
+      "scroll": 305,
+      "width": 320
+    },
+    {
+      "clientWidth": 753,
+      "heroCard": {
+        "left": 121.5,
+        "right": 631.5,
+        "width": 510,
+        "withinViewport": true
+      },
+      "heroGlow": [
+        "none",
+        "none"
+      ],
+      "kind": "local-after",
+      "logoCenterDelta": -0.5,
+      "page": "/",
+      "pricing": [
+        {
+          "cta": "Choose Bronze",
+          "gap": 32
+        },
+        {
+          "cta": "Choose Gold",
+          "gap": 32
+        },
+        {
+          "cta": "Choose Platinum",
+          "gap": 32
+        }
+      ],
+      "scroll": 753,
+      "width": 768
+    },
+    {
+      "clientWidth": 1009,
+      "heroCard": {
+        "left": 537.5,
+        "right": 944,
+        "width": 406.5,
+        "withinViewport": true
+      },
+      "heroGlow": [
+        "block",
+        "block"
+      ],
+      "kind": "local-after",
+      "logoCenterDelta": -0.5,
+      "page": "/",
+      "pricing": [
+        {
+          "cta": "Choose Bronze",
+          "gap": 32
+        },
+        {
+          "cta": "Choose Gold",
+          "gap": 33.6
+        },
+        {
+          "cta": "Choose Platinum",
+          "gap": 32
+        }
+      ],
+      "scroll": 1009,
+      "width": 1024
+    },
+    {
+      "clientWidth": 1265,
+      "heroCard": {
+        "left": 677.75,
+        "right": 1187.75,
+        "width": 510,
+        "withinViewport": true
+      },
+      "heroGlow": [
+        "block",
+        "block"
+      ],
+      "kind": "local-after",
+      "logoCenterDelta": -0.5,
+      "page": "/",
+      "pricing": [
+        {
+          "cta": "Choose Bronze",
+          "gap": 32
+        },
+        {
+          "cta": "Choose Gold",
+          "gap": 33.6
+        },
+        {
+          "cta": "Choose Platinum",
+          "gap": 32
+        }
+      ],
+      "scroll": 1265,
+      "width": 1280
+    },
+    {
+      "page": "/auth/signup",
+      "width": 320,
+      "stateChange": {
+        "includesIkeja": false,
+        "includesUyo": true,
+        "optionCount": 31,
+        "value": ""
+      },
+      "FCT": [
+        "Abaji",
+        "Abuja Municipal",
+        "Bwari",
+        "Gwagwalada",
+        "Kuje",
+        "Kwali"
+      ],
+      "noSubmission": true
+    },
+    {
+      "ctas": [
+        "Choose Bronze",
+        "Go Gold",
+        "Go Platinum"
+      ],
+      "heroGlow": [
+        "block",
+        "block"
+      ],
+      "kind": "live-before",
+      "page": "/",
+      "width": 1280
+    },
+    {
+      "page": "/company",
+      "kind": "local-after",
+      "width": 320,
+      "organizationHeading": "Haulage Dynamics Ltd"
+    },
+    {
+      "page": "/company/vehicles",
+      "kind": "local-after",
+      "width": 320,
+      "createdSyntheticDriver": true,
+      "driverEditPersistedAfterReload": true,
+      "savedFuelPreserved": "petrol",
+      "cardSelectionNeeded": false
+    },
+    {
+      "page": "/company/cards",
+      "kind": "local-after",
+      "width": 320,
+      "explainsSetup": true,
+      "identityFieldsPresent": false,
+      "submissionDisabled": true,
+      "providerCallsAttempted": false
+    },
+    {
+      "page": "/auth/login",
+      "kind": "live-check",
+      "width": 320,
+      "attempts": 2,
+      "authenticated": false,
+      "visibleError": "We could not sign in right now",
+      "failures": [
+        {
+          "error": "net::ERR_ABORTED"
+        }
+      ],
+      "postPushLiveCustomerCheckBlocked": true
+    },
+    {
+      "page": "/customer/profile",
+      "kind": "local-production-build",
+      "clickTargetReachable": true,
+      "documentOverflow": false,
+      "width": 320,
+      "cancelRestoresFocus": true
+    },
+    {
+      "page": "/customer/profile",
+      "kind": "local-production-build",
+      "width": 320,
+      "accountMenuHit": true,
+      "accountDialogHit": true,
+      "profileSignOutCompleted": true,
+      "returnedToLogin": true
+    },
+    {
+      "page": "/auth/signup",
+      "kind": "local-production-build",
+      "width": 320,
+      "selected": {
+        "clientWidth": 305,
+        "localGovernmentArea": "Ikeja",
+        "passwordHint": "signup-password-hint",
+        "scrollWidth": 305,
+        "state": "Lagos"
+      },
+      "submitted": false
+    },
+    {
+      "page": "/",
+      "kind": "local-development-layout",
+      "width": 1280,
+      "measuredBenefitTicks": 43,
+      "maximumCenterOffsetPx": 0
+    }
+  ],
+  "productionBusinessWrites": false,
+  "liveAuthenticationAttempted": true,
+  "localFixtureWritesOnly": [
+    "synthetic driver created",
+    "synthetic vehicle driver updated"
+  ],
+  "limitations": [
+    "Live customer login failed twice; browser request aborted with no confirmed server cause. No authenticated live customer/company recheck completed today.",
+    "Real verification delivery and Sudo issuance require provider configuration/access."
+  ]
+}

@@ -1,0 +1,201 @@
+{
+  "baseline": "2a497be5883b262c42b6ba23ce49c3e952a1af0d",
+  "files": [
+    {
+      "path": "apps/api/src/routes/auth.routes.js",
+      "sha256": "98890a294b16b207458fb2877a72138d537d16a67b5e3881a7ed51565d68e2c3"
+    },
+    {
+      "path": "apps/api/src/routes/company.routes.js",
+      "sha256": "2cba77cdede99a9f10743ae856a829754a4b55b7b25028e14f3ec99e0ce17884"
+    },
+    {
+      "path": "apps/api/tests/company-dashboard.integration.test.mjs",
+      "sha256": "3b5b250e09f0457270748cd3f819fab33ad61a50624fec5dc3ac6c5524c48492"
+    },
+    {
+      "path": "apps/api/tests/signup-location.integration.test.mjs",
+      "sha256": "7a69cf11451db71090f188d786476c1aa24acdf2793c7bc1d323aa8dcbf384a2"
+    },
+    {
+      "path": "apps/web/components/auth/AuthForms.tsx",
+      "sha256": "60f84a13a1f49446c82ca958b167562d0434c22b4967c82c18ec6a38408cf439"
+    },
+    {
+      "path": "apps/web/components/auth/AuthShell.tsx",
+      "sha256": "8338eafd5790d045fe6945a2bd019f30dcef43606cb7f7d5f334d0535d5fecea"
+    },
+    {
+      "path": "apps/web/components/company-dashboard/CompanyModals.tsx",
+      "sha256": "860b38a47ad10b53d9cd38a092babcba56ab3239e3071f364c37407f9d6b43f0"
+    },
+    {
+      "path": "apps/web/components/company-dashboard/CompanyScreen.tsx",
+      "sha256": "d9adb62142a2a85c1a566a30ffd39f872bf7a7724387e3a7abc505e0dd9f3257"
+    },
+    {
+      "path": "apps/web/components/company-dashboard/CompanyShell.tsx",
+      "sha256": "b8f8ad0d6b7290ec1352e19fa8d08c81c3e48c643beb877aed35ea083e354a5f"
+    },
+    {
+      "path": "apps/web/components/landing/Header.tsx",
+      "sha256": "772e692c3646eafd8737476addf4904bb8f8c58fdd6c813e2f9892b80c0bafc6"
+    },
+    {
+      "path": "apps/web/components/landing/Hero.tsx",
+      "sha256": "c406a15552cd007ea603c887a4cad12c625216cc083ac01c80230f62eaa4a6f8"
+    },
+    {
+      "path": "apps/web/components/landing/Pricing.tsx",
+      "sha256": "47ef263fa4a4e3568e719cebbe41a5d1a6705caf0519e649d2e38bb1a08f7a19"
+    },
+    {
+      "path": "apps/web/lib/mock/company-data.ts",
+      "sha256": "a6182b41fca536227695a5d5a8fbbf5d9caf7a0380d0220693e56af8a74f1412"
+    },
+    {
+      "path": "apps/web/lib/services/company.ts",
+      "sha256": "0a8649587c40b84604251e49137026c490622a7edb7c073f77eeb970c02cd4b9"
+    },
+    {
+      "path": "apps/web/tests/company-empty-pages.test.cjs",
+      "sha256": "3515a460994f022ee7cf31174d6dc558e4a474b334e1b89d90fe9a1e07914f1f"
+    },
+    {
+      "path": "apps/web/tests/landing-test-report.test.cjs",
+      "sha256": "1642654303c2ee6ea8945a98bf69f2688ff2339f931c1edd9e2b3b33ff25b2e2"
+    },
+    {
+      "path": "apps/web/tests/nigeria-locations.test.cjs",
+      "sha256": "51e7270563776052a27efb055d45ce400f2fbc654cc431cb69e9ee9d691ee41d"
+    },
+    {
+      "path": "apps/web/tests/production-company-invitations.test.cjs",
+      "sha256": "5b0ac26deb23c23750f3fe2aabbcbdec73a79ece8becfcb39b5614d1192b80aa"
+    },
+    {
+      "path": "apps/web/tests/signup-report-regression.test.cjs",
+      "sha256": "e1fcb30ff964701452c1b1256b74e59f47d6c7269fe881a17d72d39d2e340564"
+    },
+    {
+      "path": "apps/web/tests/test-report-company.test.cjs",
+      "sha256": "f26937d79e1e9ef4b15b770c54c1837b924b97957217e4a1be944fdfde063924"
+    },
+    {
+      "path": "packages/shared/nigeria-locations.d.mts",
+      "sha256": "7416e09efa0874e4b563dc30be3d9511a39b5740e6aa06be6abc26abc3d9be6d"
+    },
+    {
+      "path": "packages/shared/nigeria-locations.mjs",
+      "sha256": "c66886b6bc841c9cd12943c2cea65b9cd9dde19d4dc0aafdfbf8c054bb4d007d"
+    },
+    {
+      "path": "packages/shared/nigeria-locations.sources.json",
+      "sha256": "01c25d7d37bf601d29820c6223d7fb3092c38cf13a114817a1bbe271be058200"
+    }
+  ],
+  "verification": {
+    "api": {
+      "command": "node --test tests/*.test.mjs (disposable PostgreSQL plus local smoke API; environment files disabled)",
+      "exitCode": 0,
+      "logPath": "/tmp/obligon-test-report-api-final.log",
+      "sha256": "54f95bdce0729115d9dac7d3a43707335f1257d02406235e6373f36ffe6310a2",
+      "counts": {
+        "tests": 1032,
+        "pass": 1030,
+        "fail": 0,
+        "skipped": 2
+      },
+      "warningCount": 0
+    },
+    "web": {
+      "command": "node --test --experimental-test-isolation=none tests/*.test.cjs",
+      "exitCode": 0,
+      "logPath": "/tmp/obligon-test-report-web-final.log",
+      "sha256": "31ab7f2ef69730b2230f73a01bdfd98f485ec6cbae93302b4d572ab11eda21c9",
+      "counts": {
+        "tests": 284,
+        "pass": 284,
+        "fail": 0,
+        "skipped": 0
+      },
+      "warningCount": 0
+    },
+    "build": {
+      "command": "NEXT_PUBLIC_API_URL=http://127.0.0.1:4410 node scripts/build.mjs",
+      "exitCode": 0,
+      "logPath": "/tmp/obligon-test-report-build.log",
+      "sha256": "81fcca05e29733b3d1cac3562d65262054cf101d95f36958e2a51494e83f2c2c",
+      "counts": {},
+      "warningCount": 78
+    },
+    "lint": {
+      "command": "pnpm exec next lint",
+      "exitCode": 0,
+      "logPath": "/tmp/obligon-test-report-lint.log",
+      "sha256": "7b4b5fb44a9fbe4d8cd7fdc5ea69c529208be983620afb7bf0accefa0e81b91d",
+      "counts": {},
+      "warningCount": 78
+    },
+    "locationRed": {
+      "command": "node --test tests/signup-location.integration.test.mjs (pre-fix)",
+      "exitCode": 1,
+      "logPath": "/tmp/obligon-test-report-location-before.log",
+      "sha256": "8771b2f61108f4dda7915d22dd8ea5b68273b8e5e064e0cd004431469681b97d",
+      "counts": {
+        "tests": 9,
+        "pass": 0,
+        "fail": 9,
+        "skipped": 0
+      },
+      "warningCount": 0
+    },
+    "locationGreen": {
+      "command": "node --test tests/signup-location.integration.test.mjs",
+      "exitCode": 0,
+      "logPath": "/tmp/obligon-test-report-location-after.log",
+      "sha256": "3acfdd22b4e3519f42d7be637a395a213f5e46f878a69b8ee79cf2c784c727c6",
+      "counts": {
+        "tests": 9,
+        "pass": 9,
+        "fail": 0,
+        "skipped": 0
+      },
+      "warningCount": 0
+    },
+    "offlineSecretScan": {
+      "findings": 0,
+      "scanned": "application source and new report/Learn files; dependencies, generated build and older reports excluded",
+      "sha256": "95823c9b2be26d807d7f996c46e4e2f463eb13f6aeb4f2fbe5e2a8d5e33e5747"
+    }
+  },
+  "privacy": {
+    "introducedAttachmentCredentials": 0,
+    "unchangedPreExistingPublicExampleMatches": 1,
+    "originalDocumentNotCopied": true
+  },
+  "review": {
+    "independentAgents": 2,
+    "remainingApplicationFindings": 0,
+    "privacyFixtureCorrection": "Copied organization example replaced; final web suite rerun",
+    "policyImpact": "Ordinary UI and input/data editing changes; no modified authentication proof, session, tenant permission, or money movement contract",
+    "externalAcceptanceUnverified": [
+      "email delivery and DNS",
+      "Sudo setup and issuance",
+      "authenticated live retest blocked by failed sign-in"
+    ]
+  },
+  "cleanup": {
+    "ownedTemporaryTabsClosed": true,
+    "temporaryBrowserMetricsReset": true,
+    "ownedApiStopped": true,
+    "ownedWebStopped": true,
+    "ownedPostgresStopped": true
+  },
+  "applicationCommits": [
+    "511928b911814480e9cabb22720005979a8d130e fix: restore company identity and fleet vehicle editing",
+    "658e5ca64eb4b778760427b2b28766efc6111472 fix: validate signup locations and clarify account guidance",
+    "75a5b79c493c4f66b2dec3224a8b2dc43b9cdfbd fix: polish reported landing page layout"
+  ],
+  "committedSourceHashesVerified": true
+}
