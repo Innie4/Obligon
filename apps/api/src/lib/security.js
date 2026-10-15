@@ -9,7 +9,7 @@ export const hashPassword = (plain) => bcrypt.hash(plain, 10);
 export const verifyPassword = (plain, hash) => bcrypt.compare(plain, hash);
 export const hashToken = (token) => crypto.createHash("sha256").update(token).digest("hex");
 export const randomToken = (bytes = 32) => crypto.randomBytes(bytes).toString("hex");
-export const randomCode = () => String(Math.floor(100000 + Math.random() * 900000));
+export const randomCode = () => String(crypto.randomInt(100000, 1000000));
 export const sha256 = (v) => crypto.createHash("sha256").update(String(v)).digest("hex");
 
 export function signAccessToken(user, org = null, sessionId = null) {
@@ -24,10 +24,12 @@ export function verifyAccessToken(token) {
   return jwt.verify(token, env.JWT_ACCESS_SECRET);
 }
 
-export function signRefreshToken(sessionId, userId) {
-  return jwt.sign({ sid: sessionId, sub: userId }, env.JWT_REFRESH_SECRET, {
-    expiresIn: `${env.REFRESH_TOKEN_TTL_DAYS}d`
-  });
+export function signRefreshToken(sessionId, userId, org = null, expiresAt) {
+  // Context changes reuse the session's original expiry, including remembered
+  // sessions. Reissuing a JWT must neither shorten nor extend that lifetime.
+  const exp = Math.floor(new Date(expiresAt).getTime() / 1000);
+  if (!Number.isSafeInteger(exp)) throw new TypeError("A durable session expiry is required for refresh tokens");
+  return jwt.sign({ sid: sessionId, sub: userId, exp, ...(org ? { org: org.id, orgType: org.type } : {}) }, env.JWT_REFRESH_SECRET);
 }
 
 export function verifyRefreshToken(token) {

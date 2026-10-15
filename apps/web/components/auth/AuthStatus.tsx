@@ -27,18 +27,18 @@ const defaultContent: Record<AuthStatusType, DefaultContent> = {
   progress: {
     eyebrow: "Secure",
     title: "Securing your session...",
-    body: "Performing multi-factor validation and initializing encrypted connection.",
+    body: "Checking your sign-in session.",
     icon: Loader2,
     tone: "text-obligon-green",
-    footer: "End-to-end encrypted verification",
+    footer: "Session verification",
   },
   success: {
     eyebrow: "",
-    title: "Application Submitted Successfully",
-    body: "Your enterprise profile is ready. Welcome to Nigeria's leading energy logistics infrastructure.",
+    title: "Session Verified",
+    body: "Your sign-in session is active. Continue to your dashboard.",
     icon: CheckCircle2,
     tone: "text-obligon-green",
-    footer: "Identity verified",
+    footer: "Session verified",
   },
   failure: {
     eyebrow: "Action Required",
@@ -60,8 +60,8 @@ export function AuthStatus({ status, message, serverError, redirect, onRetry }: 
   const isRetryable = status === "failure" && !!onRetry;
 
   return (
-    <div className="grid w-full max-w-[960px] items-center gap-10 lg:grid-cols-[480px_1fr]">
-      <section className="rounded-3xl border border-obligon-border bg-white p-8 text-center shadow-card">
+    <div className="grid w-full min-w-0 max-w-[960px] items-center gap-10 lg:grid-cols-[480px_1fr]">
+      <section className="min-w-0 rounded-3xl border border-obligon-border bg-white p-5 text-center shadow-card sm:p-8">
         {item.eyebrow ? (
           <span className="inline-flex rounded-full bg-obligon-lime/20 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[1px] text-[#131f00]">
             {item.eyebrow}
@@ -70,8 +70,8 @@ export function AuthStatus({ status, message, serverError, redirect, onRetry }: 
         <div className={`mx-auto mt-8 grid size-20 place-items-center rounded-full bg-obligon-mist ${item.tone}`}>
           <Icon className={status === "progress" ? "animate-spin" : ""} size={42} strokeWidth={1.8} />
         </div>
-        <h1 className="mt-8 font-display text-3xl font-extrabold leading-10 text-obligon-navy">{item.title}</h1>
-        <p className="mx-auto mt-4 max-w-sm text-base leading-6 text-obligon-text">{displayBody}</p>
+        <h1 className="mt-8 break-words font-display text-2xl font-extrabold leading-8 text-obligon-navy sm:text-3xl sm:leading-10">{item.title}</h1>
+        <p className="mx-auto mt-4 max-w-sm break-words text-base leading-6 text-obligon-text">{displayBody}</p>
 
         {status === "progress" ? (
           <div className="mt-8">

@@ -16,6 +16,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { randomUUID } from "node:crypto";
+import { spawnSync } from "node:child_process";
+import pg from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const apiRoot = path.join(__dirname, "..");
@@ -145,7 +148,7 @@ test("the demo accounts are reachable without MFA", () => {
   assert.match(demoScript, /email_verified/);
   assert.match(demoScript, /'active'/);
   // And the seed sets none.
-  assert.match(demoScript, /two_factor_enabled.*FALSE|"two_factor_enabled", "FALSE"/s);
+  assert.match(demoScript, /\["two_factor_enabled", false\]/);
 });
 
 // ---------------------------------------------------------------- the wiring
@@ -204,4 +207,42 @@ test("the button disables while one sign-in is in flight", () => {
 test("the npm script exists so the accounts can be provisioned", () => {
   assert.match(pkg, /"seed:demo"/);
   assert.match(pkg, /demo-accounts\.js/);
+});
+
+test("demo repair binds actual status and boolean values and remains idempotent", { skip: !process.env.OBLIGON_TEST_DATABASE_URL }, async () => {
+  const database = new URL(process.env.OBLIGON_TEST_DATABASE_URL);
+  assert.ok(["localhost", "127.0.0.1", "[::1]"].includes(database.hostname));
+  const schema = `demo_repair_${randomUUID().replaceAll("-", "")}`;
+  const pool = new pg.Pool({ connectionString: database.toString() });
+  try {
+    await pool.query(`CREATE SCHEMA ${schema}`);
+    for (const table of ["users", "organizations", "memberships"]) {
+      await pool.query(`CREATE TABLE ${schema}.${table} (LIKE public.${table} INCLUDING ALL)`);
+    }
+    const fixture = await pool.query(`INSERT INTO ${schema}.users(email,password_hash,role,status,two_factor_enabled,email_verified)
+      VALUES('admin@obligon.com','unchanged-local-fixture','admin','suspended',TRUE,FALSE) RETURNING id`);
+    await pool.query(`INSERT INTO ${schema}.organizations(owner_user_id,name,type)
+      VALUES($1,'Core Hub Fuel Station','partner')`, [fixture.rows[0].id]);
+    database.searchParams.set("options", `-c search_path=${schema}`);
+    const childEnv = {
+      ...process.env, DATABASE_URL: database.toString(), DATABASE_SSL: "false", DOTENV_CONFIG_PATH: "/dev/null",
+      NODE_ENV: "test", SUPABASE_AUTH_ENABLED: "false", SUPABASE_URL: "", SUPABASE_SERVICE_ROLE_KEY: "",
+      SUPABASE_SECRET_KEY: "", SUPABASE_ANON_KEY: "", NEXT_PUBLIC_SUPABASE_URL: "",
+      RESEND_API_KEY: "", TERMII_API_KEY: "", WEB_PUSH_VAPID_PRIVATE_KEY: ""
+    };
+    const run = () => spawnSync(process.execPath, [path.join(apiRoot, "src", "scripts", "demo-accounts.js")], {
+      cwd: apiRoot, env: childEnv, encoding: "utf8", timeout: 15000
+    });
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const result = run();
+      assert.equal(result.status, 0, result.stderr);
+      const account = (await pool.query(`SELECT status,two_factor_enabled,email_verified,password_hash
+        FROM ${schema}.users WHERE id=$1`, [fixture.rows[0].id])).rows[0];
+      assert.deepEqual(account, { status: "active", two_factor_enabled: false, email_verified: true, password_hash: "unchanged-local-fixture" });
+      assert.equal((await pool.query(`SELECT count(*)::int AS total FROM ${schema}.users`)).rows[0].total, 5);
+    }
+  } finally {
+    await pool.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
+    await pool.end();
+  }
 });

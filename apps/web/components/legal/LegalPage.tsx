@@ -51,11 +51,43 @@ export function LegalPage({ active, eyebrow, title, updated, intro, sections }: 
     functional: true,
     marketing: false
   });
-  const [dataRequestModal, setDataRequestModal] = useState(false);
   const [dataReqEmail, setDataReqEmail] = useState("");
-  const [dataReqType, setDataReqType] = useState("Export Personal Data Copy");
+  const [dataReqType, setDataReqType] = useState("export");
   const [dataReqSent, setDataReqSent] = useState(false);
+  const [dataReqSubmitting, setDataReqSubmitting] = useState(false);
+  const [dataReqError, setDataReqError] = useState("");
+  const dataReqSubmittingRef = React.useRef(false);
+  const dataReqSentRef = React.useRef(false);
+  const dataReqVersion = React.useRef(0);
   const [savingPrefs, setSavingPrefs] = useState(false);
+
+  useEffect(() => () => { dataReqVersion.current += 1; }, []);
+
+  async function handleDataRequest(event: React.FormEvent) {
+    event.preventDefault();
+    if (dataReqSubmittingRef.current || dataReqSentRef.current || !dataReqEmail.trim()) return;
+    dataReqSubmittingRef.current = true;
+    const version = dataReqVersion.current;
+    setDataReqSubmitting(true);
+    setDataReqError("");
+    try {
+      await publicApi.submitDataRequest({ email: dataReqEmail.trim(), requestType: dataReqType });
+      if (dataReqVersion.current !== version) return;
+      dataReqSentRef.current = true;
+      setDataReqSent(true);
+      toastSuccess("Data subject request submitted.");
+    } catch (err) {
+      if (dataReqVersion.current !== version) return;
+      const message = err instanceof Error ? err.message : "Could not submit the request. Please try again.";
+      setDataReqError(message);
+      toastError(message);
+    } finally {
+      if (dataReqVersion.current === version) {
+        dataReqSubmittingRef.current = false;
+        setDataReqSubmitting(false);
+      }
+    }
+  }
 
   useEffect(() => {
     try {
@@ -120,7 +152,6 @@ export function LegalPage({ active, eyebrow, title, updated, intro, sections }: 
                   <h2 className={`font-display text-2xl font-bold leading-8 ${section.dark ? "text-white" : "text-obligon-navy"}`}>
                     {section.title}
                   </h2>
-                  {section.table ? <span className="text-xs uppercase font-extrabold tracking-[1.2px] text-obligon-green">Nigeria Data Protection Act (NDPA) Compliant</span> : null}
                 </div>
 
                 {section.paragraphs ? (
@@ -226,7 +257,7 @@ export function LegalPage({ active, eyebrow, title, updated, intro, sections }: 
                   <div className="rounded-xl border border-white/10 bg-white/5 p-6">
                     <p className="text-xs font-bold uppercase tracking-[1.6px] text-obligon-lime">Statutory Rights</p>
                     <p className="mt-3 text-sm leading-6 text-[#b8c4ff]">
-                      Obligon LTD complies with the Nigeria Data Protection Act (NDPA) 2023. You may request data access or deletion anytime via our Data Protection Officer.
+                      You can submit a request to access, correct, or delete your personal data using the form below. Our team will review your request and any identity checks needed to process it.
                     </p>
                   </div>
                 </div>
@@ -235,66 +266,59 @@ export function LegalPage({ active, eyebrow, title, updated, intro, sections }: 
 
             {active === "privacy" ? (
               <section className="rounded-2xl border border-obligon-border bg-white p-8 shadow-card">
-                <h2 className="font-display text-2xl font-bold text-obligon-navy">NDPA / GDPR Data Subject Request</h2>
+                <h2 className="font-display text-2xl font-bold text-obligon-navy">Personal data request</h2>
                 <p className="mt-2 text-sm text-obligon-text">
-                  Exercise your right to access, rectify, or request erasure of your personal and vehicle telemetry records.
+                  Ask to access, correct, or delete the personal data held about your account.
                 </p>
 
                 {dataReqSent ? (
-                  <div className="mt-6 rounded-xl bg-[#e8fbd7] p-4 text-sm font-bold text-obligon-green flex items-center gap-2">
+                  <div role="status" className="mt-6 rounded-xl bg-[#e8fbd7] p-4 text-sm font-bold text-obligon-green flex items-center gap-2">
                     <Check size={18} />
-                    Data subject request received. Our DPO will reply to {dataReqEmail} within 7 business days.
+                    Data request received. We will use {dataReqEmail} to contact you about the next steps.
                   </div>
                 ) : (
                   <form
-                    onSubmit={async (e) => {
-                      e.preventDefault();
-                      if (!dataReqEmail) return;
-                      try {
-                        const typeMap: Record<string, string> = {
-                          "Export Personal Data Copy": "export",
-                          "Delete Telemetry & Location History": "deletion",
-                          "Rectify Incorrect Account Data": "correction"
-                        };
-                        await publicApi.submitDataRequest({ email: dataReqEmail, requestType: typeMap[dataReqType] ?? "export" });
-                        setDataReqSent(true);
-                        toastSuccess("Data subject request submitted.");
-                      } catch (err) {
-                        toastError(err instanceof Error ? err.message : "Could not submit the request. Please try again.");
-                      }
-                    }}
+                    onSubmit={handleDataRequest}
+                    aria-busy={dataReqSubmitting}
                     className="mt-6 space-y-4"
                   >
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div>
-                        <label className="text-xs font-bold text-obligon-text block mb-1">Your Account Email</label>
+                        <label htmlFor="privacy-request-email" className="text-xs font-bold text-obligon-text block mb-1">Your Account Email</label>
                         <input
+                          id="privacy-request-email"
+                          autoComplete="email"
+                          disabled={dataReqSubmitting}
                           type="email"
                           value={dataReqEmail}
                           onChange={(e) => setDataReqEmail(e.target.value)}
                           placeholder="user@obligon.energy"
-                          className="h-11 w-full rounded-xl border border-obligon-border px-4 text-sm outline-none focus:border-obligon-green"
+                          className="h-11 w-full rounded-xl border border-obligon-border px-4 text-sm outline-none focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20"
                           required
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-obligon-text block mb-1">Request Type</label>
+                        <label htmlFor="privacy-request-type" className="text-xs font-bold text-obligon-text block mb-1">Request Type</label>
                         <select
+                          id="privacy-request-type"
+                          disabled={dataReqSubmitting}
                           value={dataReqType}
                           onChange={(e) => setDataReqType(e.target.value)}
-                          className="h-11 w-full rounded-xl border border-obligon-border px-3 text-sm outline-none focus:border-obligon-green"
+                          className="h-11 w-full rounded-xl border border-obligon-border px-3 text-sm outline-none focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20"
                         >
-                          <option>Export Personal Data Copy (JSON/CSV)</option>
-                          <option>Delete Telemetry &amp; Location History</option>
-                          <option>Rectify Incorrect Account Data</option>
+                          <option value="export">Export Personal Data Copy (JSON/CSV)</option>
+                          <option value="deletion">Delete Telemetry &amp; Location History</option>
+                          <option value="correction">Rectify Incorrect Account Data</option>
                         </select>
                       </div>
                     </div>
+                    {dataReqError ? <p role="alert" className="text-sm font-bold text-[#c1121f]">{dataReqError}</p> : null}
                     <button
                       type="submit"
-                      className="h-11 rounded-xl bg-obligon-navy px-6 text-xs font-bold text-white shadow-hero hover:bg-obligon-navy/90 transition"
+                      disabled={dataReqSubmitting}
+                      className="h-11 rounded-xl bg-obligon-navy px-6 text-xs font-bold text-white shadow-hero hover:bg-obligon-navy/90 transition disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-obligon-green focus:ring-offset-2"
                     >
-                      Submit Data Request
+                      {dataReqSubmitting ? "Submitting Data Request…" : "Submit Data Request"}
                     </button>
                   </form>
                 )}

@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { env } from "../config/env.js";
 import { badRequest, misconfigured, notFound, serviceUnavailable } from "./errors.js";
 import { providerFetch } from "./http.js";
+import { integerKobo, scaledKobo } from "./money-amounts.js";
 
 /**
  * Flutterwave v3 integration (https://docs.flutterwave.com).
@@ -41,11 +42,10 @@ export const flutterwaveEnabled = enabled;
 // as 250000 kobo must be sent as 2500 or the hosted page renders "NGN 250,000"
 // for a plan that costs N2,500. That mismatch was visible to customers.
 //
-// Verification is the dangerous half: if the amount came back in a different
-// unit than it was sent, a naive comparison credits a full plan for a fraction
-// of the price. So the unit is never assumed, it is inferred from the amount we
-// asked for. NGN has exactly two decimal places, so the major and minor readings
-// differ by a factor of 100 and cannot be confused with one another.
+// The v3 verification response uses the same major units as checkout. Inferring a
+// unit from the expected amount would silently read a 100-fold overpayment as
+// the amount due. The boundary converts decimal major units exactly once.
+// https://developer.flutterwave.com/docs/transaction-verification
 // ---------------------------------------------------------------------------
 
 /** Kobo to the major-unit figure Flutterwave expects, as an exact 2dp number. */
@@ -56,27 +56,22 @@ export function toProviderAmount(amountKobo) {
   return kobo / 100;
 }
 
-/**
- * Work out whether a provider-reported amount is in major or minor units by
- * matching it against the amount we expected.
- *
- * @returns {"major"|"minor"|null} null when the figure matches neither, which
- *   the caller must treat as a mismatch rather than guess at.
- */
-export function detectAmountUnit(providerAmount, expectedAmountKobo) {
-  const amount = Number(providerAmount);
-  if (!Number.isFinite(amount)) return null;
-  const expectedKobo = Math.round(Number(expectedAmountKobo) || 0);
-  const expectedMajor = expectedKobo / 100;
-  if (Math.abs(amount - expectedMajor) <= 0.005) return "major";
-  if (Math.abs(amount - expectedKobo) < 0.5) return "minor";
-  return null;
+/** Convert a documented amount unit without binary floating-point arithmetic. */
+export function toKobo(amount, unit) {
+  if (!["major", "minor"].includes(unit)) throw badRequest("Payment amount unit is unsupported");
+  if (!["string", "number"].includes(typeof amount)) throw badRequest("Payment amount is missing or invalid");
+  const value = String(amount);
+  const pattern = unit === "minor" ? /^\d+$/ : /^\d+(?:\.\d{1,2})?$/;
+  if (!pattern.test(value)) throw badRequest("Payment amount must have valid kobo precision");
+  const [whole, fraction = ""] = value.split(".");
+  const kobo = unit === "minor" ? BigInt(whole) : BigInt(whole) * 100n + BigInt(fraction.padEnd(2, "0"));
+  if (kobo > BigInt(Number.MAX_SAFE_INTEGER)) throw badRequest("Payment amount exceeds the supported limit");
+  return Number(kobo);
 }
 
-/** Normalise a provider-reported amount to kobo using an already-known unit. */
-export function toKobo(amount, unit) {
-  const value = Number(amount) || 0;
-  return unit === "minor" ? Math.round(value) : Math.round(value * 100);
+/** A pending/unknown response or absent lookup is never proof of failure. */
+export function isTerminalPaymentFailure(status) {
+  return ["failed", "cancelled", "canceled"].includes(String(status ?? "").toLowerCase());
 }
 
 /**
@@ -259,8 +254,13 @@ export async function initializeCheckout({
   // Split settlement is opt-in per organization. Only applied when the caller
   // supplies a verified, active subaccount.
   if (split?.subaccountId) {
+    const chargeKobo = integerKobo(amountKobo, { min: 0, max: Number.MAX_SAFE_INTEGER });
+    const ratioBp = integerKobo(split.ratioBp ?? 10000, { min: 0, max: 10000, label: "Settlement ratio" });
+    const platformFeeKobo = split.platformFeeKobo != null
+      ? integerKobo(split.platformFeeKobo, { min: 0, max: chargeKobo, label: "Platform fee" })
+      : scaledKobo(chargeKobo, 10000 - ratioBp, 10000);
     body.subaccounts = [{id:String(split.subaccountId),transaction_charge_type:"flat",
-      transaction_charge:toProviderAmount(Number(split.platformFeeKobo ?? Math.round(amountKobo*(10000-Number(split.ratioBp??10000))/10000)))}];
+      transaction_charge:toProviderAmount(platformFeeKobo)}];
   }
 
   const data = await flutterwaveFetch("/payments", { method: "POST", body });
@@ -313,31 +313,24 @@ export async function verifyCheckout({ transactionId, reference, expectedAmountK
 
   const status = String(data?.status ?? "").toLowerCase();
   const paid = status === "successful";
-  const currency = String(data?.currency ?? expectedCurrency);
-  const providerAmount = paidAmountFrom(data);
-
-  // Infer the unit the provider answered in rather than assuming it, then work
-  // in kobo from there on. Guessing wrong here would either reject honest
-  // payments or, far worse, accept a fraction of the price as full payment.
-  const unit = paid ? detectAmountUnit(providerAmount, expectedAmountKobo) : null;
-  if (paid && expectedAmountKobo != null && unit === null) {
-    // Both figures in naira, the unit a human reads. Stating the expected amount
-    // in kobo is what made a correct N101 payment look like a "10000 kobo"
-    // mismatch, which is exactly the shape of the bug being reported here.
-    throw badRequest(
-      `Payment of ${providerAmount} ${currency} does not match the ${expectedAmountKobo / 100} expected`
-    );
+  const currency = String(data?.currency ?? "");
+  // A caller-supplied transaction id must not retire an unrelated payment just
+  // because that different transaction failed. Bind every returned outcome.
+  if (typeof reference !== "string" || !reference || data?.tx_ref !== reference) {
+    throw badRequest("Payment reference does not match the transaction");
   }
-  const amountKobo = paid && unit ? toKobo(providerAmount, unit) : Math.round(providerAmount);
+  if (!currency || currency.toUpperCase() !== expectedCurrency.toUpperCase()) {
+    throw badRequest(`Payment currency was ${currency || "missing"}, expected ${expectedCurrency}`);
+  }
+  // `amount` excludes the processor fee; a missing amount cannot be replaced by
+  // charged_amount. Preserve actual overpayments for the existing refund owner.
+  const amountKobo = paid ? toKobo(data?.amount, "major") : 0;
 
   // Never trust the browser redirect alone: the reference we issued must match,
   // and we must have been paid at least the amount we asked for.
   if (paid) {
-    if (data?.tx_ref && reference && data.tx_ref !== reference) {
-      throw badRequest("Payment reference does not match the transaction");
-    }
-    if (currency.toUpperCase() !== expectedCurrency.toUpperCase()) {
-      throw badRequest(`Payment was made in ${currency}, expected ${expectedCurrency}`);
+    if (!Number.isSafeInteger(expectedAmountKobo) || expectedAmountKobo <= 0) {
+      throw badRequest("A positive integer expected payment amount is required");
     }
     if (expectedAmountKobo != null && amountKobo < expectedAmountKobo) {
       throw badRequest("Payment amount was less than the amount due");
@@ -422,9 +415,15 @@ export async function refundTransaction({ transactionId, amountKobo = null, reas
   return {
     id: data?.id != null ? String(data.id) : null,
     status: String(data?.status ?? "pending").toLowerCase(),
-    refundedKobo: amountKobo != null ? Math.round(amountKobo) : toKobo(data?.amount ?? 0, "major"),
+    refundedKobo: amountKobo != null ? integerKobo(amountKobo, { min: 0, max: Number.MAX_SAFE_INTEGER }) : toKobo(data?.amount ?? 0, "major"),
     simulated: false
   };
+}
+
+/** Fetch a refund by the identifier returned by refund initiation. */
+export async function fetchRefund(refundId) {
+  if (!enabled() || !refundId) throw misconfigured("A configured provider and refund identifier are required");
+  return flutterwaveFetch(`/refunds/${encodeURIComponent(refundId)}`);
 }
 
 /** Fetch the refunds already recorded against a charge. */
@@ -546,15 +545,18 @@ export async function fetchTransfer(transferCode) {
     throw badRequest("A transfer id is required to check a transfer");
   }
   const data = await flutterwaveFetch(`/transfers/${encodeURIComponent(transferCode)}`);
+  if (String(data?.id ?? '') !== String(transferCode)) throw serviceUnavailable("Transfer identity did not match the recorded payout");
   const statusRaw = String(data?.status ?? "").toUpperCase();
   return {
     transferCode: data?.id != null ? String(data.id) : null,
     status: statusRaw.toLowerCase(),
     settled: statusRaw === "SUCCESSFUL",
-    failed: TRANSFER_FAILED.has(statusRaw),
+    failed: TRANSFER_FAILED.has(statusRaw.toLowerCase()),
     // `complete_message` is the processor's explanation and is the difference
     // between "the bank declined it" and "we never sent it".
     message: data?.complete_message ?? data?.message ?? null,
+    currency: data?.currency ?? null,
+    reference: data?.reference ?? null,
     amountKobo: toKobo(data?.amount ?? 0, "major")
   };
 }
@@ -657,15 +659,30 @@ export async function fetchPaymentPlans({ force = false, currency = "NGN" } = {}
       let page = 1;
       let totalPages = 1;
       do {
-        const raw = await flutterwaveFetch(`/payment-plans?page=${page}&currency=${encodeURIComponent(currency)}`, {
-          method: "GET"
+        // Preserve the documented envelope here: the generic helper unwraps
+        // data and would discard the pagination metadata for this endpoint.
+        const response = await providerFetch(`${BASE}/payment-plans?page=${page}&currency=${encodeURIComponent(currency)}`, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${env.FLW_SECRET_KEY}`, "Content-Type": "application/json" },
+          safeToRetry: true
         });
-        for (const plan of Array.isArray(raw?.data) ? raw.data : []) {
+        const raw = await response.json().catch(() => null);
+        if (!response.ok || raw?.status === "error") {
+          const error = misconfigured(`Payment plan catalogue unavailable: ${safeProviderMessage(raw?.message ?? `Flutterwave error ${response.status}`)}`);
+          error.providerStatus = response.status;
+          throw error;
+        }
+        if (raw?.status !== "success" || !Array.isArray(raw.data)) throw serviceUnavailable("Invalid payment plan catalogue response");
+        const reportedPages = Number(raw.meta?.page_info?.total_pages ?? 1);
+        if (!Number.isSafeInteger(reportedPages) || reportedPages < 0 || (reportedPages === 0 && raw.data.length > 0)) throw serviceUnavailable("Invalid payment plan pagination");
+        totalPages = Math.max(1, reportedPages);
+        if (totalPages > 20) throw serviceUnavailable("Payment plan catalogue exceeds the supported page limit");
+        for (const plan of raw.data) {
           collected.push({
             id: plan?.id != null ? String(plan.id) : null,
             name: String(plan?.name ?? ""),
             // Major units, like every other Flutterwave amount field.
-            amount: Number(plan?.amount ?? 0),
+            amount: plan?.amount,
             interval: String(plan?.interval ?? ""),
             duration: Number(plan?.duration ?? 0),
             status: String(plan?.status ?? "").toLowerCase(),
@@ -674,7 +691,6 @@ export async function fetchPaymentPlans({ force = false, currency = "NGN" } = {}
             createdAt: plan?.created_at ?? null
           });
         }
-        totalPages = Math.max(1, Number(raw?.meta?.page_info?.total_pages ?? 1));
         page += 1;
         // Hard stop, so a misreported total_pages cannot spin forever.
       } while (page <= totalPages && page <= 20);

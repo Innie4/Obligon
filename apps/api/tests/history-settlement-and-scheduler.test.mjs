@@ -66,7 +66,7 @@ test("a sweep never blocks the page it is settling for", () => {
   // Nothing settled is the common case, and it must cost one indexed lookup and
   // no waiting. Checking before the cooldown is what keeps a stuck payment from
   // being delayed by a window meant to protect the processor from bursts.
-  assert.match(reconcile, /SELECT count\(\*\)::int AS count FROM top_ups WHERE user_id = \$1 AND status = 'pending'/);
+  assert.match(reconcile, /SELECT count\(\*\)::int AS count FROM top_ups WHERE user_id = \$1 AND status IN \(\s*'pending','failed'\s*\)/);
   assert.match(reconcile, /if \(!Number\(outstanding\?\.count \?\? 0\)\) return false;/);
 });
 

@@ -8,6 +8,7 @@ import { AuthShell } from "@/components/auth/AuthShell";
 import { routes } from "@/components/site/routes";
 import { useToast } from "@/components/shared/Toast";
 import { useSession } from "@/components/shared/AuthContext";
+import { authReturnPath } from "@/lib/company-invitation-routing";
 import { authApi, type VerificationChannelResult } from "@/lib/services";
 
 /** Six digits, as a numeric input. Length is a server concern; see CODE_LENGTH. */
@@ -44,6 +45,8 @@ function maskPhone(phone: string) {
  */
 export function VerificationUI() {
   const router = useRouter();
+  const [returnPath, setReturnPath] = React.useState<string | null>(null);
+  React.useEffect(() => { setReturnPath(authReturnPath(window.location.search)); }, []);
   const { user, refresh: refreshSession } = useSession();
   const { success: toastSuccess, error: toastError } = useToast();
 
@@ -143,10 +146,10 @@ export function VerificationUI() {
       const result = await authApi.verifyConfirmEither(code);
       await refreshSession().catch(() => undefined);
       setStage("success");
-      if (result.allVerified) {
+      if (result.allVerified || (returnPath?.startsWith("/auth/company-invitation?") && result.emailVerified)) {
         const plan=sessionStorage.getItem("obligon_selected_plan");
         const destination=user?.role==='company'?routes.companyDashboard:user?.role==='partner'||user?.role==='mechanic'?'/dashboard/billing':plan?`/customer/card?chosenPlan=${encodeURIComponent(plan)}`:routes.customerDashboard;
-        setTimeout(() => router.push(destination),1200);
+        setTimeout(() => router.push(returnPath ?? destination),1200);
       } else {
         setStage("input");setCode("");setNotice(`Code accepted. Enter the code for your remaining ${(result.remaining??[]).join(' and ')} contact.`);
       }
@@ -245,8 +248,8 @@ export function VerificationUI() {
         {stage === "success" ? (
           <div className="mt-8 flex items-center justify-center gap-2 rounded-xl bg-obligon-lime/20 p-4 text-sm font-extrabold text-obligon-navy">
             <Check size={18} />
-            Contact verification complete
-            <button type="button" className="min-h-12 underline" onClick={()=>{const plan=sessionStorage.getItem("obligon_selected_plan");router.push(user?.role==="company"?routes.companyDashboard:user?.role==="partner"||user?.role==="mechanic"?"/dashboard/billing":plan?`/customer/card?chosenPlan=${encodeURIComponent(plan)}`:routes.customerDashboard);}}>Continue to dashboard</button>
+            {returnPath?.startsWith("/auth/company-invitation?") ? "Email verified. You can now join your company." : "Contact verification complete"}
+            <button type="button" className="min-h-12 underline" onClick={()=>{const plan=sessionStorage.getItem("obligon_selected_plan");router.push(returnPath ?? (user?.role==="company"?routes.companyDashboard:user?.role==="partner"||user?.role==="mechanic"?"/dashboard/billing":plan?`/customer/card?chosenPlan=${encodeURIComponent(plan)}`:routes.customerDashboard));}}>Continue</button>
           </div>
         ) : (
           <form onSubmit={verify} className="mt-8">

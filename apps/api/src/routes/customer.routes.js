@@ -21,6 +21,8 @@ import multer from "multer";
 import { encryptIdentity, providerCardDetails, replacementFunding, finishReplacement } from "../lib/card-approval.js";
 import { subscriptionRouter } from "./subscription.routes.js";
 import { requireCustomerPlan, customerSubscription } from "../lib/subscriptions.js";
+import { nairaToKobo, integerKobo } from "../lib/money-amounts.js";
+import { isTerminalPaymentFailure } from "../lib/flutterwave.js";
 
 const router = Router();
 for(const name of ['id','orgId','memberId'])router.param(name,(req,_res,next,value)=>{
@@ -40,12 +42,18 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
  */
 const SETTLE_WAIT_MS = 2500;
 
-router.use(requireAuth);
+router.use(requireAuth, (req, _res, next) => {
+  // Personal APIs do not inherit fleet permissions from a navigation token.
+  // Fleet resources use the company router's current membership/capability gate.
+  req.user = { ...req.user, orgId: null, orgType: null };
+  next();
+});
 router.use("/subscription", subscriptionRouter("customer"));
 router.use("/fuel-checkout",customerFuelCheckoutRouter());
 
-async function getWallet(userId, organizationId = null) {
-  return resolveWallet({ userId, organizationId });
+async function getWallet(userId) {
+  // Fleet navigation context cannot grant company-wallet permissions here.
+  return resolveWallet({ userId, organizationId: null });
 }
 
 function statusTone(status) {
@@ -61,7 +69,7 @@ router.get("/spend-projection", asyncHandler(async (req, res) => {
   const monthStartDate = monthStart();
   const agg = await one(
     `SELECT COALESCE(SUM(amount_kobo),0) AS mtd
-     FROM transactions WHERE customer_user_id = $1 AND status = 'success' AND created_at >= $2`,
+     FROM transactions WHERE customer_user_id = $1 AND organization_id IS NULL AND status = 'success' AND created_at >= $2`,
     [req.user.id, monthStartDate]
   );
   res.json({ projection: await readSpendProjection(req.user.id, Number(agg.mtd)) });
@@ -101,25 +109,22 @@ router.get("/overview", asyncHandler(async (req, res) => {
   const agg = await one(
     `SELECT COALESCE(SUM(amount_kobo),0) AS mtd, COUNT(*)::int AS count,
             COALESCE(SUM(litres),0)::float AS litres
-     FROM transactions WHERE customer_user_id = $1 AND status = 'success' AND created_at >= $2`,
+     FROM transactions WHERE customer_user_id = $1 AND organization_id IS NULL AND status = 'success' AND created_at >= $2`,
     [userId, monthStartDate]
   );
   const alerts = await one(
-    `SELECT COUNT(*)::int AS count FROM transactions WHERE customer_user_id = $1 AND status IN ('failed','disputed')`,
+    `SELECT COUNT(*)::int AS count FROM transactions WHERE customer_user_id = $1 AND organization_id IS NULL AND status IN ('failed','disputed')`,
     [userId]
   );
 
-  // Savings are measured against the median listed price for the same fuel,
-  // never assumed. Previously this was `litres * 1500` — a flat 15 naira per
-  // litre unrelated to what was paid — and there was no month-to-date figure at
-  // all, so the dashboard's "MTD Savings" was showing a sentence fragment.
+  // Historical savings use discounts recorded on each completed purchase.
+  // Changing today's station prices cannot change a customer's past savings.
   const mtdSavings = await customerSavings({ userId, since: monthStartDate });
   const lifetimeSavings = await customerSavings({ userId, since: null });
-  // A fuel type with no trustworthy benchmark is left out rather than counted at
-  // an invented price, so the helper says so rather than implying full coverage.
+  // Older purchases without a recorded base amount cannot establish a discount.
   const savingsCoverage = lifetimeSavings.pricedCount > 0
-    ? `Based on ${lifetimeSavings.pricedCount} transaction${lifetimeSavings.pricedCount === 1 ? "" : "s"}`
-    : "No priced transactions yet";
+    ? `Based on ${lifetimeSavings.pricedCount} recorded purchase${lifetimeSavings.pricedCount === 1 ? "" : "s"}`
+    : "No recorded fuel discounts yet";
 
   // The MTD Spend card is measured against this month's projection, falling back
   // to the wallet's standing limit only when no projection exists. A customer
@@ -144,7 +149,7 @@ router.get("/overview", asyncHandler(async (req, res) => {
     {
       label: "MTD Savings",
       value: naira(mtdSavings.savedKobo),
-      helper: "vs median price at the time",
+      helper: "Recorded fuel discounts",
       tone: "green"
     },
     {
@@ -172,12 +177,12 @@ router.get("/overview", asyncHandler(async (req, res) => {
               s.name AS station_name, v.plate AS vehicle_plate
        FROM transactions t
        LEFT JOIN stations s ON s.id = t.station_id LEFT JOIN vehicles v ON v.id = t.vehicle_id
-       WHERE t.customer_user_id = $1 ORDER BY t.created_at DESC LIMIT 6`,
+       WHERE t.customer_user_id = $1 AND t.organization_id IS NULL ORDER BY t.created_at DESC LIMIT 6`,
       [userId]
     ),
     q(
       `SELECT id, title, body, link, created_at FROM notifications
-       WHERE user_id = $1 AND dismissed_at IS NULL AND in_app_visible=TRUE
+       WHERE user_id = $1 AND organization_id IS NULL AND dismissed_at IS NULL AND in_app_visible=TRUE
        ORDER BY created_at DESC LIMIT 6`,
       [userId]
     )
@@ -294,7 +299,7 @@ router.get("/transactions/all", asyncHandler(async (req, res) => {
        LEFT JOIN stations s ON s.id = t.station_id
        LEFT JOIN vehicles v ON v.id = t.vehicle_id
        LEFT JOIN cards c ON c.id = t.card_id
-       WHERE t.customer_user_id = $1
+       WHERE t.customer_user_id = $1 AND t.organization_id IS NULL
        ORDER BY t.created_at DESC LIMIT 100`,
       [req.user.id]
     ),
@@ -363,7 +368,7 @@ router.get("/transactions/mobile-history", asyncHandler(async (req, res) => {
   const rows = await q(
     `SELECT t.*, s.name AS station_name, v.plate AS vehicle_plate FROM transactions t
      LEFT JOIN stations s ON s.id = t.station_id LEFT JOIN vehicles v ON v.id = t.vehicle_id
-     WHERE t.customer_user_id = $1 ORDER BY t.created_at DESC LIMIT 30`,
+     WHERE t.customer_user_id = $1 AND t.organization_id IS NULL ORDER BY t.created_at DESC LIMIT 30`,
     [req.user.id]
   );
   const groups = new Map();
@@ -385,8 +390,8 @@ router.get("/transactions/:id/receipt", asyncHandler(async (req, res) => {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.params.id)) throw badRequest("Invalid transaction ID");
   const t = await one(
     `SELECT t.*, s.name AS station_name FROM transactions t LEFT JOIN stations s ON s.id = t.station_id
-     WHERE t.id = $1 AND (t.customer_user_id = $2 OR t.organization_id = $3)`,
-    [req.params.id, req.user.id, req.user.orgId]
+     WHERE t.id = $1 AND t.customer_user_id = $2 AND t.organization_id IS NULL`,
+    [req.params.id, req.user.id]
   );
   if (!t) throw notFound("Transaction not found");
   const pdf = await receiptPdf({
@@ -515,9 +520,9 @@ router.get("/wallet", asyncHandler(async (req, res) => {
 }));
 
 router.post("/wallet/topup", asyncHandler(async (req, res) => {
-  const { amount, method } = req.body ?? {};
+  const { amount, method, expectedTotalKobo } = req.body ?? {};
   const paymentMethod = walletFundingMethod(method);
-  const amountKobo = Math.round(Number(amount) * 100);
+  const amountKobo = nairaToKobo(amount, { min: 0, max: 500000000, wholeNaira: true, label: "Top-up amount" });
   const minimum = minimumTopupKobo();
   if (!Number.isFinite(Number(amount)) || !amountKobo || amountKobo < minimum) {
     throw badRequest(`Minimum top-up is ${naira(minimum)}`);
@@ -534,6 +539,9 @@ router.post("/wallet/topup", asyncHandler(async (req, res) => {
   // fee is added to the amount demanded and itemised for them before payment.
   // The wallet is still credited the base amount only: the fee buys nothing.
   const price = priceWithFee(amountKobo);
+  if (expectedTotalKobo != null && integerKobo(expectedTotalKobo) !== price.totalKobo) {
+    throw conflict("The checkout quote has changed. Reload the funding form and review the total before continuing.");
+  }
   const topup = await one(
     `INSERT INTO top_ups (user_id, reference, amount_kobo, fee_kobo, charged_kobo, method, status, provider, wallet_id)
      VALUES ($1,$2,$3,$4,$5,$6,'pending',$7,$8) RETURNING *`,
@@ -590,7 +598,8 @@ router.post("/wallet/topup", asyncHandler(async (req, res) => {
  *  customer-facing fallback that runs on return from the checkout page. */
 router.post("/wallet/topup/confirm", asyncHandler(async (req, res) => {
   const { reference } = req.body ?? {};
-  const topup = await one("SELECT * FROM top_ups WHERE reference = $1 AND user_id = $2", [reference, req.user.id]);
+  const topup = await one(`SELECT t.* FROM top_ups t LEFT JOIN wallets w ON w.id=t.wallet_id
+    WHERE t.reference=$1 AND t.user_id=$2 AND (t.wallet_id IS NULL OR (w.user_id=$2 AND w.organization_id IS NULL))`, [reference, req.user.id]);
   if (!topup) throw notFound("Top-up not found");
   if (topup.status === "success") {
     return res.json({ ok: true, alreadyPaid: true, balanceLabel: naira((await getWallet(req.user.id, topup.wallet_id ? undefined : req.user.orgId ?? null)).balance_kobo) });
@@ -619,10 +628,13 @@ router.post("/wallet/topup/confirm", asyncHandler(async (req, res) => {
   }
 
   if (!verification.paid) {
-    await q("UPDATE top_ups SET status = 'failed' WHERE id = $1", [topup.id]);
-    throw badRequest("Payment was not successful");
+    if (isTerminalPaymentFailure(verification.status)) {
+      await q("UPDATE top_ups SET status = 'failed' WHERE id = $1 AND status = 'pending'", [topup.id]);
+      throw badRequest("This payment attempt was not successful. A later confirmed payment can still be recovered.");
+    }
+    throw serviceUnavailable("This payment is still awaiting provider confirmation. Please try again shortly.");
   }
-  await completeTopUp(topup, { providerTransactionId: verification.providerTransactionId ?? null });
+  await completeTopUp(topup, { providerTransactionId: verification.providerTransactionId ?? null, verifiedPaid: true, verifiedAmountKobo: verification.amountKobo });
   const wallet = await getWallet(req.user.id, topup.wallet_id ? undefined : req.user.orgId ?? null);
   res.json({ ok: true, balanceLabel: naira(wallet.balance_kobo), provider: verification.provider });
 }));
@@ -638,29 +650,59 @@ router.post("/wallet/topup/confirm", asyncHandler(async (req, res) => {
  * top_ups.provider_transaction_id stayed null for every bank transfer and a
  * support question about a settled payment could only be answered by guessing.
  */
-export async function completeTopUp(topup, { providerTransactionId = null } = {}) {
-  const { applyLedgerEntry } = await import("../lib/money.js");
-  const completed=await tx(async t=>{
-    const marked=await t.one(`UPDATE top_ups SET status='success',paid_at=now(),provider_transaction_id=COALESCE(provider_transaction_id,$2),
-      reconcile_attempts=reconcile_attempts+1,last_reconciled_at=now() WHERE id=$1 AND status='pending' RETURNING *`,[topup.id,providerTransactionId]);
+export async function completeTopUp(topup, { providerTransactionId = null, verifiedPaid = false,
+  expectedOrganizationId = topup.wallet_organization_id ?? null, transaction = null, verifiedAmountKobo = null, simulated = false } = {}) {
+  const { applyLedgerEntry, queueRefund, dispatchRefund } = await import("../lib/money.js");
+  let excessRefundId = null;
+  const settle=async t=>{
+    const current = await t.one("SELECT * FROM top_ups WHERE id=$1 FOR UPDATE", [topup.id]);
+    if (!current || current.status === 'success') return false;
+    // The provider verified this immutable quote. A concurrent account or amount
+    // change must be investigated rather than credited using different facts.
+    for (const field of ['user_id','reference','amount_kobo','charged_kobo','provider','wallet_id']) {
+      if (String(current[field] ?? '') !== String(topup[field] ?? '')) throw conflict("This payment record changed during verification. Please contact support.");
+    }
+    const marked=await t.one(`UPDATE top_ups SET status='success',paid_at=now(),provider_transaction_id=COALESCE($2,provider_transaction_id),
+      reconcile_attempts=reconcile_attempts+1,last_reconciled_at=now() WHERE id=$1
+      AND (status='pending' OR (status='failed' AND $3::boolean)) RETURNING *`,[topup.id,providerTransactionId,verifiedPaid === true]);
     if(!marked) return false;
-    const wallet=marked.wallet_id ? await t.one("SELECT id FROM wallets WHERE id=$1 FOR UPDATE",[marked.wallet_id]) :
-      await t.one("SELECT id FROM wallets WHERE user_id=$1 AND organization_id IS NULL FOR UPDATE",[marked.user_id]);
+    const wallet=marked.wallet_id ? await t.one(`SELECT id,organization_id FROM wallets WHERE id=$1 AND user_id=$2 AND currency='NGN'
+      AND organization_id IS NOT DISTINCT FROM $3::uuid FOR UPDATE`,[marked.wallet_id,marked.user_id,expectedOrganizationId]) :
+      await t.one("SELECT id FROM wallets WHERE user_id=$1 AND organization_id IS NULL AND currency='NGN' FOR UPDATE",[marked.user_id]);
     if(!wallet) throw badRequest("No wallet is linked to this account");
+    if (wallet.organization_id && !await t.one("SELECT id FROM organizations WHERE id=$1 AND owner_user_id=$2 FOR SHARE", [wallet.organization_id,marked.user_id])) {
+      throw conflict("The company wallet owner changed. This payment needs support review.");
+    }
     const existing=await t.one("SELECT id FROM wallet_ledger WHERE idempotency_key=$1",[`topup:${topup.id}`]);
     if(!existing) await applyLedgerEntry(t,{walletId:wallet.id,direction:"credit",amountKobo:Number(marked.amount_kobo),reference:marked.reference,
       idempotencyKey:`topup:${topup.id}`,description:`Top-up via ${marked.provider??"payment provider"}`});
+    await t.query("UPDATE payment_splits SET status='succeeded' WHERE provider_ref=$1 AND status='pending'", [marked.reference]);
+    if (verifiedAmountKobo != null) {
+      const paidKobo = integerKobo(verifiedAmountKobo, { max: Number.MAX_SAFE_INTEGER, label: "Verified payment amount" });
+      const dueKobo = integerKobo(marked.charged_kobo, { max: Number.MAX_SAFE_INTEGER, label: "Recorded payment quote" });
+      if (paidKobo < dueKobo) throw conflict("The verified payment is below the recorded quote");
+      if (paidKobo > dueKobo) {
+        const intent = await queueRefund(t, { provider: marked.provider, providerRef: marked.reference, providerTransactionId,
+          userId: marked.user_id, amountKobo: paidKobo - dueKobo, kind: "excess", reason: "Amount paid exceeded the wallet funding quote",
+          metadata: { topUpId: marked.id, dueKobo, paidKobo }, simulated });
+        excessRefundId = intent.refund.id;
+      }
+    }
     return true;
-  });
+  };
+  const completed = transaction ? await settle(transaction) : await tx(settle);
+  if (transaction) return completed;
+  if (excessRefundId) {
+    try { await dispatchRefund(excessRefundId); }
+    catch (error) { console.error("[topup-excess-refund] durable claim needs reconciliation", excessRefundId, error?.message); }
+  }
   if(!completed) return false;
 
-  // If this charge carried a split settlement, it has now actually happened.
-  await q(
-    `UPDATE payment_splits SET status = 'succeeded'
-     WHERE provider_ref = $1 AND status = 'pending'`,
-    [topup.reference]
-  );
+  await notifyCompletedTopUp(topup);
+  return true;
+}
 
+export async function notifyCompletedTopUp(topup) {
   await notify({
     userId: topup.user_id,
     title: "Transaction Alert",
@@ -673,7 +715,6 @@ export async function completeTopUp(topup, { providerTransactionId = null } = {}
     // three times, which reads as a wrong balance rather than a repeated message.
     eventKey: `topup:${topup.id}:credited`
   });
-  return true;
 }
 
 // ============ PAYMENT METHODS ============
@@ -764,7 +805,7 @@ router.get("/card-request", asyncHandler(async (req, res) => {
 async function assertEligibleForCardRequest(user) {
   if (user.role !== "customer") throw forbidden("Only eligible customer accounts can request a personal fuel card");
   const existingCard = await one(
-    "SELECT id FROM cards WHERE owner_user_id = $1 AND status NOT IN ('replaced','terminated') LIMIT 1",
+    "SELECT id FROM cards WHERE owner_user_id = $1 AND organization_id IS NULL AND status NOT IN ('replaced','terminated') LIMIT 1",
     [user.id]
   );
   if (existingCard) throw conflict("A fuel card already exists for this account");
@@ -881,7 +922,7 @@ router.get("/card-request/progress", asyncHandler(async (req, res) => {
   const card = await one(
     `SELECT id, status, masked_pan, expiry, label, created_at
      FROM cards
-     WHERE owner_user_id = $1 AND status NOT IN ('replaced','terminated')
+     WHERE owner_user_id = $1 AND organization_id IS NULL AND status NOT IN ('replaced','terminated')
      ORDER BY created_at DESC LIMIT 1`,
     [req.user.id]
   );
@@ -1121,94 +1162,51 @@ router.post("/card-request/resume", asyncHandler(async (req, res) => {
 router.post("/card-request/withdraw", asyncHandler(async (req, res) => {
   const ref = String(req.body?.reference ?? "").trim();
   if (!ref) throw badRequest("reference is required");
-
-  const request = await one("SELECT * FROM card_requests WHERE payment_reference = $1 AND user_id = $2", [ref, req.user.id]);
-  if (!request) throw notFound("Card request not found");
-
-  if (request.status === "withdrawn" || request.refund_id) {
-    const refund = request.refund_id ? await one("SELECT * FROM payment_refunds WHERE id = $1", [request.refund_id]) : null;
-    return res.json({ ok: true, alreadyWithdrawn: true, refund });
-  }
-  if (request.payment_status !== "paid") {
-    throw conflict("There is no completed payment to withdraw");
-  }
-  if (["creating", "provider_created", "review_required", "complete"].includes(request.issuance_state)) throw conflict("Card issuance must be reconciled before requesting a refund");
-  if (["approved", "cancelled", "refunded"].includes(request.status)) {
-    throw conflict("This card request can no longer be withdrawn");
-  }
-
-  // Atomically reserve the request against approval before any outbound refund.
-  const withdrawalClaim = await one(`UPDATE card_requests SET issuance_state='refund_pending',updated_at=now()
-    WHERE id=$1 AND payment_status='paid' AND status NOT IN ('approved','cancelled','withdrawn')
-      AND issuance_state IN ('not_started','refund_pending') RETURNING id`,[request.id]);
-  if(!withdrawalClaim) throw conflict("Card issuance or refund review is already in progress");
-
-  // Reclaim any opening balance this request previously put in the wallet, so the
-  // customer is not refunded money they have since spent as fuel credit.
-  //
-  // A plan purchase no longer credits the wallet, so this only fires for requests
-  // raised before that changed and for which a credit row still exists. It is
-  // kept as a safety net: silently skipping a real credit would refund money the
-  // customer has already consumed.
-  let clawbackKobo = 0;
-  const historicCredit = await one("SELECT * FROM plan_wallet_credits WHERE card_request_id = $1", [request.id]);
-  if (historicCredit) {
-    const { debitWalletOnce } = await import("../lib/money.js");
-    const result = await debitWalletOnce({
-      walletId: historicCredit.wallet_id,
-      amountKobo: Number(historicCredit.amount_kobo),
-      idempotencyKey: `plan-clawback:${request.id}`,
-      description: "Reversal of plan opening balance on withdrawal"
-    });
-    if (result.debited) clawbackKobo = Number(historicCredit.amount_kobo);
-
-  }
-
-  // Refund exactly what was collected, which is the plan price plus any gateway
-  // fee the customer paid. Refunding only the plan price would leave the fee
-  // stranded with the processor.
-  const amountKobo = request.charged_kobo != null
-    ? Number(request.charged_kobo)
-    : (request.plan_code ? Number((await one("SELECT amount_kobo FROM card_plans WHERE code = $1", [request.plan_code]))?.amount_kobo ?? 0) : 0);
-
-  const { issueRefund } = await import("../lib/money.js");
-  const result = await issueRefund({
-    provider: request.payment_provider,
-    providerRef: request.payment_reference,
-    providerTransactionId: request.provider_transaction_id ?? null,
-    userId: req.user.id,
-    amountKobo: amountKobo || null,
-    kind: "full",
-    reason: "Customer withdrew the plan before verification completed",
-    metadata: { cardRequestId: request.id, clawbackKobo },
-    actorUserId: req.user.id,
-    actorRole: req.user.role,
-    ip: req.ip,
-    simulated: Boolean(req.body?.simulated)
+  const { queueRefund, dispatchRefund, applyLedgerEntry } = await import("../lib/money.js");
+  const intent = await tx(async t => {
+    const request = await t.one("SELECT * FROM card_requests WHERE payment_reference=$1 AND user_id=$2 FOR UPDATE", [ref, req.user.id]);
+    if (!request) throw notFound("Card request not found");
+    if (request.status === "withdrawn") {
+      const refund = request.refund_id ? await t.one("SELECT * FROM payment_refunds WHERE id=$1", [request.refund_id]) : null;
+      return { alreadyWithdrawn: true, request, refund, clawbackKobo: refund?.metadata?.clawbackKobo ?? 0 };
+    }
+    if (request.payment_status !== "paid") throw conflict("There is no completed payment to withdraw");
+    if (!["not_started", "refund_pending"].includes(request.issuance_state) || ["approved", "cancelled", "refunded"].includes(request.status)) {
+      throw conflict("Card issuance must be reconciled before requesting a refund");
+    }
+    const amountKobo = integerKobo(request.charged_kobo, { max: Number.MAX_SAFE_INTEGER, label: "Original recorded charge" });
+    let clawbackKobo = 0;
+    const historicCredit = await t.one("SELECT * FROM plan_wallet_credits WHERE card_request_id=$1", [request.id]);
+    if (historicCredit) {
+      await t.one("SELECT id FROM wallets WHERE id=$1 FOR UPDATE", [historicCredit.wallet_id]);
+      const key = `plan-clawback:${request.id}`;
+      if (!await t.one("SELECT id FROM wallet_ledger WHERE idempotency_key=$1", [key])) {
+        clawbackKobo = integerKobo(historicCredit.amount_kobo, { max: Number.MAX_SAFE_INTEGER, label: "Original wallet credit" });
+        await applyLedgerEntry(t, { walletId: historicCredit.wallet_id, direction: "debit", amountKobo: clawbackKobo,
+          reference: key, idempotencyKey: key, description: "Reversal of plan opening balance on withdrawal" });
+      }
+    }
+    const queued = await queueRefund(t, { provider: request.payment_provider, providerRef: request.payment_reference,
+      providerTransactionId: request.provider_transaction_id, userId: req.user.id, amountKobo, kind: "full",
+      reason: "Customer withdrew the plan before verification completed", metadata: { cardRequestId: request.id, clawbackKobo },
+      simulated: Boolean(req.body?.simulated) });
+    const updated = await t.one(`UPDATE card_requests SET status='withdrawn',withdrawn_at=clock_timestamp(),
+      refund_id=$2,issuance_state='refund_pending',updated_at=clock_timestamp() WHERE id=$1 RETURNING *`, [request.id, queued.refund.id]);
+    return { ...queued, alreadyWithdrawn: false, request: updated, clawbackKobo };
   });
-
-  const updated = await one(
-    `UPDATE card_requests SET status = 'withdrawn', payment_status = 'refunded', withdrawn_at = now(),
-       refund_id = $2, issuance_state = 'refunded', updated_at = now()
-     WHERE id = $1 AND status = $3 RETURNING *`,
-    [request.id, result.refund?.id ?? null, request.status]
-  );
-
-  await notify({
-    userId: req.user.id,
-    title: "Plan withdrawn",
-    body: `Your ${request.plan_code ?? "plan"} purchase has been withdrawn and ${amountKobo ? naira(amountKobo) : "the amount"} will be refunded to your payment method.`,
-    category: "transactions",
-    link: "/customer/card"
-  });
-
-  res.json({
-    ok: true,
-    alreadyWithdrawn: false,
-    clawbackKobo,
-    refundStatus: result.refund?.status ?? null,
-    request: serializeCardRequest(updated ?? request)
-  });
+  let refund = intent.refund;
+  if (!intent.alreadyWithdrawn) {
+    try { refund = (await dispatchRefund(refund.id, { actorUserId: req.user.id, actorRole: req.user.role, ip: req.ip })).refund; }
+    catch { refund = await one("SELECT * FROM payment_refunds WHERE id=$1", [refund.id]); }
+  }
+  const reviewRequired = !refund || refund.metadata?.reviewRequired === true;
+  const message = refund?.status === "succeeded" ? "Your withdrawal refund has been confirmed by the payment provider."
+    : reviewRequired ? "Your withdrawal is recorded. The refund needs support review and has not been confirmed as paid."
+    : "Your withdrawal is recorded. The refund is pending confirmation from the payment provider.";
+  if (!intent.alreadyWithdrawn) await notify({ userId: req.user.id, title: "Plan withdrawn", body: message, category: "transactions", link: "/customer/card" });
+  res.json({ ok: true, alreadyWithdrawn: intent.alreadyWithdrawn, clawbackKobo: intent.clawbackKobo,
+    refundStatus: refund?.status ?? "pending", reviewRequired, message, refund,
+    request: serializeCardRequest(intent.request) });
 }));
 
 /** Status of a refund, so the UI can show settlement progress. */
@@ -1275,16 +1273,8 @@ router.post("/card-request/verify-payment", asyncHandler(async (req, res) => {
     throw conflict("This card request is no longer awaiting payment");
   }
 
-  const plan = request.plan_code
-    ? await one("SELECT amount_kobo FROM card_plans WHERE code = $1", [request.plan_code])
-    : null;
-
-  // What the customer was asked to pay: the recorded charge, which already
-  // includes any fee they bore. Falling back to the plan price covers requests
-  // created before the fee columns existed.
-  const chargedKobo = request.charged_kobo != null
-    ? Number(request.charged_kobo)
-    : (plan ? Number(plan.amount_kobo) : null);
+  if (request.charged_kobo == null) throw conflict("The original card payment quote is missing. Support must review this historical payment.");
+  const chargedKobo = integerKobo(request.charged_kobo, { max: Number.MAX_SAFE_INTEGER, label: "Recorded card payment quote" });
 
   let verification;
   try {
@@ -1305,66 +1295,43 @@ router.post("/card-request/verify-payment", asyncHandler(async (req, res) => {
   }
 
   if (!verification.paid) {
-    await q("UPDATE card_requests SET payment_status = 'failed', updated_at = now() WHERE id = $1", [request.id]);
-    throw badRequest("Payment was not successful. Please try again or choose another plan.");
+    if (isTerminalPaymentFailure(verification.status)) {
+      await q("UPDATE card_requests SET payment_status='failed',updated_at=now() WHERE id=$1 AND payment_status<>'paid' AND status='awaiting_payment'", [request.id]);
+      throw badRequest("This payment attempt was not successful. A later verified payment can still be recovered.");
+    }
+    throw serviceUnavailable("The card payment is awaiting confirmation. Please try again shortly.");
   }
 
-  const paid = await one(
-    `UPDATE card_requests SET payment_status = 'paid', paid_at = now(),provider_transaction_id=COALESCE(provider_transaction_id,$2), updated_at = now()
-     WHERE id = $1 AND payment_status <> 'paid'
-     RETURNING *`,
-    [request.id,verification.providerTransactionId??req.body?.transactionId??null]
-  );
-  const updated = paid ?? (await one("SELECT * FROM card_requests WHERE id = $1", [request.id]));
-
-  // If the customer somehow paid more than they were asked for, the difference is
-  // returned automatically rather than kept or, worse, absorbed into the wallet.
-  //
-  // Measured against the charged total, not the plan price. Using the plan price
-  // would treat the fee the customer legitimately paid as an overpayment and
-  // refund money that was correctly collected.
-  let excessRefundKobo = 0;
-  const dueKobo = chargedKobo;
-  const paidKobo = Number(verification.amountKobo ?? 0);
-  if (dueKobo != null && paidKobo > dueKobo) {
-    excessRefundKobo = paidKobo - dueKobo;
-    try {
-      const { issueRefund } = await import("../lib/money.js");
-      await issueRefund({
-        provider: verification.provider,
-        providerRef: ref,
-        providerTransactionId: req.body?.transactionId ?? request.provider_transaction_id ?? null,
-        userId: req.user.id,
-        amountKobo: excessRefundKobo,
-        kind: "excess",
-        reason: "Amount paid exceeded the plan fee",
-        metadata: { cardRequestId: request.id, dueKobo, paidKobo },
-        actorUserId: req.user.id,
-        actorRole: req.user.role,
-        ip: req.ip,
-        simulated: Boolean(req.body?.simulated)
-      });
-      await notify({
-        userId: req.user.id,
-        title: "Excess payment refunded",
-        body: `You paid ${naira(paidKobo)} but the plan cost ${naira(dueKobo)}. ${naira(excessRefundKobo)} is being returned to you.`,
-        category: "transactions",
-        link: "/customer/card"
-      });
-    } catch (err) {
-      // An excess refund failing must not invalidate a genuine plan purchase;
-      // it is logged for support to action instead.
-      await audit({
-        actorUserId: req.user.id,
-        actorRole: req.user.role,
-        action: "payments.excess_refund_failed",
-        entityType: "card_request",
-        entityId: request.id,
-        severity: "warning",
-        metadata: { excessRefundKobo, error: err.message }
-      });
-      excessRefundKobo = 0;
+  const paidKobo = integerKobo(verification.amountKobo, { max: Number.MAX_SAFE_INTEGER, label: "Verified card payment" });
+  if (paidKobo < chargedKobo || verification.currency !== "NGN" || verification.reference !== ref) {
+    throw conflict("The confirmed card payment does not match the original quote, reference or currency");
+  }
+  const { queueRefund, dispatchRefund } = await import("../lib/money.js");
+  let excessRefundKobo = 0, excessRefundId = null;
+  const updated = await tx(async t => {
+    const locked = await t.one("SELECT * FROM card_requests WHERE id=$1 FOR UPDATE", [request.id]);
+    for (const field of ["user_id", "charged_kobo", "payment_reference", "payment_provider"]) {
+      if (String(locked[field] ?? "") !== String(request[field] ?? "")) throw conflict("The card payment quote changed during verification. Support review is required.");
     }
+    if (locked.payment_status === "paid") return locked;
+    if (locked.status !== "awaiting_payment") throw conflict("This card request is no longer awaiting payment");
+    const paid = await t.one(`UPDATE card_requests SET payment_status='paid',paid_at=now(),provider_transaction_id=COALESCE($2,provider_transaction_id),updated_at=now()
+      WHERE id=$1 RETURNING *`, [locked.id, verification.providerTransactionId]);
+    if (paidKobo > chargedKobo) {
+      excessRefundKobo = paidKobo - chargedKobo;
+      const intent = await queueRefund(t, { provider: locked.payment_provider, providerRef: locked.payment_reference,
+        providerTransactionId: verification.providerTransactionId, userId: locked.user_id, amountKobo: excessRefundKobo,
+        kind: "excess", reason: "Amount paid exceeded the card plan quote", metadata: { cardRequestId: locked.id, dueKobo: chargedKobo, paidKobo }, simulated: verification.simulated });
+      excessRefundId = intent.refund.id;
+    }
+    return paid;
+  });
+  if (excessRefundId) {
+    try { await dispatchRefund(excessRefundId, { actorUserId: req.user.id, actorRole: req.user.role, ip: req.ip }); }
+    catch (error) { console.error("[card-excess-refund] durable claim needs reconciliation", excessRefundId, error?.message); }
+    await notify({ userId: req.user.id, title: "Excess payment recovery queued",
+      body: `You paid ${naira(paidKobo)} for a ${naira(chargedKobo)} plan quote. Your ${naira(excessRefundKobo)} excess is recorded for return or provider review.`,
+      category: "transactions", link: "/customer/card", eventKey: `card-request:${request.id}:excess-refund` });
   }
 
   // The plan fee buys a card subscription, not fuel. It is deliberately not
@@ -1492,7 +1459,7 @@ router.post("/card-request", asyncHandler(async (req, res) => {
 }));
 
 router.get("/card", asyncHandler(async (req, res) => {
-  const card = await one("SELECT * FROM cards WHERE owner_user_id = $1 ORDER BY created_at DESC LIMIT 1", [req.user.id]);
+  const card = await one("SELECT * FROM cards WHERE owner_user_id = $1 AND organization_id IS NULL ORDER BY created_at DESC LIMIT 1", [req.user.id]);
   if (!card) {
     return res.json({ card: null, metrics: [
       { label: "Card Status", value: "No card", helper: "Request your fuel card", tone: "muted" },
@@ -1503,7 +1470,7 @@ router.get("/card", asyncHandler(async (req, res) => {
   res.json({
     card: {
       id: card.id, label: card.label, holder: card.holder_name || req.user.full_name,
-      maskedPan: card.masked_pan, brand: card.brand, expiry: card.expiry, status: card.status,
+      maskedPan: card.masked_pan, brand: card.brand, expiry: card.expiry, status: card.status, pinSet: Boolean(card.pin_hash),
       dailyLimitLabel: naira(card.daily_limit_kobo), monthlyLimitLabel: naira(card.monthly_limit_kobo),
       balanceLabel: naira(card.balance_kobo), spendTodayLabel: naira(card.spend_today_kobo)
     },
@@ -1515,8 +1482,7 @@ async function loadCard(cardId, req) {
   const card = await one("SELECT * FROM cards WHERE id = $1", [cardId]);
   if (!card) throw notFound("Card not found");
   const ownsDirectly = card.owner_user_id === req.user.id;
-  const ownsViaOrg = req.user.orgId && card.organization_id === req.user.orgId;
-  if (!ownsDirectly && !ownsViaOrg) throw forbidden("This card belongs to another account");
+  if (!ownsDirectly || card.organization_id) throw forbidden("Use the authorized dashboard for this card");
   return card;
 }
 
@@ -1585,22 +1551,38 @@ router.post("/cards/:id/pos-code",asyncHandler(async(req,res)=>{
  await requireCustomerPlan(req.user.id);
  if(card.status!=="active") throw badRequest("Only an active card can authorize fuel");
  if(!card.pin_hash || !await verifyPin(String(req.body?.pin??""),card.pin_hash)) throw forbidden("Enter your correct card PIN");
- let code;
- for(let attempt=0;attempt<5;attempt++) {
-   code=String(randomInt(100000,1000000));
-   try { await q("UPDATE cards SET pos_code=$2,pos_code_expires_at=now()+interval '5 minutes' WHERE id=$1",[card.id,code]); break; }
-   catch(err) { if(err.code!=="23505"||attempt===4) throw err; }
- }
- res.json({ok:true,code,expiresInSeconds:300});
+ const saved=await tx(async t=>{
+   await requireCustomerPlan(req.user.id,null,t);
+   const current=await t.one("SELECT * FROM cards WHERE id=$1 AND owner_user_id=$2 AND organization_id IS NULL FOR UPDATE",[card.id,req.user.id]);
+   if(!current || current.status!=="active" || current.pin_hash!==card.pin_hash) throw conflict("The card changed. Reload it before requesting a fuel code.");
+   await t.query("SELECT pg_advisory_xact_lock(73491622)");
+   let code;
+   for(let attempt=0;attempt<10;attempt++){
+     const candidate=String(randomInt(100000,1000000));
+     if(!await t.one("SELECT id FROM cards WHERE pos_code=$1",[candidate])){code=candidate;break;}
+   }
+   if(!code) throw serviceUnavailable("Could not issue a unique fuel code. Try again shortly.");
+   const updated=await t.one("UPDATE cards SET pos_code=$2,pos_code_expires_at=now()+interval '5 minutes' WHERE id=$1 RETURNING pos_code,pos_code_expires_at",[card.id,code]);
+   await t.query("INSERT INTO audit_logs(actor_user_id,actor_role,action,entity_type,entity_id) VALUES($1,$2,'card.pos_code_issued','card',$3)",[req.user.id,req.user.role,card.id]);
+   return updated;
+ });
+ res.json({ok:true,code:saved.pos_code,expiresInSeconds:300,expiresAt:saved.pos_code_expires_at});
 }));
 
 router.post("/cards/:id/pin", asyncHandler(async (req, res) => {
-  const card = await loadCard(req.params.id, req);
   const { currentPin, newPin } = req.body ?? {};
-  if (card.pin_hash && !await verifyPin(currentPin ?? "", card.pin_hash)) throw badRequest("Current transaction PIN is incorrect");
-  if (!/^\d{4}$/.test(String(newPin ?? ""))) throw badRequest("PIN must be exactly 4 digits");
-  await q("UPDATE cards SET pin_hash = $2, updated_at = now() WHERE id = $1", [card.id, await hashPin(newPin)]);
-  await cardAction(card, req, "pin_updated", "");
+  if (typeof newPin !== "string" || !/^\d{4}$/.test(newPin)) throw badRequest("PIN must be exactly 4 digits");
+  if (currentPin != null && (typeof currentPin !== "string" || !/^\d{4}$/.test(currentPin))) throw badRequest("Current PIN must be exactly 4 digits");
+  const newHash = await hashPin(newPin);
+  await tx(async (t) => {
+    const card = await t.one("SELECT * FROM cards WHERE id = $1 FOR UPDATE", [req.params.id]);
+    if (!card) throw notFound("Card not found");
+    if (card.owner_user_id !== req.user.id || card.organization_id) throw forbidden("Use the authorized dashboard for this card");
+    if (card.pin_hash && !await verifyPin(currentPin ?? "", card.pin_hash)) throw badRequest("Current transaction PIN is incorrect");
+    await t.query("UPDATE cards SET pin_hash = $2, pos_code=NULL, pos_code_expires_at=NULL, updated_at = now() WHERE id = $1", [card.id, newHash]);
+    await t.query("INSERT INTO card_actions (card_id, user_id, action, note) VALUES ($1,$2,'pin_updated','')", [card.id, req.user.id]);
+    await t.query("INSERT INTO audit_logs(actor_user_id,actor_role,action,entity_type,entity_id) VALUES($1,$2,'card.pin_updated','card',$3)", [req.user.id, req.user.role, card.id]);
+  });
   res.json({ ok: true });
 }));
 
@@ -1608,8 +1590,8 @@ router.post("/cards/:id/limits", asyncHandler(async (req, res) => {
   const card = await loadCard(req.params.id, req);
   await requireCustomerPlan(req.user.id, "Spending Limits");
   const { daily, monthly } = req.body ?? {};
-  const dailyKobo = Math.round(Number(daily) * 100);
-  const monthlyKobo = Math.round(Number(monthly) * 100);
+  const dailyKobo = nairaToKobo(daily, { min: 10000, max: 100_000_000_000, label: "Daily limit" });
+  const monthlyKobo = nairaToKobo(monthly, { min: 10000, max: 100_000_000_000, label: "Monthly limit" });
   if (dailyKobo < 10000) throw badRequest("Daily limit must be at least ₦100");
   if (monthlyKobo < dailyKobo) throw badRequest("Monthly limit cannot be lower than the daily limit");
   await q("UPDATE cards SET daily_limit_kobo = $2, monthly_limit_kobo = $3, updated_at = now() WHERE id = $1", [card.id, dailyKobo, monthlyKobo]);
@@ -1701,9 +1683,9 @@ router.get("/directions", asyncHandler(async (req, res) => {
 // ============ NOTIFICATIONS ============
 router.get("/notifications", asyncHandler(async (req, res) => {
   const rows = await q(
-    `SELECT * FROM notifications WHERE in_app_visible=TRUE AND (user_id = $1 OR (organization_id IS NOT NULL AND organization_id = $2))
+    `SELECT * FROM notifications WHERE in_app_visible=TRUE AND dismissed_at IS NULL AND user_id=$1 AND organization_id IS NULL
      ORDER BY created_at DESC LIMIT 50`,
-    [req.user.id, req.user.orgId ?? "00000000-0000-0000-0000-000000000000"]
+    [req.user.id]
   );
   const seen = new Set();
   const notifications = rows
@@ -1713,17 +1695,21 @@ router.get("/notifications", asyncHandler(async (req, res) => {
 }));
 
 router.post("/notifications/:id/read", asyncHandler(async (req, res) => {
-  await q("UPDATE notifications SET read_at = now() WHERE id = $1 AND (user_id = $2 OR organization_id = $3)", [req.params.id, req.user.id, req.user.orgId ?? null]);
+  if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(req.params.id)) throw badRequest("Choose a valid notification");
+  const rows = await q("UPDATE notifications SET read_at=now() WHERE id=$1 AND user_id=$2 AND organization_id IS NULL RETURNING id", [req.params.id,req.user.id]);
+  if (!rows.length) throw notFound("Notification not found");
   res.json({ ok: true });
 }));
 
 router.post("/notifications/read-all", asyncHandler(async (req, res) => {
-  await q(`UPDATE notifications SET read_at = now() WHERE (user_id = $1 OR organization_id = $2) AND read_at IS NULL`, [req.user.id, req.user.orgId ?? null]);
+  await q(`UPDATE notifications SET read_at=now() WHERE user_id=$1 AND organization_id IS NULL AND read_at IS NULL`, [req.user.id]);
   res.json({ ok: true });
 }));
 
 router.post("/notifications/:id/dismiss", asyncHandler(async (req, res) => {
-  await q("UPDATE notifications SET dismissed_at = now() WHERE id = $1", [req.params.id]);
+  if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(req.params.id)) throw badRequest("Choose a valid notification");
+  const rows = await q("UPDATE notifications SET dismissed_at=now() WHERE id=$1 AND user_id=$2 AND organization_id IS NULL RETURNING id", [req.params.id,req.user.id]);
+  if (!rows.length) throw notFound("Notification not found");
   res.json({ ok: true });
 }));
 
@@ -1762,7 +1748,7 @@ function sanitizeNotificationPrefs(input) {
 router.put("/profile", asyncHandler(async (req, res) => {
   const { fullName, phone, address, city, notificationPrefs, biometricsEnabled, budgetLimit } = req.body ?? {};
 
-  if (budgetLimit != null && (!Number.isSafeInteger(Math.round(Number(budgetLimit)*100)) || Number(budgetLimit)<0)) throw badRequest("Budget must be a non-negative amount");
+  const budgetKobo = budgetLimit == null ? null : nairaToKobo(budgetLimit, { min: 0, label: "Budget" });
   if (budgetLimit != null) await requireCustomerPlan(req.user.id, "Fuel Budget Management");
   if (biometricsEnabled !== undefined && typeof biometricsEnabled !== "boolean") {
     throw badRequest("biometricsEnabled must be a boolean");
@@ -1772,7 +1758,11 @@ router.put("/profile", asyncHandler(async (req, res) => {
     ? null
     : sanitizeNotificationPrefs(notificationPrefs);
 
-  const user = await one(
+  const user = await tx(async (t) => {
+    const current = await t.one("SELECT * FROM users WHERE id = $1 FOR UPDATE", [req.user.id]);
+    if (!current) throw notFound("Account not found");
+    const changedPhone = phone != null && current.phone !== phone;
+    const updated = await t.one(
     `UPDATE users SET
        full_name = COALESCE($2, full_name),
        phone_verified = CASE WHEN $3::text IS NOT NULL AND phone IS DISTINCT FROM $3 THEN FALSE ELSE phone_verified END,
@@ -1784,11 +1774,16 @@ router.put("/profile", asyncHandler(async (req, res) => {
        updated_at = now()
      WHERE id = $1 RETURNING *`,
     [req.user.id, fullName ?? null, phone ?? null, address ?? null, city ?? null,
-      prefs ? JSON.stringify({ ...(req.user.notification_prefs ?? {}), ...prefs }) : null, biometricsEnabled ?? null]
-  );
-  if (budgetLimit != null) {
-    await q("UPDATE wallets SET budget_limit_kobo = $2 WHERE user_id = $1", [req.user.id, Math.round(Number(budgetLimit) * 100)]);
-  }
+      prefs ? JSON.stringify({ ...(current.notification_prefs ?? {}), ...prefs }) : null, biometricsEnabled ?? null]
+    );
+    if (changedPhone) {
+      await t.query("UPDATE verification_codes SET consumed_at = now() WHERE user_id = $1 AND purpose = 'phone_verify' AND consumed_at IS NULL", [req.user.id]);
+    }
+    if (budgetKobo != null) {
+      await t.query("UPDATE wallets SET budget_limit_kobo = $2 WHERE user_id = $1", [req.user.id, budgetKobo]);
+    }
+    return updated;
+  });
   if (biometricsEnabled !== undefined && biometricsEnabled !== req.user.biometrics_enabled) {
     await securityLog({
       userId: req.user.id,
@@ -1872,8 +1867,8 @@ router.post("/support/tickets", upload.array("attachments", 4), asyncHandler(asy
 
 router.get("/support/tickets", asyncHandler(async (req, res) => {
   const rows = await q(
-    `SELECT * FROM support_tickets WHERE user_id = $1 OR organization_id = $2 ORDER BY created_at DESC LIMIT 50`,
-    [req.user.id, req.user.orgId ?? "00000000-0000-0000-0000-000000000000"]
+    `SELECT * FROM support_tickets WHERE user_id=$1 AND organization_id IS NULL ORDER BY created_at DESC LIMIT 50`,
+    [req.user.id]
   );
   res.json({
     tickets: rows.map((t) => ({
@@ -1885,7 +1880,7 @@ router.get("/support/tickets", asyncHandler(async (req, res) => {
 
 router.get("/support/tickets/:id/messages", asyncHandler(async (req, res) => {
   const ticket = await one("SELECT * FROM support_tickets WHERE id = $1", [req.params.id]);
-  if (!ticket || (ticket.user_id !== req.user.id && ticket.organization_id !== req.user.orgId)) throw notFound("Ticket not found");
+  if (!ticket || ticket.user_id !== req.user.id || ticket.organization_id) throw notFound("Ticket not found");
   const messages = await q(
     `SELECT m.*, u.full_name AS sender_name FROM ticket_messages m LEFT JOIN users u ON u.id = m.sender_user_id
      WHERE ticket_id = $1 ORDER BY created_at ASC`,
@@ -1896,7 +1891,7 @@ router.get("/support/tickets/:id/messages", asyncHandler(async (req, res) => {
 
 router.post("/support/tickets/:id/messages", asyncHandler(async (req, res) => {
   const ticket = await one("SELECT * FROM support_tickets WHERE id = $1", [req.params.id]);
-  if (!ticket || (ticket.user_id !== req.user.id && ticket.organization_id !== req.user.orgId)) throw notFound("Ticket not found");
+  if (!ticket || ticket.user_id !== req.user.id || ticket.organization_id) throw notFound("Ticket not found");
   const { body } = req.body ?? {};
   if (!body) throw badRequest("Message is required");
   await q("INSERT INTO ticket_messages (ticket_id, sender_user_id, sender_role, body) VALUES ($1,$2,$3,$4)", [ticket.id, req.user.id, req.user.role, body]);

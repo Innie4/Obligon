@@ -64,11 +64,17 @@ test("a settled payment completes through the single owner of the transition", (
 test("the wallet is credited the base amount, never the fee", () => {
   // The fee is the cost of moving the money, not fuel. Crediting it would pay
   // out more than the customer was charged for.
-  const credit = customer.slice(customer.indexOf("export async function completeTopUp"));
+  const start = customer.indexOf("export async function completeTopUp");
+  assert.ok(start >= 0, "the transition under test must exist");
+  const credit = customer.slice(start, customer.indexOf('\nrouter.', start));
   assert.match(credit, /idempotencyKey:\s*`topup:\$\{topup\.id\}`/);
+  const posting = credit.indexOf("await applyLedgerEntry");
+  assert.ok(posting >= 0, "the real posting under test must exist");
+  const entry = credit.slice(posting, credit.indexOf('});', posting) + 3);
+  assert.match(entry, /amountKobo:\s*Number\(marked\.amount_kobo\)/);
   assert.doesNotMatch(
-    credit.slice(credit.indexOf("creditWalletOnce"), credit.indexOf("creditWalletOnce") + 300),
-    /amountKobo:\s*Number\(topup\.charged_kobo\)/,
+    entry,
+    /amountKobo:\s*Number\((topup|marked)\.(charged_kobo|fee_kobo)\)/,
     "the fee must not be credited to the wallet"
   );
 });
@@ -96,7 +102,8 @@ test("the amount mismatch reads in naira, the unit a human uses", () => {
   // "Payment amount 101 does not match the 10000 kobo expected" described a
   // N101 payment as a 10000 kobo figure, which is how the fee hid.
   const flutterwave = read(apiRoot, "src", "lib", "flutterwave.js");
-  assert.match(flutterwave, /Payment of \$\{providerAmount\} \$\{currency\} does not match the \$\{expectedAmountKobo \/ 100\} expected/);
+  assert.match(flutterwave, /Payment amount was less than the amount due/);
+  assert.match(flutterwave, /toKobo\(data\?\.amount, "major"\)/);
   assert.doesNotMatch(flutterwave, /does not match the \$\{expectedAmountKobo\} kobo expected/);
 });
 
@@ -105,8 +112,8 @@ test("the webhook verifies against the charge, not the list price", () => {
   // supposed to credit a transfer the moment it lands, so this is where a
   // customer-bear fee silently swallowed a settled payment.
   const webhooks = read(apiRoot, "src", "routes", "webhooks.routes.js");
-  assert.match(webhooks, /expectedAmountKobo: Number\(topup\.charged_kobo \?\? topup\.amount_kobo\)/);
-  assert.match(webhooks, /cardRequest\.charged_kobo != null/);
+  assert.match(webhooks, /expectedAmountKobo:\s*Number\(topup\.charged_kobo\)/);
+  assert.match(webhooks, /!cardRequest\.charged_kobo/);
   assert.doesNotMatch(webhooks, /expectedAmountKobo: topup\.amount_kobo,/);
 });
 

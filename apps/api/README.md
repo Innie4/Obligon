@@ -3,21 +3,23 @@
 Express 5 backend serving every Obligon dashboard (customer, company, partner, admin)
 plus the public marketing/careers/support endpoints. **Supabase Postgres** is the
 database and file-storage backend; **Sudo Africa** issues the virtual fuel cards;
-**Paystack** processes top-ups, subscriptions and payouts.
+**Flutterwave** is the configured primary checkout and settlement processor.
+Paystack compatibility paths remain for previously recorded Paystack payments.
 
 ## Setup
 
 ```bash
-cp apps/api/.env.example apps/api/.env    # fill in DATABASE_URL at minimum
+cp apps/api/.env.example .env    # local development configuration; use an isolated database
 pnpm install
 pnpm --filter @obligon/api migrate        # creates all tables in Supabase
-pnpm --filter @obligon/api seed           # demo data (idempotent)
+pnpm --filter @obligon/api seed           # demo data, only in a disposable local environment
 pnpm --filter @obligon/api dev            # http://localhost:4000
 ```
 
 Point the frontend at it: copy `apps/web/.env.example` to `apps/web/.env.local`
-and set `NEXT_PUBLIC_API_URL=http://localhost:4000`. Without that variable the
-frontend stays in offline mock mode.
+and set `NEXT_PUBLIC_API_URL=http://localhost:4000`. Offline demo data requires
+`NEXT_PUBLIC_ENABLE_MOCK_MODE=true` with no configured API URL in development.
+Production defaults to live transport; configure its exact API origin explicitly.
 
 ## Vercel + Render deployment
 
@@ -46,30 +48,22 @@ the API, Supabase Auth, and the server-returned role to route customers to
 `/customer`, companies to `/company`, partners to `/dashboard`, and admins to
 `/admin`.
 
-## Demo accounts (created by seed)
+## Local demo accounts and retired test access
 
-### Temporary deployed partner test login
+`seed` and `seed:demo` create synthetic development accounts. Their shared
+credentials and the optional demo sign-in panel belong only in a disposable local
+or explicitly designated test environment. Both scripts refuse production unless
+`ALLOW_DEMO_SEED=true` is deliberately supplied; do not enable that override in a
+real production environment. Keep `NEXT_PUBLIC_ENABLE_DEMO_LOGIN=false` in release
+builds. Use normal account authentication for production access.
 
-The API currently provisions `partner.test@obligon.com` with password
-`ObligonPartnerTest!2026` on startup for the requested partner-dashboard testing.
-Use the ordinary `/auth/login` page. It owns a separate **Obligon Partner Testing**
-organization with a zero-balance wallet and seven days of Enterprise access from
-creation. Restarting does not reset the password or extend that period.
-
-To remove access after testing, set `TEMPORARY_PARTNER_ACCOUNT_ENABLED = false`
-in `src/lib/temporaryPartnerAccount.js` and deploy. The next API startup suspends
-this test user, revokes its sessions, and cancels its test subscription. Then the
-bootstrap call and module can be removed. Deleting source alone leaves the
-database account active.
-
-| Role     | Email                 | Password      |
-|----------|-----------------------|---------------|
-| admin    | admin@obligon.com     | Admin#1234    |
-| customer | customer@obligon.com  | Customer#123  |
-| company  | fleet@obligon.com     | Company#123   |
-| partner  | partner@obligon.com   | Partner#123   |
-
-Change these immediately in production (`POST /api/auth/change-password`).
+The temporary deployed partner bootstrap is disabled by default and forcibly
+disabled in production in the reviewed source. On startup it suspends the exact
+legacy temporary test account, revokes its sessions, and cancels its test
+subscription. These source changes do not prove that the live service has deployed
+them. Verify account retirement after an approved deployment and review any
+historical exposure separately; deleting source alone does not revoke database
+access. No shared temporary credential is documented for production use.
 
 ## Provider status
 
@@ -85,7 +79,8 @@ are best-effort.
 | Database + storage | Supabase | `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` |
 | Authentication (optional) | Supabase Auth (GoTrue) | `SUPABASE_AUTH_ENABLED=true` + `SUPABASE_ANON_KEY` — delegates password validation to Supabase; bcrypt fallback otherwise |
 | Virtual fuel cards | Sudo Africa | `SUDO_SECRET_API_KEY` (+ `SUDO_WEBHOOK_SECRET`) |
-| Top-ups / subscriptions / payouts | Paystack | `PAYSTACK_SECRET_KEY` |
+| Checkout / subscriptions / settlement transfers | Flutterwave | `FLW_SECRET_KEY`, `FLW_PUBLIC_KEY`, `FLW_SECRET_HASH` |
+| Legacy payment compatibility | Paystack | `PAYSTACK_SECRET_KEY` only when recorded legacy flows require it |
 | Transactional email | Resend | `RESEND_API_KEY` |
 | SMS / OTP | Termii | `TERMII_API_KEY` |
 | Maps / directions | Google Maps Platform | `GOOGLE_MAPS_API_KEY` (server) + `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (browser) |
@@ -101,8 +96,15 @@ are defined.
 
 Webhooks to register with providers:
 
-- Paystack → `<APP_URL>/api/webhooks/paystack` (signature: HMAC-SHA512 with secret key)
-- Sudo Africa → `<APP_URL>/api/webhooks/sudo` (signature: HMAC-SHA256 with webhook secret)
+Use the public **API** HTTPS origin, not the Vercel frontend origin in `APP_URL`:
+
+- Flutterwave v3 → `<API_ORIGIN>/api/webhooks/flutterwave` (`verif-hash` with `FLW_SECRET_HASH`)
+- Paystack legacy callbacks → `<API_ORIGIN>/api/webhooks/paystack` (raw-payload HMAC-SHA512 with secret key)
+- Sudo Africa → `<API_ORIGIN>/api/webhooks/sudo` (raw-payload HMAC-SHA256 with webhook secret)
+
+`API_ORIGIN` above is a documentation placeholder for the deployed API URL.
+Authenticated callbacks are corroborated with recorded provider references and
+amounts; a valid callback signature alone does not establish a successful credit.
 
 ## Real-time & Push
 
@@ -128,7 +130,25 @@ The API includes automated maintenance routines (session/code purging, partner a
 SMOKE_BASE_URL=http://localhost:4000 pnpm --filter @obligon/api test
 ```
 
-The suite covers login/session, role isolation (403s), customer/company/partner
-read surfaces, and public endpoints. CI (`.github/workflows/ci.yml`) runs
-migrations + seed against a Postgres 16 service and executes the suite on every
-push.
+The suite covers login/session, role isolation, customer/company/partner read
+surfaces, public endpoints and focused financial/access regression cases.
+Database integration tests require `OBLIGON_TEST_DATABASE_URL` (and selected
+issuer suites use `TEST_DATABASE_URL`) pointing to disposable localhost PostgreSQL.
+Provider tests use mocks unless an explicit manual provider check is selected.
+
+CI (`.github/workflows/ci.yml`) declares migrations and tests against PostgreSQL16.
+Fresh database migrations expect Supabase roles and `auth.uid()`; the supplied
+plain PostgreSQL CI service does not bootstrap them. That existing infrastructure
+gap remains unverified here and must be resolved in the authorized CI workflow.
+Do not treat a local green suite as a green hosted deployment or provider test.
+
+## Current release review — 2026-10-14
+
+The current production-readiness work is prepared on
+`codex/production-readiness-2026-10-14`; evidence and outstanding checks are tracked
+in `../../reports/production-readiness-2026-10-14/`. It is not a declaration of
+production readiness. Authentication, authorization, tenant isolation, database
+access and money-flow changes require qualified human review before release.
+Production provider sandbox/staging acceptance, actual deployed configuration,
+monitoring, reconciliation and rollback evidence remain separate required checks.
+No local test should use production seed data or real funds.

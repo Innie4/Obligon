@@ -108,8 +108,8 @@ test("the config endpoint rejects what it does not accept", () => {
 
 test("a payout amount is validated before it is converted", () => {
   const body = handler(code(routes), 'router.post("/payouts"');
-  assert.match(body, /Number\.isFinite\(amountNaira\)/);
-  assert.match(body, /throw badRequest\("Enter a payout amount"\)/);
+  assert.match(body, /nairaToKobo\(amount,/);
+  assert.match(body, /min:100000,max:100_000_000_000/);
   assert.match(body, /amountKobo < 100000/);
 });
 

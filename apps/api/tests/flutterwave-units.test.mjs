@@ -9,7 +9,7 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { toProviderAmount, detectAmountUnit, toKobo, paidAmountFrom, parseWebhookEvent } from "../src/lib/flutterwave.js";
+import { toProviderAmount, toKobo, paidAmountFrom, parseWebhookEvent } from "../src/lib/flutterwave.js";
 
 const PLAN = { bronze: 250_000, gold: 350_000, platinum: 500_000 };
 
@@ -26,36 +26,19 @@ test("fractional naira charges preserve exact kobo without rounding", () => {
   assert.throws(() => toProviderAmount(50.5), /whole|integer|kobo/);
 });
 
-test("a verification reported in naira is recognised", () => {
-  assert.equal(detectAmountUnit(2500, PLAN.bronze), "major");
-  assert.equal(detectAmountUnit(3500, PLAN.gold), "major");
-  assert.equal(detectAmountUnit("5000", PLAN.platinum), "major");
+test("v3 verification amounts have a documented major-unit contract", () => {
+  assert.equal(toKobo(2500, "major"), PLAN.bronze);
+  assert.equal(toKobo("3500", "major"), PLAN.gold);
+  assert.equal(toKobo(250_000, "major"), 25_000_000, "100-fold overpayment must never be inferred as kobo");
+  assert.equal(toKobo(25, "major"), 2500, "underpayment remains below the expected price");
 });
 
-test("a verification reported in kobo is also recognised", () => {
-  // Flutterwave is inconsistent between endpoints, so both readings must work.
-  assert.equal(detectAmountUnit(250_000, PLAN.bronze), "minor");
-  assert.equal(detectAmountUnit(500_000, PLAN.platinum), "minor");
-});
-
-test("an amount matching neither reading is refused, not guessed at", () => {
-  assert.equal(detectAmountUnit(1234, PLAN.bronze), null);
-  assert.equal(detectAmountUnit(0, PLAN.bronze), null);
-  assert.equal(detectAmountUnit(null, PLAN.bronze), null);
-  assert.equal(detectAmountUnit("not-a-number", PLAN.bronze), null);
-});
-
-test("an underpayment cannot be mistaken for a full payment", () => {
-  // A customer paying 1/100th must not be detected as "major" and credited.
-  // 25 naira against a 2500 naira plan is minor-unit 2500, which is 1% of the
-  // price, and the caller rejects it because the normalised kobo is below the
-  // expected amount.
-  const unit = detectAmountUnit(2500, PLAN.bronze);
-  assert.equal(unit, "major");
-  assert.equal(toKobo(2500, unit), 250_000);
-
-  // A genuinely smaller payment in naira must not match either reading.
-  assert.equal(detectAmountUnit(25, PLAN.bronze), null);
+test("decimal major units convert exactly and malformed precision is refused", () => {
+  assert.equal(toKobo("101.01", "major"), 10_101);
+  assert.equal(toKobo("0.29", "major"), 29);
+  for (const value of [null, undefined, "", "not-a-number", "1.001", -1]) {
+    assert.throws(() => toKobo(value, "major"), /amount|precision/i);
+  }
 });
 
 test("toKobo normalises each unit back to the internal representation", () => {

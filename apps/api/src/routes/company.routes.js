@@ -1,7 +1,8 @@
 import { Router } from "express";
+import { randomInt } from "node:crypto";
 import { q, one, tx } from "../db.js";
-import { asyncHandler, badRequest, notFound, forbidden } from "../lib/errors.js";
-import { requireAuth, requireOrg, requirePermission } from "../middleware/auth.js";
+import { asyncHandler, badRequest, notFound, forbidden, misconfigured, serviceUnavailable, conflict } from "../lib/errors.js";
+import { requireAuth, requireOrg, requirePermission, requireCompanyMembership, companyContext } from "../middleware/auth.js";
 import { naira, fmtDate, fmtDateTime, relativeTime, reference } from "../lib/format.js";
 import { notify, audit } from "../lib/notify.js";
 import { issueSudoCard, createSudoCustomer, setSudoCardStatus } from "../lib/sudo.js";
@@ -12,13 +13,20 @@ import { cardLimits, companyIssuerIdentity, companyReportOptions } from "../lib/
 import { emitToOrg } from "../lib/sse.js";
 import { reportPdf } from "../lib/pdf.js";
 import { env } from "../config/env.js";
+import { integerKobo, nairaToKobo } from "../lib/money-amounts.js";
 
 const router = Router();
 
-router.use(requireAuth, (req, res, next) => {
-  // Company endpoints serve company-role users (admins get their own area)
-  if (req.user.role !== "company") return next(forbidden("This area is for company accounts"));
-  if (!req.user.orgId) return next(forbidden("No organization is linked to this account"));
+router.use(requireAuth, requireCompanyMembership);
+router.use((req, _res, next) => {
+  const onboarding = req.path === "/overview" && req.method === "GET" ||
+    req.path === "/billing" && req.method === "GET" ||
+    /^\/support\/tickets(?:\/[^/]+\/messages)?\/?$/.test(req.path) ||
+    /^\/notifications(?:\/[^/]+(?:\/read|\/dismiss)?|\/read-all)?\/?$/.test(req.path) ||
+    req.path === "/settings" && ["GET", "PUT"].includes(req.method);
+  if (req.org?.verification_status !== "verified" && !onboarding) {
+    return next(forbidden("Company operations require admin approval after your contract is agreed. Contact Support to confirm your contract."));
+  }
   next();
 });
 
@@ -28,6 +36,20 @@ function orgWhere(req) {
 }
 
 const statusTone = { Active: "green", Maintenance: "amber", Inactive: "muted", Active: "green", Cleared: "green", Pending: "amber", Resolved: "green", Open: "amber", Paid: "green", COMPLETED: "green", INVOICED: "blue", OVERDUE: "red", SCHEDULED: "blue" };
+function companyPagination(query) {
+  const integer = (value, fallback, minimum) => {
+    if (value == null) return fallback;
+    if (typeof value !== "string" || !/^\d+$/.test(value)) throw badRequest("Pagination must use whole numbers");
+    const number = Number(value);
+    if (!Number.isSafeInteger(number) || number < minimum || number > 2147483647) throw badRequest("Pagination is out of range");
+    return number;
+  };
+  return { limit: Math.min(integer(query.limit, 20, 1), 100), offset: integer(query.offset, 0, 0) };
+}
+function companyResourceId(id) {
+  if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(id)) throw badRequest("Invalid record ID");
+  return id;
+}
 
 // ============ OVERVIEW ============
 router.get("/overview", requireOrg, asyncHandler(async (req, res) => {
@@ -68,7 +90,8 @@ router.get("/overview", requireOrg, asyncHandler(async (req, res) => {
 
 // ============ VEHICLES ============
 router.get("/vehicles", requireOrg, asyncHandler(async (req, res) => {
-  const { search, status, limit = 20, offset = 0 } = req.query;
+  const { search, status } = req.query;
+  const { limit, offset } = companyPagination(req.query);
   const params = [req.user.orgId];
   let where = `v.organization_id = $1`;
   if (search) { params.push(`%${search}%`); where += ` AND (v.model ILIKE $${params.length} OR v.plate ILIKE $${params.length})`; }
@@ -78,8 +101,8 @@ router.get("/vehicles", requireOrg, asyncHandler(async (req, res) => {
         c.masked_pan AS card_pan, c.label AS card_label, c.status AS card_status
      FROM vehicles v LEFT JOIN cards c ON c.vehicle_id = v.id AND c.status IN ('active','frozen')
      LEFT JOIN drivers d ON d.id = v.driver_id AND d.organization_id = v.organization_id
-     WHERE ${where} ORDER BY v.created_at DESC LIMIT ${Math.min(Number(limit) || 20, 100)} OFFSET ${Number(offset) || 0}`,
-    params
+     WHERE ${where} ORDER BY v.created_at DESC, v.id DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+    [...params, limit, offset]
   );
   const total = await one(`SELECT COUNT(*)::int AS count FROM vehicles v WHERE ${where}`, params);
   res.json({
@@ -223,7 +246,8 @@ router.post("/assignments", requireOrg, requirePermission("fleet.manage"), async
 
 // ============ CARDS ============
 router.get("/cards", requireOrg, asyncHandler(async (req, res) => {
-  const { search, status, limit = 20, offset = 0 } = req.query;
+  const { search, status } = req.query;
+  const { limit, offset } = companyPagination(req.query);
   const params = [req.user.orgId];
   let where = `c.organization_id = $1`;
   if (search) { params.push(`%${search}%`); where += ` AND (c.label ILIKE $${params.length} OR c.masked_pan ILIKE $${params.length} OR c.holder_name ILIKE $${params.length})`; }
@@ -232,8 +256,8 @@ router.get("/cards", requireOrg, asyncHandler(async (req, res) => {
     `SELECT c.*, v.plate AS vehicle_plate, d.name AS driver_name,
             (c.spend_month_kobo::float / GREATEST(c.monthly_limit_kobo,1) * 100) AS usage_pct
      FROM cards c LEFT JOIN vehicles v ON v.id = c.vehicle_id LEFT JOIN drivers d ON d.id = c.driver_id
-     WHERE ${where} ORDER BY c.created_at DESC LIMIT ${Math.min(Number(limit) || 20, 100)} OFFSET ${Number(offset) || 0}`,
-    params
+     WHERE ${where} ORDER BY c.created_at DESC, c.id DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+    [...params, limit, offset]
   );
   const total = await one(`SELECT COUNT(*)::int AS count FROM cards c WHERE ${where}`, params);
   const metrics = await one(
@@ -334,7 +358,8 @@ router.put("/cards/:id/limits", requireOrg, requirePermission("cards.manage"), a
 
 // ============ TRANSACTIONS ============
 router.get("/transactions", requireOrg, asyncHandler(async (req, res) => {
-  const { search, status, limit = 20, offset = 0 } = req.query;
+  const { search, status } = req.query;
+  const { limit, offset } = companyPagination(req.query);
   const { date, days, vehicle, driver, driverId } = companyReportOptions({ ...req.query, scope: "transactions", format: "csv" });
   const params = [req.user.orgId];
   let where = `t.organization_id = $1`;
@@ -349,8 +374,8 @@ router.get("/transactions", requireOrg, asyncHandler(async (req, res) => {
     `SELECT t.*, s.name AS station_name, s.address AS station_address, v.plate AS vehicle_plate, d.name AS driver_name, c.masked_pan
      FROM transactions t LEFT JOIN stations s ON s.id = t.station_id LEFT JOIN vehicles v ON v.id = t.vehicle_id
      LEFT JOIN drivers d ON d.id = t.driver_id LEFT JOIN cards c ON c.id = t.card_id
-     WHERE ${where} ORDER BY t.created_at DESC LIMIT ${Math.min(Number(limit) || 20, 100)} OFFSET ${Number(offset) || 0}`,
-    params
+     WHERE ${where} ORDER BY t.created_at DESC, t.id DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+    [...params, limit, offset]
   );
   const total = await one(
     `SELECT COUNT(*)::int AS count FROM transactions t LEFT JOIN stations s ON s.id = t.station_id
@@ -573,26 +598,11 @@ router.get("/invoices/:id/download", requireOrg, asyncHandler(async (req, res) =
 }));
 
 router.post("/billing/plan", requireOrg, requirePermission("billing.manage"), asyncHandler(async (req, res) => {
-  const { planCode } = req.body ?? {};
-  const plan = await one("SELECT * FROM pricing_plans WHERE code = $1 AND active = TRUE", [planCode]);
-  if (!plan) throw notFound("Plan not found");
-  await q("UPDATE subscriptions SET plan_code = $2, status = 'active', cancel_at_period_end = FALSE, current_period_start = now(), current_period_end = now() + interval '1 month' WHERE organization_id = $1", [req.user.orgId, planCode]);
-  await q("UPDATE organizations SET plan_code = $2, next_billing_date = (now() + interval '1 month')::date WHERE id = $1", [req.user.orgId, planCode]);
-  await q(
-    `INSERT INTO invoices (organization_id, number, amount_kobo, status, description, paid_at)
-     VALUES ($1,$2,$3,'paid',$4, now())`,
-    [req.user.orgId, reference("INV"), plan.price_kobo, `${plan.name} plan upgrade`]
-  );
-  audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "billing.plan_changed", metadata: { planCode } });
-  res.json({ ok: true, planCode });
+  throw forbidden("Company billing changes require an agreed contract. Contact Support to confirm your terms.");
 }));
 
 router.post("/billing/cancel", requireOrg, requirePermission("billing.manage"), asyncHandler(async (req, res) => {
-  const { confirm } = req.body ?? {};
-  if (confirm !== req.user.organization_name && confirm !== "CANCEL") throw badRequest('Type CANCEL to confirm subscription cancellation');
-  await q("UPDATE subscriptions SET cancel_at_period_end = TRUE WHERE organization_id = $1", [req.user.orgId]);
-  audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "billing.cancel_requested" });
-  res.json({ ok: true, message: "Subscription will end at the close of the current billing period." });
+  throw forbidden("Company cancellation terms follow your agreed contract. Contact Support to request a contract change.");
 }));
 
 // ============ TEAM ============
@@ -653,24 +663,17 @@ router.get("/wallet", requireOrg, requirePermission("wallet.manage"), asyncHandl
 }));
 
 router.post("/wallet/allocate", requireOrg, requirePermission("wallet.manage"), asyncHandler(async (req, res) => {
-  const { memberId, toUserId, amountKobo, amountNaira, note } = req.valid ?? req.body ?? {};
+  if (req.body?.organizationId != null && req.body.organizationId !== req.user.orgId) throw conflict("Your company selection changed. Review the allocation in the selected company.");
+  const { memberId, toUserId, amountKobo, amountNaira, note, idempotencyKey: bodyKey } = req.valid ?? req.body ?? {};
   const target = String(toUserId ?? memberId ?? "").trim();
   if (!target) throw badRequest("Choose the member to credit");
-
-  // A member can only be credited by their own organization, and never by
-  // escalating to another org's wallet.
-  const member = await one(
-    "SELECT user_id, role FROM memberships WHERE organization_id = $1 AND user_id = $2 AND status = 'active'",
-    [req.user.orgId, target]
-  );
-  if (!member) throw forbidden("That person is not an active member of this company");
-
-  const kobo =
-    amountKobo != null
-      ? Math.round(Number(amountKobo))
-      : Math.round(Number(amountNaira) * 100);
-  if (!Number.isFinite(kobo) || kobo <= 0) throw badRequest("Enter an amount greater than zero");
-  if (kobo > 100_000_000_00) throw badRequest("Amounts above ₦1,000,000,000 need a manual request");
+  if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(target)) throw badRequest("Choose a valid member");
+  if (toUserId != null && memberId != null && toUserId !== memberId) throw badRequest("Choose one member to credit");
+  if (amountKobo != null && amountNaira != null) throw badRequest("Provide the amount in either naira or kobo");
+  const kobo = amountKobo != null ? integerKobo(amountKobo) : nairaToKobo(amountNaira);
+  if (note != null && (typeof note !== "string" || note.length > 140)) throw badRequest("The allocation note must be text of at most 140 characters");
+  const headerKey = req.get("Idempotency-Key");
+  if (headerKey != null && bodyKey != null && headerKey !== bodyKey) throw badRequest("The idempotency header and body key must match");
 
   const { transferFromCompanyWallet } = await import("../lib/money.js");
   const result = await transferFromCompanyWallet({
@@ -680,7 +683,8 @@ router.post("/wallet/allocate", requireOrg, requirePermission("wallet.manage"), 
     actorUserId: req.user.id,
     actorRole: req.user.role,
     ip: req.ip,
-    note: typeof note === "string" ? note.slice(0, 140) : ""
+    note: note ?? "",
+    idempotencyKey: headerKey ?? bodyKey
   });
 
   res.json({
@@ -694,67 +698,92 @@ router.post("/wallet/allocate", requireOrg, requirePermission("wallet.manage"), 
 }));
 
 router.post("/wallet/topup", requireOrg, requirePermission("billing.manage"), asyncHandler(async (req, res) => {
-  const { amountKobo, amountNaira } = req.valid ?? req.body ?? {};
-  const kobo = amountKobo != null ? Math.round(Number(amountKobo)) : Math.round(Number(amountNaira) * 100);
-  if (!Number.isFinite(kobo) || kobo <= 0) throw badRequest("Enter an amount greater than zero");
-
-  const { startCheckout, activeProvider } = await import("../lib/payments.js");
+  const { amountKobo, amountNaira, method, expectedTotalKobo } = req.valid ?? req.body ?? {};
+  if (amountKobo != null && amountNaira != null) throw badRequest("Provide the amount in either naira or kobo");
+  const { startCheckout, activeProvider, minimumTopupKobo, priceWithFee, walletFundingMethod, validateWalletFundingMethod } = await import("../lib/payments.js");
+  const bounds = { min: minimumTopupKobo(), max: 500_000_000, label: "Top-up" };
+  const kobo = amountKobo != null ? integerKobo(amountKobo, bounds) : nairaToKobo(amountNaira, { ...bounds, wholeNaira: true });
+  if (kobo % 100 !== 0) throw badRequest("Top-up must be a whole number of naira");
+  const paymentMethod = walletFundingMethod(method);
+  const provider = activeProvider();
+  if (!provider) throw misconfigured("No payment provider is configured. The deployment is missing its payment credentials.");
+  validateWalletFundingMethod(provider, paymentMethod);
   const companyWallet = await one("SELECT * FROM wallets WHERE organization_id = $1", [req.user.orgId]);
   if (!companyWallet) throw notFound("This company has no wallet yet");
-
+  if (companyWallet.currency !== "NGN") throw badRequest("Company top-ups require an NGN wallet");
   const org = await one("SELECT name, owner_user_id FROM organizations WHERE id = $1", [req.user.orgId]);
+  if (!org?.owner_user_id || companyWallet.user_id !== org.owner_user_id) throw badRequest("The company wallet owner needs to be confirmed before funding");
   const user = await one("SELECT email, full_name FROM users WHERE id = $1", [org.owner_user_id]);
-  const { reference: makeRef } = await import("../lib/format.js");
-  const txRef = makeRef("TOPUP");
-
-  const topup = await one(
-    `INSERT INTO top_ups (user_id, wallet_id, reference, amount_kobo, currency, provider, provider_transaction_id, status)
-     VALUES ($1,$2,$3,$4,'NGN',$5,NULL,'pending') RETURNING *`,
-    [org.owner_user_id, companyWallet.id, txRef, kobo, activeProvider()]
-  );
-
+  if (!user?.email) throw badRequest("The company wallet owner needs a payment email");
+  const txRef = reference("TOPUP");
+  const price = priceWithFee(kobo);
+  if (expectedTotalKobo != null && integerKobo(expectedTotalKobo, { max: Number.MAX_SAFE_INTEGER, label: "Quoted total" }) !== price.totalKobo) {
+    throw conflict("The payment fee changed. Review the new total before continuing.");
+  }
+  const topup = await tx(async t => {
+    const row = await t.one(
+      `INSERT INTO top_ups (user_id, wallet_id, reference, amount_kobo, fee_kobo, charged_kobo, method, provider, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending') RETURNING *`,
+      [org.owner_user_id, companyWallet.id, txRef, price.baseKobo, price.feeKobo, price.totalKobo, paymentMethod, provider]
+    );
+    await t.query(
+      `INSERT INTO audit_logs (actor_user_id, actor_role, action, entity_type, entity_id, ip, metadata)
+       VALUES ($1,$2,'wallet.company_topup_initiated','top_up',$3,$4,$5)`,
+      [req.user.id, req.user.role, row.id, req.ip, JSON.stringify({ organizationId: req.user.orgId, walletId: companyWallet.id, ownerUserId: org.owner_user_id, amountKobo: price.baseKobo, feeKobo: price.feeKobo, chargedKobo: price.totalKobo, feeBearer: price.bearer, method: paymentMethod, provider, reference: txRef })]
+    );
+    return row;
+  });
   const checkout = await startCheckout({
-    provider: activeProvider(),
+    provider,
     txRef,
-    amountKobo: kobo,
+    amountKobo: price.totalKobo,
     email: user.email,
     name: org.name,
-    redirectUrl: `${env.APP_URL}/company?tab=billing&topup=${txRef}`,
+    redirectUrl: `${env.APP_URL}/company/billing?topup=${encodeURIComponent(txRef)}`,
     title: `${org.name} wallet top-up`,
-    meta: { kind: "company_topup", organizationId: req.user.orgId, topupId: topup.id },
-    // Opt-in split settlement: when the org has a live subaccount, its share
-    // settles to the subaccount rather than the platform account.
-    split: await resolveCompanySplit(req.user.orgId)
+    paymentMethod,
+    meta: { kind: "company_topup", organizationId: req.user.orgId, topupId: topup.id }
   });
-  await q("UPDATE top_ups SET provider_transaction_id = $2 WHERE id = $1", [topup.id, checkout.providerTransactionId ?? null]);
-
-  // Persist the split that was actually applied, so settlement can be proven
-  // later without re-deriving it from the checkout session.
-  const split = await resolveCompanySplit(req.user.orgId);
-  if (split) {
-    await recordPaymentSplit({
-      settlementAccount: split.account,
-      provider: activeProvider(),
-      providerRef: txRef,
-      subaccountId: split.subaccountId,
-      ratioBp: split.ratioBp,
-      amountKobo: kobo,
-      topUpId: topup.id
-    });
-  }
-
-  res.json({ ok: true, topup, checkout });
+  // This funds a wallet liability. Its cash must remain with the platform rather
+  // than being paid out through the company's collection subaccount.
+  const saved = await one("UPDATE top_ups SET provider_reference=$2,provider_transaction_id=$3 WHERE id=$1 RETURNING *", [topup.id, checkout.authorization_url ?? null, checkout.providerTransactionId ?? null]);
+  res.json({ ok: true, topup: saved, checkout, reference: txRef, provider, paymentUrl: checkout.authorization_url ?? null, simulated: checkout.simulated, amountKobo: price.baseKobo, feeKobo: price.feeKobo, totalKobo: price.totalKobo, amountLabel: naira(price.baseKobo), feeLabel: naira(price.feeKobo), totalLabel: naira(price.totalKobo), feeBearer: price.bearer });
 }));
 
-/** Resolve the org's active processor subaccount, if one is linked. */
-async function resolveCompanySplit(organizationId) {
-  const account = await one(
-    "SELECT * FROM settlement_accounts WHERE organization_id = $1 AND status = 'active'",
-    [organizationId]
+router.post("/wallet/topup/confirm", requireOrg, requirePermission("billing.manage"), asyncHandler(async (req, res) => {
+  const ref = req.body?.reference;
+  if (typeof ref !== "string" || !ref || ref.length > 200) throw badRequest("A top-up reference is required");
+  const topup = await one(
+    `SELECT t.* FROM top_ups t JOIN wallets w ON w.id=t.wallet_id JOIN organizations o ON o.id=w.organization_id
+     WHERE t.reference=$1 AND w.organization_id=$2 AND w.user_id=t.user_id AND o.owner_user_id=t.user_id AND w.currency='NGN'`,
+    [ref, req.user.orgId]
   );
-  if (!account?.subaccount_id) return null;
-  return { account, subaccountId: account.subaccount_id, ratioBp: Number(account.split_ratio_bp ?? 0) };
-}
+  if (!topup) throw notFound("Top-up not found");
+  const reply = async alreadyPaid => {
+    const wallet = await one("SELECT balance_kobo FROM wallets WHERE id=$1 AND organization_id=$2", [topup.wallet_id, req.user.orgId]);
+    res.json({ ok: true, alreadyPaid, balanceKobo: Number(wallet.balance_kobo), balanceLabel: naira(wallet.balance_kobo), provider: topup.provider });
+  };
+  if (topup.status === "success") return reply(true);
+  const { verifyCheckout } = await import("../lib/payments.js");
+  const { isTerminalPaymentFailure } = await import("../lib/flutterwave.js");
+  let verification;
+  try {
+    verification = await verifyCheckout({ provider: topup.provider, reference: ref, transactionId: req.body?.transactionId ?? topup.provider_transaction_id ?? null, expectedAmountKobo: integerKobo(topup.charged_kobo, { max: Number.MAX_SAFE_INTEGER }), expectedCurrency: "NGN" });
+  } catch (error) {
+    if (error?.transactionMissing) throw serviceUnavailable("We cannot confirm this payment yet. Please try again shortly.");
+    throw error;
+  }
+  if (!verification.paid) {
+    if (isTerminalPaymentFailure(verification.status)) {
+      await q("UPDATE top_ups SET status='failed' WHERE id=$1 AND status='pending'", [topup.id]);
+      throw badRequest("Payment was not successful");
+    }
+    throw serviceUnavailable("This payment is awaiting confirmation. Please try again shortly.");
+  }
+  const { completeTopUp } = await import("./customer.routes.js");
+  await completeTopUp(topup, { providerTransactionId: verification.providerTransactionId ?? null, verifiedPaid: true, verifiedAmountKobo: verification.amountKobo, expectedOrganizationId: req.user.orgId });
+  await reply(false);
+}));
 
 /**
  * Record the split applied to a charge. Idempotent on (provider, ref,
@@ -809,57 +838,81 @@ router.get("/wallet/members", requireOrg, requirePermission("wallet.manage"), as
   res.json({ members: rows.map((m) => ({ userId: m.user_id, role: m.role, name: m.name, email: m.email, balanceKobo: Number(m.balance_kobo) })) });
 }));
 
+const TEAM_ROLES = { viewer:0,dispatcher:1,manager:2,admin:3,owner:4 };
+const TEAM_PERMISSIONS = new Set(["billing.manage","cards.manage","fleet.manage","org.manage","team.manage","wallet.manage"]);
+function teamChangeAllowed(actor,role,permissions,targetRole) {
+  const actorRole = actor.member_role;
+  if (actorRole !== "owner" && actorRole !== "admin" && !actor.permissions?.includes("team.manage")) throw forbidden("Missing permission: team.manage");
+  if (targetRole === "owner") throw forbidden("The company owner cannot be changed");
+  if (role !== undefined && !["admin","manager","dispatcher","viewer"].includes(role)) throw badRequest("Choose a valid team role");
+  if ((TEAM_ROLES[role ?? targetRole ?? "viewer"] > TEAM_ROLES[actorRole]) ||
+      (targetRole && TEAM_ROLES[targetRole] > TEAM_ROLES[actorRole])) throw forbidden("You cannot assign or change a team role above your own");
+  if (permissions !== undefined) {
+    if (!Array.isArray(permissions) || permissions.some(value => !TEAM_PERMISSIONS.has(value))) throw badRequest("Choose valid team permissions");
+    if (actorRole !== "owner" && actorRole !== "admin" && permissions.some(value => !actor.permissions?.includes(value))) throw forbidden("You cannot grant permissions you do not have");
+  }
+}
+function teamMemberId(req) {
+  const id = req.params.memberId;
+  if (typeof id !== "string" || !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(id)) throw badRequest("Choose a valid team member");
+  return id;
+}
+async function teamActor(t,req) {
+  await t.one("SELECT id FROM organizations WHERE id=$1 FOR UPDATE",[req.user.orgId]);
+  return companyContext(req.user,req.user.orgId,t);
+}
+const escapeEmailHtml = value => String(value).replace(/[&<>"']/g, value => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" })[value]);
+
 router.post("/team/invite", requireOrg, requirePermission("team.manage"), asyncHandler(async (req, res) => {
-  const { email, role = "viewer" } = req.valid ?? req.body ?? {};
-  if (!email) throw badRequest("Email is required");
-  if (!["admin", "manager", "dispatcher", "viewer"].includes(role)) throw badRequest("Choose a valid role");
-  const existing = await one("SELECT id FROM memberships WHERE organization_id = $1 AND lower(email) = lower($2)", [req.user.orgId, email]);
-  if (existing) throw badRequest("This person is already on your team");
+  const { email: input, role = "viewer" } = req.valid ?? req.body ?? {};
+  if (typeof input !== "string" || input.length>254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.trim())) throw badRequest("Enter a valid email address");
+  const email = input.trim().toLowerCase();
   const { randomToken } = await import("../lib/security.js");
   const token = randomToken(24);
-  await q(
-    `INSERT INTO invites (organization_id, email, role, token, invited_by, expires_at) VALUES ($1,$2,$3,$4,$5, now() + interval '7 days')`,
-    [req.user.orgId, email, role, token, req.user.id]
-  );
-  await q(
-    `INSERT INTO memberships (organization_id, email, role, status, invited_by) VALUES ($1,$2,$3,'invited',$4)`,
-    [req.user.orgId, email, role, req.user.id]
-  );
-  const { sendEmail } = await import("../lib/notify.js");
-  const { env } = await import("../config/env.js");
-  void sendEmail({
-    to: email,
-    subject: `You've been invited to ${req.user.organization_name} on Obligon`,
-    text: `Join your team on Obligon: ${env.APP_URL}/auth/signup?invite=${token}`,
-    html: `<div style="font-family:sans-serif"><h2>Team invitation</h2><p>You've been invited as <b>${role}</b> to ${req.user.organization_name} on Obligon LTD.</p><p><a href="${env.APP_URL}/auth/signup?invite=${token}">Accept invitation</a> (valid 7 days)</p></div>`
+  const actor = await tx(async t => {
+    const actor = await teamActor(t,req); teamChangeAllowed(actor,role);
+    const existing = await t.one("SELECT id FROM memberships WHERE organization_id=$1 AND lower(email)=lower($2)",[req.user.orgId,email]);
+    if (existing) throw badRequest("This person is already on your team");
+    await t.query(`INSERT INTO invites(organization_id,email,role,token,invited_by,expires_at) VALUES($1,$2,$3,$4,$5,clock_timestamp()+interval '7 days')`,[req.user.orgId,email,role,token,req.user.id]);
+    await t.query(`INSERT INTO memberships(organization_id,email,role,status,invited_by) VALUES($1,$2,$3,'invited',$4)`,[req.user.orgId,email,role,req.user.id]);
+    return actor;
   });
-  audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "team.invited", metadata: { email, role } });
-  res.json({ ok: true });
+  const { sendEmail } = await import("../lib/notify.js");
+  const link = `${env.APP_URL}/auth/company-invitation?invite=${token}`;
+  const delivery = await sendEmail({ to:email,subject:`You've been invited to ${actor.name} on Obligon`,
+    text:`You've been invited as ${role} to ${actor.name}. Sign in with ${email}, verify your email, and join your existing team: ${link} (valid 7 days)`,
+    html:`<div style="font-family:sans-serif"><h2>Team invitation</h2><p>You've been invited as <b>${role}</b> to ${escapeEmailHtml(actor.name)} on Obligon LTD.</p><p><a href="${escapeEmailHtml(link)}">Accept invitation</a> (valid 7 days)</p></div>` });
+  await audit({ actorUserId:req.user.id,actorRole:req.user.role,action:"team.invited",metadata:{email,role,organizationId:req.user.orgId} });
+  res.json({ ok:true, emailDelivered:Boolean(delivery?.delivered) });
 }));
 
-router.put("/team/:memberId", requireOrg, requirePermission("team.manage"), asyncHandler(async (req, res) => {
-  const { role, permissions } = req.body ?? {};
-  const member = await one(
-    `UPDATE memberships SET role = COALESCE($2, role), permissions = COALESCE($3, permissions)
-     WHERE id = $1 AND organization_id = $4 RETURNING *`,
-    [req.params.memberId, role ?? null, permissions ? JSON.stringify(permissions) : null, req.user.orgId]
-  );
-  if (!member) throw notFound("Team member not found");
-  if (member.user_id) {
-    const roleMap = { admin: "company", manager: "company", dispatcher: "company", viewer: "company", owner: "company" };
-    await q("UPDATE users SET role = 'company' WHERE id = $1", [member.user_id]);
-  }
-  audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "team.updated", entityId: member.id });
-  res.json({ ok: true });
+router.put("/team/:memberId", requireOrg, requirePermission("team.manage"), asyncHandler(async (req,res) => {
+  const { role,permissions } = req.body ?? {};
+  const member = await tx(async t => {
+    const actor = await teamActor(t,req);
+    const member = await t.one("SELECT * FROM memberships WHERE id=$1 AND organization_id=$2 FOR UPDATE",[teamMemberId(req),req.user.orgId]);
+    if (!member) throw notFound("Team member not found");
+    teamChangeAllowed(actor,role,permissions,member.role);
+    const updated = await t.one("UPDATE memberships SET role=COALESCE($2,role),permissions=COALESCE($3,permissions) WHERE id=$1 RETURNING *",[member.id,role??null,permissions===undefined?null:JSON.stringify([...new Set(permissions)])]);
+    if (role !== undefined && member.status === "invited") await t.query("UPDATE invites SET role=$3 WHERE organization_id=$1 AND lower(email)=lower($2) AND status='pending'",[req.user.orgId,member.email,role]);
+    return updated;
+  });
+  await audit({actorUserId:req.user.id,actorRole:req.user.role,action:"team.updated",entityId:member.id});
+  res.json({ok:true});
 }));
 
-router.delete("/team/:memberId", requireOrg, requirePermission("team.manage"), asyncHandler(async (req, res) => {
-  const member = await one("SELECT * FROM memberships WHERE id = $1 AND organization_id = $2", [req.params.memberId, req.user.orgId]);
-  if (!member) throw notFound("Team member not found");
-  if (member.role === "owner") throw forbidden("The organization owner cannot be removed");
-  await q("DELETE FROM memberships WHERE id = $1", [member.id]);
-  audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "team.removed", metadata: { email: member.email } });
-  res.json({ ok: true });
+router.delete("/team/:memberId", requireOrg, requirePermission("team.manage"), asyncHandler(async (req,res) => {
+  const member = await tx(async t => {
+    const actor = await teamActor(t,req);
+    const member = await t.one("SELECT * FROM memberships WHERE id=$1 AND organization_id=$2 FOR UPDATE",[teamMemberId(req),req.user.orgId]);
+    if (!member) throw notFound("Team member not found");
+    teamChangeAllowed(actor,undefined,undefined,member.role);
+    await t.query("UPDATE invites SET status='revoked' WHERE organization_id=$1 AND lower(email)=lower($2) AND status='pending'",[req.user.orgId,member.email]);
+    await t.query("DELETE FROM memberships WHERE id=$1",[member.id]);
+    return member;
+  });
+  await audit({actorUserId:req.user.id,actorRole:req.user.role,action:"team.removed",metadata:{email:member.email}});
+  res.json({ok:true});
 }));
 
 // ============ NOTIFICATIONS ============
@@ -890,27 +943,50 @@ router.post("/notifications/read-all", requireOrg, asyncHandler(async (req, res)
 
 // ============ SUPPORT ============
 router.get("/support/tickets", requireOrg, asyncHandler(async (req, res) => {
-  const rows = await q("SELECT * FROM support_tickets WHERE organization_id = $1 OR user_id = $2 ORDER BY created_at DESC LIMIT 50", [req.user.orgId, req.user.id]);
+  const rows = await q("SELECT * FROM support_tickets WHERE organization_id = $1 ORDER BY created_at DESC LIMIT 50", [req.user.orgId]);
   res.json({
     tickets: rows.map((t) => ({
       id: t.id,
       cells: [`#${t.reference}`, fmtDate(t.created_at), t.subject],
-      status: t.status === "queued" ? "Open" : t.status === "active" ? "Pending" : t.status === "closed" ? "Resolved" : "Open",
-      tone: t.status === "closed" ? "green" : t.status === "active" ? "blue" : "amber",
+      status: t.status === "queued" ? "Open" : t.status === "active" ? "Pending" : t.status === "closed" ? "Resolved" : "Unavailable",
+      tone: t.status === "closed" ? "green" : t.status === "active" ? "blue" : t.status === "unavailable" ? "red" : "amber",
       reference: t.reference, statusRaw: t.status, subject: t.subject
     }))
   });
 }));
 
+router.get("/support/tickets/:id/messages", requireOrg, asyncHandler(async (req, res) => {
+  const ticket = await one("SELECT id,status FROM support_tickets WHERE id=$1 AND organization_id=$2", [companyResourceId(req.params.id), req.user.orgId]);
+  if (!ticket) throw notFound("Ticket not found");
+  const messages = await q(`SELECT m.*,u.full_name AS sender_name FROM ticket_messages m LEFT JOIN users u ON u.id=m.sender_user_id WHERE m.ticket_id=$1 ORDER BY m.created_at ASC,m.id ASC`, [ticket.id]);
+  res.json({ status: ticket.status, messages: messages.map(m => ({ id: m.id, sender: m.sender_name ?? m.sender_role, role: m.sender_role, body: m.body, time: fmtDateTime(m.created_at) })) });
+}));
+
+router.post("/support/tickets/:id/messages", requireOrg, asyncHandler(async (req, res) => {
+  const { body } = req.body ?? {};
+  if (typeof body !== "string" || !body.trim() || body.trim().length > 5000) throw badRequest("Enter a message of at most 5,000 characters");
+  await tx(async t => {
+    const ticket = await t.one("SELECT id,status FROM support_tickets WHERE id=$1 AND organization_id=$2 FOR UPDATE", [companyResourceId(req.params.id), req.user.orgId]);
+    if (!ticket) throw notFound("Ticket not found");
+    await t.query("INSERT INTO ticket_messages(ticket_id,sender_user_id,sender_role,body) VALUES($1,$2,$3,$4)", [ticket.id, req.user.id, req.user.role, body.trim()]);
+    if (ticket.status === "closed") await t.query("UPDATE support_tickets SET status='active',updated_at=now() WHERE id=$1", [ticket.id]);
+  });
+  res.json({ ok: true });
+}));
+
 router.post("/support/tickets", requireOrg, asyncHandler(async (req, res) => {
   const { subject, category = "general", message, priority = "normal" } = req.valid ?? req.body ?? {};
-  if (!subject || !message) throw badRequest("Subject and message are required");
-  const ticket = await one(
+  if (typeof subject !== "string" || !subject.trim() || subject.trim().length > 140 || typeof message !== "string" || !message.trim() || message.trim().length > 5000) throw badRequest("Enter a subject of at most 140 characters and a message of at most 5,000 characters");
+  if (!["general", "billing", "card", "fleet"].includes(category) || !["normal", "high"].includes(priority)) throw badRequest("Choose a supported category and priority");
+  const ticket = await tx(async t => {
+    const saved = await t.one(
     `INSERT INTO support_tickets (reference, user_id, organization_id, subject, category, message, priority, status)
      VALUES ($1,$2,$3,$4,$5,$6,$7,'queued') RETURNING *`,
-    [reference("TK"), req.user.id, req.user.orgId, subject, category, message, priority]
-  );
-  await q("INSERT INTO ticket_messages (ticket_id, sender_user_id, sender_role, body) VALUES ($1,$2,$3,$4)", [ticket.id, req.user.id, req.user.role, message]);
+    [reference("TK"), req.user.id, req.user.orgId, subject.trim(), category, message.trim(), priority]
+    );
+    await t.query("INSERT INTO ticket_messages (ticket_id, sender_user_id, sender_role, body) VALUES ($1,$2,$3,$4)", [saved.id, req.user.id, req.user.role, message.trim()]);
+    return saved;
+  });
   await notify({ orgId: req.user.orgId, title: "Support ticket received", body: `Ticket ${ticket.reference} — ${subject}. Our team will respond shortly.`, category: "support" });
   res.json({ ok: true, reference: ticket.reference });
 }));
@@ -943,13 +1019,23 @@ router.put("/settings", requireOrg, requirePermission("org.manage"), asyncHandle
 
 // ============ POS AUTHORIZATION CODES (driver one-time codes) ============
 router.post("/cards/:id/pos-code", requireOrg, requirePermission("fleet.manage"), asyncHandler(async (req, res) => {
-  const card = await one("SELECT * FROM cards WHERE id = $1 AND organization_id = $2", [req.params.id, req.user.orgId]);
-  if (!card) throw notFound("Card not found");
-  if (card.status !== "active") throw badRequest("Only active cards can generate authorization codes");
-  const code = String(Math.floor(100000 + Math.random() * 900000));
-  await q("UPDATE cards SET pos_code = $2, pos_code_expires_at = now() + interval '15 minutes' WHERE id = $1", [card.id, code]);
-  audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "card.pos_code_issued", entityId: card.id });
-  res.json({ ok: true, code, expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(), maskedPan: card.masked_pan });
+  const result = await tx(async t => {
+    const card = await t.one("SELECT id,status,masked_pan FROM cards WHERE id=$1 AND organization_id=$2 FOR UPDATE", [companyResourceId(req.params.id), req.user.orgId]);
+    if (!card) throw notFound("Card not found");
+    if (card.status !== "active") throw badRequest("Only active cards can generate authorization codes");
+    // Partner POS looks codes up across fleets. Serialize issuance to avoid ambiguous active codes.
+    await t.query("SELECT pg_advisory_xact_lock(73491622)");
+    let code;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const candidate = String(randomInt(100000, 1000000));
+      if (!(await t.one("SELECT id FROM cards WHERE pos_code=$1", [candidate]))) { code = candidate; break; }
+    }
+    if (!code) throw serviceUnavailable("Could not issue a unique fuel code. Try again shortly.");
+    const saved = await t.one("UPDATE cards SET pos_code=$2,pos_code_expires_at=now()+interval '15 minutes' WHERE id=$1 RETURNING pos_code,pos_code_expires_at", [card.id, code]);
+    await t.query("INSERT INTO audit_logs(actor_user_id,actor_role,action,entity_type,entity_id) VALUES($1,$2,'card.pos_code_issued','card',$3)", [req.user.id, req.user.role, card.id]);
+    return { code: saved.pos_code, expiresAt: saved.pos_code_expires_at, maskedPan: card.masked_pan };
+  });
+  res.json({ ok: true, ...result });
 }));
 
 // ============ MAINTENANCE ============
@@ -985,23 +1071,24 @@ router.post("/maintenance", requireOrg, requirePermission("fleet.manage"), async
   const { vehicleId, serviceType, scheduledDate, cost, notes } = req.valid ?? req.body ?? {};
   if (!serviceType || !scheduledDate) throw badRequest("Service type and date are required");
   companyReportOptions({ date: scheduledDate });
+  const costKobo = nairaToKobo(cost ?? 0, { min: 0, max: 100_000_000_000, label: "Maintenance cost" });
   if (vehicleId && !(await one("SELECT id FROM vehicles WHERE id = $1 AND organization_id = $2", [vehicleId, req.user.orgId]))) throw badRequest("Selected vehicle is not part of this fleet");
   const schedule = await one(
     `INSERT INTO maintenance_schedules (organization_id, vehicle_id, service_type, scheduled_date, cost_kobo, notes, status)
      VALUES ($1,$2,$3,$4,$5,$6,'scheduled') RETURNING *`,
-    [req.user.orgId, vehicleId || null, serviceType, scheduledDate, Math.round((Number(cost) || 0) * 100), notes ?? ""]
+    [req.user.orgId, vehicleId || null, serviceType, scheduledDate, costKobo, notes ?? ""]
   );
-  await notify({ orgId: req.user.orgId, title: "Maintenance booked", body: `${serviceType} scheduled for ${fmtDate(scheduledDate)}.`, category: "general", link: "/company/maintenance" });
+  await notify({ orgId: req.user.orgId, title: "Maintenance schedule recorded", body: `${serviceType} recorded for ${fmtDate(scheduledDate)}. Confirm arrangements with your service provider.`, category: "general", link: "/company/maintenance" });
   audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "maintenance.booked", entityId: schedule.id });
   res.json({ ok: true, id: schedule.id });
 }));
 
-router.put("/maintenance/:id", requireOrg, asyncHandler(async (req, res) => {
+router.put("/maintenance/:id", requireOrg, requirePermission("fleet.manage"), asyncHandler(async (req, res) => {
   const { status } = req.body ?? {};
   if (!["scheduled", "in_progress", "completed", "cancelled"].includes(status)) throw badRequest("Invalid status");
   const rows = await q(
     `UPDATE maintenance_schedules SET status = $2 WHERE id = $1 AND organization_id = $3 RETURNING id`,
-    [req.params.id, status, req.user.orgId]
+    [companyResourceId(req.params.id), status, req.user.orgId]
   );
   if (!rows.length) throw notFound("Maintenance schedule not found");
   res.json({ ok: true });

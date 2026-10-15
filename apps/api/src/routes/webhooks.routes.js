@@ -1,11 +1,11 @@
 import { confirmFuelOrder } from "../lib/fuel-checkout.js";
 import { confirmSubscriptionPayment } from "./subscription.routes.js";
 import { Router } from "express";
-import { q, one, tx, claimIdempotency } from "../db.js";
+import { q, one, tx } from "../db.js";
 import { webhookLimiter } from "../middleware/security.js";
 import { verifyPaystackSignature } from "../lib/paystack.js";
 import { verifyWebhook, parseWebhook, verifyCheckout } from "../lib/payments.js";
-import { completeTopUp } from "./customer.routes.js";
+import { completeTopUp, notifyCompletedTopUp } from "./customer.routes.js";
 import { naira, reference } from "../lib/format.js";
 import { notify, audit } from "../lib/notify.js";
 import { env } from "../config/env.js";
@@ -13,113 +13,112 @@ import crypto from "node:crypto";
 
 const router = Router();
 
-/**
- * Paystack webhooks. Signature = HMAC-SHA512(rawBody, secretKey) in
- * `x-paystack-signature`. Must read the RAW body — configured in app.js.
- */
+/** Record receipt with database effects in one transaction. A killed worker
+ * leaves both uncommitted, so a provider retry can safely process the event. */
+async function processEvent(key, work, { recoverLegacy = false } = {}) {
+  return tx(async t => {
+    const claimed = await t.one(`INSERT INTO idempotency_keys(key,response) VALUES($1,'{"completed":true}'::jsonb)
+      ON CONFLICT(key) DO UPDATE SET response=EXCLUDED.response
+      WHERE $2::boolean AND idempotency_keys.response IS NULL RETURNING key`, [key,recoverLegacy]);
+    if (!claimed) return { duplicate: true };
+    return { duplicate: false, result: await work(t) };
+  });
+}
+
+/** Paystack HMAC authenticates raw payload; charge evidence is verified again. */
 router.post("/paystack", webhookLimiter, async (req, res) => {
-  const signature = req.headers["x-paystack-signature"];
   const raw = req.rawBody ?? Buffer.from(JSON.stringify(req.body ?? {}));
-  if (!verifyPaystackSignature(raw, signature)) {
-    return res.status(401).json({ error: "Invalid signature" });
-  }
-  const event = req.body;
-  const eventKey = `webhook:paystack:${event.id ?? crypto.createHash("sha256").update(raw).digest("hex")}`;
-  if (!await claimIdempotency(eventKey)) return res.json({ received: true, duplicate: true });
+  if (!verifyPaystackSignature(raw, req.headers["x-paystack-signature"])) return res.status(401).json({error:"Invalid signature"});
+  const event = req.body ?? {};
+  const eventKey = `webhook:paystack:${event.event}:${event.id ?? crypto.createHash("sha256").update(raw).digest("hex")}`;
   try {
-    switch (event.event) {
-      case "charge.success": {
-        const reference = event.data?.reference;
-        const topup = await one("SELECT * FROM top_ups WHERE reference = $1", [reference]);
-        if (topup && topup.status === "pending") {
-          await completeTopUp(topup);
-        }
-        break;
-      }
-      case "transfer.success": {
-        const ref = event.data?.reference;
-        await q(`UPDATE payouts SET status = 'success', paid_at = now() WHERE reference = $1 AND status IN ('pending','processing')`, [ref]);
-        const payout = await one("SELECT * FROM payouts WHERE reference = $1", [ref]);
-        if (payout) {
-          await notify({ orgId: payout.partner_org_id, title: "Payout successful", body: `${naira(payout.amount_kobo)} was deposited into your bank account.`, category: "settlements" });
-        }
-        break;
-      }
-      case "transfer.failed": {
-        const ref = event.data?.reference;
-        await q(`UPDATE payouts SET status = 'failed', failure_reason = $2 WHERE reference = $1`, [ref, event.data?.reason ?? "Transfer failed at provider"]);
-        const payout = await one("SELECT * FROM payouts WHERE reference = $1", [ref]);
-        if (payout) {
-          await notify({ orgId: payout.partner_org_id, title: "Payout failed", body: `${naira(payout.amount_kobo)} could not be delivered. You can retry from the settlements page.`, category: "settlements", actionRequired: true });
-        }
-        break;
-      }
-      case "subscription.create":
-      case "subscription.disable": {
-        const code = event.data?.subscription_code;
-        await q(`UPDATE subscriptions SET status = $2 WHERE paystack_subscription_code = $1`, [code, event.event === "subscription.disable" ? "canceled" : "active"]);
-        break;
-      }
-      case "invoice.create": {
-        // Auto-create invoice records for subscription billings
-        const data = event.data ?? {};
-        if (data.subscription?.organization_id ?? data.customer?.email) {
-          const sub = await one("SELECT * FROM subscriptions WHERE paystack_subscription_code = $1", [data.subscription?.subscription_code]);
-          if (sub) {
-            await q(
-              `INSERT INTO invoices (organization_id, number, amount_kobo, status, description) VALUES ($1,$2,$3,'open','Subscription billing')`,
-              [sub.organization_id, reference("INV"), data.amount ?? 0]
-            );
-          }
-        }
-        break;
-      }
-      default:
-        break;
+    const topup = event.event === "charge.success" ? await one(`SELECT t.*,w.organization_id AS wallet_organization_id
+      FROM top_ups t LEFT JOIN wallets w ON w.id=t.wallet_id WHERE t.reference=$1 AND t.provider='paystack'`, [event.data?.reference]) : null;
+    let verification = null;
+    if (topup) {
+      verification = await verifyCheckout({provider:"paystack",reference:topup.reference,expectedAmountKobo:Number(topup.charged_kobo),expectedCurrency:"NGN",simulated:false});
+      if (!verification.paid) throw new Error("Payment is awaiting provider confirmation");
     }
-    await audit({ action: `webhook.paystack.${event.event}`, metadata: { reference: event.data?.reference ?? null } });
+    const outcome = await processEvent(eventKey, async t => {
+      switch (event.event) {
+        case "charge.success":
+          if (topup) await completeTopUp(topup,{providerTransactionId:verification.providerTransactionId,verifiedPaid:true,verifiedAmountKobo:verification.amountKobo,transaction:t});
+          break;
+        case "transfer.success":
+        case "transfer.failed": {
+          // A delayed failure cannot overwrite a payout already recorded paid.
+          const payout=await t.one("SELECT * FROM payouts WHERE reference=$1 AND provider='paystack' FOR UPDATE",[event.data?.reference]);
+          if (!payout || !['pending','processing'].includes(payout.status)) break;
+          if (event.data?.currency !== 'NGN' || String(event.data?.amount) !== String(payout.amount_kobo)) throw new Error("Payout evidence does not match recorded currency and amount");
+          await t.query(`UPDATE payouts SET status=$2,paid_at=CASE WHEN $2='success' THEN now() ELSE paid_at END,
+            failure_reason=CASE WHEN $2='failed' THEN $3 ELSE NULL END WHERE id=$1`,[payout.id,event.event==='transfer.success'?'success':'failed',String(event.data?.reason??'Transfer failed at provider').slice(0,200)]);
+          break;
+        }
+        case "subscription.create":
+        case "subscription.disable":
+          await t.query("UPDATE subscriptions SET status=$2 WHERE paystack_subscription_code=$1",[event.data?.subscription_code,event.event==='subscription.disable'?'canceled':'active']);
+          break;
+        case "invoice.create": {
+          const sub=await t.one("SELECT * FROM subscriptions WHERE paystack_subscription_code=$1",[event.data?.subscription?.subscription_code]);
+          if (sub) {
+            const { integerKobo }=await import('../lib/money-amounts.js');
+            const amount=integerKobo(event.data?.amount,{max:Number.MAX_SAFE_INTEGER,label:'Invoice amount'});
+            const number=`INV-PS-${crypto.createHash('sha256').update(eventKey).digest('hex').slice(0,32)}`;
+            await t.query("INSERT INTO invoices(organization_id,number,amount_kobo,status,description) VALUES($1,$2,$3,'open','Subscription billing') ON CONFLICT(number) DO NOTHING",[sub.organization_id,number,amount]);
+          }
+          break;
+        }
+      }
+    },{recoverLegacy:event.event==='charge.success'});
+    if (topup && !outcome.duplicate) await notifyCompletedTopUp(topup);
+    await audit({action:`webhook.paystack.${event.event}`,metadata:{reference:event.data?.reference??null,duplicate:outcome.duplicate}});
+    return res.json({received:true,duplicate:outcome.duplicate});
   } catch (err) {
-    await q("DELETE FROM idempotency_keys WHERE key = $1", [eventKey]);
-    console.error("Paystack webhook processing error:", err.message);
-    // Return 200 so Paystack doesn't infinitely retry a permanent failure
+    console.error("Paystack webhook processing error:",err.message);
+    return res.status(503).json({received:false,error:"Payment event could not be processed. Retry is required."});
   }
-  res.json({ received: true });
 });
 
-/**
- * Sudo Africa webhooks — card status changes, transaction authorizations.
- * Header signature verified when SUDO_WEBHOOK_SECRET is configured.
- */
+/** Issuer events are auditable observations. External issuer spending is not
+ * modeled as an internal wallet debit until funding/authorization is verified. */
 router.post("/sudo", webhookLimiter, async (req, res) => {
-  const { verifySudoSignature } = await import("../lib/sudo.js");
-  const raw = req.rawBody ?? Buffer.from(JSON.stringify(req.body ?? {}));
-  if (!verifySudoSignature(raw, req.headers["x-sudo-signature"] ?? req.headers["sudo-signature"])) {
-    return res.status(401).json({ error: "Invalid signature" });
-  }
-  const event = req.body;
-  const eventKey = `webhook:sudo:${event.id ?? crypto.createHash("sha256").update(raw).digest("hex")}`;
-  if (!await claimIdempotency(eventKey)) return res.json({ received: true, duplicate: true });
+  const { verifySudoSignature }=await import('../lib/sudo.js');
+  const raw=req.rawBody??Buffer.from(JSON.stringify(req.body??{}));
+  if (!verifySudoSignature(raw,req.headers['x-sudo-signature']??req.headers['sudo-signature'])) return res.status(401).json({error:'Invalid signature'});
+  const event=req.body??{}, type=event.event??event.type??'unknown';
+  const eventKey=`webhook:sudo:${type}:${event.id??crypto.createHash('sha256').update(raw).digest('hex')}`;
   try {
-    if (event.event === "card.status.updated" || event.type === "card.status.updated") {
-      const card = await one("SELECT * FROM cards WHERE sudo_card_id = $1", [event.data?.cardId ?? event.cardId]);
-      if (card) {
-        await q("UPDATE cards SET status = $2, updated_at = now() WHERE id = $1", [card.id, event.data?.status ?? "active"]);
-        await q("INSERT INTO card_actions (card_id, action, note) VALUES ($1,'provider_status_sync',$2)", [card.id, event.data?.status ?? ""]);
+    const outcome=await processEvent(eventKey,async t=>{
+      const card=await t.one("SELECT * FROM cards WHERE sudo_card_id=$1 FOR UPDATE",[event.data?.cardId??event.cardId]);
+      if (!card) return null;
+      const known=await t.one("SELECT id FROM card_actions WHERE card_id=$1 AND note=$2",[card.id,eventKey]);
+      if (known) return null;
+      if (type==='card.status.updated') {
+        const status=String(event.data?.status??'').toLowerCase();
+        if (!['active','inactive','frozen','canceled'].includes(status)) throw new Error('Issuer returned an unknown card status');
+        if (['terminated','lost','replaced','blocked'].includes(card.status) && status !== 'canceled') {
+          await t.query("INSERT INTO card_actions(card_id,action,note) VALUES($1,'provider_status_review',$2)",[card.id,eventKey]);
+          return null;
+        }
+        await t.query("UPDATE cards SET status=$2,updated_at=now() WHERE id=$1",[card.id,status==='canceled'?'terminated':status==='inactive'?'frozen':status]);
+        await t.query("INSERT INTO card_actions(card_id,action,note) VALUES($1,'provider_status_sync',$2)",[card.id,eventKey]);
+      } else if (type==='card.transaction') {
+        // Updating counters alone falsely claimed ledger agreement and replayed
+        // spend after crashes. Retain a durable review record without inventing
+        // the source of money for an external issuer transaction.
+        await t.query("INSERT INTO card_actions(card_id,action,note) VALUES($1,'issuer_spend_review',$2)",[card.id,eventKey]);
+        await t.query(`INSERT INTO audit_logs(action,entity_type,entity_id,metadata)
+          VALUES('issuer.transaction_review','card',$1,$2)`,[card.id,JSON.stringify({eventKey,providerTransactionId:String(event.data?.id??event.data?.transactionId??event.id??'').slice(0,100),reportedAmount:String(event.data?.amount??'').slice(0,40),currency:String(event.data?.currency??'unknown').slice(0,10),reviewRequired:true})]);
+        return card;
       }
-    }
-    if (event.event === "card.transaction" || event.type === "card.transaction") {
-      // Record Sudo card spend to keep local ledger in sync
-      const card = await one("SELECT * FROM cards WHERE sudo_card_id = $1", [event.data?.cardId ?? event.cardId]);
-      if (card && event.data?.amount) {
-        await q("UPDATE cards SET spend_today_kobo = spend_today_kobo + $2, spend_month_kobo = spend_month_kobo + $2 WHERE id = $1", [card.id, Number(event.data.amount)]);
-      }
-    }
-    await audit({ action: `webhook.sudo.${event.event ?? event.type ?? "unknown"}`, metadata: { cardId: event.data?.cardId ?? null } });
+      return null;
+    },{recoverLegacy:true});
+    if (outcome.result) await notify({userId:outcome.result.owner_user_id,title:'Issuer transaction needs review',body:'A transaction was reported by your card issuer. Support needs to reconcile it before it can appear in your fuel wallet.',category:'transactions',actionRequired:true,eventKey:`${eventKey}:review`});
+    return res.json({received:true,duplicate:outcome.duplicate,reviewRequired:type==='card.transaction'});
   } catch (err) {
-    await q("DELETE FROM idempotency_keys WHERE key = $1", [eventKey]);
-    console.error("Sudo webhook processing error:", err.message);
+    console.error('Sudo webhook processing error:',err.message);
+    return res.status(503).json({received:false,error:'Issuer event could not be processed. Retry is required.'});
   }
-  res.json({ received: true });
 });
 
 /**
@@ -132,142 +131,72 @@ router.post("/sudo", webhookLimiter, async (req, res) => {
  * Flutterwave retries up to 3 times and requires a 200 within 60s, so the
  * handler is idempotent and answers quickly.
  */
-router.post("/flutterwave", webhookLimiter, async (req, res) => {
-  const verifHash = req.headers["verif-hash"];
-  if (!verifyWebhook("flutterwave", { verifHash })) {
-    return res.status(401).json({ error: "Invalid signature" });
-  }
-
-  const raw = req.rawBody ?? Buffer.from(JSON.stringify(req.body ?? {}));
-  const parsed = parseWebhook("flutterwave", req.body);
-
-  if (!parsed.isChargeEvent) {
-    // Acknowledge anything we do not act on so Flutterwave stops retrying.
-    return res.json({ received: true, ignored: parsed.event || "unknown" });
-  }
-
-  const eventKey = `webhook:flutterwave:${parsed.transactionId ?? crypto.createHash("sha256").update(raw).digest("hex")}`;
-  if (!await claimIdempotency(eventKey)) {
-    return res.json({ received: true, duplicate: true });
-  }
-
+router.post("/flutterwave", webhookLimiter, async (req,res)=>{
+  if(!verifyWebhook('flutterwave',{verifHash:req.headers['verif-hash']}))return res.status(401).json({error:'Invalid signature'});
+  const raw=req.rawBody??Buffer.from(JSON.stringify(req.body??{}));
+  const parsed=parseWebhook('flutterwave',req.body);
+  if(!parsed.isChargeEvent)return res.json({received:true,ignored:parsed.event||'unknown'});
+  const eventKey=`webhook:flutterwave:${parsed.transactionId??crypto.createHash('sha256').update(raw).digest('hex')}`;
   try {
-    if (!parsed.reference) throw new Error("charge.completed payload has no tx_ref");
-
-    const subscriptionPayment=await one("SELECT id FROM subscription_payments WHERE reference=$1",[parsed.reference]);
-    if(subscriptionPayment) await confirmSubscriptionPayment(parsed.reference,parsed.transactionId,false);
-    const fuelOrder=await one("SELECT id FROM fuel_orders WHERE reference=$1",[parsed.reference]);
-    if(fuelOrder) await confirmFuelOrder(parsed.reference,parsed.transactionId,false);
-    // Wallet top-up
-    const topup = await one("SELECT * FROM top_ups WHERE reference = $1", [parsed.reference]);
-    if (topup && topup.status === "pending") {
-      // Trust the webhook to route, but never the amount: re-verify the charge
-      // with Flutterwave before crediting anything.
-      //
-      // charged_kobo, not amount_kobo: the customer was charged the base plus any
-      // fee they bear, so comparing against the base alone rejected a correctly
-      // paid transfer. That is why a settled bank transfer could be confirmed by
-      // the provider and still never reach the wallet.
-      const check = await verifyCheckout({
-        provider: topup.provider,
-        reference: parsed.reference,
-        transactionId: parsed.transactionId,
-        expectedAmountKobo: Number(topup.charged_kobo ?? topup.amount_kobo),
-        simulated: false
-      });
-      if (check.paid) {
-        await completeTopUp(topup, { providerTransactionId: check.providerTransactionId ?? parsed.transactionId ?? null });
-      }
-      // Otherwise the row is deliberately left pending. A bank transfer can
-      // arrive before the provider will confirm it, and marking it failed here
-      // meant the eventual settlement had nothing left to complete. The
-      // reconciler owns the give-up decision, on a real attempt count.
+    if(!parsed.reference)throw new Error('charge.completed payload has no tx_ref');
+    const subscriptionPayment=await one("SELECT id FROM subscription_payments WHERE reference=$1 AND provider='flutterwave'",[parsed.reference]);
+    if(subscriptionPayment)await confirmSubscriptionPayment(parsed.reference,parsed.transactionId,false);
+    const fuelOrder=await one("SELECT id FROM fuel_orders WHERE reference=$1 AND provider='flutterwave'",[parsed.reference]);
+    if(fuelOrder)await confirmFuelOrder(parsed.reference,parsed.transactionId,false);
+    const topup=await one(`SELECT t.*,w.organization_id AS wallet_organization_id FROM top_ups t LEFT JOIN wallets w ON w.id=t.wallet_id
+      WHERE t.reference=$1 AND t.provider='flutterwave'`,[parsed.reference]);
+    let topupCheck=null;
+    if(topup){
+      topupCheck=await verifyCheckout({provider:topup.provider,reference:topup.reference,transactionId:parsed.transactionId,
+        expectedAmountKobo:Number(topup.charged_kobo),expectedCurrency:'NGN',simulated:false});
+      if(!topupCheck.paid)throw new Error('Wallet payment is awaiting provider confirmation');
     }
-
-    // Fuel-card plan purchase
-    const cardRequest = await one(
-      "SELECT * FROM card_requests WHERE payment_reference = $1",
-      [parsed.reference]
-    );
-    if (cardRequest && cardRequest.payment_status !== "paid") {
-      const plan = cardRequest.plan_code
-        ? await one("SELECT amount_kobo FROM card_plans WHERE code = $1", [cardRequest.plan_code])
-        : null;
-      // charged_kobo for the same reason as the top-up above: the recorded charge
-      // is what the customer actually paid, and a plan price is not that.
-      const check = await verifyCheckout({
-        provider: cardRequest.payment_provider,
-        reference: parsed.reference,
-        transactionId: parsed.transactionId,
-        expectedAmountKobo:
-          cardRequest.charged_kobo != null
-            ? Number(cardRequest.charged_kobo)
-            : plan?.amount_kobo ?? null,
-        simulated: false
-      });
-      if (check.paid) {
-        const updated = await one(
-          `UPDATE card_requests SET payment_status = 'paid', paid_at = now(), updated_at = now()
-           WHERE id = $1 AND payment_status <> 'paid' RETURNING *`,
-          [cardRequest.id]
-        );
-        if (updated) {
-          // The plan fee pays for a card subscription, not fuel, so it is not
-          // credited to the wallet. The wallet is funded by top-ups only.
-          //
-          // An overpayment is measured against the recorded charge, not the plan
-          // price: the price excludes any gateway fee the customer legitimately
-          // paid, and treating that as an overpayment would refund it.
-          const dueKobo = updated.charged_kobo != null
-            ? Number(updated.charged_kobo)
-            : (plan?.amount_kobo != null ? Number(plan.amount_kobo) : null);
-          if (dueKobo != null && Number(parsed.amountKobo) > dueKobo) {
-            const excessKobo = Number(parsed.amountKobo) - dueKobo;
-            const { issueRefund } = await import("../lib/money.js");
-            await issueRefund({
-              provider: "flutterwave",
-              providerRef: parsed.reference,
-              providerTransactionId: parsed.transactionId,
-              userId: updated.user_id,
-              amountKobo: excessKobo,
-              kind: "excess",
-              reason: "Amount paid exceeded the plan fee",
-              metadata: { cardRequestId: updated.id, dueKobo, paidKobo: Number(parsed.amountKobo) },
-              ip: req.ip
-            });
-          }
-
-          await notify({
-            userId: cardRequest.user_id,
-            title: "Payment received",
-            body: `Your ${cardRequest.plan_code ?? "plan"} plan payment was confirmed. Complete your details so we can verify you and issue your card.`,
-            category: "transactions",
-            link: "/customer/card"
-          });
+    const cardRequest=await one("SELECT * FROM card_requests WHERE payment_reference=$1 AND payment_provider='flutterwave'",[parsed.reference]);
+    let cardCheck=null;
+    if(cardRequest){
+      if(!cardRequest.charged_kobo||Number(cardRequest.charged_kobo)<=0)throw new Error('The original card payment quote requires support review');
+      cardCheck=await verifyCheckout({provider:cardRequest.payment_provider,reference:parsed.reference,transactionId:parsed.transactionId,
+        expectedAmountKobo:Number(cardRequest.charged_kobo),expectedCurrency:'NGN',simulated:false});
+      if(!cardCheck.paid)throw new Error('Card payment is awaiting provider confirmation');
+    }
+    let excessRefundId=null;
+    const outcome=await processEvent(eventKey,async t=>{
+      if(topup)await completeTopUp(topup,{providerTransactionId:topupCheck.providerTransactionId,verifiedPaid:true,verifiedAmountKobo:topupCheck.amountKobo,transaction:t});
+      if(cardRequest){
+        const current=await t.one('SELECT * FROM card_requests WHERE id=$1 FOR UPDATE',[cardRequest.id]);
+        if(String(current.charged_kobo)!==String(cardRequest.charged_kobo)||current.payment_reference!==cardRequest.payment_reference||current.payment_provider!==cardRequest.payment_provider)throw new Error('Card payment quote changed during verification');
+        await t.query(`UPDATE card_requests SET payment_status='paid',paid_at=COALESCE(paid_at,now()),provider_transaction_id=COALESCE($2,provider_transaction_id),updated_at=now()
+          WHERE id=$1 AND payment_status IN('unpaid','pending','failed')`,[current.id,cardCheck.providerTransactionId]);
+        const {integerKobo}=await import('../lib/money-amounts.js');
+        const paidKobo=integerKobo(cardCheck.amountKobo,{max:Number.MAX_SAFE_INTEGER,label:'Verified card payment'});
+        const dueKobo=integerKobo(current.charged_kobo,{max:Number.MAX_SAFE_INTEGER,label:'Recorded card quote'});
+        if(paidKobo>dueKobo&&['unpaid','pending','failed','paid'].includes(current.payment_status)){
+          const {queueRefund}=await import('../lib/money.js');
+          const intent=await queueRefund(t,{provider:current.payment_provider,providerRef:current.payment_reference,
+            providerTransactionId:cardCheck.providerTransactionId,userId:current.user_id,amountKobo:paidKobo-dueKobo,kind:'excess',
+            reason:'Amount paid exceeded the card plan quote',metadata:{cardRequestId:current.id,dueKobo,paidKobo},simulated:false});
+          excessRefundId=intent.refund.id;
         }
       }
-      // As with the top-up, an unconfirmed charge is left alone. A bank transfer
-      // can reach the webhook before the provider will verify it, and a row
-      // marked failed here could never be completed by the later settlement.
-    }
-
-    await audit({
-      action: "webhook.flutterwave.charge_completed",
-      metadata: {
-        reference: parsed.reference,
-        transactionId: parsed.transactionId,
-        amountKobo: parsed.amountKobo,
-        currency: parsed.currency,
-        paid: parsed.paid
+    },{recoverLegacy:true});
+    if(!outcome.duplicate){
+      if(topup)await notifyCompletedTopUp(topup);
+      if(cardRequest){
+        if(excessRefundId){
+          const {dispatchRefund}=await import('../lib/money.js');
+          try {await dispatchRefund(excessRefundId);}
+          catch(error){console.error('[webhook-card-excess-refund] durable claim needs reconciliation',excessRefundId,error?.message);}
+        }
+        await notify({userId:cardRequest.user_id,title:'Payment received',body:'Your card plan payment was confirmed. Complete your identity details for review.',category:'transactions',link:'/customer/card',eventKey:`card-request:${cardRequest.id}:paid`});
       }
-    });
-  } catch (err) {
-    // Release the idempotency claim so a retry can succeed.
-    await q("DELETE FROM idempotency_keys WHERE key = $1", [eventKey]);
-    console.error("Flutterwave webhook processing error:", err.message);
+    }
+    await audit({action:'webhook.flutterwave.charge_completed',metadata:{reference:parsed.reference,transactionId:parsed.transactionId,
+      amountKobo:topupCheck?.amountKobo??cardCheck?.amountKobo??null,duplicate:outcome.duplicate}});
+    return res.json({received:true,duplicate:outcome.duplicate});
+  } catch(err){
+    console.error('Flutterwave webhook processing error:',err.message);
+    return res.status(503).json({received:false,error:'Payment event could not be processed. Retry is required.'});
   }
-
-  res.json({ received: true });
 });
 
 export default router;

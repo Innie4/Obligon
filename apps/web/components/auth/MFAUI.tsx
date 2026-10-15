@@ -7,13 +7,14 @@ import { Loader2, CheckCircle2, AlertTriangle, ArrowLeft, ShieldCheck, Smartphon
 import { AuthShell } from "@/components/auth/AuthShell";
 import { routes } from "@/components/site/routes";
 import { useToast } from "@/components/shared/Toast";
-import { Input } from "@/components/site/Input";
 import { authApi } from "@/lib/services";
+import { authReturnPath } from "@/lib/company-invitation-routing";
+import { useSession } from "@/components/shared/AuthContext";
 
 /** Six-box controlled TOTP input bound to a single 6-digit state value. */
 function TotpInput({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
   return (
-    <div className="flex gap-3">
+    <div className="grid grid-cols-6 gap-0.5 sm:flex sm:gap-3">
       {[...Array(6)].map((_, i) => (
         <input
           key={i}
@@ -36,7 +37,7 @@ function TotpInput({ value, onChange, disabled }: { value: string; onChange: (v:
               (boxes?.[i - 1] as HTMLInputElement | undefined)?.focus();
             }
           }}
-          className="h-14 w-12 text-center text-2xl font-bold rounded-lg border-obligon-border bg-white focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20"
+          className="h-14 w-full min-w-0 text-center text-2xl font-bold rounded-lg border-obligon-border bg-white focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20 sm:w-12"
           autoComplete="one-time-code"
           disabled={disabled}
           autoFocus={i === 0}
@@ -54,9 +55,12 @@ interface MFAUIProps {
   redirect?: string;
 }
 
-export function MFASetupUI({ stage = "setup", redirect = "/dashboard" }: MFAUIProps) {
+export function MFASetupUI({ stage = "setup", redirect }: MFAUIProps) {
   const router = useRouter();
-  const { error: toastError, success: toastSuccess } = useToast();
+  const [returnPath, setReturnPath] = React.useState<string | null>(null);
+  React.useEffect(() => { setReturnPath(authReturnPath(window.location.search)); }, []);
+  const { success: toastSuccess } = useToast();
+  const { user, setUser } = useSession();
 
   const [currentStage, setCurrentStage] = React.useState<MFAStage>(stage);
   const [totpCode, setTotpCode] = React.useState("");
@@ -66,14 +70,22 @@ export function MFASetupUI({ stage = "setup", redirect = "/dashboard" }: MFAUIPr
   const [submitting, setSubmitting] = React.useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = React.useState<string | null>(null);
   const [secretKey, setSecretKey] = React.useState("");
-  const [challengeEmail, setChallengeEmail] = React.useState("");
+  const [challengeAvailable, setChallengeAvailable] = React.useState(false);
+  const [useBackupCode, setUseBackupCode] = React.useState(false);
+  const active = React.useRef(true);
+  React.useEffect(() => {
+    active.current = true;
+    return () => { active.current = false; };
+  }, []);
+  const dashboardForRole = (role?: string) => role === "admin" ? routes.adminDashboard : role === "company" ? routes.companyDashboard : role === "partner" || role === "mechanic" ? "/dashboard" : routes.customerDashboard;
 
   // Setup stage: fetch the real TOTP secret + QR from the API
   React.useEffect(() => {
     if (stage !== "setup") {
       if (stage === "challenge") {
-        const email = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("email") ?? "" : "";
-        setChallengeEmail(email);
+        const available = Boolean(authApi.pendingMfaChallenge());
+        setChallengeAvailable(available);
+        if (!available) setError("Your sign-in challenge is missing or expired. Sign in with your password again.");
       }
       return;
     }
@@ -86,9 +98,9 @@ export function MFASetupUI({ stage = "setup", redirect = "/dashboard" }: MFAUIPr
         setSecretKey(setup.secret);
       } catch (err) {
         if (!active) return;
-        // Offline/mock mode: show a placeholder so the flow remains explorable
-        setQrCodeDataUrl("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjFmMWYxIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+UVIgQ29kZSBQbGFjZWhvbGRlcjwvdGV4dD48L3N2Zz4=");
-        setSecretKey("MOCK-SECRET-KEY234");
+        setQrCodeDataUrl(null);
+        setSecretKey("");
+        setError(err instanceof Error ? err.message : "Authenticator setup is unavailable. Please try again later.");
       }
     })();
     return () => {
@@ -103,14 +115,18 @@ export function MFASetupUI({ stage = "setup", redirect = "/dashboard" }: MFAUIPr
     }
     setSubmitting(true);
     setError(null);
+    const revision = authApi.sessionRevision();
     try {
       const result = await authApi.mfaEnable(totpCode);
+      if (!active.current || !authApi.isCurrentAuthResult(result)) return;
       if (result?.backupCodes) setBackupCodes(result.backupCodes);
+      if (user) setUser({ ...user, twoFactorEnabled: true });
       setCurrentStage("backup");
     } catch (err) {
+      if (!active.current || revision !== authApi.sessionRevision()) return;
       setError(err instanceof Error ? err.message : "Invalid code. Please try again.");
     } finally {
-      setSubmitting(false);
+      if (active.current && revision === authApi.sessionRevision()) setSubmitting(false);
     }
   };
 
@@ -118,30 +134,31 @@ export function MFASetupUI({ stage = "setup", redirect = "/dashboard" }: MFAUIPr
     setSubmitting(true);
     try {
       toastSuccess("Two-factor authentication enabled!");
-      router.push(redirect);
+      router.push(user ? dashboardForRole(user.role) : redirect ?? routes.login);
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleChallenge = async () => {
-    if (!/^\d{6}$/.test(totpCode)) {
-      setError("Enter the 6-digit code from your authenticator app");
+    if (!(useBackupCode ? /^[a-f0-9]{4}-?[a-f0-9]{4}$/i : /^\d{6}$/).test(totpCode.trim())) {
+      setError(useBackupCode ? "Enter one of your saved backup codes" : "Enter the 6-digit code from your authenticator app");
       return;
     }
     setSubmitting(true);
     setError(null);
+    const revision = authApi.sessionRevision();
+    const backup = totpCode.trim().replace("-", "").toUpperCase();
     try {
-      if (challengeEmail) {
-        await authApi.mfaChallenge({ email: challengeEmail, totp: totpCode });
-      } else {
-        await authApi.mfaChallenge({ email: "", totp: totpCode });
-      }
-      router.push(redirect);
+      const result = await authApi.mfaChallenge({ totp: useBackupCode ? `${backup.slice(0, 4)}-${backup.slice(4)}` : totpCode });
+      if (!active.current || !authApi.isCurrentAuthResult(result)) return;
+      setUser(result.user);
+      router.push(returnPath ?? dashboardForRole(result.user.role));
     } catch (err) {
+      if (!active.current || revision !== authApi.sessionRevision()) return;
       setError(err instanceof Error ? err.message : "Invalid code. Please try again.");
     } finally {
-      setSubmitting(false);
+      if (active.current && revision === authApi.sessionRevision()) setSubmitting(false);
     }
   };
 
@@ -164,13 +181,17 @@ export function MFASetupUI({ stage = "setup", redirect = "/dashboard" }: MFAUIPr
               <div className="rounded-xl border border-obligon-border bg-white p-6">
                 {qrCodeDataUrl ? (
                   <img src={qrCodeDataUrl} alt="QR Code for TOTP setup" className="mx-auto w-48 h-48" />
+                ) : error ? (
+                  <p role="alert" className="text-center text-sm font-bold text-[#c1121f]">{error}</p>
                 ) : (
                   <div className="mx-auto grid h-48 w-48 place-items-center rounded-lg bg-obligon-mist text-xs font-bold text-obligon-text">
                     <Loader2 size={24} className="animate-spin" />
                   </div>
                 )}
-                <p className="mt-4 text-center text-sm font-bold text-obligon-navy">{secretKey}</p>
-                <p className="mt-2 text-center text-xs text-obligon-text">Enter this key manually if QR scan fails</p>
+                {secretKey ? <>
+                  <p className="mt-4 text-center text-sm font-bold text-obligon-navy">{secretKey}</p>
+                  <p className="mt-2 text-center text-xs text-obligon-text">Enter this key manually if QR scan fails</p>
+                </> : null}
               </div>
               <div className="rounded-xl border border-obligon-border bg-white p-4">
                 <p className="text-xs font-bold uppercase tracking-[1.1px] text-obligon-text">Setup Instructions</p>
@@ -188,7 +209,7 @@ export function MFASetupUI({ stage = "setup", redirect = "/dashboard" }: MFAUIPr
               disabled={!qrCodeDataUrl}
               className="mt-6 h-12 w-full rounded-lg bg-obligon-green text-base font-bold text-white shadow-green disabled:opacity-60"
             >
-              {qrCodeDataUrl ? "Continue" : "Loading authenticator setup..."}
+              {qrCodeDataUrl ? "Continue" : error ? "Setup unavailable" : "Loading authenticator setup..."}
             </button>
           </div>
         )}
@@ -282,13 +303,14 @@ export function MFASetupUI({ stage = "setup", redirect = "/dashboard" }: MFAUIPr
             <p className="mt-4 text-center text-base leading-6 text-obligon-text">
               Enter the 6-digit code from your authenticator app to continue.
             </p>
-            {challengeEmail ? (
-              <p className="mt-2 text-center text-xs font-bold text-obligon-text">Signing in as {challengeEmail}</p>
-            ) : null}
-            <form onSubmit={(e) => { e.preventDefault(); if (totpCode.length === 6) handleChallenge(); }} className="mt-6 space-y-4">
-              <TotpInput value={totpCode} onChange={setTotpCode} disabled={submitting} />
-              {error ? <p className="rounded-lg bg-[#ffe8e8] p-3 text-sm font-bold text-[#c1121f]">{error}</p> : null}
-              <button type="submit" className="h-12 w-full rounded-lg bg-obligon-green text-base font-bold text-white shadow-green" disabled={submitting}>
+            <form onSubmit={(e) => { e.preventDefault(); if (challengeAvailable) void handleChallenge(); }} className="mt-6 space-y-4">
+              {useBackupCode ? <label className="block text-sm font-bold text-obligon-navy">
+                Backup code
+                <input type="text" autoComplete="off" value={totpCode} onChange={event => setTotpCode(event.target.value)} disabled={submitting || !challengeAvailable} className="mt-2 h-12 w-full rounded-lg border border-obligon-border p-3 font-mono" />
+              </label> : <TotpInput value={totpCode} onChange={setTotpCode} disabled={submitting || !challengeAvailable} />}
+              <button type="button" onClick={() => { setUseBackupCode(current => !current); setTotpCode(""); }} disabled={submitting || !challengeAvailable} className="text-sm font-bold text-obligon-green underline">{useBackupCode ? "Use an authenticator code" : "Use a backup code"}</button>
+              {error ? <p role="alert" className="rounded-lg bg-[#ffe8e8] p-3 text-sm font-bold text-[#c1121f]">{error}</p> : null}
+              <button type="submit" className="h-12 w-full rounded-lg bg-obligon-green text-base font-bold text-white shadow-green" disabled={submitting || !challengeAvailable}>
                 {submitting ? "Verifying..." : "Verify & Continue"}
               </button>
             </form>

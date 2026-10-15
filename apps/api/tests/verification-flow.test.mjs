@@ -103,26 +103,22 @@ test("a guess costs one attempt, however many codes it is compared against", () 
   // synchronous `find` would silently treat as truthy.
   assert.doesNotMatch(auth, /async function codeMatches/);
   assert.match(auth, /^function codeMatches\(record, code\) \{/m);
-  assert.match(auth, /async function spendFailedAttempt\(record\)/);
-  assert.match(auth, /const record = records\.find\(\(candidate\) => codeMatches\(candidate, code\)\)/);
-  // Exactly one charged, chosen rather than applied to all.
-  assert.match(auth, /await spendFailedAttempt\(chargeable\[0\]\)/);
+  assert.match(auth, /async function spendFailedAttempt\(record, executor/);
+  assert.match(auth, /const hit = live\.find/);
+  assert.match(auth, /return spendFailedAttempt\(live\[0\]\.record, t\)/);
 });
 
-test("every live code for the matched channel is consumed, not just one", () => {
-  // A reissue leaves an older code live. Consuming only the matched row would let
-  // a spent code be retried against the same channel indefinitely.
-  assert.match(
-    auth,
-    /UPDATE verification_codes SET consumed_at = now\(\) WHERE user_id = \$1 AND purpose = \$2 AND consumed_at IS NULL/
-  );
+test("a matched live contact code is consumed atomically within its account lock",()=>{
+ assert.match(auth,/UPDATE verification_codes SET consumed_at=clock_timestamp\(\)/);
+ assert.match(auth,/WHERE id=\$1 AND consumed_at IS NULL AND expires_at>clock_timestamp\(\) AND attempts<\$2 RETURNING id/);
+ assert.match(auth,/SELECT id FROM users WHERE id=\$1 FOR UPDATE/);
 });
 
 test("a replay cannot report success", () => {
   // Found by running it: the first version consumed a code, set no flag, and
   // returned 200. Reported as verified while verified nothing.
-  assert.match(auth, /const current = await one\(\s*"SELECT email_verified, phone_verified FROM users WHERE id = \$1"/);
-  assert.match(auth, /throw badRequest\("That code has already been used, or it has expired/);
+  assert.match(auth, /const current = await t\.one\(\s*"SELECT email_verified,phone_verified FROM users WHERE id=\$1 FOR UPDATE"/);
+  assert.match(auth, /That code has already been used, or it has expired/);
 });
 
 test("an empty submit is a wrong code, not a crash", () => {
@@ -205,7 +201,7 @@ test("the old phone step redirects instead of showing a second form", () => {
 });
 
 test("signup goes to one step, not a chain", () => {
-  assert.match(signup, /router\.push\(routes\.verifyEmail\);/);
+  assert.match(signup, /router\.push\(withAuthReturn\(routes\.verifyEmail, returnPath\)\);/);
   assert.doesNotMatch(signup, /phoneStep/);
   assert.doesNotMatch(signup, /emailStep/);
 });

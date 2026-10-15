@@ -123,7 +123,7 @@ export const emailTemplates = {
     html: `<div style="font-family:sans-serif"><h2>Password changed</h2><p>Your Obligon password was just changed. If this wasn't you, <b>reset your password immediately</b>.</p></div>`
   }),
   resetRequested: (code) => ({
-    subject: `Reset your Obligon password �?" code ${code}`,
+    subject: `Reset your Obligon password: code ${code}`,
     text: `Use code ${code} to reset your Obligon password. It expires in 10 minutes.`,
     html: `<div style="font-family:sans-serif"><h2>Password reset</h2><p>Your reset code is <b style="font-size:24px">${code}</b>. It expires in 10 minutes.</p></div>`
   }),

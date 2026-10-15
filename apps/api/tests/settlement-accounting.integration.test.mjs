@@ -44,7 +44,7 @@ before(async () => {
     const { rows: [payout] } = await pool.query("SELECT amount_kobo,reference FROM payouts ORDER BY created_at DESC LIMIT 1");
     if(options.method==='POST') {transferPosts+=1;if(submissionError)throw new Error('Bank accepted the transfer but the response connection was lost');}
     if(String(url).includes('/transfers?'))return new Response(JSON.stringify({status:'success',data:recoverableTransfer?[{id:101,reference:payout.reference,currency:'NGN',amount:Number(payout.amount_kobo)/100,status:'SUCCESSFUL'}]:[]}),{status:200});
-    return new Response(JSON.stringify({ status: "success", data: { id: "101", status: options.method === "POST" ? "NEW" : "SUCCESSFUL", amount: (transferAmountOverride ?? Number(payout?.amount_kobo ?? 0))/100 } }), { status: 200 });
+    return new Response(JSON.stringify({ status: "success", data: { id: "101", status: options.method === "POST" ? "NEW" : "SUCCESSFUL", currency:"NGN",reference:payout?.reference,amount: (transferAmountOverride ?? Number(payout?.amount_kobo ?? 0))/100 } }), { status: 200 });
   };
   await pool.query(`
     CREATE TABLE organizations(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), type text, name text DEFAULT 'Test partner', owner_user_id uuid, auto_settlement boolean DEFAULT false, verification_status text DEFAULT 'verified', settlement_limit_kobo bigint DEFAULT 100);
@@ -293,4 +293,65 @@ integration("a lost transfer response is recovered by its exact stable reference
   await reconcilePayouts();
   const {rows:[payout]}=await pool.query('SELECT status,provider_reference FROM payouts');assert.deepEqual(payout,{status:'success',provider_reference:'101'});
   const {rows:[period]}=await pool.query('SELECT paid_kobo FROM settlements WHERE id=$1',[settlementId]);assert.equal(Number(period.paid_kobo),4000);assert.equal(transferPosts,0);
+});
+
+integration('a delayed failed lookup cannot overwrite a concurrently settled payout',async()=>{
+ const {settlementId}=await pendingPayout(4000);const previous=globalThis.fetch;let entered,release;const observed=new Promise(r=>{entered=r});const gate=new Promise(r=>{release=r});let calls=0;
+ globalThis.fetch=async()=>{const n=++calls;if(n===1){entered();await gate;}return Response.json({status:'success',data:{id:101,status:n===1?'FAILED':'SUCCESSFUL',amount:'40',currency:'NGN'}});};
+ try{const delayed=reconcilePayouts();await observed;assert.equal((await reconcilePayouts()).settled,1);release();assert.equal((await delayed).failed,0);
+ assert.equal((await pool.query('SELECT status FROM payouts')).rows[0].status,'success');assert.equal((await pool.query('SELECT paid_kobo FROM settlements WHERE id=$1',[settlementId])).rows[0].paid_kobo,'4000');
+ assert.equal((await pool.query("SELECT count(*)::int AS n FROM audit_logs WHERE action='settlement.payout_failed'")).rows[0].n,0);
+ }finally{release();globalThis.fetch=previous;}
+});
+integration('contradictory transfer identity, currency, amount or reference never releases a payout reservation',async()=>{
+ const previous=globalThis.fetch;
+ try{for(const patch of [{currency:'USD'},{currency:null},{id:202},{reference:'foreign'},{amount:'39.99'}]){
+  await pool.query('TRUNCATE payouts,settlements,organizations,stations,settlement_periods CASCADE');const {settlementId}=await pendingPayout(4000);await pool.query("UPDATE payouts SET reference='EXACT-TRANSFER'");
+  globalThis.fetch=async()=>Response.json({status:'success',data:{id:101,status:'FAILED',reference:'EXACT-TRANSFER',amount:'40',currency:'NGN',...patch}});
+  const result=await reconcilePayouts();assert.equal(result.failed,0,JSON.stringify(patch));assert.equal(result.stillPending,1);assert.equal((await pool.query('SELECT status FROM payouts')).rows[0].status,'processing');assert.equal((await pool.query('SELECT paid_kobo FROM settlements WHERE id=$1',[settlementId])).rows[0].paid_kobo,'0');
+ }}finally{globalThis.fetch=previous;}
+});
+
+integration('an exact provider-confirmed failed transfer retires only its processing reservation',async()=>{
+ const {settlementId}=await pendingPayout(4000);const previous=globalThis.fetch;globalThis.fetch=async()=>Response.json({status:'success',data:{id:101,status:'FAILED',amount:'40',currency:'NGN'}});
+ try{assert.equal((await reconcilePayouts()).failed,1);assert.equal((await pool.query('SELECT status FROM payouts')).rows[0].status,'failed');assert.equal((await pool.query('SELECT paid_kobo FROM settlements WHERE id=$1',[settlementId])).rows[0].paid_kobo,'0');}finally{globalThis.fetch=previous;}
+});
+
+integration('a delayed old failure cannot retire a newer retry while its provider response is pending',async()=>{
+ await pendingPayout(4000);await pool.query("UPDATE payouts SET reference='OLD-ATTEMPT'");
+ const previous=globalThis.fetch;let entered,release;const observed=new Promise(resolve=>{entered=resolve;}),gate=new Promise(resolve=>{release=resolve;});let lookups=0;
+ globalThis.fetch=async()=>{if(++lookups===1){entered();await gate;}return Response.json({status:'success',data:{id:101,status:'FAILED',reference:'OLD-ATTEMPT',amount:'40',currency:'NGN'}});};
+ try {
+  const delayed=reconcilePayouts();await observed;
+  assert.equal((await reconcilePayouts()).failed,1);
+  // The actual retry owner changes the merchant reference before its new POST returns.
+  await pool.query("UPDATE payouts SET status='processing',reference='NEW-ATTEMPT',failure_reason=NULL");
+  release();assert.equal((await delayed).failed,0);
+  const payout=(await pool.query('SELECT status,reference FROM payouts')).rows[0];
+  assert.deepEqual(payout,{status:'processing',reference:'NEW-ATTEMPT'});
+  assert.equal((await pool.query("SELECT count(*)::int AS n FROM audit_logs WHERE action='settlement.payout_failed'")).rows[0].n,1);
+ } finally {release();globalThis.fetch=previous;}
+});
+
+integration('delayed provider id recovery cannot replace the receipt for a newer retry reference',async()=>{
+ await pendingPayout(4000);await pool.query("UPDATE payouts SET reference='OLD-RECOVERY',provider_reference=NULL,created_at=now()-interval '2 days'");
+ const previous=globalThis.fetch;let entered,release;const observed=new Promise(resolve=>{entered=resolve;}),gate=new Promise(resolve=>{release=resolve;});let recoveries=0;
+ globalThis.fetch=async url=>{
+  if(String(url).includes('/transfers?')) {
+   if(++recoveries===1){entered();await gate;}
+   return Response.json({status:'success',data:[{id:101,status:'FAILED',reference:'OLD-RECOVERY',currency:'NGN',amount:'40'}]});
+  }
+  return Response.json({status:'success',data:{id:101,status:'FAILED',reference:'OLD-RECOVERY',currency:'NGN',amount:'40'}});
+ };
+ try {
+  const delayed=reconcilePayouts();await observed;
+  assert.equal((await reconcilePayouts()).failed,1);
+  // The retry has both a new merchant reference and its newly returned receipt.
+  await pool.query("UPDATE payouts SET status='processing',reference='NEW-RECOVERY',provider_reference='202',failure_reason=NULL");
+  release();const result=await delayed;
+  const payout=(await pool.query('SELECT status,reference,provider_reference FROM payouts')).rows[0];
+  assert.equal(payout.provider_reference,'202','Old recovery must not replace the newer provider receipt');
+  assert.equal(result.failed,0);
+  assert.deepEqual(payout,{status:'processing',reference:'NEW-RECOVERY',provider_reference:'202'});
+ } finally {release();globalThis.fetch=previous;}
 });

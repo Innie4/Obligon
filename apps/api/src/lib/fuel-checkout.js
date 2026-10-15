@@ -7,13 +7,14 @@ import { approvedDiscount, discountAmounts } from './discounts.js';
 import { requireCustomerPlan, partnerSubscription } from './subscriptions.js';
 import { businessTimeZone } from './time.js';
 import { startCheckout, verifyCheckout, activeProvider } from './payments.js';
+import { fuelAmountKobo, quantityHundredths, integerKobo } from './money-amounts.js';
+import { queueRefund } from './money.js';
 
 const providers={startCheckout,verifyCheckout,activeProvider};
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export function validateFuelCheckout(input) {
  if(!uuid.test(String(input?.stationId??''))||!uuid.test(String(input?.idempotencyKey??'')))throw badRequest('A valid station and checkout request key are required.');
- const litres=Number(input?.litres);
- if(!Number.isFinite(litres)||litres<=0||litres>10000||Math.abs(litres*100-Math.round(litres*100))>0.000001)throw badRequest('Litres must be positive, with at most two decimal places and no more than 10,000.');
+ const litres=quantityHundredths(input?.litres)/100;
  if(typeof input?.fuelType!=='string'||!input.fuelType.trim()||input.fuelType.length>80)throw badRequest('Choose a published fuel type.');
  if(input.cardId&&!uuid.test(input.cardId))throw badRequest('Choose a valid fuel card.');
  return {...input,litres,fuelType:input.fuelType.trim()};
@@ -36,7 +37,7 @@ export async function startFuelOrder(user,input,payment=providers) {
   const price=await t.one('SELECT price_kobo FROM fuel_prices WHERE station_id=$1 AND fuel_type=$2 FOR SHARE',[station.id,data.fuelType]);
   if(!price)throw badRequest('No published price for this station and fuel.');
   const discount=await approvedDiscount(station.id,data.fuelType,t);
-  const amounts=discountAmounts(Math.round(Number(price.price_kobo)*data.litres),discount?.rate_bp??0);
+  const amounts=discountAmounts(fuelAmountKobo(price.price_kobo,data.litres),discount?.rate_bp??0);
   const card=await t.one(`SELECT * FROM cards WHERE owner_user_id=$1 AND organization_id IS NULL AND status='active'
    AND ($2::uuid IS NULL OR id=$2) ORDER BY created_at DESC LIMIT 1 FOR UPDATE`,[user.id,data.cardId??null]);
   if(!card)throw notFound('Active customer card not found. Request or reactivate your fuel card before checkout.');
@@ -75,12 +76,19 @@ export async function confirmFuelOrder(referenceValue,transactionId=null,simulat
  if(!order)throw notFound('Fuel order not found');
  if(order.status!=='awaiting_payment')return order;
  const verified=await payment.verifyCheckout({provider:order.provider,reference:order.reference,transactionId,expectedAmountKobo:Number(order.amount_kobo),expectedCurrency:'NGN',simulated});
- if(!verified.paid||Number(verified.amountKobo)!==Number(order.amount_kobo)||verified.currency!=='NGN'||verified.reference!==order.reference)throw badRequest('Fuel payment has not been confirmed for the exact order, amount and currency.');
+ const paidKobo=integerKobo(verified.amountKobo,{max:Number.MAX_SAFE_INTEGER,label:'Verified fuel payment'});
+ const dueKobo=integerKobo(order.amount_kobo,{max:Number.MAX_SAFE_INTEGER,label:'Fuel order quote'});
+ if(!verified.paid||paidKobo<dueKobo||verified.currency!=='NGN'||verified.reference!==order.reference)throw badRequest('Fuel payment has not been confirmed for the exact order, amount and currency.');
  const providerTransactionId=verified.providerTransactionId??transactionId;
  if(!verified.simulated&&!providerTransactionId)throw badRequest('The confirmed fuel payment has no processor transaction identifier.');
  return tx(async t=>{
   const locked=await t.one('SELECT * FROM fuel_orders WHERE id=$1 FOR UPDATE',[order.id]);
   if(locked.status!=='awaiting_payment')return locked;
+  for(const field of ['reference','provider','user_id','card_id','station_id','amount_kobo','base_amount_kobo','platform_fee_kobo','partner_net_kobo','settlement_account_id']) {
+   if(String(locked[field]??'')!==String(order[field]??''))throw conflict('The fuel order quote changed during provider verification. Support review is required.');
+  }
+  if(paidKobo>dueKobo)await queueRefund(t,{provider:locked.provider,providerRef:locked.reference,providerTransactionId,userId:locked.user_id,
+   amountKobo:paidKobo-dueKobo,kind:'excess',reason:'Amount paid exceeded the fuel order quote',metadata:{fuelOrderId:locked.id,dueKobo,paidKobo},simulated:Boolean(verified.simulated)});
   // Recheck under the same card lock used by wallet POS and new reservations.
   // A delayed provider confirmation may arrive after its reservation expired.
   const card=await t.one('SELECT * FROM cards WHERE id=$1 AND owner_user_id=$2 FOR UPDATE',[locked.card_id,locked.user_id]);
@@ -108,9 +116,9 @@ export async function confirmFuelOrder(referenceValue,transactionId=null,simulat
    }
    if(!code)throw conflict('Fuel authorization could not be allocated. Retry confirmation.');
   }
-  const sale=await t.one(`INSERT INTO transactions(reference,customer_user_id,station_id,card_id,fuel_type,litres,amount_kobo,base_amount_kobo,platform_fee_kobo,partner_net_kobo,discount_request_id,settlement_method,status,meta)
-   VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'processor_split',$12,$13) RETURNING id`,
-   [locked.reference,locked.user_id,locked.station_id,locked.card_id,locked.fuel_type,locked.litres,locked.amount_kobo,locked.base_amount_kobo,locked.platform_fee_kobo,locked.partner_net_kobo,locked.discount_request_id,reviewReason?'pending':'success',reviewReason??'Direct station checkout; awaiting fuel fulfillment']);
+  const sale=await t.one(`INSERT INTO transactions(reference,customer_user_id,station_id,card_id,fuel_type,litres,unit_price_kobo,amount_kobo,base_amount_kobo,platform_fee_kobo,partner_net_kobo,discount_request_id,settlement_method,status,meta)
+   VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'processor_split',$13,$14) RETURNING id`,
+   [locked.reference,locked.user_id,locked.station_id,locked.card_id,locked.fuel_type,locked.litres,locked.unit_price_kobo,locked.amount_kobo,locked.base_amount_kobo,locked.platform_fee_kobo,locked.partner_net_kobo,locked.discount_request_id,reviewReason?'pending':'success',reviewReason??'Direct station checkout; awaiting fuel fulfillment']);
   return t.one(`UPDATE fuel_orders SET status=$5,review_reason=$6,provider_transaction_id=$2,authorization_code=$3,transaction_id=$4,paid_at=now(),updated_at=now() WHERE id=$1 RETURNING *`,[locked.id,providerTransactionId?String(providerTransactionId):null,code,sale.id,reviewReason?'paid_review':'paid',reviewReason]);
  });
 }

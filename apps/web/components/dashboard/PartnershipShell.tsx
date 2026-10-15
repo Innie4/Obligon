@@ -28,6 +28,7 @@ type PartnershipShellProps = {
  * hiding a link does not unrender the page behind it.
  */
 const MECHANIC_ROUTES = new Set([
+  "/mechanic",
   "/dashboard",
   "/dashboard/transactions",
   "/dashboard/reports",
@@ -51,8 +52,8 @@ export function PartnershipShell({ children, allowedRoles }: PartnershipShellPro
   // mechanic who navigates straight to a page the API refuses lands on the overview
   // instead of a form that can only 403.
   const roles = React.useMemo<Array<"partner" | "mechanic">>(
-    () => (allowed ? allowedRoles ?? ["partner"] : []),
-    [allowed, allowedRoles]
+    () => (allowed ? allowedRoles ?? (MECHANIC_ROUTES.has(pathname) ? ["partner", "mechanic"] : ["partner"]) : []),
+    [allowed, allowedRoles, pathname]
   );
 
   return (
@@ -74,11 +75,11 @@ export function PartnershipShell({ children, allowedRoles }: PartnershipShellPro
             hand. MobileDashboardNav is rendered here because every page wraps its
             content in DashboardCanvas, which emits it.
           */}
-          {isMechanic || !allowed ? null : (
+          {allowed ? (
             <div className="flex justify-end border-b border-[#e3e4ef] px-5 py-2 sm:px-8 lg:hidden">
               <LogoutButton className="h-9 rounded-lg px-3 text-xs" />
             </div>
-          )}
+          ) : null}
           <MobileDashboardNav />
           <PartnerSubscriptionGate>{children}</PartnerSubscriptionGate>
         </div>

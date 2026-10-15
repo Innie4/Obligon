@@ -13,6 +13,8 @@ import { emitToOrg } from "../lib/sse.js";
 
 import { approveCardRequest, providerCardDetails, decryptIdentity, finishReplacement } from "../lib/card-approval.js";
 import { getSudoCard, getSudoCustomer } from "../lib/sudo.js";
+import { integerKobo, nairaToKobo } from "../lib/money-amounts.js";
+import { createWalletForAccount } from "../lib/wallets.js";
 
 const router = Router();
 for(const name of ['id','orgId','memberId'])router.param(name,(req,_res,next,value)=>{
@@ -98,7 +100,15 @@ router.get("/companies", asyncHandler(async (req, res) => {
   const params = [];
   let where = `o.type = 'company'`;
   if (search) { params.push(`%${search}%`); where += ` AND (o.name ILIKE $${params.length} OR o.fleet_id ILIKE $${params.length} OR o.city ILIKE $${params.length})`; }
-  if (status) { params.push(status.toLowerCase()); where += ` AND o.subscription_status = $${params.length}`; }
+  if (status) {
+    const filter = typeof status === "string" ? status.toLowerCase() : "";
+    if (filter === "pending") where += " AND o.verification_status IN ('pending','unverified')";
+    else if (filter === "rejected") where += " AND o.verification_status='rejected'";
+    else if (["active", "trialing", "past_due", "canceled", "frozen"].includes(filter)) {
+      params.push(filter === "frozen" ? "canceled" : filter);
+      where += ` AND o.verification_status='verified' AND o.subscription_status=$${params.length}`;
+    } else throw badRequest("Choose a valid company status");
+  }
   const rows = await q(
     `SELECT o.*,
        (SELECT COUNT(*)::int FROM vehicles v WHERE v.organization_id = o.id) AS vehicle_count,
@@ -126,10 +136,12 @@ router.get("/companies", asyncHandler(async (req, res) => {
       id: r.id,
       avatar: initialsOf(r.name),
       cells: [`${r.name.split(" ")[0]}\n${r.name.split(" ").slice(1).join(" ") || "—"}\n${r.city ?? "NG"}`, r.fleet_id ?? "—", (r.plan_name ?? r.plan_code ?? "basic").toUpperCase(), r.subscription_status === "active" ? String(r.active_cards) : "ONBOARDING", naira(r.credit_limit_kobo)],
-      status: r.subscription_status === "active" ? "Active" : r.subscription_status === "canceled" ? "Frozen" : "Pending",
-      tone: r.subscription_status === "active" ? "green" : r.subscription_status === "canceled" ? "red" : "amber",
+      status: r.verification_status === "rejected" ? "Rejected" : r.verification_status !== "verified" ? "Pending"
+        : r.subscription_status === "active" ? "Active" : r.subscription_status === "canceled" ? "Frozen" : "Pending",
+      tone: r.verification_status === "rejected" ? "red" : r.verification_status !== "verified" ? "amber"
+        : r.subscription_status === "active" ? "green" : r.subscription_status === "canceled" ? "red" : "amber",
       orgId: r.id, name: r.name, fleetId: r.fleet_id, plan: r.plan_code, creditLimit: r.credit_limit_kobo / 100,
-      city: r.city, address: r.address, verificationStatus: r.verification_status
+      city: r.city, address: r.address, verificationStatus: r.verification_status, subscriptionStatus: r.subscription_status
     })),
     total: total.count
   });
@@ -138,6 +150,7 @@ router.get("/companies", asyncHandler(async (req, res) => {
 router.post("/companies", asyncHandler(async (req, res) => {
   const { companyName, adminEmail, adminName, planCode = "growth", creditLimit, city } = req.valid ?? req.body ?? {};
   if(typeof companyName!=="string"||!companyName.trim()||companyName.length>200||typeof adminName!=="string"||!adminName.trim()||adminName.length>200||typeof adminEmail!=="string"||adminEmail.length>254||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(adminEmail))throw badRequest("Enter valid company and owner details");
+  const creditLimitKobo = creditLimit == null ? 0 : nairaToKobo(creditLimit, { min: 0, max: 100_000_000_000, label: "Credit limit" });
   const existing = await one("SELECT id FROM users WHERE lower(email) = lower($1)", [adminEmail]);
   if (existing) throw badRequest("A user with that email already exists");
   const tempPassword = randomToken(6);
@@ -149,35 +162,46 @@ router.post("/companies", asyncHandler(async (req, res) => {
     );
     const org = await t.one(
       `INSERT INTO organizations (owner_user_id, name, type, plan_code, subscription_status, credit_limit_kobo, city, verification_status, fleet_id)
-       VALUES ($1,$2,'company',$3,'active',$4,$5,'verified',$6) RETURNING *`,
-      [user.id, companyName, planCode, Math.round((Number(creditLimit) || 0) * 100), city ?? null, `FLT-${Date.now().toString(36).toUpperCase().slice(-6)}`]
+       VALUES ($1,$2,'company',$3,'canceled',$4,$5,'pending',$6) RETURNING *`,
+      [user.id, companyName, planCode, creditLimitKobo, city ?? null, `FLT-${Date.now().toString(36).toUpperCase().slice(-6)}`]
     );
     await t.query("INSERT INTO memberships (organization_id, user_id, email, role, status) VALUES ($1,$2,$3,'owner','active')", [org.id, user.id, adminEmail]);
+    await createWalletForAccount({ userId: user.id, organizationId: org.id, executor: t });
+    await t.query(`INSERT INTO audit_logs(actor_user_id,actor_role,action,entity_type,entity_id,ip,metadata)
+      VALUES($1,'admin','company.provisioned','organization',$2,$3,$4)`,
+    [req.user.id, org.id, req.ip, JSON.stringify({ companyName, verificationStatus: "pending", subscriptionStatus: "canceled" })]);
     return { user, org };
   });
   const { sendEmail } = await import("../lib/notify.js");
   const { env } = await import("../config/env.js");
-  void sendEmail({
+  const delivery = await sendEmail({
     to: adminEmail,
-    subject: "Your Obligon fleet account is ready",
-    text: `Sign in at ${env.APP_URL}/auth/login — email: ${adminEmail}, temporary password: ${tempPassword}`,
-    html: `<div style="font-family:sans-serif"><h2>Fleet provisioned</h2><p>${companyName} is ready on Obligon.</p><p>Sign in: <a href="${env.APP_URL}/auth/login">${env.APP_URL}/auth/login</a><br/>Email: ${adminEmail}<br/>Temporary password: <b>${tempPassword}</b></p></div>`
+    subject: "Your Obligon fleet workspace is pending approval",
+    text: `Your fleet workspace is pending admin approval after your company contract is agreed. You can sign in to review your profile and contact Support; company operations become available after approval. Sign in at ${env.APP_URL}/auth/login — email: ${adminEmail}, temporary password: ${tempPassword}`
   });
-  audit({ actorUserId: req.user.id, actorRole: "admin", action: "company.provisioned", entityId: result.org.id, metadata: { companyName } });
-  res.json({ ok: true, orgId: result.org.id, fleetId: result.org.fleet_id });
+  res.json({ ok: true, orgId: result.org.id, fleetId: result.org.fleet_id, verificationStatus: "pending", invitationSent: Boolean(delivery?.delivered),
+    message: delivery?.delivered ? "Fleet created pending contract approval. The owner invitation was delivered."
+      : "Fleet created pending contract approval. The owner invitation could not be delivered; contact Support." });
 }));
 
 router.put("/companies/:orgId", asyncHandler(async (req, res) => {
-  const { creditLimit, settlementLimit, planCode, status, verificationStatus } = req.body ?? {};
+  const { creditLimit, settlementLimit, planCode, status, verificationStatus, contractAgreed } = req.body ?? {};
+  if (verificationStatus != null && !["unverified", "pending", "verified", "rejected"].includes(verificationStatus)) throw badRequest("Choose a valid verification status");
+  if (status != null && !["trialing", "active", "past_due", "canceled"].includes(status)) throw badRequest("Choose a valid subscription status");
+  if (contractAgreed != null && typeof contractAgreed !== "boolean") throw badRequest("Confirm the agreed company contract with a boolean value");
   // `Number("abc") * 100` is NaN, and NaN into a BIGINT is a 500. Both of these
   // are money ceilings, so a typo must be refused rather than becoming an error.
   const toKobo = (value, label) => {
     if (value == null) return null;
-    const naira = Number(value);
-    if (!Number.isFinite(naira) || naira < 0) throw badRequest(`${label} must be a positive number`);
-    return Math.round(naira * 100);
+    return nairaToKobo(value,{min:0,max:100_000_000_000,label});
   };
-  const org = await one(
+  const credit = toKobo(creditLimit, "Credit limit"), settlement = toKobo(settlementLimit, "Settlement limit");
+  const org = await tx(async t => {
+    const current = await t.one("SELECT * FROM organizations WHERE id=$1 AND type='company' FOR UPDATE", [req.params.orgId]);
+    if (!current) throw notFound("Company not found");
+    const approving = verificationStatus === "verified" && current.verification_status !== "verified";
+    if (approving && contractAgreed !== true) throw badRequest("Confirm that the company contract is agreed before approving operations");
+    const updated = await t.one(
     `UPDATE organizations SET
        credit_limit_kobo = COALESCE($2, credit_limit_kobo),
        settlement_limit_kobo = COALESCE($3, settlement_limit_kobo),
@@ -186,12 +210,19 @@ router.put("/companies/:orgId", asyncHandler(async (req, res) => {
        verification_status = COALESCE($6, verification_status),
        updated_at = now()
      WHERE id = $1 RETURNING *`,
-    [req.params.orgId, toKobo(creditLimit, "Credit limit"), toKobo(settlementLimit, "Settlement limit"),
+    [req.params.orgId, credit, settlement,
       planCode ?? null, status ?? null, verificationStatus ?? null]
-  );
-  if (!org) throw notFound("Organization not found");
-  audit({ actorUserId: req.user.id, actorRole: "admin", action: "company.updated", entityId: org.id, metadata: {creditLimit,settlementLimit,planCode,status,verificationStatus} });
-  res.json({ ok: true });
+    );
+    if (updated.verification_status === "verified") await createWalletForAccount({ userId: updated.owner_user_id, organizationId: updated.id, executor: t });
+    await t.query(`INSERT INTO audit_logs(actor_user_id,actor_role,action,entity_type,entity_id,ip,metadata)
+      VALUES($1,'admin',$2,'organization',$3,$4,$5)`,
+    [req.user.id, approving ? "company.approved" : "company.updated", updated.id, req.ip,
+      JSON.stringify({ creditLimit, settlementLimit, planCode, previousVerificationStatus: current.verification_status,
+        verificationStatus: updated.verification_status, previousSubscriptionStatus: current.subscription_status,
+        subscriptionStatus: updated.subscription_status, ...(approving ? { contractAgreed: true } : {}) })]);
+    return updated;
+  });
+  res.json({ ok: true, verificationStatus: org.verification_status, subscriptionStatus: org.subscription_status });
 }));
 
 // ============ REFUNDS & RECONCILIATION ============
@@ -220,6 +251,9 @@ router.get("/refunds", asyncHandler(async (req, res) => {
       reference: r.provider_ref,
       kind: r.kind,
       status: r.status,
+      reviewRequired: r.metadata?.reviewRequired === true,
+      reviewReason: r.metadata?.reviewReason ?? null,
+      dispatchStatus: r.metadata?.refundDispatch ?? null,
       amountKobo: Number(r.amount_kobo ?? 0),
       amountLabel: naira(Number(r.amount_kobo ?? 0)),
       reason: r.reason,
@@ -232,56 +266,43 @@ router.get("/refunds", asyncHandler(async (req, res) => {
 router.post("/refunds", asyncHandler(async (req, res) => {
   const { userId, cardRequestId, amountKobo, reason } = req.valid ?? req.body ?? {};
   if (!reason || String(reason).trim().length < 5) throw badRequest("Give a reason for the refund");
-
-  const request = cardRequestId ? await one("SELECT * FROM card_requests WHERE id = $1", [cardRequestId]) : null;
-  if (cardRequestId && !request) throw notFound("Card request not found");
-
-  const target = request ?? (userId ? await one("SELECT * FROM card_requests WHERE user_id = $1 AND payment_status = 'paid' ORDER BY created_at DESC LIMIT 1", [userId]) : null);
-  if (!target) throw notFound("No paid card request was found to refund");
-  if (["refunded"].includes(target.payment_status)) throw badRequest("This payment has already been refunded");
-
-  const plan = target.plan_code ? await one("SELECT * FROM card_plans WHERE code = $1", [target.plan_code]) : null;
   const full = amountKobo == null || amountKobo === "";
-  const kobo = full ? (plan ? Number(plan.amount_kobo) : null) : Math.round(Number(amountKobo));
-  if (!full && (!Number.isFinite(kobo) || kobo <= 0)) throw badRequest("Enter a valid refund amount");
-  if (full && !kobo) throw badRequest("This payment has no recorded plan amount to refund");
-
-  // A full refund on a provider reference can only ever happen once.
-  const { issueRefund } = await import("../lib/money.js");
-  const result = await issueRefund({
-    provider: target.payment_provider,
-    providerRef: target.payment_reference,
-    providerTransactionId: target.provider_transaction_id ?? null,
-    userId: target.user_id,
-    amountKobo: kobo,
-    kind: full ? "full" : "partial",
-    reason: String(reason).trim().slice(0, 300),
-    metadata: { cardRequestId: target.id, issuedBy: req.user.id },
-    actorUserId: req.user.id,
-    actorRole: req.user.role,
-    ip: req.ip,
-    simulated: Boolean(req.body?.simulated)
+  const { queueRefund, dispatchRefund } = await import("../lib/money.js");
+  const intent = await tx(async t => {
+    const target = cardRequestId
+      ? await t.one("SELECT * FROM card_requests WHERE id=$1 FOR UPDATE", [cardRequestId])
+      : userId ? await t.one("SELECT * FROM card_requests WHERE user_id=$1 AND payment_status='paid' ORDER BY created_at DESC LIMIT 1 FOR UPDATE", [userId]) : null;
+    if (!target) throw notFound("No paid card request was found to refund");
+    if (target.payment_status !== "paid") throw badRequest("This request has no paid charge available to refund");
+    if (!["not_started", "refund_pending"].includes(target.issuance_state) || ["approved", "cancelled"].includes(target.status)) {
+      throw badRequest("Card issuance must be reconciled before requesting a refund");
+    }
+    const charge = integerKobo(target.charged_kobo, { max: Number.MAX_SAFE_INTEGER, label: "Original recorded charge" });
+    const kobo = full ? charge : integerKobo(amountKobo, { max: Number.MAX_SAFE_INTEGER, label: "Refund amount" });
+    const queued = await queueRefund(t, { provider: target.payment_provider, providerRef: target.payment_reference,
+      providerTransactionId: target.provider_transaction_id, userId: target.user_id, amountKobo: kobo,
+      kind: full ? "full" : "partial", reason: String(reason).trim().slice(0, 300),
+      metadata: { cardRequestId: target.id, issuedBy: req.user.id }, simulated: Boolean(req.body?.simulated) });
+    if (queued.duplicate) {
+      const { conflict } = await import("../lib/errors.js");
+      throw conflict("A refund was already requested for this payment");
+    }
+    await t.query(`UPDATE card_requests SET issuance_state='refund_pending',
+      status=CASE WHEN $2 THEN 'withdrawn' ELSE status END,
+      withdrawn_at=CASE WHEN $2 THEN clock_timestamp() ELSE withdrawn_at END,
+      refund_id=CASE WHEN $2 THEN $3 ELSE refund_id END,updated_at=clock_timestamp() WHERE id=$1`,
+    [target.id, full, queued.refund.id]);
+    return { ...queued, target, kobo };
   });
-
-  if (result.duplicate) {
-    const { conflict } = await import("../lib/errors.js");
-    throw conflict("A refund was already issued for this payment");
-  }
-  if (full) {
-    await q(
-      `UPDATE card_requests SET payment_status = 'refunded', refund_id = $2, updated_at = now()
-       WHERE id = $1 AND payment_status = 'paid'`,
-      [target.id, result.refund?.id ?? null]
-    );
-  }
-  await notify({
-    userId: target.user_id,
-    title: "Refund issued",
-    body: `A refund of ${naira(kobo ?? 0)} for your ${plan?.name ?? "payment"} is on its way to your payment method.`,
-    category: "transactions",
-    link: "/customer/card"
-  });
-  res.json({ ok: true, refund: result.refund, amountLabel: naira(kobo ?? 0) });
+  let refund;
+  try { refund = (await dispatchRefund(intent.refund.id, { actorUserId: req.user.id, actorRole: req.user.role, ip: req.ip })).refund; }
+  catch { refund = await one("SELECT * FROM payment_refunds WHERE id=$1", [intent.refund.id]); }
+  const reviewRequired = refund?.metadata?.reviewRequired === true;
+  const message = reviewRequired ? "Your refund request needs support review. Payment has not been confirmed as refunded."
+    : "Your refund request is pending confirmation from the payment provider.";
+  await notify({ userId: intent.target.user_id, title: "Refund requested", body: message,
+    category: "transactions", link: "/customer/card" });
+  res.json({ ok: true, refund, amountLabel: naira(intent.kobo), refundStatus: refund?.status ?? "pending", reviewRequired, message });
 }));
 
 /** Run a reconciliation pass on demand, and see the result. */
@@ -532,7 +553,7 @@ router.get("/reports", asyncHandler(async (req, res) => {
   res.json({
     metrics: [
       { label: "TOTAL NETWORK VOLUME", value: `${Number(totals.litres).toLocaleString()} Ltrs`, helper: `last ${days} days`, tone: "green" },
-      { label: "TOTAL REVENUE", value: totals.revenue >= 1e9 ? `₦${(totals.revenue / 1e11).toFixed(1)}B` : naira(totals.revenue), helper: "platform-wide", tone: "green" },
+      { label: "TOTAL REVENUE", value: totals.revenue >= 1e11 ? `₦${(totals.revenue / 1e11).toFixed(1)}B` : naira(totals.revenue), helper: "platform-wide", tone: "green" },
       { label: "ACTIVE PARTNER STATIONS", value: String(stationCount.count), helper: `${totals.tx_count.toLocaleString()} transactions`, tone: "green" }
     ],
     stations: stations.map((s) => ({

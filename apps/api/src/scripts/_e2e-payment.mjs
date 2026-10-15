@@ -4,7 +4,7 @@
  * Proves, against the real Flutterwave test API:
  *   1. a hosted checkout is genuinely created by Flutterwave (keys valid)
  *   2. the webhook endpoint rejects a wrong or missing verif-hash
- *   3. the webhook endpoint accepts the correct verif-hash
+ *   3. the webhook endpoint retries an authenticated but unverified charge
  *   4. a webhook that cannot be corroborated with the provider credits NOTHING
  *      (the single most important security property of the whole flow)
  *   5. it leaves a real pending checkout behind for a human to complete
@@ -77,7 +77,7 @@ say(badHash.status === 401, "webhook REJECTS a wrong verif-hash", `status=${badH
 const goodHash = await call("POST", "/api/webhooks/flutterwave", {
   body: payload, headers: { "verif-hash": env.FLW_SECRET_HASH }
 });
-say(goodHash.status === 200, "webhook ACCEPTS the correct verif-hash", `status=${goodHash.status}`);
+say(goodHash.status === 503, "an authenticated but uncorroborated charge stays retryable", `status=${goodHash.status}`);
 
 // ------------------------- 4. a signed webhook alone must NOT credit anything
 // The payload above claims a successful charge for a transaction the provider

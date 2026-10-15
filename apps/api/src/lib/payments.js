@@ -2,6 +2,7 @@ import { env } from "../config/env.js";
 import { badRequest, misconfigured, serviceUnavailable } from "./errors.js";
 import * as paystack from "./paystack.js";
 import * as flutterwave from "./flutterwave.js";
+import { integerKobo, nairaToKobo } from "./money-amounts.js";
 
 /**
  * One payment interface over the configured processors, so routes never branch
@@ -33,6 +34,12 @@ function configured(name) {
   if (name === "paystack") return paystack.paystackEnabled();
   if (name === "flutterwave") return flutterwave.flutterwaveEnabled();
   return false;
+}
+
+function assertLegacySimulationAllowed() {
+  if (env.NODE_ENV === "production" || !env.ALLOW_PAYMENT_SIMULATION || paystack.paystackEnabled()) {
+    throw misconfigured("Payment simulation is unavailable for this environment");
+  }
 }
 
 /**
@@ -110,23 +117,26 @@ export function feeBearer() {
  * fee in its own favour and rounding down here would leave a fraction of a kobo
  * uncollected on every transaction.
  *
- * The total is then rounded up to a whole naira, because Flutterwave charges in
- * the currency's major unit and rejects a total that is not one. Without this, a
- * base of N101 at 10% produced N111.10 and the checkout was refused outright,
- * so any amount that did not happen to divide evenly was simply unpayable. The
- * sub-naira remainder is folded into the fee rather than dropped, so the two
- * figures the customer is shown always add up to the amount charged.
+ * The v3 checkout reference declares integer major units. Until fractional
+ * checkout is verified in the provider sandbox, wallet deposits use whole naira.
+ * Customer-borne checkout rounding is itemized separately in roundingKobo;
+ * platform-borne fees cannot silently add a surcharge to a fractional price.
  *
  * @returns {{ baseKobo: number, feeKobo: number, totalKobo: number, basisPoints: number, bearer: string, roundingKobo: number }}
  */
 export function priceWithFee(baseAmountKobo) {
-  const baseKobo = Math.max(0, Math.round(Number(baseAmountKobo) || 0));
+  const baseKobo = integerKobo(baseAmountKobo, { min: 0, max: Number.MAX_SAFE_INTEGER });
   const bearer = feeBearer();
   const basisPoints = bearer === FEE_BEARERS.customer ? feeBasisPoints() : 0;
-  const rawFeeKobo = basisPoints > 0 ? Math.ceil((baseKobo * basisPoints) / 10_000) : 0;
-  const exactTotalKobo = baseKobo + rawFeeKobo;
-  // Flutterwave's major unit: a whole number of naira.
-  const totalKobo = exactTotalKobo % 100 === 0 ? exactTotalKobo : Math.ceil(exactTotalKobo / 100) * 100;
+  if (bearer === FEE_BEARERS.platform && baseKobo % 100 !== 0) {
+    throw badRequest("Amount must be a whole number of naira until fractional checkout is verified");
+  }
+  const rawFee = (BigInt(baseKobo) * BigInt(basisPoints) + 9999n) / 10000n;
+  const exactTotal = BigInt(baseKobo) + rawFee;
+  const roundedTotal = (exactTotal + 99n) / 100n * 100n;
+  if (roundedTotal > BigInt(Number.MAX_SAFE_INTEGER)) throw badRequest("Payment total exceeds the supported limit");
+  const exactTotalKobo = Number(exactTotal);
+  const totalKobo = Number(roundedTotal);
   const feeKobo = totalKobo - baseKobo;
   return { baseKobo, feeKobo, totalKobo, basisPoints, bearer, roundingKobo: totalKobo - exactTotalKobo };
 }
@@ -281,6 +291,7 @@ export async function verifyCheckout({
   }
 
   if (simulated) {
+      assertLegacySimulationAllowed();
       return {
         provider: "paystack",
         paid: true,
@@ -298,7 +309,11 @@ export async function verifyCheckout({
 
     const data = await paystack.verifyTransaction(reference);
     const paid = data?.status === "success";
-    const amountKobo = Number(data?.amount ?? 0);
+    const amountKobo = data?.amount == null ? null : flutterwave.toKobo(data.amount, "minor");
+    const currency = typeof data?.currency === "string" ? data.currency.toUpperCase() : null;
+    if (paid && (!reference || data?.reference !== reference)) throw badRequest("Payment reference did not match the recorded charge");
+    if (paid && currency !== String(expectedCurrency).toUpperCase()) throw badRequest("Payment currency did not match the recorded charge");
+    if (paid && amountKobo == null) throw badRequest("Payment amount is missing");
     if (paid && expectedAmountKobo != null && amountKobo < expectedAmountKobo) {
       // Paystack's own reference check is implicit (we look up by our reference).
       const { badRequest } = await import("./errors.js");
@@ -309,8 +324,8 @@ export async function verifyCheckout({
       paid,
       status: data?.status ?? "unknown",
       amountKobo,
-      currency: String(data?.currency ?? expectedCurrency),
-      reference: data?.reference ?? reference ?? null,
+      currency,
+      reference: data?.reference ?? null,
       providerTransactionId: data?.id != null ? String(data.id) : null,
       simulated: false
     };
@@ -319,9 +334,7 @@ export async function verifyCheckout({
 /**
  * Refund a charge, in full or in part, across providers.
  *
- * Paystack has no native partial refund, so a part refund is issued as a
- * provider-side reversal of the difference and reported honestly: `partial`
- * support is provider-dependent and callers must reconcile the result.
+ * Provider acceptance queues a refund; final disbursement still needs lookup.
  *
  * @returns {{ provider, id, status, refundedKobo, simulated }}
  */
@@ -342,25 +355,57 @@ export async function refundCheckout({
   }
 
   if (simulated) {
+    assertLegacySimulationAllowed();
     return { provider: "paystack", id: null, status: "pending", refundedKobo: amountKobo ?? 0, simulated: true };
   }
   if (!paystack.paystackEnabled()) throw serviceUnavailable("Paystack is not configured");
   if (!transactionId) throw serviceUnavailable("A provider transaction id is required to refund this charge");
 
-  const { badRequest } = await import("./errors.js");
-  if (amountKobo != null) {
-    // Paystack cannot refund part of a charge through its API; pretending
-    // otherwise would leave the customer short-changed.
-    throw badRequest("Partial refunds are not supported by Paystack. Switch the payment provider to Flutterwave or process the difference manually.");
-  }
-  const data = await paystack.refundTransaction(transactionId);
+  if (amountKobo != null) amountKobo = integerKobo(amountKobo, { max: Number.MAX_SAFE_INTEGER, label: "Refund amount" });
+  const data = await paystack.refundTransaction(transactionId, amountKobo, reason);
   return {
     provider: "paystack",
     id: data?.id != null ? String(data.id) : null,
     status: String(data?.status ?? "pending").toLowerCase(),
-    refundedKobo: Number(data?.amount ?? 0),
+    refundedKobo: data?.amount == null ? (amountKobo ?? 0) : integerKobo(data.amount, { min: 0, max: Number.MAX_SAFE_INTEGER, label: "Provider refund amount" }),
     simulated: false
   };
+}
+
+/** Provider-specific disbursement vocabulary, not checkout success vocabulary. */
+export function refundSettlementState(provider, status) {
+  const value = String(status ?? "").toLowerCase();
+  if (provider === "flutterwave" && ["completed-bank-transfer", "completed-momo", "completed-mpgs", "completed-offline", "completed-preauth"].includes(value)) return "succeeded";
+  if (provider === "paystack" && value === "processed") return "succeeded";
+  return "pending";
+}
+
+/** Exact correlated refund lookup. Unknown identifiers need human/provider review. */
+export async function lookupRefund(refund) {
+  if (!refund.provider_refund_id) return { matched: false, reviewReason: "Missing provider refund identifier; never infer a refund from amount or time" };
+  if (!refund.metadata?.providerTransactionId) return { matched: false, reviewReason: "Missing original provider transaction identifier" };
+  let data, amountKobo, transactionId, currency, reference;
+  if (refund.provider === "flutterwave") {
+    data = await flutterwave.fetchRefund(refund.provider_refund_id);
+    transactionId = data?.tx_id ?? data?.TransactionId;
+    currency = data?.currency;
+    reference = data?.tx_ref;
+    try { amountKobo = nairaToKobo(data?.amount_refunded ?? data?.AmountRefunded, { max: Number.MAX_SAFE_INTEGER, label: "Provider refund amount" }); } catch { return { matched: false, reviewReason: "Provider refund amount is missing or malformed" }; }
+  } else if (refund.provider === "paystack") {
+    data = await paystack.fetchRefund(refund.provider_refund_id);
+    transactionId = typeof data?.transaction === "object" ? data.transaction?.id : data?.transaction;
+    currency = data?.currency;
+    reference = typeof data?.transaction === "object" ? data.transaction?.reference : null;
+    try { amountKobo = integerKobo(data?.amount, { max: Number.MAX_SAFE_INTEGER, label: "Provider refund amount" }); } catch { return { matched: false, reviewReason: "Provider refund amount is missing or malformed" }; }
+  } else return { matched: false, reviewReason: "Unsupported recorded refund provider" };
+  if (String(data?.id ?? "") !== String(refund.provider_refund_id) ||
+      String(transactionId ?? "") !== String(refund.metadata.providerTransactionId) ||
+      amountKobo !== integerKobo(refund.amount_kobo, { max: Number.MAX_SAFE_INTEGER }) ||
+      currency !== (refund.currency ?? "NGN") || (reference != null && reference !== refund.provider_ref)) {
+    return { matched: false, reviewReason: "Provider refund evidence does not match the recorded charge, amount or currency" };
+  }
+  return { matched: true, id: String(data.id), status: String(data.status ?? "").toLowerCase(),
+    state: refundSettlementState(refund.provider, data.status), amountKobo, currency };
 }
 
 /** Create a processor collection subaccount for an organization. */

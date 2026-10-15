@@ -33,6 +33,7 @@ import type {
   PartnerMetric,
   PartnerNotifications,
   PartnerRow,
+  PartnerStaffMember,
   PartnerTone
 } from "@/lib/services/types";
 import type { DashboardPageKey } from "@/lib/mock/dashboard-data";
@@ -766,7 +767,7 @@ function SettlementsPage({
         loadingLabel="Loading settlement account…"
       >
         {data ? (
-          <div className="grid gap-8 xl:grid-cols-[320px_1fr]">
+          <div className="grid gap-8 xl:grid-cols-[320px_minmax(0,1fr)]">
             <aside className="space-y-5">
               <article className="rounded-xl border border-[#d7d8e4] bg-white p-6 shadow-sm">
                 <h2 className="font-display text-xl font-extrabold text-obligon-navy">
@@ -807,7 +808,7 @@ function SettlementsPage({
               </article>
             </aside>
 
-            <main className="space-y-8">
+            <main className="min-w-0 space-y-8">
               <DataTable
                 title="Settlement Periods"
                 columns={["Period Start", "Period End", "Gross Sales", "Fees", "Net Payout"]}
@@ -1421,7 +1422,7 @@ function NotificationsPage() {
 function StaffPage() {
   const { status, data, error, reload } = useAsync(() => api.getPartnerStaff());
   const [inviting, setInviting] = React.useState(false);
-  const [editing, setEditing] = React.useState<PartnerRow | null>(null);
+  const [editing, setEditing] = React.useState<PartnerStaffMember | null>(null);
 
   return (
     <DashboardCanvas>
@@ -1851,7 +1852,7 @@ function StaffMemberModal({
   onClose,
   onSaved
 }: {
-  member: PartnerRow | null;
+  member: PartnerStaffMember | null;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -1861,8 +1862,9 @@ function StaffMemberModal({
     fullName: "",
     email: "",
     phone: "",
-    role: "attendant",
-    enabled: true
+    role: "dispatcher",
+    enabled: member ? member.status === "ACTIVE" : true,
+    cardAccess: member ? member.cardAccess === true : true
   });
   const [submitting, setSubmitting] = React.useState(false);
   const [removing, setRemoving] = React.useState(false);
@@ -1885,9 +1887,10 @@ function StaffMemberModal({
           fullName: form.fullName.trim(),
           email: form.email.trim(),
           phone: form.phone.trim(),
-          role: form.role
+          role: form.role,
+          cardAccess: form.cardAccess
         });
-        toastSuccess(`${form.fullName.trim()} added. They can sign in once their account is verified.`);
+        toastSuccess(`${form.fullName.trim()} added. Their partner account has been added.`);
         onSaved();
         onClose();
       } catch (err) {
@@ -1907,7 +1910,7 @@ function StaffMemberModal({
     setSubmitting(true);
     setFormError(null);
     try {
-      await mutationsApi.updateStaff(member.id, { enabled: form.enabled });
+      await mutationsApi.updateStaff(member.id, { enabled: form.enabled, cardAccess: form.cardAccess });
       toastSuccess("Attendant updated.");
       onSaved();
       onClose();
@@ -1936,7 +1939,7 @@ function StaffMemberModal({
   return (
     <Modal
       title={editing ? "Attendant" : "Invite Attendant"}
-      description={editing ? member?.cells[0] : "They will be able to sign in to the partner dashboard once verified."}
+      description={editing ? member?.cells[0] : "Add a station colleague with access based on their role."}
       onClose={onClose}
     >
       <form onSubmit={submit}>
@@ -1974,17 +1977,20 @@ function StaffMemberModal({
             <label className={`mt-4 block ${labelClass}`}>
               Role
               <select className={fieldClass} value={form.role} onChange={set("role")}>
-                <option value="attendant">Attendant</option>
-                <option value="dispatcher">Dispatcher</option>
+                <option value="dispatcher">Attendant / Dispatcher</option>
                 <option value="manager">Manager</option>
                 <option value="admin">Admin</option>
               </select>
             </label>
             <p className="mt-3 text-xs font-medium text-obligon-text">
-              Roles decide what an attendant can do. Only an owner can promote someone to owner.
+              Roles decide what an attendant can do. Owner access cannot be assigned here.
             </p>
           </>
         )}
+        <label className="mt-4 flex items-center gap-3">
+          <input type="checkbox" checked={form.cardAccess} disabled={submitting || removing} onChange={(event) => setForm((prev) => ({ ...prev, cardAccess: event.target.checked }))} className="size-4" />
+          <span className="text-sm font-bold text-obligon-navy">Allow POS payments</span>
+        </label>
         <div className="mt-6 flex gap-3">
           <button type="button" onClick={onClose} className="h-11 flex-1 rounded-xl border border-[#071853] text-sm font-bold">
             Cancel
@@ -2004,7 +2010,7 @@ function StaffMemberModal({
             disabled={submitting || removing}
             className="h-11 flex-1 rounded-xl bg-obligon-green text-sm font-extrabold text-white flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            {submitting ? <Loader2 size={16} className="animate-spin" /> : editing ? "Save" : "Send Invitation"}
+            {submitting ? <Loader2 size={16} className="animate-spin" /> : editing ? "Save" : "Add staff"}
           </button>
         </div>
       </form>

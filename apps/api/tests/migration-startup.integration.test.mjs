@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
+import bcrypt from "bcryptjs";
 import { runMigrations } from "../src/lib/migrations.js";
 
 // Explicit local opt-in. Each test owns a separate database because the real RLS
@@ -190,19 +191,24 @@ async function waitUntilServing(state) {
 integration("actual API startup upgrades a legacy database before normal partner login and dashboard reads", async () => {
   await withDatabase(async (pool, url) => {
     await oldSchema(pool);
+    const password="isolated-migration-account-password";
+    const {rows:[fixture]}=await pool.query("INSERT INTO users(email,password_hash,role,email_verified,status) VALUES('migration-partner@example.invalid',$1,'partner',true,'active') RETURNING id",[await bcrypt.hash(password,10)]);
+    const {rows:[org]}=await pool.query("INSERT INTO organizations(owner_user_id,name,type,verification_status)VALUES($1,'Migration fixture','partner','verified')RETURNING id",[fixture.id]);
+    await pool.query("INSERT INTO memberships(organization_id,user_id,email,role,status)VALUES($1,$2,'migration-partner@example.invalid','owner','active')",[org.id,fixture.id]);
     const port = await availablePort();
     const state = childProcess("src/index.js", url, port);
     try {
       await waitUntilServing(state);
-      assert.ok(state.output.indexOf("Migrations complete.") < state.output.indexOf("Temporary partner test account: created"));
-      assert.ok(state.output.indexOf("Temporary partner test account: created") < state.output.indexOf("Obligon API running"));
+      assert.ok(state.output.indexOf("Migrations complete.") < state.output.indexOf("Temporary partner test account: absent"));
+      assert.ok(state.output.indexOf("Temporary partner test account: absent") < state.output.indexOf("Obligon API running"));
       const base = `http://127.0.0.1:${port}`;
       const login = await fetch(`${base}/api/auth/login`, {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: "partner.test@obligon.com", password: "ObligonPartnerTest!2026", role: "partner" }),
+        body: JSON.stringify({ email: "migration-partner@example.invalid", password, role: "partner" }),
       });
       const account = await login.json();
       assert.equal(login.status, 200, JSON.stringify(account));
+      await pool.query("INSERT INTO subscriptions(organization_id,plan_code,status,current_period_start,current_period_end)VALUES($1,'enterprise','active',now(),now()+interval '1 month')",[org.id]);
       for (const endpoint of ["overview", "notifications"]) {
         const response = await fetch(`${base}/api/partner/${endpoint}`, { headers: { authorization: `Bearer ${account.accessToken}` } });
         assert.equal(response.status, 200, `${endpoint}: ${await response.text()}`);

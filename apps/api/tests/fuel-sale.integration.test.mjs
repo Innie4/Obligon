@@ -21,8 +21,9 @@ before(async () => {
  ({ approvedDiscount } = await import('../src/lib/discounts.js'));
  ({ customerSubscription, activateCustomerSubscription } = await import('../src/lib/subscriptions.js'));
  await pool.query(`
+ CREATE TABLE organizations(id uuid PRIMARY KEY, type text DEFAULT 'company',verification_status text DEFAULT 'verified');
  CREATE TABLE cards(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), pos_code text UNIQUE, pos_code_expires_at timestamptz, status text DEFAULT 'active', owner_user_id uuid, organization_id uuid, vehicle_id uuid, driver_id uuid, daily_limit_kobo bigint DEFAULT 100000, monthly_limit_kobo bigint DEFAULT 1000000, spend_today_kobo bigint DEFAULT 0, spend_month_kobo bigint DEFAULT 0, updated_at timestamptz DEFAULT now());
- CREATE TABLE stations(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), partner_org_id uuid, name text DEFAULT 'Test station');
+ CREATE TABLE stations(id uuid PRIMARY KEY DEFAULT gen_random_uuid(), partner_org_id uuid, name text DEFAULT 'Test station',status text DEFAULT 'active',is_open boolean DEFAULT true);
  CREATE TABLE bank_accounts(id uuid DEFAULT gen_random_uuid(), organization_id uuid, verified boolean DEFAULT true, is_default boolean DEFAULT true);
  CREATE TABLE fuel_prices(station_id uuid, fuel_type text, price_kobo bigint, PRIMARY KEY(station_id,fuel_type));
  CREATE TABLE discount_review_states(id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, code text UNIQUE);
@@ -31,14 +32,14 @@ before(async () => {
  CREATE TABLE card_plans(code text PRIMARY KEY,name text,features jsonb DEFAULT '[]');
  INSERT INTO card_plans(code,name) VALUES ('gold','Gold');
  CREATE TABLE customer_subscriptions(user_id uuid PRIMARY KEY,plan_code text,payment_reference text,status text DEFAULT 'active',current_period_start timestamptz,current_period_end timestamptz,updated_at timestamptz DEFAULT now());
- CREATE TABLE wallets(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid,organization_id uuid,balance_kobo bigint CHECK(balance_kobo>=0),budget_limit_kobo bigint DEFAULT 0);
+ CREATE TABLE wallets(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid,organization_id uuid,currency text DEFAULT 'NGN',balance_kobo bigint CHECK(balance_kobo>=0),budget_limit_kobo bigint DEFAULT 0);
  CREATE TABLE wallet_ledger(wallet_id uuid,direction text,amount_kobo bigint,balance_after_kobo bigint,reference text,idempotency_key text UNIQUE,description text,created_at timestamptz DEFAULT now());
- CREATE TABLE transactions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),reference text UNIQUE,customer_user_id uuid,organization_id uuid,station_id uuid,vehicle_id uuid,driver_id uuid,card_id uuid,fuel_type text,litres numeric,amount_kobo bigint,base_amount_kobo bigint,platform_fee_kobo bigint,partner_net_kobo bigint,discount_request_id uuid,settlement_method text,status text,meta text,created_at timestamptz DEFAULT now());
+ CREATE TABLE transactions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),reference text UNIQUE,customer_user_id uuid,organization_id uuid,station_id uuid,vehicle_id uuid,driver_id uuid,card_id uuid,fuel_type text,litres numeric,unit_price_kobo bigint,amount_kobo bigint,base_amount_kobo bigint,platform_fee_kobo bigint,partner_net_kobo bigint,discount_request_id uuid,settlement_method text,status text,meta text,created_at timestamptz DEFAULT now());
  CREATE TABLE fuel_orders(card_id uuid,amount_kobo bigint,created_at timestamptz DEFAULT now(),status text,reservation_expires_at timestamptz);
  CREATE TABLE fueling_logs(station_id uuid,transaction_id uuid,fuel_type text,litres numeric);
  `);
 });
-beforeEach(async () => { if(url) await pool.query('TRUNCATE cards,stations,bank_accounts,fuel_prices,station_discount_requests,customer_subscriptions,wallets,wallet_ledger,transactions,fueling_logs,fuel_orders'); });
+beforeEach(async () => { if(url) await pool.query('TRUNCATE cards,stations,bank_accounts,fuel_prices,station_discount_requests,customer_subscriptions,wallets,wallet_ledger,transactions,fueling_logs,fuel_orders,organizations'); });
 after(async () => { if(!url) return; await pool?.end(); await admin.query(`DROP SCHEMA ${schema} CASCADE`); await admin.end(); });
 async function setup() {
  const user = randomUUID(), org = randomUUID();
@@ -51,10 +52,13 @@ async function setup() {
  return { user, org, station: station.id, card: card.id, wallet: wallet.id };
 }
 const buy = (f, overrides={}) => tx(t => authorize(t,{ partnerOrgId:f.org, stationId:f.station,code:'123456',litres:10,fuelType:'Petrol',reference:`TXN-${randomUUID()}`,...overrides }));
-async function unchanged(f) {
+async function unchanged(f,ledgerCount=0) {
  const { rows:[state] }=await pool.query('SELECT balance_kobo FROM wallets WHERE id=$1',[f.wallet]); assert.equal(Number(state.balance_kobo),100000);
  const { rows:[n] }=await pool.query('SELECT count(*)::int AS n FROM transactions'); assert.equal(n.n,0);
- const { rows:[card] }=await pool.query('SELECT pos_code FROM cards WHERE id=$1',[f.card]); assert.equal(card.pos_code,'123456');
+ const { rows:[card] }=await pool.query('SELECT pos_code,pos_code_expires_at>now() AS valid,spend_today_kobo,spend_month_kobo FROM cards WHERE id=$1',[f.card]);
+ assert.equal(card.pos_code,'123456');assert.equal(card.valid,true);assert.equal(Number(card.spend_today_kobo),0);assert.equal(Number(card.spend_month_kobo),0);
+ const { rows:[ledger] }=await pool.query('SELECT count(*)::int AS n FROM wallet_ledger');assert.equal(ledger.n,ledgerCount);
+ const { rows:[logs] }=await pool.query('SELECT count(*)::int AS n FROM fueling_logs');assert.equal(logs.n,0);
 }
 integration('POS debits wallet and records exactly the selected station price',async()=>{
  const f=await setup(); const { rows:[other] }=await pool.query('INSERT INTO stations(partner_org_id) VALUES($1) RETURNING id',[f.org]);
@@ -94,6 +98,30 @@ integration('invalid code is rejected without falling back to a driver PIN',asyn
 integration('station belonging to another partner cannot be charged',async()=>{
  const f=await setup();await assert.rejects(buy(f,{partnerOrgId:randomUUID()}),/Station not found/);await unchanged(f);
 });
+for(const status of ['pending','suspended'])integration(`${status} station cannot consume a wallet code or move money`,async()=>{
+ const f=await setup();await pool.query('UPDATE stations SET status=$2 WHERE id=$1',[f.station,status]);
+ await assert.rejects(buy(f),/Station not found/);await unchanged(f);
+});
+integration('closed active station cannot consume a wallet code or move money',async()=>{
+ const f=await setup();await pool.query('UPDATE stations SET is_open=false WHERE id=$1',[f.station]);
+ await assert.rejects(buy(f),/Station not found/);await unchanged(f);
+});
+integration('wallet sale records the quoted unit price and keeps it after published price changes',async()=>{
+ const f=await setup();await discount(f,'approved',"now()-interval '1 day'","now()+interval '1 day'");
+ const result=await buy(f);assert.equal(Number(result.sale.unit_price_kobo),1000);
+ await pool.query("UPDATE fuel_prices SET price_kobo=2000 WHERE station_id=$1 AND fuel_type='Petrol'",[f.station]);
+ const {rows:[sale]}=await pool.query('SELECT unit_price_kobo,base_amount_kobo,amount_kobo FROM transactions WHERE id=$1',[result.sale.id]);
+ assert.deepEqual(sale,{unit_price_kobo:'1000',base_amount_kobo:'10000',amount_kobo:'9000'});
+});
+integration('wallet quote rounds an exact decimal litre half-kobo upward',async()=>{
+ const f=await setup();await pool.query('UPDATE fuel_prices SET price_kobo=9950 WHERE station_id=$1',[f.station]);
+ const result=await buy(f,{litres:'1.13'});assert.equal(Number(result.sale.base_amount_kobo),11244);
+ assert.equal(Number(result.sale.amount_kobo),11244);
+ const {rows:[wallet]}=await pool.query('SELECT balance_kobo FROM wallets WHERE id=$1',[f.wallet]);assert.equal(Number(wallet.balance_kobo),88756);
+});
+integration('wallet POS refuses sub-centilitre precision before consuming code or ledger',async()=>{
+ const f=await setup();await assert.rejects(buy(f,{litres:'1.00000000000000001'}),/Litres/);await unchanged(f);
+});
 integration('one authorization code permits one atomic sale across concurrent requests',async()=>{
  const f=await setup();const results=await Promise.allSettled([buy(f),buy(f)]);
  assert.equal(results.filter(r=>r.status==='fulfilled').length,1);assert.equal(results.filter(r=>r.status==='rejected').length,1);
@@ -125,7 +153,7 @@ integration('replaying approval never extends an already activated paid subscrip
 integration('monthly wallet budget includes previous fuel debits and rolls back excess purchases',async()=>{
  const f=await setup();await pool.query('UPDATE wallets SET budget_limit_kobo=12000 WHERE id=$1',[f.wallet]);
  await pool.query("INSERT INTO wallet_ledger(wallet_id,direction,amount_kobo,balance_after_kobo,reference) VALUES($1,'debit',3000,100000,'TXN-previous')",[f.wallet]);
- await assert.rejects(buy(f),/budget/);await unchanged(f);
+ await assert.rejects(buy(f),/budget/);await unchanged(f,1);
 });
 
 integration('active direct checkout reservations block wallet POS purchases above card limits',async()=>{
@@ -137,4 +165,19 @@ integration('expired direct checkout reservations do not block wallet POS purcha
  const f=await setup();await pool.query('UPDATE cards SET daily_limit_kobo=12000 WHERE id=$1',[f.card]);
  await pool.query("INSERT INTO fuel_orders(card_id,amount_kobo,status,reservation_expires_at) VALUES($1,3000,'awaiting_payment',now()-interval '1 second')",[f.card]);
  const result=await buy(f);assert.equal(Number(result.sale.amount_kobo),10000);
+});
+
+integration('fuel codes cannot debit non-NGN personal or company wallets as naira',async()=>{
+ for(const fleet of [false,true]){
+  const f=await setup();if(fleet){const organization=randomUUID();await pool.query('INSERT INTO organizations(id)VALUES($1)',[organization]);await pool.query('UPDATE cards SET organization_id=$2 WHERE id=$1',[f.card,organization]);await pool.query('UPDATE wallets SET organization_id=$2 WHERE id=$1',[f.wallet,organization]);}
+  await pool.query("UPDATE wallets SET currency='USD' WHERE id=$1",[f.wallet]);await assert.rejects(buy(f),/NGN wallet/);await unchanged(f);
+  await pool.query('TRUNCATE cards,stations,bank_accounts,fuel_prices,customer_subscriptions,wallets');
+ }
+});
+integration('an existing company fuel code cannot spend after contract approval is revoked',async()=>{
+ const f=await setup(),organization=randomUUID();await pool.query("INSERT INTO organizations(id,verification_status)VALUES($1,'pending')",[organization]);
+ await pool.query('UPDATE cards SET organization_id=$2 WHERE id=$1',[f.card,organization]);await pool.query('UPDATE wallets SET organization_id=$2 WHERE id=$1',[f.wallet,organization]);
+ await assert.rejects(buy(f),/contract.*approval|approval.*contract/i);await unchanged(f);
+ await pool.query("UPDATE organizations SET verification_status='verified' WHERE id=$1",[organization]);
+ assert.equal(Number((await buy(f)).sale.amount_kobo),10000);
 });

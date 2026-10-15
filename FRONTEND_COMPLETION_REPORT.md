@@ -1,5 +1,11 @@
 # Obligon LTD Frontend Completion Report
 
+> Historical report for the earlier frontend-only pass. The application now has
+> live API and persistence workflows; the limitations and counts below describe
+> that earlier scope. Current 2026-10-14 review evidence and unresolved production
+> checks are tracked in `reports/production-readiness-2026-10-14/`. This document
+> does not certify the current application for production release.
+
 ## Scope completed
 
 This report records the frontend completion pass governed by `FRONTEND_COMPLETION_BRIEF.md`. The work was limited to the existing frontend code in `apps/web`. No backend route, API contract, database schema, server logic, or dependency was changed.

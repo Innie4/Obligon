@@ -92,7 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!payload.email || !payload.password) {
         throw new Error("Enter your email and password to continue.");
       }
-      sessionGeneration.current += 1;
+      const generation = ++sessionGeneration.current;
       // A new login must never inherit the previous account's client state.
       void authApi.logout().catch(() => undefined);
       writePersistedSession(null);
@@ -109,9 +109,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           totp: payload.totp
         });
       } catch (error) {
+        if (generation !== sessionGeneration.current) throw error;
         setUserState(null);
         setStatus("unauthenticated");
         throw error;
+      }
+      if (generation !== sessionGeneration.current || !authApi.isCurrentAuthResult(result)) {
+        throw new Error("Sign-in changed while this request was in progress. Please try again.");
       }
       writeRememberedEmail(payload.email, Boolean(payload.rememberMe));
       setRememberedEmail(payload.rememberMe ? payload.email : "");

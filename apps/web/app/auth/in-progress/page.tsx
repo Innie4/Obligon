@@ -4,9 +4,9 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { AuthStatus } from "@/components/auth/AuthStatus";
-import { routes } from "@/components/site/routes";
 import { api } from "@/lib/services";
 import type { SessionUser } from "@/lib/services/types";
+import { dashboardDestination, safeInternalPath, signInDestination } from "@/lib/auth-routing";
 
 /**
  * Pending/success/failure state machine driven by the real auth session
@@ -16,17 +16,14 @@ import type { SessionUser } from "@/lib/services/types";
 export default function AuthInProgressPage() {
   const router = useRouter();
   const [status, setStatus] = useState<"progress" | "success" | "failure">("progress");
-  const [message, setMessage] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
-  const [returnUrl, setReturnUrl] = useState<string>(routes.dashboard);
-  const [nonce, setNonce] = useState(0);
+  const [destination, setDestination] = useState<string | null>(null);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const fromReturnUrl = urlParams.get("returnUrl");
     const fromError = urlParams.get("error");
 
-    setReturnUrl(fromReturnUrl ?? routes.dashboard);
     if (fromError) {
       setStatus("failure");
       setServerError(fromError);
@@ -34,6 +31,7 @@ export default function AuthInProgressPage() {
     }
 
     let active = true;
+    let redirectTimer: ReturnType<typeof setTimeout> | undefined;
     setStatus("progress");
     setServerError(null);
 
@@ -46,19 +44,12 @@ export default function AuthInProgressPage() {
           setServerError("Your session could not be verified. Please sign in again.");
           return;
         }
+        const nextPath = safeInternalPath(fromReturnUrl) ?? dashboardDestination(user.role);
+        setDestination(nextPath);
         setStatus("success");
-        setMessage("Session secured. Redirecting...");
-        await new Promise((resolve) => setTimeout(resolve, 1200));
-        if (!active) return;
-        const destination =
-          user.role === "admin"
-            ? routes.adminDashboard
-            : user.role === "company"
-              ? routes.companyDashboard
-              : user.role === "partner" || user.role === "mechanic"
-                ? routes.dashboard
-                : routes.customerDashboard;
-        router.push(returnUrl?.startsWith("/") ? returnUrl : destination);
+        redirectTimer = setTimeout(() => {
+          if (active) router.push(nextPath);
+        }, 1200);
       } catch {
         if (!active) return;
         setStatus("failure");
@@ -68,19 +59,22 @@ export default function AuthInProgressPage() {
 
     return () => {
       active = false;
+      if (redirectTimer) clearTimeout(redirectTimer);
     };
-  }, [router, returnUrl, nonce]);
+  }, [router]);
 
   const handleRetry = () => {
-    setNonce((n) => n + 1);
+    const returnPath = new URLSearchParams(window.location.search).get("returnUrl");
+    router.push(signInDestination(returnPath));
   };
 
   return (
     <AuthShell compact>
       <AuthStatus
         status={status}
-        message={status === "success" ? "Session secured. Redirecting..." : undefined}
+        message={status === "success" ? "Session verified. Redirecting..." : "Checking your sign-in session..."}
         serverError={serverError ?? undefined}
+        redirect={destination ?? undefined}
         onRetry={handleRetry}
       />
     </AuthShell>

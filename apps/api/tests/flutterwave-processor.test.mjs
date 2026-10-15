@@ -198,7 +198,8 @@ test("the provider a transfer belongs to is recorded", () => {
 test("hosted checkout is untouched by the transfer work", () => {
   // The kobo/major-unit handling on the payment side is load-bearing and already
   // had its own tests; the transfer work must not have disturbed it.
-  assert.match(flw, /export function detectAmountUnit/);
+  assert.match(flw, /export function toKobo/);
+  assert.doesNotMatch(flw, /detectAmountUnit/);
   assert.match(flw, /export function paidAmountFrom/);
   assert.match(payments, /export async function startCheckout/);
   assert.match(payments, /if \(name_ === "flutterwave"\)/);

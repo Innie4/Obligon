@@ -1,4 +1,5 @@
 import PDFDocument from "pdfkit";
+import { businessTimeZone } from "./time.js";
 
 function header(doc, title, subtitle) {
   doc.fontSize(22).fillColor("#0f172a").text("OBLIGON LTD", { continued: false });
@@ -102,7 +103,7 @@ export async function receiptPdf({ reference, createdAt, station, fuelType, litr
   const doc = new PDFDocument({ size: "A4", margin: 50 });
   header(doc, "Fuel Purchase Receipt", `Reference ${reference}`);
   doc.fontSize(10).fillColor("#334155");
-  doc.text(`Date: ${new Date(createdAt).toLocaleString("en-NG")}`);
+  doc.text(`Date: ${new Date(createdAt).toLocaleString("en-NG", { timeZone: businessTimeZone() })}`);
   doc.text(`Station: ${station}`);
   doc.text(`Card holder: ${holder ?? "—"}`);
   if (vehicle) doc.text(`Vehicle: ${vehicle}`);
@@ -125,7 +126,7 @@ export async function invoicePdf({ number, createdAt, orgName, planName, amountL
   const doc = new PDFDocument({ size: "A4", margin: 50 });
   header(doc, `Invoice ${number}`, `Billed to ${orgName}`);
   doc.fontSize(10).fillColor("#334155");
-  doc.text(`Issued: ${new Date(createdAt).toLocaleDateString("en-NG")}`);
+  doc.text(`Issued: ${new Date(createdAt).toLocaleDateString("en-NG", { timeZone: businessTimeZone() })}`);
   doc.text(`Plan: ${planName}`);
   doc.text(`Period: ${periodLabel}`);
   doc.moveDown(1);
@@ -147,6 +148,6 @@ export async function reportPdf({ title, subtitle, columns, rows }) {
   const doc = new PDFDocument({ size: "A4", margin: 50, layout: columns.length > 4 ? "landscape" : "portrait" });
   header(doc, title, subtitle);
   table(doc, columns, rows);
-  doc.moveDown(1).fontSize(9).fillColor("#64748b").text(`Generated ${new Date().toLocaleString("en-NG")} • Obligon LTD`, doc.page.margins.left, doc.y, { align: "center", width: doc.page.width - doc.page.margins.left - doc.page.margins.right });
+  doc.moveDown(1).fontSize(9).fillColor("#64748b").text(`Generated ${new Date().toLocaleString("en-NG", { timeZone: businessTimeZone() })} • Obligon LTD`, doc.page.margins.left, doc.y, { align: "center", width: doc.page.width - doc.page.margins.left - doc.page.margins.right });
   return streamBuffer(doc);
 }

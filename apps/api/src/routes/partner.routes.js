@@ -21,6 +21,7 @@ import { businessTimeZone, dayWindowSql, daysForRange } from "../lib/time.js";
 import multer from "multer";
 import { approvedDiscount, validateDiscount } from "../lib/discounts.js";
 import { enforcePartnerPlan, partnerSubscription } from "../lib/subscriptions.js";
+import { nairaToKobo } from "../lib/money-amounts.js";
 import { subscriptionRouter } from "./subscription.routes.js";
 
 const router = Router();
@@ -213,8 +214,27 @@ router.get("/overview/range", asyncHandler(async (req, res) => {
 }));
 
 // ============ TRANSACTIONS ============
+function transactionFilters(query) {
+  const { search, status, date } = query;
+  if (search != null && (typeof search !== "string" || search.length > 200)) throw badRequest("Search must be text of at most 200 characters");
+  if (status != null && (typeof status !== "string" || !["success", "failed", "pending"].includes(status))) throw badRequest("Choose a valid transaction status");
+  if (date != null && (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      !Number.isFinite(Date.parse(`${date}T00:00:00Z`)) || new Date(`${date}T00:00:00Z`).toISOString().slice(0,10) !== date)) throw badRequest("Choose a valid calendar date");
+  return { search, status, date };
+}
+function transactionPagination(query) {
+  const bound = (value, fallback, min) => {
+    if (value == null) return fallback;
+    if (typeof value !== "string" || !/^\d+$/.test(value)) throw badRequest("Pagination must use whole numbers");
+    const number = Number(value);
+    if (!Number.isSafeInteger(number) || number < min || number > 2147483647) throw badRequest("Pagination is out of range");
+    return number;
+  };
+  return { limit: Math.min(bound(query.limit,20,1),100), offset: bound(query.offset,0,0) };
+}
 router.get("/transactions", asyncHandler(async (req, res) => {
-  const { search, status, date, limit = 20, offset = 0 } = req.query;
+  const { search, status, date } = transactionFilters(req.query);
+  const { limit, offset } = transactionPagination(req.query);
   const params = [partnerOrgId(req)];
   let where = `t.station_id IN (SELECT id FROM stations WHERE partner_org_id = $1)`;
   if (search) { params.push(`%${search}%`); where += ` AND (t.reference ILIKE $${params.length} OR o.name ILIKE $${params.length})`; }
@@ -223,10 +243,9 @@ router.get("/transactions", asyncHandler(async (req, res) => {
   const rows = await q(
     `SELECT t.*, o.name AS org_name, o.fleet_id, c.masked_pan FROM transactions t
      LEFT JOIN organizations o ON o.id = t.organization_id LEFT JOIN cards c ON c.id = t.card_id
-     WHERE ${where} ORDER BY t.created_at DESC
-     LIMIT ${Math.min(Math.max(Number(limit) || 20, 1), 100)}
-     OFFSET ${Math.max(Number(offset) || 0, 0)}`,
-    params
+     WHERE ${where} ORDER BY t.created_at DESC, t.id DESC
+     LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+    [...params, limit, offset]
   );
   const total = await one(
     `SELECT COUNT(*)::int AS count FROM transactions t LEFT JOIN organizations o ON o.id = t.organization_id WHERE ${where}`,
@@ -253,7 +272,7 @@ router.get("/transactions", asyncHandler(async (req, res) => {
 // from a search for "TRK-084" returned every transaction on the network — the file is
 // the artefact that leaves the building, so the filter has to survive the trip.
 router.get("/transactions/export", asyncHandler(async (req, res) => {
-  const { search, status, date } = req.query;
+  const { search, status, date } = transactionFilters(req.query);
   const params = [partnerOrgId(req)];
   let where = `t.station_id IN (SELECT id FROM stations WHERE partner_org_id = $1)`;
   if (search) { params.push(`%${search}%`); where += ` AND (t.reference ILIKE $${params.length} OR o.name ILIKE $${params.length})`; }
@@ -261,7 +280,7 @@ router.get("/transactions/export", asyncHandler(async (req, res) => {
   if (date) { params.push(date); where += ` AND t.created_at::date = $${params.length}`; }
   const rows = await q(
     `SELECT t.*, o.name AS org_name FROM transactions t LEFT JOIN organizations o ON o.id = t.organization_id
-     WHERE ${where} ORDER BY t.created_at DESC LIMIT 5000`,
+     WHERE ${where} ORDER BY t.created_at DESC, t.id DESC LIMIT 5000`,
     params
   );
   const csv = toCsv(rows.map((r) => ({ reference: r.reference, date: fmtDateTime(r.created_at), company: r.org_name ?? "", fuel: r.fuel_type, litres: r.litres, amount: (r.amount_kobo / 100).toFixed(2), status: r.status })));
@@ -451,9 +470,7 @@ router.post("/payouts", (_req, _res, next) => next(forbidden("Manual payouts are
   // `Number("not-a-number") * 100` is NaN, and NaN is falsy, so this rejected
   // junk — but it also meant `amount: "5"` and `amount: 5` behaved differently
   // from each other, and the range check below is where that has to be settled.
-  const amountNaira = Number(amount);
-  if (!Number.isFinite(amountNaira)) throw badRequest("Enter a payout amount");
-  const amountKobo = Math.round(amountNaira * 100);
+  const amountKobo = nairaToKobo(amount, { min:100000,max:100_000_000_000,label:"Payout amount" });
   if (amountKobo < 100000) throw badRequest("Minimum payout is ₦1,000");
 
   const orgId = partnerOrgId(req);
@@ -780,7 +797,7 @@ router.post("/pricing", requireOrgRole("manager"), asyncHandler(async (req, res)
   const applied = [];
   for (const u of updates) {
     if (!u.fuelType || u.price == null) continue;
-    const priceKobo = Math.round(Number(u.price) * 100);
+    const priceKobo = nairaToKobo(u.price, { min:1,max:10000000,label:`${u.fuelType} price` });
     if (!Number.isSafeInteger(priceKobo) || priceKobo <= 0) throw badRequest(`${u.fuelType} price must be greater than zero`);
     if (priceKobo > 10000000) throw badRequest(`${u.fuelType} price looks too high (max ₦100,000/L)`);
     const current = await one("SELECT * FROM fuel_prices WHERE station_id = $1 AND fuel_type = $2", [station.id, u.fuelType]);
@@ -879,7 +896,7 @@ router.get("/staff", asyncHandler(async (req, res) => {
   const orgId = partnerOrgId(req);
   const staff = await q(
     `SELECT m.*, u.full_name, u.phone, u.status AS user_status FROM memberships m LEFT JOIN users u ON u.id = m.user_id
-     WHERE m.organization_id = $1 AND m.status IN ('active','invited') ORDER BY m.created_at DESC`,
+     WHERE m.organization_id = $1 AND m.status IN ('active','invited','suspended') ORDER BY m.created_at DESC`,
     [orgId]
   );
   res.json({
@@ -893,10 +910,10 @@ router.get("/staff", asyncHandler(async (req, res) => {
         `ST-${String(s.id).replace(/-/g, "").slice(0, 6).toUpperCase()}`,
         `${(s.full_name ?? s.email ?? "?").split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()}\n${s.full_name ?? s.email}\n${s.phone ?? "—"}`,
         s.role.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase()),
-        s.status === "active" ? "Enabled" : "Pending"
+        s.status === "active" ? "Enabled" : s.status === "suspended" ? "Disabled" : "Pending"
       ],
-      status: s.status === "active" ? "ACTIVE" : "PENDING", tone: s.status === "active" ? "success" : "pending",
-      memberId: s.id, cardAccess: s.role !== "viewer"
+      status: s.status === "active" ? "ACTIVE" : s.status === "suspended" ? "SUSPENDED" : "PENDING", tone: s.status === "active" ? "success" : s.status === "suspended" ? "danger" : "pending",
+      memberId: s.id, cardAccess: s.role === "owner" || (Array.isArray(s.permissions) && s.permissions.includes("pos.operate"))
     })),
     stats: { total: staff.length, active: staff.filter((s) => s.status === "active").length }
   });
@@ -906,9 +923,11 @@ router.post("/staff", requireOrgRole("admin"), asyncHandler(async (req, res) => 
   const { fullName, email, phone, role = "viewer", cardAccess } = req.valid ?? req.body ?? {};
   if (!fullName || !email) throw badRequest("Name and email are required");
   if (!["admin", "manager", "dispatcher", "viewer"].includes(role)) throw badRequest("Choose a valid role");
+  if (cardAccess !== undefined && typeof cardAccess !== "boolean") throw badRequest("Card access must be true or false");
   const { randomToken, hashPassword } = await import("../lib/security.js");
   const tempPassword = randomToken(6);
-  let user = await one("SELECT id FROM users WHERE lower(email) = lower($1)", [email]);
+  let user = await one("SELECT id, role FROM users WHERE lower(email) = lower($1)", [email]);
+  if (user && user.role !== "partner") throw badRequest("This email belongs to another account type. Use a partner account email for station staff.");
   if (!user) {
     user = await one(
       `INSERT INTO users (email, password_hash, full_name, role, organization_name, phone, status)
@@ -935,30 +954,25 @@ router.post("/staff", requireOrgRole("admin"), asyncHandler(async (req, res) => 
 }));
 
 router.put("/staff/:memberId", requireOrgRole("admin"), asyncHandler(async (req, res) => {
-  const { role, cardAccess } = req.body ?? {};
-  const member = await one("SELECT * FROM memberships WHERE id = $1 AND organization_id = $2", [requireUuid(req.params.memberId, "staff member"), partnerOrgId(req)]);
-  if (!member) throw notFound("Staff member not found");
-  // Validated, and `owner` is refused.
-  //
-  // `POST /staff` checks the role against a list that excludes `owner`; this path
-  // checked nothing. `memberships.role`'s CHECK constraint *does* include `owner`,
-  // so a partner admin could promote a colleague to owner — which outranks admin in
-  // ROLE_RANK and short-circuits `requireCapability` unconditionally, granting every
-  // capability in the product. `DELETE /staff/:memberId` then refuses to remove any
-  // owner, so the org admin could not revoke what they had just created.
+  const { role, cardAccess, enabled } = req.body ?? {};
   const ROLES = ["admin", "manager", "dispatcher", "viewer"];
-  if (role != null) {
-    if (!ROLES.includes(role)) {
-      throw badRequest(`Role must be one of: ${ROLES.join(", ")}`);
-    }
-    if (member.role === "owner") throw forbidden("The account owner cannot be changed");
-  }
+  if (role !== undefined && !ROLES.includes(role)) throw badRequest(`Role must be one of: ${ROLES.join(", ")}`);
+  if (cardAccess !== undefined && typeof cardAccess !== "boolean") throw badRequest("Card access must be true or false");
+  if (enabled !== undefined && typeof enabled !== "boolean") throw badRequest("Enabled must be true or false");
   const permissions = cardAccess === undefined ? undefined : JSON.stringify(cardAccess ? ["pos.operate"] : []);
-  await q(
-    "UPDATE memberships SET role = COALESCE($2, role), permissions = COALESCE($3, permissions) WHERE id = $1",
-    [member.id, role ?? null, permissions ?? null]
-  );
-  audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "staff.updated", entityId: member.id });
+  const memberId = requireUuid(req.params.memberId, "staff member"), orgId = partnerOrgId(req);
+  await tx(async (t) => {
+    // Serialize staff changes in this station and recheck the caller before applying them.
+    await t.one("SELECT id FROM organizations WHERE id=$1 FOR UPDATE", [orgId]);
+    const actor = await t.one("SELECT role,status FROM memberships WHERE organization_id=$1 AND user_id=$2 FOR UPDATE", [orgId, req.user.id]);
+    if (!actor || actor.status !== "active" || !["owner","admin"].includes(actor.role)) throw forbidden("Your staff management access is not active.");
+    const member = await t.one("SELECT * FROM memberships WHERE id=$1 AND organization_id=$2 FOR UPDATE", [memberId, orgId]);
+    if (!member) throw notFound("Staff member not found");
+    if (member.role === "owner") throw forbidden("The account owner cannot be changed");
+    await t.query("UPDATE memberships SET role=COALESCE($2,role), permissions=COALESCE($3,permissions), status=COALESCE($4,status) WHERE id=$1",
+      [member.id, role ?? null, permissions ?? null, enabled === undefined ? null : enabled ? "active" : "suspended"]);
+  });
+  audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "staff.updated", entityId: memberId });
   res.json({ ok: true });
 }));
 
@@ -1002,7 +1016,7 @@ router.post("/pos/authorize",requireCapability("pos.operate"),sensitiveLimiter,a
  const litresNum=requirePositiveNumber(litres,"Litres",{max:100000});
  const id=requireUuid(stationId,"station");
  const txRef=reference("TXN");
- const result=await tx(t=>authorizeWalletFuelSale(t,{partnerOrgId:partnerOrgId(req),stationId:id,code:String(code),litres:litresNum,fuelType:String(fuelType??"").trim(),reference:txRef}));
+ const result=await tx(t=>authorizeWalletFuelSale(t,{partnerOrgId:partnerOrgId(req),stationId:id,code:String(code),litres,fuelType:String(fuelType??"").trim(),reference:txRef}));
  emitToOrg(partnerOrgId(req),"pos.approved",{reference:txRef,amountLabel:naira(result.amounts.chargedKobo),card:result.card.masked_pan,time:fmtDateTime(new Date())});
  await audit({actorUserId:req.user.id,actorRole:req.user.role,action:"pos.approved",entityType:"transaction",entityId:result.sale.id,metadata:result.amounts});
  res.json({ok:true,approved:true,reference:txRef,card:result.card.masked_pan,fuelType:result.sale.fuel_type,litres:Number(result.sale.litres),amountLabel:naira(result.amounts.chargedKobo),partnerNetLabel:naira(result.amounts.partnerNetKobo),time:fmtDateTime(new Date())});
@@ -1074,7 +1088,7 @@ router.post("/disputes", requireOrgRole("dispatcher"), upload.array("evidence", 
   const dispute = await one(
     `INSERT INTO disputes (transaction_id, raised_by_user_id, raised_by_role, organization_id, station_org_id, reference, subject, category, description, evidence, status)
      VALUES ($1,$2,'partner',$3,$4,$5,$6,$7,$8,$9,'open') RETURNING *`,
-    [txRow?.id ?? null, req.user.id, partnerOrgId(req), txRow?.organization_id ?? null, partnerOrgId(req),
+    [txRow?.id ?? null, req.user.id, txRow?.organization_id ?? null, partnerOrgId(req),
       reference("DS"), subject, category, description, JSON.stringify(evidence)]
   );
   await notify({ orgId: partnerOrgId(req), title: "Dispute raised", body: `Dispute ${dispute.reference} — ${subject}. Our team will review it.`, category: "support" });

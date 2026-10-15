@@ -1,5 +1,5 @@
 import { q } from "../db.js";
-import { fetchPaymentPlans, invalidatePaymentPlans } from "./flutterwave.js";
+import { fetchPaymentPlans, invalidatePaymentPlans, toKobo, safeProviderMessage } from "./flutterwave.js";
 
 /**
  * Reconcile our fuel-card plan catalogue against the processor's payment plans.
@@ -49,7 +49,15 @@ export async function reconcilePaymentPlans({ force = false } = {}) {
   // reports the major unit, and a mismatch here is a factor of 100 — the same trap
   // the checkout path already documents.
   const byToken = new Map(result.plans.map((p) => [p.planToken, p]));
-  const byAmount = new Map(active.map((p) => [`${p.currency}:${Math.round(p.amount * 100)}`, p]));
+  let byAmount;
+  try {
+    const priced = result.plans.map((p) => ({ ...p, amountKobo: toKobo(p.amount, "major") }));
+    byAmount = new Map(priced.filter((p) => p.status === "active").map((p) => [`${p.currency}:${p.amountKobo}`, p]));
+  } catch (error) {
+    return { checked: false, configured: true, stale: true, throttled: result.throttled, fetchedAt: result.fetchedAt,
+      localPlans: local.length, processorPlans: result.plans.length, processorActive: active.length, drift: [],
+      error: safeProviderMessage(error?.message ?? "Invalid processor plan amount") };
+  }
 
   const drift = [];
   for (const plan of local) {

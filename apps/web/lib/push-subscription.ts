@@ -54,18 +54,14 @@ export type PushState = {
   reason?: string;
 };
 
-/** Current subscription state, used to reconcile the toggle on first load. */
+/** Browser subscription state; the account preference and API registration are separate. */
 export async function currentPushState(): Promise<PushState> {
   const support = pushSupport();
   if (support === "unsupported") return { subscribed: false, permission: support };
   if (support !== "granted") return { subscribed: false, permission: support };
-  try {
-    const registration = await navigator.serviceWorker.getRegistration();
-    const subscription = await registration?.pushManager.getSubscription();
-    return { subscribed: Boolean(subscription), permission: support };
-  } catch {
-    return { subscribed: false, permission: support };
-  }
+  const registration = await navigator.serviceWorker.getRegistration();
+  const subscription = await registration?.pushManager.getSubscription();
+  return { subscribed: Boolean(subscription), permission: support };
 }
 
 /**
@@ -94,7 +90,7 @@ export async function enableWebPush(): Promise<PushState> {
     return {
       subscribed: false,
       permission: "granted",
-      reason: "Push delivery is not configured on the server yet. Your preference is saved."
+      reason: "Push delivery is not configured on the server yet."
     };
   }
 
@@ -113,15 +109,13 @@ export async function enableWebPush(): Promise<PushState> {
 /** Drop the browser subscription and tell the API to stop sending. */
 export async function disableWebPush(): Promise<PushState> {
   if (!pushSupported()) return { subscribed: false, permission: "unsupported" };
-  try {
-    const registration = await navigator.serviceWorker.getRegistration();
-    const subscription = await registration?.pushManager.getSubscription();
-    if (subscription) {
-      await pushApi.unsubscribe(subscription.endpoint);
-      await subscription.unsubscribe();
+  const registration = await navigator.serviceWorker.getRegistration();
+  const subscription = await registration?.pushManager.getSubscription();
+  if (subscription) {
+    await pushApi.unsubscribe(subscription.endpoint);
+    if (!(await subscription.unsubscribe()) && await registration?.pushManager.getSubscription()) {
+      throw new Error("The browser could not disable push notifications. Please try again.");
     }
-  } catch {
-    // A missing/expired subscription is already the desired end state.
   }
   return { subscribed: false, permission: pushSupport() };
 }

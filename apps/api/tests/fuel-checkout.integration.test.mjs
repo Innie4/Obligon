@@ -30,15 +30,16 @@ before(async()=>{
  CREATE TABLE settlement_accounts(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),organization_id uuid,bank_account_id uuid,provider text DEFAULT 'flutterwave',status text DEFAULT 'active',subaccount_id text DEFAULT 'RS_TEST',currency text DEFAULT 'NGN');
  CREATE UNIQUE INDEX ON settlement_accounts(organization_id) WHERE status='active';
  CREATE TABLE bank_accounts(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),organization_id uuid,is_default boolean DEFAULT true,verified boolean DEFAULT true);
- CREATE TABLE transactions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),reference text UNIQUE,customer_user_id uuid,station_id uuid,card_id uuid,fuel_type text,litres numeric,amount_kobo bigint,base_amount_kobo bigint,platform_fee_kobo bigint,partner_net_kobo bigint,discount_request_id uuid,settlement_method text,status text,meta text,created_at timestamptz DEFAULT now());
+ CREATE TABLE transactions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),reference text UNIQUE,customer_user_id uuid,station_id uuid,card_id uuid,fuel_type text,litres numeric,unit_price_kobo bigint,amount_kobo bigint,base_amount_kobo bigint,platform_fee_kobo bigint,partner_net_kobo bigint,discount_request_id uuid,settlement_method text,status text,meta text,created_at timestamptz DEFAULT now());
  CREATE TABLE fueling_logs(station_id uuid,transaction_id uuid,fuel_type text,litres numeric);
+ CREATE TABLE payment_refunds(id uuid DEFAULT gen_random_uuid(),user_id uuid,provider text,provider_ref text,kind text,amount_kobo bigint,currency text DEFAULT 'NGN',reason text,idempotency_key text UNIQUE,metadata jsonb,status text DEFAULT 'pending',provider_refund_id text,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now(),settled_at timestamptz);
  `);
  const migration=await readFile(new URL('../src/migrations/023_fuel_orders.sql',import.meta.url),'utf8');await pool.query(`BEGIN;${migration}COMMIT;`);
  service=await import('../src/lib/fuel-checkout.js');
 });
 beforeEach(async()=>{
  if(!url)return;
- await pool.query('TRUNCATE users,organizations,pricing_plans,subscriptions,stations,card_plans,customer_subscriptions,cards,fuel_prices,discount_review_states,station_discount_requests,settlement_accounts,bank_accounts,transactions,fueling_logs,fuel_orders CASCADE');
+ await pool.query('TRUNCATE users,organizations,pricing_plans,subscriptions,stations,card_plans,customer_subscriptions,cards,fuel_prices,discount_review_states,station_discount_requests,settlement_accounts,bank_accounts,transactions,fueling_logs,fuel_orders,payment_refunds CASCADE');
  const {rows:[user]}=await pool.query("INSERT INTO users(email,full_name)VALUES('test@example.invalid','Test customer')RETURNING *");
  const {rows:[org]}=await pool.query('INSERT INTO organizations DEFAULT VALUES RETURNING id');
  const {rows:[station]}=await pool.query('INSERT INTO stations(partner_org_id)VALUES($1)RETURNING id',[org.id]);
@@ -100,6 +101,23 @@ integration('exact confirmed payment creates one processor-split transaction and
  const {rows}=await pool.query('SELECT amount_kobo,platform_fee_kobo,partner_net_kobo,settlement_method FROM transactions');
  assert.deepEqual(rows,[{amount_kobo:'9000',platform_fee_kobo:'1000',partner_net_kobo:'8000',settlement_method:'processor_split'}]);
  const {rows:[logs]}=await pool.query('SELECT count(*)::int AS n FROM fueling_logs');assert.equal(logs.n,0,'Fuel is not dispensed until station fulfillment');
+});
+integration('direct fuel confirmation persists its original unit price after station prices change',async()=>{
+ const {order}=await service.startFuelOrder(fixtures.user,fixtures.input,payments());
+ await pool.query('UPDATE fuel_prices SET price_kobo=2000 WHERE station_id=$1',[fixtures.stationId]);
+ await service.confirmFuelOrder(order.reference,'101',false,payments());
+ await service.confirmFuelOrder(order.reference,'101',false,payments());
+ const {rows}=await pool.query('SELECT unit_price_kobo,base_amount_kobo,amount_kobo FROM transactions');
+ assert.deepEqual(rows,[{unit_price_kobo:'1000',base_amount_kobo:'10000',amount_kobo:'9000'}]);
+});
+integration('direct checkout computes the original decimal litres quote with exact half-up rounding',async()=>{
+ await pool.query('UPDATE fuel_prices SET price_kobo=9950 WHERE station_id=$1',[fixtures.stationId]);
+ const {order}=await service.startFuelOrder(fixtures.user,{...fixtures.input,litres:'1.13'},payments());
+ assert.equal(Number(order.base_amount_kobo),11244);assert.equal(Number(order.amount_kobo),10120);
+});
+integration('direct checkout refuses disguised excess quantity precision before provider charge',async()=>{
+ await assert.rejects(service.startFuelOrder(fixtures.user,{...fixtures.input,litres:'1.00000000000000001'},payments()),/Litres/);
+ assert.equal(fixtures.calls.length,0);
 });
 integration('underpayment cannot create fuel authorization or a transaction',async()=>{
  const {order}=await service.startFuelOrder(fixtures.user,fixtures.input,payments());
@@ -195,4 +213,21 @@ integration('changing the default bank never rewrites an existing paid fuel orde
  assert.equal(next.order.settlement_account_id,newAccount.id);assert.equal(fixtures.calls[1].split.subaccountId,'RS_NEW');
  const {rows:[original]}=await pool.query('SELECT settlement_account_id FROM fuel_orders WHERE reference=$1',[order.reference]);
  assert.equal(original.settlement_account_id,fixtures.accountId);
+});
+
+integration('overpaid fuel authorizes only the immutable quote and atomically queues the exact excess once',async()=>{
+ const {order}=await service.startFuelOrder(fixtures.user,fixtures.input,payments());
+ const results=await Promise.all(Array.from({length:10},()=>service.confirmFuelOrder(order.reference,'101',false,payments({amountKobo:19001}))));
+ assert.ok(results.every(r=>r.status==='paid'));
+ const refunds=(await pool.query('SELECT * FROM payment_refunds')).rows;
+ assert.equal(refunds.length,1);assert.equal(refunds[0].amount_kobo,'10001');assert.equal(refunds[0].kind,'excess');assert.equal(refunds[0].metadata.refundDispatch,'queued');
+ const sales=(await pool.query('SELECT amount_kobo FROM transactions')).rows;assert.deepEqual(sales,[{amount_kobo:'9000'}]);
+});
+integration('failure to persist a fuel overpayment refund rolls back authorization and sale',async()=>{
+ const {order}=await service.startFuelOrder(fixtures.user,fixtures.input,payments());
+ await pool.query(`ALTER TABLE payment_refunds ADD CONSTRAINT refuse_test_refunds CHECK(amount_kobo<1)`);
+ try { await assert.rejects(service.confirmFuelOrder(order.reference,'101',false,payments({amountKobo:19000}))); }
+ finally { await pool.query('ALTER TABLE payment_refunds DROP CONSTRAINT refuse_test_refunds'); }
+ assert.equal((await pool.query('SELECT status FROM fuel_orders')).rows[0].status,'awaiting_payment');
+ assert.equal((await pool.query('SELECT count(*)::int n FROM transactions')).rows[0].n,0);
 });

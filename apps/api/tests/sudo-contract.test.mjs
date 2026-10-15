@@ -26,3 +26,10 @@ test('missing issuer identity never sends an incomplete customer request',async(
   assert.equal(calls,0);
  }finally{globalThis.fetch=previousFetch;}
 });
+
+test('unintegrated issuer funding is rejected before any card creation',async()=>{
+ const previous=env.SUDO_FUNDING_SOURCE_ID;const previousFetch=globalThis.fetch;let calls=0;
+ Object.assign(env,{SUDO_SECRET_API_KEY:'fixture',SUDO_DEBIT_ACCOUNT_ID:'fixture',SUDO_FUNDING_SOURCE_ID:'account-backed'});
+ globalThis.fetch=async()=>{calls++;throw Error('Issuer must not be called');};
+ try{await assert.rejects(()=>issueSudoCard({customerId:'fixture'}),/approved wallet authorization/);assert.equal(calls,0);}finally{env.SUDO_FUNDING_SOURCE_ID=previous;globalThis.fetch=previousFetch;}
+});

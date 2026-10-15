@@ -2,19 +2,27 @@
  * Wallet-on-signup + Flutterwave payment configuration.
  *
  * Verifies that every account type gets a wallet created and linked at signup,
- * that company wallets attach to the organization (not just the user), and that
- * the Flutterwave provider is wired correctly.
+ * that signup exposes the expected account context and local simulated
+ * Flutterwave accounting credits exactly once. Direct wallet-creation and
+ * provider sandbox checks are covered separately by isolated integration tests.
  *
  * Uses a throwaway account so it never fights the seeded fixtures.
  */
-const BASE = process.env.SMOKE_BASE_URL || "http://127.0.0.1:4000";
+const target = new URL(process.env.SMOKE_BASE_URL || "http://127.0.0.1:4000");
+const BASE = target.origin;
+if (process.env.OBLIGON_ALLOW_LOCAL_CHECKS !== "true" || !["http:", "https:"].includes(target.protocol) ||
+    !["127.0.0.1", "localhost", "[::1]"].includes(target.hostname) || target.username || target.password ||
+    target.pathname !== "/" || target.search || target.hash) {
+  throw new Error("This mutating diagnostic requires OBLIGON_ALLOW_LOCAL_CHECKS=true and a loopback API connected to disposable test data.");
+}
 
-async function call(method, path, { token, body } = {}) {
+async function call(method, path, { token, body, headers = {} } = {}) {
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: {
       "content-type": "application/json",
-      ...(token ? { authorization: `Bearer ${token}` } : {})
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+      ...headers
     },
     body: body ? JSON.stringify(body) : undefined
   });
@@ -35,14 +43,14 @@ function check(name, pass, detail = "") {
 
 const stamp = Date.now();
 const individual = {
-  email: `wallet-ind-${stamp}@example.com`,
+  email: `wallet-ind-${stamp}@example.invalid`,
   password: "WalletTest#123",
   fullName: "Wallet Individual",
   role: "customer",
   phone: "+2348010000001"
 };
 const company = {
-  email: `wallet-co-${stamp}@example.com`,
+  email: `wallet-co-${stamp}@example.invalid`,
   password: "WalletTest#123",
   fullName: "Wallet Company Owner",
   role: "company",
@@ -59,17 +67,22 @@ check(
   `provider=${config.data?.provider}`
 );
 check(
-  "config exposes a browser-safe flutterwave public key",
-  typeof config.data?.publicKeys?.flutterwave === "string" &&
-    config.data.publicKeys.flutterwave.startsWith("FLWPUBK"),
-  String(config.data?.publicKeys?.flutterwave).slice(0, 12)
+  "config exposes a browser-safe public key or explicit simulation",
+  config.data?.simulated === true || (typeof config.data?.publicKeys?.flutterwave === "string" &&
+    config.data.publicKeys.flutterwave.startsWith("FLWPUBK")),
+  "public configuration only"
 );
 check(
   "config never exposes a secret key",
   !JSON.stringify(config.data ?? {}).includes("FLWSECK") &&
-    !JSON.stringify(config.data ?? {}).includes("SECRET"),
+    !["secretKey", "secretHash", "FLW_SECRET_KEY", "FLW_SECRET_HASH"].some((key) => Object.hasOwn(config.data ?? {}, key)),
   "no secret material in the payload"
 );
+
+// This script tests local simulated accounting. Provider sandbox verification is a separate release check.
+if (config.status !== 200 || config.data?.simulated !== true || config.data?.provider !== "flutterwave") {
+  throw new Error("A disposable local API with simulated Flutterwave checkout is required; no provider checkout was started.");
+}
 
 // ------------------------------------------- individual account + wallet
 const indSignup = await call("POST", "/api/auth/signup", { body: individual });
@@ -85,11 +98,11 @@ const indWallet = await call("GET", "/api/customer/wallet", { token: indToken })
 check("individual wallet endpoint responds", indWallet.status === 200, `status=${indWallet.status}`);
 check(
   "individual wallet is created and funded at zero",
-  indWallet.data?.balanceLabel !== undefined,
+  indWallet.data?.balanceLabel !== undefined && indWallet.data?.balanceKobo === 0,
   `balance=${indWallet.data?.balanceLabel}`
 );
 
-// The wallet must exist immediately after signup, without a lazy first call.
+// This checks the account response; isolated DB tests prove eager wallet creation.
 const indProfile = await call("GET", "/api/customer/profile", { token: indToken });
 check("individual profile loads", indProfile.status === 200, `status=${indProfile.status}`);
 check(
@@ -106,8 +119,8 @@ const coLogin = await call("POST", "/api/auth/login", {
   body: { email: company.email, password: company.password }
 });
 check("company owner can sign in", coLogin.status === 200, `status=${coLogin.status}`);
-const coToken = coLogin.data?.accessToken;
 check("company session carries an organizationId", Boolean(coLogin.data?.user?.organizationId));
+// A pending company cannot operate its wallet until admin verification; no operational company request is made here.
 
 // ------------------------------------------------- top-up via flutterwave
 const topup = await call("POST", "/api/customer/wallet/topup", {
@@ -150,7 +163,7 @@ if (topup.data?.simulated) {
   check("simulated top-up confirms successfully", confirm.status === 200, `status=${confirm.status}`);
   const after = await call("GET", "/api/customer/wallet", { token: indToken });
   const balanceAfter = Number(after.data?.balanceKobo ?? 0);
-  check("confirming credits the wallet once", balanceAfter === balanceBefore + 5000000, `${balanceBefore} -> ${balanceAfter}`);
+  check("confirming credits the wallet once", balanceAfter === 500000, `${balanceBefore} -> ${balanceAfter}`);
 
   const reConfirm = await call("POST", "/api/customer/wallet/topup/confirm", {
     token: indToken,
@@ -178,10 +191,10 @@ if (topup.data?.simulated) {
 
 // A top-up reference belonging to someone else must not be confirmable.
 const second = await call("POST", "/api/auth/signup", {
-  body: { email: `wallet-two-${stamp}@example.com`, password: "WalletTest#123", fullName: "Second User", role: "customer" }
+  body: { email: `wallet-two-${stamp}@example.invalid`, password: "WalletTest#123", fullName: "Second User", role: "customer", phone: "+2348010000003" }
 });
 const secondLogin = await call("POST", "/api/auth/login", {
-  body: { email: `wallet-two-${stamp}@example.com`, password: "WalletTest#123" }
+  body: { email: `wallet-two-${stamp}@example.invalid`, password: "WalletTest#123" }
 });
 const secondTopup = await call("POST", "/api/customer/wallet/topup", {
   token: secondLogin.data?.accessToken,
@@ -201,13 +214,13 @@ check(
 const badHook = await call("POST", "/api/webhooks/flutterwave", {
   body: { event: "charge.completed", data: { id: 1, tx_ref: "X", status: "successful", charged_amount: 1, currency: "NGN" } }
 });
-check("webhook rejects a missing verif-hash", badHook.status === 401, `status=${badHook.status}`);
+check("webhook fails closed for missing verif-hash or unavailable authentication", [401, 503].includes(badHook.status), `status=${badHook.status}`);
 
 const wrongHook = await call("POST", "/api/webhooks/flutterwave", {
   body: { event: "charge.completed", data: { id: 1, tx_ref: "X", status: "successful", charged_amount: 1, currency: "NGN" } },
   headers: { "verif-hash": "not-the-secret" }
 });
-check("webhook rejects a wrong verif-hash", wrongHook.status === 401, `status=${wrongHook.status}`);
+check("webhook fails closed for wrong verif-hash or unavailable authentication", [401, 503].includes(wrongHook.status), `status=${wrongHook.status}`);
 
 // ---------------------------------------------------------- card plan via FW
 const plans = await call("GET", "/api/customer/card-plans", { token: indToken });

@@ -80,14 +80,14 @@ test("the browser reads the minimum instead of restating it", () => {
   assert.doesNotMatch(topUpModal, /at least \\u20a61,000/, "the hardcoded N1,000 message is gone");
   // Both the submit guard and the button must use the same derived value, or the
   // customer gets a button that is enabled but rejected.
-  assert.match(topUpModal, /disabled=\{submitting \|\| belowMinimum\}/);
-  assert.match(topUpModal, /if \(belowMinimum\)/);
+  assert.match(topUpModal, /disabled=\{submitting \|\| configLoading \|\| !quote\}/);
+  assert.match(topUpModal, /fundingQuote\(amount, feeConfig\)/);
 });
 
 test("the minimum is disclosed on the form rather than only enforced", () => {
   const modals = read(webRoot, "components", "customer-dashboard", "CustomerModals.tsx");
   const topUpModal = modals.slice(modals.indexOf("function TopUpModal"), modals.indexOf("function ReportProblemModal"));
-  assert.match(topUpModal, /Minimum \u20a6\{minimumNaira/, "the form states the minimum up front");
+  assert.match(topUpModal, /Minimum \u20a6\$\{minimumNaira/, "the form states the minimum up front");
 });
 
 test("the deployment config and the example agree on the default", () => {

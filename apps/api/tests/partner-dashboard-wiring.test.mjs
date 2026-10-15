@@ -328,7 +328,7 @@ test("the transaction export carries the active search", () => {
   const routes = fs.readFileSync(partnerRoutes, "utf8");
   const exportRoute = routes.slice(routes.indexOf('router.get("/transactions/export"'));
   // Same filters as the list endpoint, so the file matches the table.
-  assert.match(exportRoute, /const \{ search, status, date \} = req\.query/);
+  assert.match(exportRoute, /const \{ search, status, date \} = transactionFilters\(req\.query\)/);
   assert.match(screen, /query=\{\{ search: debouncedQuery \|\| undefined \}\}/);
 });
 

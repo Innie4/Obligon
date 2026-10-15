@@ -10,6 +10,7 @@ import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { routes } from "@/components/site/routes";
 import { useToast } from "@/components/shared/Toast";
+import { useDialogFocus } from "@/components/shared/useDialogFocus";
 import { publicApi } from "@/lib/services";
 
 type Role={id:string;badge:string;location:string;title:string;body:string;urgent:boolean};
@@ -28,7 +29,15 @@ export function CareersPage() {
   const [resumeName, setResumeName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [applicationError, setApplicationError] = useState("");
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const dialogRef = React.useRef<HTMLDivElement>(null);
+  const submittingRef = React.useRef(false);
+  const applicationSentRef = React.useRef(false);
+  const applicationVersion = React.useRef(0);
+
+  React.useEffect(() => () => { applicationVersion.current += 1; }, []);
+  useDialogFocus(dialogRef, handleCloseModal, Boolean(activeRole));
 
   const categories = ["All Roles", ...new Set(roles.map(r=>r.badge))];
 
@@ -38,29 +47,46 @@ export function CareersPage() {
 
   async function handleApply(e: React.FormEvent) {
     e.preventDefault();
-    if (!applicantName || !applicantEmail) {
+    if (submittingRef.current || applicationSentRef.current || !activeRole) return;
+    if (!applicantName.trim() || !applicantEmail.trim()) {
       toastError("Please fill out your name and email.");
       return;
     }
+    submittingRef.current = true;
+    const version = applicationVersion.current;
+    const role = activeRole;
     setSubmitting(true);
+    setApplicationError("");
     try {
       const resume = fileInputRef.current?.files?.[0] ?? null;
       await publicApi.applyToJob(
-        { name: applicantName, email: applicantEmail, phone: applicantPhone, coverNote, jobId: activeRole?.id },
+        { name: applicantName, email: applicantEmail, phone: applicantPhone, coverNote, jobId: role.id },
         resume
       );
-      setSubmitting(false);
+      if (applicationVersion.current !== version) return;
+      applicationSentRef.current = true;
       setSubmitted(true);
-      toastSuccess(`Application submitted for ${activeRole?.title}.`);
+      toastSuccess(`Application submitted for ${role.title}.`);
     } catch (err) {
-      setSubmitting(false);
-      toastError(err instanceof Error ? err.message : "Could not submit the application. Please try again.");
+      if (applicationVersion.current !== version) return;
+      const message = err instanceof Error ? err.message : "Could not submit the application. Please try again.";
+      setApplicationError(message);
+      toastError(message);
+    } finally {
+      if (applicationVersion.current === version) {
+        submittingRef.current = false;
+        setSubmitting(false);
+      }
     }
   }
 
   function handleCloseModal() {
+    if (submittingRef.current) return;
+    applicationVersion.current += 1;
+    applicationSentRef.current = false;
     setActiveRole(null);
     setSubmitted(false);
+    setApplicationError("");
     setApplicantName("");
     setApplicantEmail("");
     setApplicantPhone("");
@@ -194,8 +220,7 @@ export function CareersPage() {
           {filteredRoles.map((role) => (
             <article
               key={role.title}
-              onClick={() => setActiveRole(role)}
-              className="relative overflow-hidden rounded-2xl border border-obligon-border bg-white p-6 shadow-card hover:border-obligon-green hover:shadow-hero transition cursor-pointer"
+              className="relative overflow-hidden rounded-2xl border border-obligon-border bg-white p-6 shadow-card hover:border-obligon-green hover:shadow-hero transition"
             >
               {role.urgent ? <span className="absolute right-[-34px] top-5 rotate-45 bg-obligon-green px-10 py-1 text-[10px] font-extrabold uppercase tracking-[1px] text-white">Urgent</span> : null}
               <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
@@ -212,7 +237,8 @@ export function CareersPage() {
                 </div>
                 <button
                   type="button"
-                  className="inline-flex items-center gap-2 rounded-xl bg-obligon-green px-5 py-2.5 text-xs font-bold text-white shadow-green hover:bg-obligon-green/90 transition shrink-0"
+                  onClick={() => { if (!submittingRef.current) setActiveRole(role); }}
+                  className="inline-flex items-center gap-2 rounded-xl bg-obligon-green px-5 py-2.5 text-xs font-bold text-white shadow-green hover:bg-obligon-green/90 transition shrink-0 focus:outline-none focus:ring-2 focus:ring-obligon-green focus:ring-offset-2"
                 >
                   Apply Now
                   <ArrowRight size={14} />
@@ -227,23 +253,28 @@ export function CareersPage() {
       {activeRole ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-[#07162f]/65 px-5 backdrop-blur-sm" onMouseDown={handleCloseModal}>
           <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="career-application-title"
+            tabIndex={-1}
             onMouseDown={(e) => e.stopPropagation()}
-            className="max-h-[92vh] w-full max-w-[620px] overflow-y-auto rounded-2xl bg-white p-6 sm:p-8 shadow-hero"
+            className="max-h-[92vh] w-full max-w-[620px] overflow-y-auto rounded-2xl bg-white p-6 sm:p-8 shadow-hero outline-none"
           >
             <div className="flex items-center justify-between border-b border-obligon-border pb-4">
               <div>
                 <span className="rounded-lg bg-obligon-lime/30 px-2.5 py-1 text-[10px] font-extrabold uppercase text-[#131f00]">
                   {activeRole.badge}
                 </span>
-                <h2 className="mt-2 font-display text-2xl font-extrabold text-obligon-navy">{activeRole.title}</h2>
+                <h2 id="career-application-title" className="mt-2 font-display text-2xl font-extrabold text-obligon-navy">{activeRole.title}</h2>
               </div>
-              <button onClick={handleCloseModal} className="grid size-9 place-items-center rounded-lg bg-obligon-mist text-obligon-navy">
-                <X size={20} />
+              <button type="button" disabled={submitting} aria-label="Close application dialog" onClick={handleCloseModal} className="grid size-9 place-items-center rounded-lg bg-obligon-mist text-obligon-navy disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-obligon-green focus:ring-offset-2">
+                <X size={20} aria-hidden="true" />
               </button>
             </div>
 
             {submitted ? (
-              <div className="p-8 text-center">
+              <div className="p-8 text-center" role="status">
                 <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
                   <Check size={32} />
                 </span>
@@ -260,10 +291,12 @@ export function CareersPage() {
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleApply} className="mt-6 space-y-4">
+              <form onSubmit={handleApply} aria-busy={submitting} className="mt-6 space-y-4">
                 <label className="block">
                   <span className="text-xs font-extrabold uppercase text-obligon-text">Full Name</span>
                   <input
+                    autoComplete="name"
+                    disabled={submitting}
                     value={applicantName}
                     onChange={(e) => setApplicantName(e.target.value)}
                     className="mt-1.5 h-12 w-full rounded-xl border border-obligon-border px-4 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green"
@@ -276,6 +309,8 @@ export function CareersPage() {
                   <label className="block">
                     <span className="text-xs font-extrabold uppercase text-obligon-text">Email Address</span>
                     <input
+                      autoComplete="email"
+                      disabled={submitting}
                       value={applicantEmail}
                       onChange={(e) => setApplicantEmail(e.target.value)}
                       type="email"
@@ -287,6 +322,9 @@ export function CareersPage() {
                   <label className="block">
                     <span className="text-xs font-extrabold uppercase text-obligon-text">Phone Number</span>
                     <input
+                      autoComplete="tel"
+                      type="tel"
+                      disabled={submitting}
                       value={applicantPhone}
                       onChange={(e) => setApplicantPhone(e.target.value)}
                       className="mt-1.5 h-12 w-full rounded-xl border border-obligon-border px-4 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green"
@@ -299,6 +337,7 @@ export function CareersPage() {
                 <label className="block">
                   <span className="text-xs font-extrabold uppercase text-obligon-text">Cover Note &amp; Relevant Experience</span>
                   <textarea
+                    disabled={submitting}
                     value={coverNote}
                     onChange={(e) => setCoverNote(e.target.value)}
                     rows={3}
@@ -309,6 +348,8 @@ export function CareersPage() {
 
                 <input
                   ref={fileInputRef}
+                  aria-label="Resume or CV"
+                  disabled={submitting}
                   type="file"
                   accept=".pdf,.doc,.docx"
                   className="sr-only"
@@ -317,6 +358,7 @@ export function CareersPage() {
                 <div>
                   <button
                     type="button"
+                    disabled={submitting}
                     onClick={() => fileInputRef.current?.click()}
                     className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-obligon-border bg-obligon-mist p-4 text-xs font-bold text-obligon-text hover:border-obligon-green hover:text-obligon-green transition"
                   >
@@ -325,8 +367,10 @@ export function CareersPage() {
                   </button>
                 </div>
 
+                {applicationError ? <p className="text-sm font-bold text-[#c1121f]" role="alert">{applicationError}</p> : null}
+
                 <div className="flex justify-end gap-3 pt-4 border-t border-obligon-border">
-                  <button type="button" onClick={handleCloseModal} className="h-12 px-6 rounded-xl border border-obligon-navy text-sm font-extrabold">
+                  <button type="button" disabled={submitting} onClick={handleCloseModal} className="h-12 px-6 rounded-xl border border-obligon-navy text-sm font-extrabold disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-obligon-green focus:ring-offset-2">
                     Cancel
                   </button>
                   <button
@@ -334,7 +378,7 @@ export function CareersPage() {
                     type="submit"
                     className="h-12 px-8 rounded-xl bg-obligon-green text-sm font-extrabold text-white shadow-green flex items-center gap-2"
                   >
-                    {submitting ? <Loader2 size={18} className="animate-spin" /> : "Submit Application"}
+                    {submitting ? <><Loader2 size={18} className="animate-spin" aria-hidden="true" /> Submitting Application…</> : "Submit Application"}
                   </button>
                 </div>
               </form>

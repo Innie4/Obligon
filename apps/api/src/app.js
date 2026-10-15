@@ -1,6 +1,7 @@
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";
+import multer from "multer";
 import { env } from "./config/env.js";
 import { providerStatus } from "./config/env.js";
 import { attachUser } from "./middleware/auth.js";
@@ -17,6 +18,24 @@ import publicRoutes from "./routes/public.routes.js";
 import webhookRoutes from "./routes/webhooks.routes.js";
 import pushRoutes from "./routes/push.routes.js";
 import { sseHandler } from "./lib/sse.js";
+
+const uploadErrors = {
+  LIMIT_FILE_SIZE: [413, "Each file must be 10 MB or smaller."],
+  LIMIT_UNEXPECTED_FILE: [400, "Choose the supported file field and number of attachments."],
+  LIMIT_FILE_COUNT: [400, "Too many files were selected."],
+  LIMIT_PART_COUNT: [400, "The upload contains too many fields or files."],
+  LIMIT_FIELD_COUNT: [400, "The upload contains too many fields."],
+  LIMIT_FIELD_KEY: [400, "An upload field name is too long."],
+  LIMIT_FIELD_VALUE: [400, "An upload field value is too long."],
+  MISSING_FIELD_NAME: [400, "An upload field name is missing."],
+  LIMIT_FIELD_NESTING: [400, "An upload field name is too deeply nested."],
+  LIMIT_FIELD_ARRAY_INDEX: [400, "An upload field index is too large."],
+  INVALID_FIELD_NAME: [400, "An upload field name is invalid."],
+  STREAM_DESTROYED: [400, "The upload was interrupted. Select your files and try again."],
+};
+const malformedMultipartErrors = new Set([
+  "Multipart: Boundary not found", "Malformed part header", "Unexpected end of form", "Unexpected end of file", "Malformed content type",
+]);
 
 export function createApp() {
   const app = express();
@@ -78,6 +97,18 @@ export function createApp() {
 
   // Central error handler — consistent envelope: { error: { message, details? } }
   app.use((err, _req, res, _next) => {
+    // Multer delegates upload failures to Express. Its typed input errors have
+    // no HTTP status; treating them as internal failures turned an oversized or
+    // unexpected attachment into a 500. Do not echo client filenames or fields.
+    const uploadError = err instanceof multer.MulterError && Object.hasOwn(uploadErrors, err.code) && uploadErrors[err.code];
+    if (uploadError) err = new HttpError(...uploadError);
+    // Busboy emits plain Errors for broken multipart framing. Limit this mapping
+    // to errors originating in that parser, so an application/storage failure on
+    // a multipart request still follows the ordinary 5xx handling below.
+    else if (_req.is("multipart/form-data") && err.status == null &&
+      malformedMultipartErrors.has(err.message) && /[/\\]busboy[/\\]lib[/\\]/.test(err.stack ?? "")) {
+      err = new HttpError(400, "The upload could not be read. Select your files and try again.");
+    }
     const status = err.status ?? 500;
     if (status >= 500) console.error("[api:error]", err);
     // An unexpected 5xx must not describe itself to a customer. A deliberate

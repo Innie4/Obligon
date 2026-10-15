@@ -3,6 +3,7 @@ import { q } from "../db.js";
 import { asyncHandler } from "../lib/errors.js";
 import { requireAuth } from "../middleware/auth.js";
 import { env } from "../config/env.js";
+import { validatedPushSubscription } from "../lib/push.js";
 
 /**
  * Web-push subscription management. The browser registers its subscription
@@ -16,22 +17,25 @@ router.get("/key", (_req, res) => {
 });
 
 router.post("/subscribe", requireAuth, asyncHandler(async (req, res) => {
-  const { endpoint, keys } = req.body ?? {};
-  if (!endpoint || !keys?.p256dh || !keys?.auth) {
-    return res.status(400).json({ error: { message: "A full push subscription (endpoint + keys) is required" } });
+  const subscription = validatedPushSubscription(req.body ?? {});
+  if (!subscription) {
+    return res.status(400).json({ error: { message: "A valid subscription from a supported browser push service is required" } });
   }
   await q(
     `INSERT INTO push_subscriptions (user_id, endpoint, keys) VALUES ($1,$2,$3)
      ON CONFLICT (endpoint) DO UPDATE SET user_id = EXCLUDED.user_id, keys = EXCLUDED.keys`,
-    [req.user.id, endpoint, JSON.stringify(keys)]
+    [req.user.id, subscription.endpoint, JSON.stringify(subscription.keys)]
   );
   res.json({ ok: true });
 }));
 
 router.post("/unsubscribe", requireAuth, asyncHandler(async (req, res) => {
   const { endpoint } = req.body ?? {};
-  if (!endpoint) return res.status(400).json({ error: { message: "endpoint is required" } });
-  await q("DELETE FROM push_subscriptions WHERE endpoint = $1 AND user_id = $2", [endpoint, req.user.id]);
+  if (typeof endpoint !== "string" || !endpoint || endpoint.length > 4096) return res.status(400).json({ error: { message: "endpoint is required" } });
+  // Also remove a pre-validation row stored in the browser's original spelling.
+  let canonical = endpoint;
+  try { canonical = new URL(endpoint).href; } catch { /* Invalid legacy rows can still be removed by their owner. */ }
+  await q("DELETE FROM push_subscriptions WHERE (endpoint = $1 OR endpoint = $3) AND user_id = $2", [endpoint, req.user.id, canonical]);
   res.json({ ok: true });
 }));
 

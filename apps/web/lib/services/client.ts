@@ -982,15 +982,52 @@ export interface LoginResponse {
   accessToken?: string;
   refreshToken?: string;
   mfaRequired: boolean;
+  challengeToken?: string;
+  challengeExpiresInSeconds?: number;
+}
+
+const MFA_CHALLENGE_STORAGE_KEY = "obligon_mfa_challenge";
+let authRevision = 0;
+const authResults = new WeakMap<object, { revision: number; session: string | null }>();
+function assertCurrentAuth(revision: number, session: string | null) {
+  if (revision !== authRevision || session !== sessionKey(readTokens())) {
+    throw new ApiError(401, "Sign-in changed while this request was in progress. Please try again.");
+  }
+}
+function rememberAuthResult<T extends object>(data: T, revision: number): T {
+  authResults.set(data, { revision, session: sessionKey(readTokens()) });
+  return data;
+}
+function clearMfaChallenge() {
+  if (typeof window === "undefined") return;
+  try { window.sessionStorage.removeItem(MFA_CHALLENGE_STORAGE_KEY); } catch { /* Storage may be unavailable. */ }
+}
+function pendingMfaChallenge(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const saved = JSON.parse(window.sessionStorage.getItem(MFA_CHALLENGE_STORAGE_KEY) ?? "null");
+    if (typeof saved?.token === "string" && Number.isFinite(saved.expiresAt) && saved.expiresAt > Date.now()) return saved.token;
+  } catch { /* Malformed or unavailable storage is not proof of a password check. */ }
+  clearMfaChallenge();
+  return null;
 }
 
 export const authApi = {
+  sessionRevision: () => authRevision,
+  isCurrentAuthResult(data: object): boolean {
+    const saved = authResults.get(data);
+    return Boolean(saved && saved.revision === authRevision && saved.session === sessionKey(readTokens()));
+  },
   async login(payload: { email: string; password: string; rememberMe?: boolean; role?: string; totp?: string }): Promise<LoginResponse> {
+    const revision = ++authRevision;
+    const sessionIdentity = sessionKey(readTokens());
+    clearMfaChallenge();
     if (!LIVE_MODE) {
       await simulate({}, 500);
+      assertCurrentAuth(revision, sessionIdentity);
       const session = readPersistedSession();
       const name = payload.email.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-      return {
+      return rememberAuthResult({
         user: session ?? {
           id: `usr_${payload.email.replace(/[^a-z0-9]/gi, "").slice(0, 12)}`,
           name, email: payload.email, initials: name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase(),
@@ -998,33 +1035,52 @@ export const authApi = {
           organization: "Obligon LTD Enterprise", accountTier: "Premium Account"
         },
         mfaRequired: false
-      };
+      }, revision);
     }
     const data = await http<LoginResponse>("/api/auth/login", {
       method: "POST",
       body: JSON.stringify(payload)
     }, false, false);
+    assertCurrentAuth(revision, sessionIdentity);
+    if (data.mfaRequired) {
+      if (!data.challengeToken || !data.challengeExpiresInSeconds || typeof window === "undefined") {
+        throw new ApiError(401, "Sign in again to start two-factor authentication.");
+      }
+      try {
+        window.sessionStorage.setItem(MFA_CHALLENGE_STORAGE_KEY, JSON.stringify({
+          token: data.challengeToken, expiresAt: Date.now() + data.challengeExpiresInSeconds * 1000
+        }));
+      } catch {
+        throw new ApiError(0, "Allow session storage in this browser to complete two-factor sign-in.");
+      }
+    }
     if (data.accessToken && data.refreshToken) {
       writeTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
       writePersistedSession(data.user);
     }
-    return data;
+    return rememberAuthResult(data, revision);
   },
 
   async signup(payload: Record<string, unknown>): Promise<LoginResponse> {
+    const revision = ++authRevision;
+    const sessionIdentity = sessionKey(readTokens());
+    clearMfaChallenge();
     if (!LIVE_MODE) {
       await simulate({}, 700);
       throw new ApiError(0, "Signup requires the live backend. Configure NEXT_PUBLIC_API_URL.");
     }
     const data = await http<LoginResponse>("/api/auth/signup", { method: "POST", body: JSON.stringify(payload) });
+    assertCurrentAuth(revision, sessionIdentity);
     if (data.accessToken && data.refreshToken) {
       writeTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
       writePersistedSession(data.user);
     }
-    return data;
+    return rememberAuthResult(data, revision);
   },
 
   async logout(): Promise<void> {
+    authRevision += 1;
+    clearMfaChallenge();
     const tokens = readTokens();
     // Clear before the remote request: an old logout must never erase a new login.
     writeTokens(null);
@@ -1039,8 +1095,18 @@ export const authApi = {
   },
 
   async changePassword(payload: { currentPassword: string; newPassword: string }) {
-    if (!LIVE_MODE) { await simulate({}); return { ok: true }; }
-    return http<{ ok: boolean }>("/api/auth/change-password", { method: "POST", body: JSON.stringify(payload) });
+    const revision = authRevision;
+    const sessionIdentity = sessionKey(readTokens());
+    if (!LIVE_MODE) { await simulate({}); assertCurrentAuth(revision, sessionIdentity); return rememberAuthResult({ ok: true, reauthenticationRequired: false }, revision); }
+    const result = await http<{ ok: boolean; reauthenticationRequired: boolean }>("/api/auth/change-password", { method: "POST", body: JSON.stringify(payload) });
+    assertCurrentAuth(revision, sessionIdentity);
+    if (result.reauthenticationRequired) {
+      authRevision += 1;
+      clearMfaChallenge();
+      writeTokens(null);
+      writePersistedSession(null);
+    }
+    return rememberAuthResult(result, authRevision);
   },
 
   async forgotPassword(email: string) {
@@ -1110,14 +1176,24 @@ export const authApi = {
       remaining: string[];
     }>("/api/auth/verify/confirm", { method: "POST", body: JSON.stringify({ code }) });
   },
-  async mfaChallenge(payload: { email: string; totp: string; rememberMe?: boolean }) {
-    if (!LIVE_MODE) { await simulate({}); return { user: readPersistedSession() } as unknown as LoginResponse; }
-    const data = await http<LoginResponse>("/api/auth/mfa/challenge", { method: "POST", body: JSON.stringify(payload) });
+  pendingMfaChallenge,
+  async mfaChallenge(payload: { totp: string }) {
+    if (!LIVE_MODE) throw new ApiError(0, "Two-factor sign-in requires the live backend.");
+    const challengeToken = pendingMfaChallenge();
+    if (!challengeToken) throw new ApiError(401, "Your sign-in challenge expired. Sign in with your password again.");
+    const revision = authRevision;
+    const sessionIdentity = sessionKey(readTokens());
+    const data = await http<LoginResponse>("/api/auth/mfa/challenge", {
+      method: "POST", body: JSON.stringify({ challengeToken, totp: payload.totp })
+    }, false, false);
+    assertCurrentAuth(revision, sessionIdentity);
+    if (pendingMfaChallenge() !== challengeToken) throw new ApiError(401, "Your sign-in challenge changed. Sign in with your password again.");
     if (data.accessToken && data.refreshToken) {
       writeTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
       writePersistedSession(data.user);
+      clearMfaChallenge();
     }
-    return data;
+    return rememberAuthResult(data, revision);
   },
 
   async mfaSetup() {
@@ -1125,8 +1201,12 @@ export const authApi = {
     return http<{ secret: string; otpauth: string; qrDataUrl: string; backupCodes: string[] }>("/api/auth/mfa/setup", { method: "POST" });
   },
   async mfaEnable(token: string): Promise<{ ok: boolean; backupCodes?: string[] }> {
-    if (!LIVE_MODE) { await simulate({}); return { ok: true }; }
-    return http<{ ok: boolean; backupCodes?: string[] }>("/api/auth/mfa/enable", { method: "POST", body: JSON.stringify({ token }) });
+    const revision = authRevision;
+    const sessionIdentity = sessionKey(readTokens());
+    if (!LIVE_MODE) { await simulate({}); assertCurrentAuth(revision, sessionIdentity); return rememberAuthResult({ ok: true }, revision); }
+    const result = await http<{ ok: boolean; backupCodes?: string[] }>("/api/auth/mfa/enable", { method: "POST", body: JSON.stringify({ token }) });
+    assertCurrentAuth(revision, sessionIdentity);
+    return rememberAuthResult(result, revision);
   },
   async mfaDisable(password: string) {
     if (!LIVE_MODE) { await simulate({}); return { ok: true }; }
@@ -1137,13 +1217,13 @@ export const authApi = {
 /** Domain mutations — live HTTP when configured, simulated locally otherwise. */
 export const mutationsApi = {
   // Customer: wallet
-  async topUpWallet(amount: number, method: string): Promise<CheckoutResult> {
+  async topUpWallet(amount: number, method: string, expectedTotalKobo?: number): Promise<CheckoutResult> {
     if (!LIVE_MODE) {
       await simulate({}, 900);
       return { ok: true, reference: `TRX-LOCAL-${Date.now()}`, provider: "flutterwave", paymentUrl: null, simulated: true, message: "Payments are simulated in this environment." };
     }
     return http<CheckoutResult>("/api/customer/wallet/topup", {
-      method: "POST", body: JSON.stringify({ amount, method })
+      method: "POST", body: JSON.stringify({ amount, method, expectedTotalKobo })
     });
   },
   async confirmTopUp(reference: string, options: { simulated?: boolean; transactionId?: string | null } = {}): Promise<{ ok: boolean; alreadyPaid?: boolean; balanceLabel?: string; provider?: string }> {
@@ -1203,7 +1283,7 @@ export const mutationsApi = {
         if (err.exposable) throw err;
         throw new ApiError(
           503,
-          "Card purchases are temporarily unavailable. Please try again shortly or contact support on 0700 000 0000.",
+          "Card purchases are temporarily unavailable. Please try again shortly or open Support in your customer dashboard for help.",
           err.details
         );
       }
@@ -1380,6 +1460,21 @@ export const mutationsApi = {
   async companyCardAction(cardId: string, action: "freeze" | "unfreeze" | "limits" | "pos-code", payload: Record<string, unknown> = {}) {
     if (!LIVE_MODE) { await simulate({}, 800); return { ok: true, simulated: true } as Record<string, unknown>; }
     return http<Record<string, unknown>>(`/api/company/cards/${cardId}/${action}`, { method: action === "limits" ? "PUT" : "POST", body: JSON.stringify(payload) });
+  },
+  async companyCardPosCode(cardId: string) {
+    return http<{ ok: boolean; code: string; expiresAt: string; maskedPan: string }>(`/api/company/cards/${encodeURIComponent(cardId)}/pos-code`, { method: "POST", body: JSON.stringify({}) });
+  },
+  async companyTopUpWallet(amountKobo: number, method: string, expectedTotalKobo: number) {
+    return http<{ reference: string; paymentUrl: string | null; amountKobo: number; feeKobo: number; totalKobo: number; provider: string; simulated?: boolean }>("/api/company/wallet/topup", { method: "POST", body: JSON.stringify({ amountKobo, method, expectedTotalKobo }) });
+  },
+  async companyConfirmTopUp(reference: string, transactionId?: string) {
+    return http<{ ok: boolean; alreadyPaid?: boolean; balanceLabel: string }>("/api/company/wallet/topup/confirm", { method: "POST", body: JSON.stringify({ reference, ...(transactionId ? { transactionId } : {}) }) });
+  },
+  async companyAllocateWallet(payload: { toUserId: string; amountKobo: number; note: string; idempotencyKey: string }) {
+    return http<{ ok: boolean; reference: string; companyBalanceKobo: number; memberBalanceKobo: number }>("/api/company/wallet/allocate", { method: "POST", body: JSON.stringify(payload) });
+  },
+  async replyCompanyTicket(id: string, body: string) {
+    return http<{ ok: boolean }>(`/api/company/support/tickets/${encodeURIComponent(id)}/messages`, { method: "POST", body: JSON.stringify({ body }) });
   },
   async createRoadsideRequest(payload: Record<string, unknown>) {
     if (!LIVE_MODE) { await simulate({}, 900); return { ok: true, requestId: "local", status: "RECEIVED", simulated: true }; }

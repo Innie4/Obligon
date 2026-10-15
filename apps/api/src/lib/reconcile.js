@@ -2,6 +2,8 @@ import { q, tx, one } from "../db.js";
 import { audit, notify } from "./notify.js";
 import { verifyCheckout, activeProvider } from "./payments.js";
 import { reconcilePaymentPlans } from "./plans.js";
+import { isTerminalPaymentFailure } from "./flutterwave.js";
+import { integerKobo } from "./money-amounts.js";
 
 /**
  * Payment reconciliation.
@@ -12,11 +14,11 @@ import { reconcilePaymentPlans } from "./plans.js";
  * notifications alone, which is what this does.
  *
  * It is deliberately conservative:
- *   - only rows that are still pending are touched
+ *   - unresolved intents remain recoverable, including a failed checkout attempt
  *   - every transition is a conditional UPDATE, so a webhook landing mid-pass
  *     cannot cause a second credit
- *   - a row is given up on after MAX_ATTEMPTS and reported rather than retried
- *     forever
+ *   - repeated unresolved outcomes are reported for review; only an explicit
+ *     processor failure may retire a payment that could still settle
  */
 
 const DEFAULT_BATCH = 25;
@@ -34,11 +36,11 @@ async function reconcileTopUps(limit) {
     // the column is always present, but the earlier version omitted it and the
     // comparison below silently fell back to the base amount, rejecting a
     // correctly-paid fee and leaving a settled bank transfer uncredited.
-    `SELECT id, user_id, reference, amount_kobo, charged_kobo, provider, provider_transaction_id, wallet_id,
-            reconcile_attempts
+    `SELECT id, user_id, reference, amount_kobo, charged_kobo, provider, provider_transaction_id, wallet_id, status,
+            (SELECT organization_id FROM wallets WHERE id=top_ups.wallet_id) AS wallet_organization_id, reconcile_attempts
      FROM top_ups
-     WHERE status = 'pending' AND ${ageFilter("top_ups")}
-     ORDER BY created_at ASC LIMIT $1`,
+     WHERE status IN ('pending','failed') AND ${ageFilter("top_ups")}
+     ORDER BY last_reconciled_at ASC NULLS FIRST, created_at ASC LIMIT $1`,
     [limit]
   );
 
@@ -53,7 +55,7 @@ async function reconcileTopUps(limit) {
       const verification = await verifyCheckout({
         provider: topup.provider,
         reference: topup.reference,
-        transactionId: topup.provider_transaction_id,
+        transactionId: topup.status === 'failed' ? null : topup.provider_transaction_id,
         // The customer is charged base plus any fee they bear. Comparing against
         // the base alone treats a correctly-paid fee as a shortfall, so a real
         // payment is rejected and the wallet is never credited.
@@ -72,33 +74,36 @@ async function reconcileTopUps(limit) {
         // This pass used to send a second notification of its own, so one settled
         // top-up produced "Transaction Alert" and "Top-up credited" together —
         // two entries in the feed for a single event.
-        if (await completeTopUp(topup, { providerTransactionId: verification.providerTransactionId ?? null })) {
+        if (await completeTopUp(topup, { providerTransactionId: verification.providerTransactionId ?? null, verifiedPaid:true, verifiedAmountKobo:verification.amountKobo })) {
           stats.completed += 1;
         }
       } else {
         const attempts = Number(topup.reconcile_attempts ?? 0) + 1;
-        const terminal = attempts >= MAX_ATTEMPTS;
+        const terminal = isTerminalPaymentFailure(verification.status);
         const marked = await one(
           `UPDATE top_ups SET status = $2, reconcile_attempts = $3, last_reconciled_at = now()
-           WHERE id = $1 AND status = 'pending' RETURNING id`,
+           WHERE id = $1 AND status IN ('pending','failed') RETURNING id`,
           [topup.id, terminal ? "failed" : "pending", attempts]
         );
-        if (marked && terminal) {
-          stats.failed += 1;
+        if (marked && terminal) stats.failed += 1;
+        if (marked && !terminal && attempts === MAX_ATTEMPTS) {
           stats.gaveUp += 1;
+          await audit({ action: "payments.reconciliation_gave_up", metadata: { reference: topup.reference, attempts, reason: "Payment remains unconfirmed; pending value retained for review" } });
         }
       }
     } catch (err) {
-      // A reference the provider has no record of is permanent: the customer
-      // abandoned checkout. Retrying it forever is pointless and would hide real
-      // provider outages, so it is retired on the first sighting.
+      // A bank transfer may not yet exist in the processor lookup. A missing
+      // receipt proves neither abandonment nor failure; retain its intent.
       if (err?.transactionMissing) {
         const marked = await one(
-          `UPDATE top_ups SET status = 'failed', reconcile_attempts = reconcile_attempts + 1, last_reconciled_at = now()
-           WHERE id = $1 AND status = 'pending' RETURNING id`,
+          `UPDATE top_ups SET reconcile_attempts = reconcile_attempts + 1, last_reconciled_at = now()
+           WHERE id = $1 AND status IN ('pending','failed') RETURNING id`,
           [topup.id]
         );
-        if (marked) stats.abandoned += 1;
+        if (marked && Number(topup.reconcile_attempts ?? 0) + 1 === MAX_ATTEMPTS) {
+          stats.gaveUp += 1;
+          await audit({ action: "payments.reconciliation_gave_up", metadata: { reference: topup.reference, reason: "Processor receipt not yet available; pending value retained for review" } });
+        }
         continue;
       }
       reason = err?.message ?? String(err);
@@ -108,14 +113,14 @@ async function reconcileTopUps(limit) {
       // every failure being an identical "errored".
       const attempts = Number(topup.reconcile_attempts ?? 0) + 1;
       await q(
-        `UPDATE top_ups SET reconcile_attempts = $2, last_reconciled_at = now() WHERE id = $1`,
-        [topup.id, attempts]
+        `UPDATE top_ups SET reconcile_attempts = reconcile_attempts + 1, last_reconciled_at = now() WHERE id = $1 AND status IN ('pending','failed')`,
+        [topup.id]
       );
       stats.errored += 1;
       if (attempts === 1) {
         stats.firstError = `${topup.reference}: ${reason ?? "unknown error"}`;
       }
-      if (attempts >= MAX_ATTEMPTS) {
+      if (attempts === MAX_ATTEMPTS) {
         stats.gaveUp += 1;
         // A row that never settles is either a real customer problem or a bug in
         // how the amount is compared. Either way it must reach a human, because
@@ -144,7 +149,7 @@ async function reconcilePlanCheckouts(limit) {
      FROM card_requests r
      LEFT JOIN card_plans p ON p.code = r.plan_code
      WHERE r.status = 'awaiting_payment' AND r.payment_status <> 'paid' AND ${ageFilter("r")}
-     ORDER BY r.created_at ASC LIMIT $1`,
+     ORDER BY r.last_reconciled_at ASC NULLS FIRST, r.created_at ASC LIMIT $1`,
     [limit]
   );
 
@@ -154,6 +159,7 @@ async function reconcilePlanCheckouts(limit) {
     // Captured for the same reason as the top-up pass above.
     let reason = null;
     try {
+      const dueKobo = integerKobo(request.charged_kobo, { max:Number.MAX_SAFE_INTEGER, label:"Original card payment quote" });
       const verification = await verifyCheckout({
         provider: request.payment_provider,
         reference: request.payment_reference,
@@ -161,22 +167,33 @@ async function reconcilePlanCheckouts(limit) {
         // charged_kobo, matching the webhook and the browser-return path. A plan
         // price is not what the customer was charged, so comparing against it
         // rejected a correctly-paid plan purchase.
-        expectedAmountKobo:
-          request.charged_kobo != null
-            ? Number(request.charged_kobo)
-            : request.plan_amount_kobo != null
-              ? Number(request.plan_amount_kobo)
-              : null
+        expectedAmountKobo: dueKobo,
+        expectedCurrency: "NGN"
       });
 
       if (verification.paid) {
-        const marked = await one(
+        const marked = await tx(async t => {
+          const locked = await t.one("SELECT * FROM card_requests WHERE id=$1 FOR UPDATE", [request.id]);
+          if (!locked || locked.payment_status === "paid") return null;
+          if (locked.status !== "awaiting_payment" || ['user_id','charged_kobo','payment_reference','payment_provider'].some(field => String(locked[field] ?? '') !== String(request[field] ?? ''))) {
+            throw new Error("The card payment quote changed during verification; support review is required");
+          }
+          const paid = await t.one(
           `UPDATE card_requests SET payment_status = 'paid', paid_at = now(),
-             provider_transaction_id=COALESCE(provider_transaction_id,$2),
+             provider_transaction_id=COALESCE($2,provider_transaction_id),
              reconcile_attempts = reconcile_attempts + 1, last_reconciled_at = now()
            WHERE id = $1 AND payment_status <> 'paid' RETURNING *`,
           [request.id, verification.providerTransactionId ?? null]
-        );
+          );
+          if (verification.amountKobo > dueKobo) {
+            const { queueRefund } = await import("./money.js");
+            await queueRefund(t,{provider:request.payment_provider,providerRef:request.payment_reference,
+              providerTransactionId:verification.providerTransactionId,userId:request.user_id,kind:"excess",
+              amountKobo:verification.amountKobo-dueKobo,reason:"Amount paid exceeded the card plan quote",
+              metadata:{cardRequestId:request.id,dueKobo,paidKobo:verification.amountKobo},simulated:verification.simulated});
+          }
+          return paid;
+        });
         if (marked) {
           // The plan fee pays for a card subscription, not fuel, so it is not
           // credited to the wallet here. The wallet is funded by top-ups only.
@@ -185,45 +202,50 @@ async function reconcilePlanCheckouts(limit) {
             title: "Payment received",
             body: "Your plan payment was confirmed. Complete your details so we can verify you and issue your card.",
             category: "transactions",
-            link: "/customer/card"
+            link: "/customer/card",
+            eventKey: `card-request:${request.id}:paid`
           });
           stats.completed += 1;
         }
       } else {
         const attempts = Number(request.reconcile_attempts ?? 0) + 1;
-        const terminal = attempts >= MAX_ATTEMPTS;
+        const terminal = isTerminalPaymentFailure(verification.status);
         const marked = await one(
           `UPDATE card_requests SET payment_status = $2, reconcile_attempts = $3, last_reconciled_at = now()
-           WHERE id = $1 AND status = 'awaiting_payment' RETURNING id`,
+           WHERE id = $1 AND status = 'awaiting_payment' AND payment_status<>'paid' RETURNING id`,
           [request.id, terminal ? "failed" : "unpaid", attempts]
         );
-        if (marked && terminal) {
-          stats.failed += 1;
+        if (marked && terminal) stats.failed += 1;
+        if (marked && !terminal && attempts === MAX_ATTEMPTS) {
           stats.gaveUp += 1;
+          await audit({ action: "card_payments.reconciliation_gave_up", metadata: { reference: request.payment_reference, attempts, reason: "Payment remains unconfirmed; payment retained for review" } });
         }
       }
     } catch (err) {
       if (err?.transactionMissing) {
         const marked = await one(
-          `UPDATE card_requests SET payment_status = 'failed', reconcile_attempts = reconcile_attempts + 1, last_reconciled_at = now()
-           WHERE id = $1 AND status = 'awaiting_payment' RETURNING id`,
+          `UPDATE card_requests SET reconcile_attempts = reconcile_attempts + 1, last_reconciled_at = now()
+           WHERE id = $1 AND status = 'awaiting_payment' AND payment_status<>'paid' RETURNING id`,
           [request.id]
         );
-        if (marked) stats.abandoned += 1;
+        if (marked && Number(request.reconcile_attempts ?? 0) + 1 === MAX_ATTEMPTS) {
+          stats.gaveUp += 1;
+          await audit({ action: "card_payments.reconciliation_gave_up", metadata: { reference: request.payment_reference, reason: "Processor receipt not yet available; payment retained for review" } });
+        }
         continue;
       }
 
       reason = err?.message ?? String(err);
       const attempts = Number(request.reconcile_attempts ?? 0) + 1;
       await q(
-        `UPDATE card_requests SET reconcile_attempts = $2, last_reconciled_at = now() WHERE id = $1`,
-        [request.id, attempts]
+        `UPDATE card_requests SET reconcile_attempts = reconcile_attempts + 1, last_reconciled_at = now() WHERE id = $1 AND payment_status<>'paid' AND status='awaiting_payment'`,
+        [request.id]
       );
       stats.errored += 1;
       if (attempts === 1) {
         stats.firstError = `${request.payment_reference}: ${reason ?? "unknown error"}`;
       }
-      if (attempts >= MAX_ATTEMPTS) {
+      if (attempts === MAX_ATTEMPTS) {
         stats.gaveUp += 1;
         await audit({
           action: "card_payments.reconciliation_gave_up",
@@ -241,39 +263,69 @@ async function reconcilePlanCheckouts(limit) {
   return stats;
 }
 
-/** Surface refunds the provider has settled but we had not yet recorded. */
-async function reconcileRefunds(limit) {
-  const pending = await q(
-    `SELECT * FROM payment_refunds WHERE status = 'pending' ORDER BY created_at ASC LIMIT $1`,
-    [limit]
-  );
-  const stats = { checked: pending.length, settled: 0, stillPending: 0, errored: 0 };
-
-  for (const refund of pending) {
+/** Dispatch only known unsubmitted intents; look up accepted/uncertain claims. */
+export async function reconcileRefunds(limit) {
+  const pending = await q(`SELECT * FROM payment_refunds WHERE status='pending' ORDER BY updated_at ASC,created_at ASC,id ASC LIMIT $1`, [limit]);
+  const stats = { checked: pending.length, dispatched: 0, settled: 0, stillPending: 0, reviewRequired: 0, errored: 0 };
+  const { dispatchRefund } = await import("./money.js");
+  const { lookupRefund } = await import("./payments.js");
+  for (const original of pending) {
     try {
-      // A refund is only ever re-checked, never re-issued: the idempotency key
-      // in `issueRefund` guarantees we cannot pay out twice.
-      const { listRefunds } = await import("./flutterwave.js");
-      const refunds = await listRefunds(refund.metadata?.providerTransactionId);
-      const candidates=refunds.filter(r=>refund.provider_refund_id ? String(r.id)===String(refund.provider_refund_id) :
-        Math.round(Number(r.amount_refunded)*100)===Number(refund.amount_kobo) && Date.parse(r.created_at)>=Date.parse(refund.created_at)-60000);
-      const mine=candidates.length===1?candidates[0]:null;
-      const status = String(mine?.status ?? "").toLowerCase();
-      if (status === "successful" || status === "completed") {
-        await q("UPDATE payment_refunds SET status = 'succeeded', settled_at = now() WHERE id = $1 AND status='pending'", [refund.id]);
-        if(refund.metadata?.fuelOrderId) await tx(async t=>{
-          const order=await t.one("UPDATE fuel_orders SET status='refunded',updated_at=now() WHERE id=$1 AND status IN('paid_review','refund_pending') RETURNING transaction_id",[refund.metadata.fuelOrderId]);
-          if(order) await t.query("UPDATE transactions SET status='refunded' WHERE id=$1",[order.transaction_id]);
-        });
-        stats.settled += 1;
-      } else {
-        stats.stillPending += 1;
+      let refund = original;
+      if (refund.metadata?.refundDispatch === "queued") {
+        const dispatch = await dispatchRefund(refund.id);
+        if (dispatch.providerResult) stats.dispatched += 1;
+        refund = dispatch.refund;
       }
-    } catch {
-      stats.errored += 1;
+      if (refund.metadata?.refundDispatch === "review_required") { stats.reviewRequired += 1; stats.stillPending += 1; continue; }
+      const evidence = await lookupRefund(refund);
+      if (!evidence.matched) {
+        await q(`UPDATE payment_refunds SET metadata=metadata || $2::jsonb,updated_at=now() WHERE id=$1 AND status='pending'`,
+          [refund.id, JSON.stringify({ reviewRequired: true, reviewReason: evidence.reviewReason })]);
+        stats.reviewRequired += 1; stats.stillPending += 1; continue;
+      }
+      if (evidence.state === "succeeded") {
+        const settled = await tx(async t => {
+          const row = await t.one(`UPDATE payment_refunds SET status='succeeded',settled_at=now(),updated_at=now(),
+            metadata=metadata || '{"reviewRequired":false}'::jsonb WHERE id=$1 AND status='pending' RETURNING *`, [refund.id]);
+          if (!row) return false;
+          // Excess refunds do not cancel the correctly paid fuel purchase.
+          if (row.kind === "full" && row.metadata?.fuelOrderId) {
+            const order = await t.one("UPDATE fuel_orders SET status='refunded',updated_at=now() WHERE id=$1 AND status IN('paid_review','refund_pending') RETURNING transaction_id", [row.metadata.fuelOrderId]);
+            if (order) await t.query("UPDATE transactions SET status='refunded' WHERE id=$1", [order.transaction_id]);
+          }
+          if (row.kind !== "excess" && row.metadata?.cardRequestId) {
+            const request = await t.one("SELECT * FROM card_requests WHERE id=$1 FOR UPDATE", [row.metadata.cardRequestId]);
+            if (!request || request.user_id !== row.user_id || request.payment_provider !== row.provider ||
+                request.payment_reference !== row.provider_ref || String(request.provider_transaction_id) !== String(row.metadata.providerTransactionId)) {
+              throw new Error("Settled refund does not match the original card charge");
+            }
+            const charge = integerKobo(request.charged_kobo, { max: Number.MAX_SAFE_INTEGER, label: "Original recorded charge" });
+            const total = await t.one(`SELECT COALESCE(sum(amount_kobo),0)::text AS amount FROM payment_refunds
+              WHERE provider=$1 AND provider_ref=$2 AND kind IN ('full','partial') AND status='succeeded'`, [row.provider,row.provider_ref]);
+            if (BigInt(total.amount) > BigInt(charge)) throw new Error("Settled refunds exceed the original card charge; review required");
+            if (BigInt(total.amount) === BigInt(charge)) {
+              await t.query("UPDATE card_requests SET payment_status='refunded',issuance_state='refunded',status='withdrawn',updated_at=clock_timestamp() WHERE id=$1", [request.id]);
+            }
+          }
+          return true;
+        });
+        if (settled) stats.settled += 1;
+      } else stats.stillPending += 1;
+    } catch { stats.errored += 1; }
+    finally {
+      // Rotate every unresolved attempt, including manual debt and lookup errors,
+      // so an old row cannot monopolize each bounded recovery batch.
+      await q("UPDATE payment_refunds SET updated_at=clock_timestamp() WHERE id=$1 AND status='pending'", [original.id]);
     }
   }
-
+  const debt = await one(`SELECT count(*) FILTER(WHERE status='pending')::int AS pending_debt,
+    count(*) FILTER(WHERE status='pending' AND (metadata->>'reviewRequired'='true' OR metadata->>'refundDispatch'='review_required'
+      OR (metadata->>'refundDispatch'='claimed' AND provider_refund_id IS NULL)))::int AS manual_debt,
+    count(*) FILTER(WHERE status='failed')::int AS failed_debt FROM payment_refunds`);
+  stats.pendingDebt = debt.pending_debt;
+  stats.manualDebt = debt.manual_debt;
+  stats.failedDebt = debt.failed_debt;
   return stats;
 }
 
@@ -330,7 +382,7 @@ export async function runPaymentReconciliation({ limit = DEFAULT_BATCH } = {}) {
     await reconcilePaymentPlans()
   ];
   const summary = { topUps, plans, refunds, subscriptions, fuelOrders, planCatalogue };
-  const requiredAction = topUps.gaveUp + plans.gaveUp + subscriptions.errored + fuelOrders.errored;
+  const requiredAction = topUps.gaveUp + plans.gaveUp + subscriptions.errored + fuelOrders.errored + refunds.manualDebt + refunds.failedDebt + refunds.errored;
   if (requiredAction > 0 || planCatalogue.drift.length > 0) {
     await audit({
       action: planCatalogue.drift.length > 0
@@ -382,7 +434,10 @@ const sweeping = new Map();
  * balance, not at an error page.
  */
 export async function settlePendingForUser(userId, { waitMs = 0 } = {}) {
-  if (!activeProvider() || !userId) return false;
+  if (!userId) return false;
+  // Reads remain available when checkout credentials are absent. Checkout itself
+  // still fails closed; the optional sweep must not hide recorded wallet history.
+  try { if (!activeProvider()) return false; } catch { return false; }
 
   // One cheap indexed lookup before any throttling. The overwhelmingly common
   // case is a customer with nothing outstanding, and for them the sweep costs a
@@ -391,7 +446,7 @@ export async function settlePendingForUser(userId, { waitMs = 0 } = {}) {
   // recently" would otherwise delay a genuinely stuck payment by up to the full
   // window, which is the exact symptom this is meant to remove.
   const outstanding = await one(
-    `SELECT count(*)::int AS count FROM top_ups WHERE user_id = $1 AND status = 'pending'`,
+    `SELECT count(*)::int AS count FROM top_ups WHERE user_id = $1 AND status IN ('pending','failed')`,
     [userId]
   );
   if (!Number(outstanding?.count ?? 0)) return false;
@@ -461,11 +516,11 @@ async function waitForSweep(userId, waitMs) {
  */
 async function reconcileTopUpsForUser(userId) {
   const pending = await q(
-    `SELECT id, user_id, reference, amount_kobo, charged_kobo, provider, provider_transaction_id, wallet_id,
-            reconcile_attempts
+    `SELECT id, user_id, reference, amount_kobo, charged_kobo, provider, provider_transaction_id, wallet_id, status,
+            (SELECT organization_id FROM wallets WHERE id=top_ups.wallet_id) AS wallet_organization_id, reconcile_attempts
      FROM top_ups
-     WHERE user_id = $1 AND status = 'pending'
-     ORDER BY created_at ASC LIMIT $2`,
+     WHERE user_id = $1 AND status IN ('pending','failed')
+     ORDER BY last_reconciled_at ASC NULLS FIRST, created_at ASC LIMIT $2`,
     [userId, DEFAULT_BATCH]
   );
   if (!pending.length) return { checked: 0, completed: 0 };
@@ -476,22 +531,22 @@ async function reconcileTopUpsForUser(userId) {
       const verification = await verifyCheckout({
         provider: topup.provider,
         reference: topup.reference,
-        transactionId: topup.provider_transaction_id,
+        transactionId: topup.status === 'failed' ? null : topup.provider_transaction_id,
         expectedAmountKobo: Number(topup.charged_kobo ?? topup.amount_kobo)
       });
       if (verification.paid) {
         const { completeTopUp } = await import("../routes/customer.routes.js");
         if (
           await completeTopUp(topup, {
-            providerTransactionId: verification.providerTransactionId ?? null
+            providerTransactionId: verification.providerTransactionId ?? null, verifiedPaid:true, verifiedAmountKobo:verification.amountKobo
           })
         ) {
           stats.completed += 1;
         }
       } else {
         await q(
-          `UPDATE top_ups SET reconcile_attempts = reconcile_attempts + 1, last_reconciled_at = now() WHERE id = $1`,
-          [topup.id]
+          `UPDATE top_ups SET status=$2,reconcile_attempts = reconcile_attempts + 1, last_reconciled_at = now() WHERE id = $1 AND status IN ('pending','failed')`,
+          [topup.id, isTerminalPaymentFailure(verification.status) ? "failed" : "pending"]
         );
       }
     } catch (err) {
@@ -502,13 +557,13 @@ async function reconcileTopUpsForUser(userId) {
       if (err?.transactionMissing) {
         await q(
           `UPDATE top_ups SET reconcile_attempts = reconcile_attempts + 1, last_reconciled_at = now()
-           WHERE id = $1 AND status = 'pending'`,
+           WHERE id = $1 AND status IN ('pending','failed')`,
           [topup.id]
         );
         continue;
       }
       await q(
-        `UPDATE top_ups SET reconcile_attempts = reconcile_attempts + 1, last_reconciled_at = now() WHERE id = $1`,
+        `UPDATE top_ups SET reconcile_attempts = reconcile_attempts + 1, last_reconciled_at = now() WHERE id = $1 AND status IN ('pending','failed')`,
         [topup.id]
       );
     }

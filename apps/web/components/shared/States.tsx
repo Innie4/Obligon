@@ -6,7 +6,7 @@ import type { AsyncStatus } from "@/lib/services/types";
 
 export function LoadingState({ label = "Loading…", className = "" }: { label?: string; className?: string }) {
   return (
-    <div className={`flex flex-col items-center justify-center gap-3 py-12 text-obligon-text ${className}`}>
+    <div role="status" className={`flex flex-col items-center justify-center gap-3 py-12 text-obligon-text ${className}`}>
       <Loader2 size={26} className="animate-spin text-obligon-green" />
       <p className="text-sm font-bold">{label}</p>
     </div>
@@ -50,7 +50,7 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+    <div role="alert" className="flex flex-col items-center justify-center gap-3 py-12 text-center">
       <span className="grid size-12 place-items-center rounded-full bg-[#ffe8e8] text-[#c1121f]">
         <TriangleAlert size={22} />
       </span>
@@ -93,11 +93,15 @@ export function AsyncBoundary({
   children: React.ReactNode;
 }) {
   if (status === "loading" || status === "idle") return <LoadingState label={loadingLabel} />;
-  if (status === "error" || error) {
+  if (status === "error") {
     return <ErrorState message={error ?? undefined} onRetry={onRetry} />;
   }
-  if (isEmpty) {
-    return <EmptyState title={empty?.title} message={empty?.message} icon={empty?.icon} />;
-  }
-  return <>{children}</>;
+  return <>
+    {error ? <aside role="status" className="my-4 rounded-xl border border-[#e5c57b] bg-[#fff8e8] p-4 text-sm text-[#694b11]">
+      <p className="font-bold">These records could not be refreshed. Showing the last loaded data.</p>
+      <p className="mt-1">{error}</p>
+      {onRetry ? <button type="button" onClick={onRetry} className="mt-2 min-h-11 rounded-lg px-3 font-bold underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Retry refresh</button> : null}
+    </aside> : null}
+    {isEmpty ? <EmptyState title={empty?.title} message={empty?.message} icon={empty?.icon} action={empty?.action} /> : children}
+  </>;
 }

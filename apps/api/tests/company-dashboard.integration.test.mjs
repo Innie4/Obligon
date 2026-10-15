@@ -30,8 +30,8 @@ before(async () => {
   };
   pool=(await import('../src/db.js')).getPool();
   await pool.query(`CREATE TABLE users(id uuid PRIMARY KEY, full_name text,email text, phone text, notification_prefs jsonb DEFAULT '{"email":false,"sms":false,"push":false}'::jsonb);
-    CREATE TABLE organizations(id uuid PRIMARY KEY,owner_user_id uuid,name text,rc_number text,address text,city text,website text,description text,credit_limit_kobo bigint DEFAULT 0,plan_code text,fleet_id text,verification_status text DEFAULT 'verified',updated_at timestamptz DEFAULT now());
-    CREATE TABLE memberships(organization_id uuid,user_id uuid,role text,permissions jsonb DEFAULT '[]');
+    CREATE TABLE organizations(id uuid PRIMARY KEY,owner_user_id uuid,name text,type text DEFAULT 'company',rc_number text,address text,city text,website text,description text,credit_limit_kobo bigint DEFAULT 0,plan_code text,fleet_id text,verification_status text DEFAULT 'verified',updated_at timestamptz DEFAULT now());
+    CREATE TABLE memberships(id uuid DEFAULT gen_random_uuid(),organization_id uuid,user_id uuid,role text,status text DEFAULT 'active',permissions jsonb DEFAULT '[]');
     CREATE TABLE vehicles(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),organization_id uuid,plate text,model text,vehicle_type text DEFAULT 'truck',fuel_type text DEFAULT 'Diesel',tank_capacity_l numeric DEFAULT 100,driver_id uuid,status text DEFAULT 'active',created_at timestamptz DEFAULT now());
     CREATE TABLE drivers(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),organization_id uuid,name text,phone text,license_no text,pin_hash text,status text DEFAULT 'active',created_at timestamptz DEFAULT now());
     CREATE TABLE cards(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),organization_id uuid,owner_user_id uuid,vehicle_id uuid,driver_id uuid,label text,holder_name text,masked_pan text,expiry text,brand text,status text,daily_limit_kobo bigint,monthly_limit_kobo bigint,spend_month_kobo bigint DEFAULT 0,sudo_card_id text,sudo_customer_id text,updated_at timestamptz DEFAULT now(),created_at timestamptz DEFAULT now());
@@ -51,7 +51,7 @@ before(async () => {
   await pool.query('INSERT INTO vehicles(id,organization_id,plate,model) VALUES($1,$2,$3,$4)',[vehicleId,orgId,'LAG-22','Test Truck']);
   await pool.query('INSERT INTO drivers(id,organization_id,name) VALUES($1,$2,$3)',[driverId,orgId,'Ada']);
   await pool.query("INSERT INTO cards(id,organization_id,owner_user_id,vehicle_id,driver_id,label,status,masked_pan,daily_limit_kobo,monthly_limit_kobo,sudo_card_id,sudo_customer_id) VALUES($1,$2,$3,$4,$5,'Existing','active','•••• 1111',10000,100000,'existing-issuer-card','verified-issuer-customer')",[cardId,orgId,userId,vehicleId,driverId]);
-  const app=express(); app.use(express.json()); app.use((req,res,next)=>{ req.user={id:userId,orgId,role:'company',email:'owner@example.invalid'}; next(); });
+  const app=express(); app.use(express.json()); app.use((req,res,next)=>{ req.user={id:userId,orgId,orgType:'company',role:'company',email:'owner@example.invalid'}; next(); });
   app.use('/api/company',(await import('../src/routes/company.routes.js')).default);
   app.use((error,req,res,next)=>res.status(error.status??500).json({message:error.message}));
   await new Promise(resolve=>{server=app.listen(0,'127.0.0.1',resolve);}); base=`http://127.0.0.1:${server.address().port}/api/company`;

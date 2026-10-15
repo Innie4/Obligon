@@ -4,8 +4,12 @@ import * as React from "react";
 import type { ComponentType } from "react";
 import { AlertTriangle, Building2, Check, CreditCard, FileWarning, Fingerprint, LockKeyhole, ShieldCheck, Snowflake, Upload, X, Loader2, ArrowRight, type LucideProps } from "lucide-react";
 import { useToast } from "@/components/shared/Toast";
-import { api, authApi, mutationsApi, publicApi, type CustomerSpendProjection, type PaymentConfig, type PaymentFeeSchedule } from "@/lib/services";
+import { api, authApi, mutationsApi, publicApi, ApiError, type CustomerSpendProjection, type PaymentConfig } from "@/lib/services";
+import { fundingMoney, fundingQuote, validFundingConfig, wholeNairaKobo } from "@/lib/customer-funding-quote";
 import { useDialogFocus } from "@/components/shared/useDialogFocus";
+import { useRouter } from "next/navigation";
+import { useSession } from "@/components/shared/AuthContext";
+import { routes } from "@/components/site/routes";
 
 /** Resolve the signed-in customer's card id against the live API (null in mock mode). */
 async function resolveCardId(): Promise<string> {
@@ -145,13 +149,15 @@ function PinInput({
   value,
   onChange,
   placeholder,
-  autoFocus = false
+  autoFocus = false,
+  disabled = false
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
   autoFocus?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <label className="mt-5 block">
@@ -162,6 +168,7 @@ function PinInput({
         autoComplete="off"
         maxLength={4}
         autoFocus={autoFocus}
+        disabled={disabled}
         value={value}
         onChange={(event) => onChange(event.target.value.replace(/\D/g, "").slice(0, 4))}
         placeholder={placeholder}
@@ -347,12 +354,31 @@ function ChangePinModal({ onClose }: { onClose: () => void }) {
   const [confirmPin, setConfirmPin] = React.useState("");
   const [error, setError] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
-  const { success: toastSuccess, error: toastError } = useToast();
+  const [card, setCard] = React.useState<{ id: string; pinSet: boolean } | null>(null);
+  const [cardError, setCardError] = React.useState("");
+  const [loadKey, setLoadKey] = React.useState(0);
+  const submittingRef = React.useRef(false);
+  const { user } = useSession();
+  const { success: toastSuccess } = useToast();
+
+  React.useEffect(() => {
+    let active = true;
+    setCard(null);
+    setCardError("");
+    api.request<{ card: { id?: string; pinSet?: boolean } | null }>("/api/customer/card")
+      .then(({ card: loaded }) => {
+        if (!loaded?.id || typeof loaded.pinSet !== "boolean") throw new Error("Your card PIN status is unavailable. Please retry.");
+        if (active) setCard({ id: loaded.id, pinSet: loaded.pinSet });
+      })
+      .catch((err) => { if (active) setCardError(err instanceof Error ? err.message : "Could not load your card PIN status."); });
+    return () => { active = false; };
+  }, [loadKey, user?.id]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submittingRef.current || !card) return;
 
-    if (!/^\d{4}$/.test(currentPin)) {
+    if (card.pinSet && !/^\d{4}$/.test(currentPin)) {
       setError("Enter your current 4-digit PIN.");
       return;
     }
@@ -360,7 +386,7 @@ function ChangePinModal({ onClose }: { onClose: () => void }) {
       setError("Your new PIN must be exactly 4 digits.");
       return;
     }
-    if (newPin === currentPin) {
+    if (card.pinSet && newPin === currentPin) {
       setError("Your new PIN must be different from your current PIN.");
       return;
     }
@@ -370,39 +396,38 @@ function ChangePinModal({ onClose }: { onClose: () => void }) {
     }
 
     setError("");
+    submittingRef.current = true;
     setSubmitting(true);
     try {
-      const cardId = await resolveCardId();
-      if (!cardId) {
-        setError("No active fuel card is linked to your account yet, so there is no PIN to change.");
-        setSubmitting(false);
-        return;
-      }
-      await mutationsApi.cardAction(cardId, "pin", { currentPin, newPin });
-      setSubmitting(false);
+      await mutationsApi.cardAction(card.id, "pin", { ...(card.pinSet ? { currentPin } : {}), newPin });
+      setCurrentPin(""); setNewPin(""); setConfirmPin("");
       setStep("success");
-      toastSuccess("Transaction PIN changed successfully.");
+      toastSuccess(card.pinSet ? "Transaction PIN changed successfully." : "Transaction PIN set successfully.");
     } catch (err) {
-      setSubmitting(false);
       setError(err instanceof Error ? err.message : "Could not update your PIN. Please try again.");
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
     }
   }
 
   return (
-    <ModalFrame title="Change transaction PIN" onClose={onClose}>
+    <ModalFrame title={card?.pinSet === false ? "Set transaction PIN" : "Change transaction PIN"} onClose={onClose}>
       {step === "form" ? (
         <form onSubmit={handleSubmit} className="p-6">
           <span className="grid size-12 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
             <LockKeyhole size={22} />
           </span>
-          <h2 className="mt-4 font-display text-3xl font-extrabold text-obligon-navy">Change Transaction PIN</h2>
+          <h2 className="mt-4 font-display text-3xl font-extrabold text-obligon-navy">{card?.pinSet === false ? "Set Transaction PIN" : "Change Transaction PIN"}</h2>
           <p className="mt-2 text-sm text-obligon-text">
-            Update the 4-digit authorization PIN used to approve POS station payments.
+            {card?.pinSet === false ? "Create the 4-digit PIN used to approve your station payments." : "Update the 4-digit authorization PIN used to approve station payments."}
           </p>
 
-          <PinInput label="Current PIN" value={currentPin} onChange={setCurrentPin} placeholder="â€¢â€¢â€¢â€¢" autoFocus />
-          <PinInput label="New 4-Digit PIN" value={newPin} onChange={setNewPin} placeholder="â€¢â€¢â€¢â€¢" />
-          <PinInput label="Confirm New PIN" value={confirmPin} onChange={setConfirmPin} placeholder="â€¢â€¢â€¢â€¢" />
+          {!card && !cardError ? <p className="mt-4 text-sm text-obligon-text" role="status">Loading card PIN status…</p> : null}
+          {cardError ? <div className="mt-4 rounded-lg bg-[#ffe8e8] p-3 text-sm text-[#c1121f]" role="alert"><p>{cardError}</p><button type="button" onClick={() => setLoadKey((key) => key + 1)} className="mt-2 font-bold underline">Retry card status</button></div> : null}
+          {card?.pinSet ? <PinInput label="Current PIN" value={currentPin} onChange={setCurrentPin} placeholder="••••" autoFocus disabled={submitting} /> : null}
+          <PinInput label="New 4-Digit PIN" value={newPin} onChange={setNewPin} placeholder="••••" disabled={!card || submitting} />
+          <PinInput label="Confirm New PIN" value={confirmPin} onChange={setConfirmPin} placeholder="••••" disabled={!card || submitting} />
 
           {error ? <p className="mt-4 rounded-lg bg-[#ffe8e8] p-3 text-sm font-bold text-[#c1121f]">{error}</p> : null}
 
@@ -410,8 +435,8 @@ function ChangePinModal({ onClose }: { onClose: () => void }) {
             <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold text-obligon-navy">
               Cancel
             </button>
-            <button disabled={submitting} type="submit" className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white flex items-center justify-center gap-2">
-              {submitting ? <Loader2 size={18} className="animate-spin" /> : "Update PIN"}
+            <button disabled={!card || submitting} type="submit" className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white flex items-center justify-center gap-2">
+              {submitting ? <Loader2 size={18} className="animate-spin" /> : card?.pinSet === false ? "Set PIN" : "Update PIN"}
             </button>
           </div>
         </form>
@@ -434,6 +459,8 @@ function ChangePinModal({ onClose }: { onClose: () => void }) {
 }
 
 function ChangePasswordModal({ onClose }: { onClose: () => void }) {
+  const router = useRouter();
+  const { setUser } = useSession();
   const [currentPassword, setCurrentPassword] = React.useState("");
   const [newPassword, setNewPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
@@ -465,7 +492,14 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
     setError("");
     setSubmitting(true);
     try {
-      await authApi.changePassword({ currentPassword, newPassword });
+      const result = await authApi.changePassword({ currentPassword, newPassword });
+      if (!authApi.isCurrentAuthResult(result)) return;
+      if (result.reauthenticationRequired) {
+        setUser(null);
+        toastSuccess("Password changed. Sign in again with your new password.");
+        router.replace(routes.login);
+        return;
+      }
       setDone(true);
       toastSuccess("Password changed successfully.");
     } catch (err) {
@@ -501,7 +535,7 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
         <form onSubmit={handleSubmit} className="p-6">
           <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Change Password</h2>
           <p className="mt-2 text-sm leading-6 text-obligon-text">
-            Choose a strong password you do not use anywhere else. You will stay signed in on this device.
+            Choose a strong password you do not use anywhere else. You may need to sign in again after changing it.
           </p>
 
           <div className="mt-6 space-y-4">
@@ -837,31 +871,37 @@ function TopUpModal({
   // The fee comes from the server so the figure shown is the figure charged. It
   // was previously a hardcoded "0.00 (Zero Fee)" that was true in neither
   // direction: the processor always charges something.
-  const [feeSchedule, setFeeSchedule] = React.useState<PaymentFeeSchedule | null>(null);
   const [feeConfig, setFeeConfig] = React.useState<PaymentConfig | null>(null);
+  const [configLoading, setConfigLoading] = React.useState(true);
+  const [configError, setConfigError] = React.useState("");
+  const [configRevision, setConfigRevision] = React.useState(0);
   const { error: toastError, success: toastSuccess } = useToast();
 
   React.useEffect(() => {
     let cancelled = false;
+    setConfigLoading(true);
+    setConfigError("");
+    setFeeConfig(null);
     void publicApi
       .getPaymentConfig()
       .then((cfg) => {
         if (cancelled) return;
-        setFeeSchedule(cfg.fee ?? null);
+        if (!validFundingConfig(cfg)) throw new Error("Payment settings are unavailable. Retry loading settings.");
         setFeeConfig(cfg);
       })
-      // A failure here must not block topping up; the server remains the
-      // authority on what is charged either way.
-      .catch(() => undefined);
+      .catch((error) => {
+        if (!cancelled) setConfigError(error instanceof Error ? error.message : "Could not load payment settings.");
+      })
+      .finally(() => { if (!cancelled) setConfigLoading(false); });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [configRevision]);
 
   // The minimum comes from the server rather than being restated here. The two
   // copies used to disagree (₦500 enforced, ₦1,000 offered), so a customer could
   // be shown a Pay button the API then rejected.
-  const minimumNaira = Math.max(1, Math.round((feeConfig?.minimumTopupKobo ?? 10_000) / 100));
+  const minimumNaira = feeConfig ? Math.ceil(feeConfig.minimumTopupKobo / 100) : null;
   const quickAmounts = [5000, 10000, 25000, 50000, 100000];
 
   const paymentMethods = [
@@ -870,27 +910,25 @@ function TopUpModal({
     { title: "USSD / Quick Bank Code", body: "Follow your bank's USSD instructions at secure checkout", Icon: ArrowRight },
   ];
 
-  const numericAmount = Number(amount.replace(/[^0-9.]/g, ""));
-
-  // When the customer bears the fee it is added to the amount demanded, so the
-  // total has to be shown before they authorise rather than afterwards. Rounded
-  // up to match the server exactly: a total that differs by a naira from the
-  // charge is a dispute waiting to happen.
-  const feeCustomer = feeSchedule?.bearer === "customer";
-  const feeKobo = feeCustomer ? Math.ceil((numericAmount * 100 * (feeSchedule?.basisPoints ?? 0)) / 10_000) : 0;
-  const feeLabel = `₦${(feeKobo / 100).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  const totalToPay = Math.round(numericAmount + feeKobo / 100);
-  const belowMinimum = !Number.isFinite(numericAmount) || numericAmount < minimumNaira;
+  const baseKobo = wholeNairaKobo(amount);
+  const numericAmount = baseKobo === null ? null : baseKobo / 100;
+  let quote: ReturnType<typeof fundingQuote> | null = null;
+  let amountError = baseKobo === null ? "Enter a whole number of naira, up to ₦5,000,000." : "";
+  if (feeConfig && baseKobo !== null) {
+    try { quote = fundingQuote(amount, feeConfig); }
+    catch (error) { amountError = error instanceof Error ? error.message : "Enter a valid whole-naira amount."; }
+  }
+  const feeCustomer = feeConfig?.fee.bearer === "customer";
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (belowMinimum) {
-      toastError(`Please enter a valid top-up amount of at least \u20a6${minimumNaira.toLocaleString("en-NG")}.`);
+    if (!quote || numericAmount === null || configLoading || submitting) {
+      toastError(amountError || configError || "Wait for payment settings before continuing.");
       return;
     }
     setSubmitting(true);
     try {
-      const result = await mutationsApi.topUpWallet(numericAmount, method);
+      const result = await mutationsApi.topUpWallet(numericAmount, method, quote.totalKobo);
       if(!result?.reference)throw new Error('The server did not return a payment reference. Check your wallet history before retrying.');
       const ref=result.reference;
       const provider = result?.provider ?? defaultProvider ?? "flutterwave";
@@ -906,7 +944,7 @@ function TopUpModal({
       }
 
       if (result?.paymentUrl) {
-        setPending({ reference: ref, amount: numericAmount, provider });
+        setPending({ reference: ref, amount: quote.totalKobo / 100, provider });
         // Keep the modal mounted while the browser navigates away.
         window.location.assign(result.paymentUrl);
         return;
@@ -917,6 +955,11 @@ function TopUpModal({
       toastError("We could not start the payment. Please try again.");
     } catch (err) {
       setSubmitting(false);
+      if (err instanceof ApiError && err.status === 409) {
+        setFeeConfig(null);
+        setConfigLoading(true);
+        setConfigRevision((revision) => revision + 1);
+      }
       const message = err instanceof Error ? err.message : "Top-up failed. Please try again.";
       toastError(message);
     }
@@ -985,40 +1028,44 @@ function TopUpModal({
 
           <div className="mt-6">
             <div className="mb-2 flex items-baseline justify-between gap-2">
-              <label className="text-xs font-extrabold uppercase text-obligon-text">
+              <label htmlFor="topup-amount" className="text-xs font-extrabold uppercase text-obligon-text">
                 Select or Enter Amount (₦)
               </label>
               {/* Stated up front so a customer is not left guessing why the
                   button is disabled. */}
               <span className="text-[11px] font-bold text-obligon-text">
-                Minimum ₦{minimumNaira.toLocaleString("en-NG")}
+                {minimumNaira === null ? (configLoading ? "Minimum loading…" : "Minimum unavailable") : `Minimum ₦${minimumNaira.toLocaleString("en-NG")}`}
               </span>
             </div>
             <div
               className={`flex h-14 rounded-xl border bg-[#f7fbf8] focus-within:border-obligon-green focus-within:ring-2 focus-within:ring-obligon-green/20 ${
-                amount.length > 0 && belowMinimum ? "border-[#e0a3a3]" : "border-[#cfd8cc]"
+                amount.length > 0 && amountError ? "border-[#e0a3a3]" : "border-[#cfd8cc]"
               }`}
             >
               <span className="grid w-14 place-items-center font-display text-2xl font-extrabold text-obligon-navy">₦</span>
               <input
+                id="topup-amount"
+                type="text"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-                inputMode="decimal"
+                onChange={(e) => setAmount(e.target.value)}
+                disabled={submitting}
+                inputMode="numeric"
+                maxLength={24}
                 placeholder="25,000"
                 aria-describedby="topup-minimum-hint"
+                aria-invalid={Boolean(amount.length > 0 && amountError)}
                 className="w-full bg-transparent pr-4 font-display text-2xl font-extrabold text-obligon-navy outline-none"
               />
             </div>
-            {amount.length > 0 && belowMinimum ? (
-              <p id="topup-minimum-hint" className="mt-2 text-xs font-bold text-[#c1121f]">
-                Enter at least ₦{minimumNaira.toLocaleString("en-NG")}.
-              </p>
-            ) : null}
+            <p id="topup-minimum-hint" aria-live="polite" className={`mt-2 text-xs font-bold ${amount.length > 0 && amountError ? "text-[#c1121f]" : "text-obligon-text"}`}>
+              {amount.length > 0 && amountError ? amountError : "Deposits accept whole naira only. Fractions of a naira are not supported yet."}
+            </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {quickAmounts.map((amt) => (
                 <button
                   key={amt}
                   type="button"
+                  disabled={submitting}
                   onClick={() => setAmount(amt.toString())}
                   className={`rounded-lg border px-3 py-1.5 text-xs font-bold transition ${
                     numericAmount === amt
@@ -1041,6 +1088,7 @@ function TopUpModal({
                   <button
                     key={title}
                     type="button"
+                    disabled={submitting}
                     aria-pressed={selected}
                     onClick={() => setMethod(title)}
                     className={`flex w-full items-center gap-3.5 rounded-xl border p-3.5 text-left transition ${
@@ -1061,36 +1109,40 @@ function TopUpModal({
             </div>
           </div>
 
-          <div className="mt-6 overflow-hidden rounded-xl bg-[#f7fbf8] text-sm">
+          {configLoading ? <p role="status" className="mt-6 text-sm text-obligon-text">Loading payment settings…</p> : null}
+          {configError ? <div role="alert" className="mt-6 rounded-xl bg-red-50 p-4 text-sm text-red-700">
+            <p>{configError} Your fee and total are unavailable.</p>
+            <button type="button" onClick={() => setConfigRevision((revision) => revision + 1)} className="mt-3 min-h-11 rounded-lg border border-current px-4 font-bold">Retry payment settings</button>
+          </div> : null}
+          {quote ? <div className="mt-6 overflow-hidden rounded-xl bg-[#f7fbf8] text-sm">
             <div className="flex items-center justify-between px-4 py-3">
               <span className="font-bold text-obligon-text">Top-up amount</span>
-              <span className="font-extrabold text-obligon-navy">₦{(numericAmount || 0).toLocaleString()}</span>
+              <span className="font-extrabold text-obligon-navy">{fundingMoney(quote.baseKobo)}</span>
             </div>
             <div className="flex items-center justify-between border-t border-[#e6ede4] px-4 py-3">
               <span className="font-bold text-obligon-text">
                 Gateway Transaction Fee
-                {feeCustomer && feeSchedule && feeSchedule.percent > 0 ? (
-                  <span className="ml-1.5 font-semibold text-obligon-text/80">({feeSchedule.percent}%)</span>
+                {feeCustomer && feeConfig && feeConfig.fee.basisPoints > 0 ? (
+                  <span className="ml-1.5 font-semibold text-obligon-text/80">({feeConfig.fee.basisPoints / 100}%)</span>
                 ) : null}
               </span>
               <span className={`font-extrabold ${feeCustomer ? "text-obligon-navy" : "text-obligon-green"}`}>
-                {feeCustomer ? feeLabel : "₦0.00 (Absorbed by Obligon)"}
+                {feeCustomer ? fundingMoney(quote.feeKobo) : "₦0.00 (Absorbed by Obligon)"}
               </span>
             </div>
-            {feeCustomer ? (
-              <div className="flex items-center justify-between border-t border-[#e6ede4] bg-[#eef6ea] px-4 py-3">
+            {feeCustomer && quote.roundingKobo > 0 ? <p className="border-t border-[#e6ede4] px-4 py-3 text-xs text-obligon-text">The fee includes {fundingMoney(quote.roundingKobo)} rounding so the checkout total is a whole number of naira.</p> : null}
+            <div className="flex items-center justify-between border-t border-[#e6ede4] bg-[#eef6ea] px-4 py-3">
                 <span className="font-extrabold text-obligon-navy">Total to pay</span>
-                <span className="text-lg font-extrabold text-obligon-green">₦{totalToPay.toLocaleString()}</span>
-              </div>
-            ) : null}
-          </div>
+                <span className="text-lg font-extrabold text-obligon-green">{fundingMoney(quote.totalKobo)}</span>
+            </div>
+          </div> : null}
 
           <div className="mt-6 flex gap-3">
             <button type="button" onClick={onClose} className="h-12 flex-1 rounded-lg border border-[#20251f] font-extrabold text-obligon-navy">
               Cancel
             </button>
             <button
-              disabled={submitting || belowMinimum}
+              disabled={submitting || configLoading || !quote}
               type="submit"
               className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white shadow-green flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
@@ -1100,7 +1152,7 @@ function TopUpModal({
                   Processing...
                 </>
               ) : (
-                `Pay ₦${(totalToPay || 0).toLocaleString()}`
+                quote ? `Pay ${fundingMoney(quote.totalKobo)}` : "Payment total unavailable"
               )}
             </button>
           </div>
@@ -1196,7 +1248,7 @@ function ReportProblemModal({ onClose }: { onClose: () => void }) {
                       : "border-[#cfd8cc] bg-white text-obligon-navy hover:bg-[#f7fbf8]"
                   }`}
                 >
-                  {item}
+                  {item === "Lost / Stolen Fleet Card" ? "Lost / Stolen Fuel Card" : item}
                 </button>
               ))}
             </div>

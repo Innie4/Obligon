@@ -1,5 +1,6 @@
 import { one } from "../db.js";
 import { naira } from "./format.js";
+import { nairaToKobo } from "./money-amounts.js";
 
 /**
  * A customer's projected spend for the current calendar month.
@@ -81,16 +82,9 @@ export async function readSpendProjection(userId, mtdKobo = 0) {
  * @returns {Promise<object>} the stored projection, without spend figures.
  */
 export async function setSpendProjection(userId, nairaAmount) {
-  const amount = Number(nairaAmount);
-  if (!Number.isFinite(amount) || amount <= 0) {
-    throw new Error("Projected spend must be a number greater than zero");
-  }
-  // Rounded, because kobo is the smallest real amount and a projection is a
-  // plan, not a settlement: asking for a fraction of a kobo is not meaningful.
-  const kobo = Math.round(amount * 100);
-  if (kobo > MAX_PROJECTED_KOBO) {
-    throw new Error("Projected spend is unrealistically high");
-  }
+  // Kobo is the smallest monetary input; excess decimal places must not be
+  // rounded into a different projection than the customer entered.
+  const kobo = nairaToKobo(nairaAmount, { max: MAX_PROJECTED_KOBO, label: 'Projected spend' });
 
   const row = await one(
     `INSERT INTO monthly_spend_projections (user_id, month, projected_kobo)

@@ -42,8 +42,9 @@ before(async () => {
   pool = (await import("../src/db.js")).getPool();
   const { rows: [location] } = await pool.query("SELECT current_schema() AS schema");
   assert.equal(location.schema, schema, "All application queries must use the isolated schema");
-  ({ TEMPORARY_PARTNER_ACCOUNT: account, ensureTemporaryPartnerAccount: ensureAccount } =
-    await import("../src/lib/temporaryPartnerAccount.js"));
+  const temporaryModule = await import("../src/lib/temporaryPartnerAccount.js");
+  account = { ...temporaryModule.TEMPORARY_PARTNER_ACCOUNT, password: temporaryModule.TEMPORARY_PARTNER_ACCOUNT.password ?? "IsolatedFixture!2026" };
+  ensureAccount = options => temporaryModule.ensureTemporaryPartnerAccount({ enabled: true, password: account.password, ...options });
   ({ authLimiter } = await import("../src/middleware/security.js"));
   const { createApp } = await import("../src/app.js");
   globalThis.fetch = async (url) => { throw new Error(`Unexpected provider call during temporary partner testing: ${new URL(url).origin}`); };
@@ -377,7 +378,7 @@ integration("temporary local credentials migrate through the normal Supabase Aut
   assert.equal((await login()).status, 200);
   const migrated = await row("SELECT supabase_auth_uid,password_hash FROM users WHERE id=$1", [account.userId]);
   assert.equal(migrated.supabase_auth_uid, authUserId);
-  assert.equal(migrated.password_hash, "$supabase-auth$managed-credentials");
+  assert.match(migrated.password_hash, /^\$supabase-auth\$managed-credentials:[a-f0-9]+$/);
   assert.equal((await ensureAccount()).status, "unchanged");
   assert.deepEqual(await row("SELECT supabase_auth_uid,password_hash FROM users WHERE id=$1", [account.userId]), migrated);
   const authenticated = await login();
@@ -390,4 +391,21 @@ integration("temporary local credentials migrate through the normal Supabase Aut
   assert.equal(disabled.status, "suspended");
   assert.equal(disabled.supabase_auth_uid, null);
   assert.equal((await call("/api/partner/overview", { token: authenticated.body.accessToken })).status, 401);
+});
+
+
+integration("startup retires temporary access by default and production cannot recreate it", async () => {
+  const { ensureTemporaryPartnerAccount, TEMPORARY_PARTNER_ACCOUNT_ENABLED } = await import("../src/lib/temporaryPartnerAccount.js");
+  assert.equal(TEMPORARY_PARTNER_ACCOUNT_ENABLED, false);
+  assert.equal((await ensureTemporaryPartnerAccount()).status, "absent");
+  await ensureAccount();
+  const authenticated = await login();
+  assert.equal(authenticated.status, 200);
+  try {
+    env.NODE_ENV = "production";
+    assert.equal((await ensureAccount()).status, "disabled");
+    assert.equal((await login()).status, 401);
+    assert.equal((await call("/api/auth/session", { token: authenticated.body.accessToken })).status, 401);
+    assert.equal(Number((await row("SELECT COUNT(*) AS count FROM sessions WHERE revoked_at IS NULL")).count), 0);
+  } finally { env.NODE_ENV = "test"; }
 });

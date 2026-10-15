@@ -49,7 +49,7 @@ import { usePolling } from "@/components/shared/usePolling";
 import { useSession } from "@/components/shared/AuthContext";
 import { useToast } from "@/components/shared/Toast";
 import { Toggle } from "@/components/shared/Toggle";
-import { currentPushState, disableWebPush, enableWebPush, pushSupported } from "@/lib/push-subscription";
+import { currentPushState, disableWebPush, enableWebPush, type PushState } from "@/lib/push-subscription";
 import { CustomerModals, ModalFrame, type CustomerModalType } from "./CustomerModals";
 import { CardDetailsModal, CardPlanModal, CardSubmittedModal, PendingPaymentModal, CardVerificationProgressModal } from "./CardRequestModals";
 import { ConfirmModal, PinModal } from "../shared/Dialogs";
@@ -277,7 +277,7 @@ function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
     <Canvas>
       <div className="lg:hidden">
         <h1 className="font-display text-[34px] font-extrabold leading-tight text-obligon-green">{greetingHour()}, {firstName}</h1>
-        <p className="mt-2 text-base text-[#3f463d]">Here is your live fleet overview for today.</p>
+        <p className="mt-2 text-base text-[#3f463d]">Here is your personal account overview for today.</p>
       </div>
 
       <AsyncBoundary
@@ -377,6 +377,7 @@ function TransactionsPage() {
   const [filters, setFilters] = React.useState({ station: "All Stations", vehicle: "All Vehicles", fuel: "All Fuels" });
   const [applied, setApplied] = React.useState(filters);
   const [selectedTxn, setSelectedTxn] = React.useState<CustomerMoneyEvent | null>(null);
+  const receiptLinkConsumed = React.useRef<string | null>(null);
   const [currentPage, setCurrentPage] = React.useState(1);
   const pageSize = 5;
   const { success: toastSuccess, error: toastError } = useToast();
@@ -385,7 +386,13 @@ function TransactionsPage() {
   // redraws on the same tick as the wallet and the overview.
   usePolling(refresh, { intervalMs: BALANCE_POLL_MS });
 
-  React.useEffect(() => {if (!history) return;const id=new URLSearchParams(window.location.search).get("id");if(id)setSelectedTxn(history.find(row => row.id===id)??null);},[history]);
+  React.useEffect(() => {
+    if (!history) return;
+    const id = new URLSearchParams(window.location.search).get("id");
+    if (!id || receiptLinkConsumed.current === id) return;
+    receiptLinkConsumed.current = id;
+    setSelectedTxn(history.find(row => row.id === id) ?? null);
+  }, [history]);
   const rows = history ?? [];
   // Filter options come from dispenses only. A top-up has no vehicle and no fuel
   // type, so including them would offer a filter that can only ever return
@@ -753,9 +760,21 @@ function CardPage({
 }) {
   const { success: toastSuccess, error: toastError } = useToast();
   const { user } = useSession();
+  function requestClosed(request: CardRequest | null) {
+    return Boolean(request && (["cancelled", "withdrawn", "refunded"].includes(request.status) ||
+      request.paymentStatus === "refunded" || request.issuanceState === "refund_pending"));
+  }
+  function requestNeedsDetails(request: CardRequest | null) {
+    return Boolean(request && !requestClosed(request) && request.paymentStatus === "paid" &&
+      request.verificationStatus === "not_started" && (!request.issuanceState || request.issuanceState === "not_started"));
+  }
   const [hasCard, setHasCard] = React.useState<boolean | null>(null);
   const [card, setCard] = React.useState<CustomerCard | null>(null);
   const [cardRequest, setCardRequest] = React.useState<CardRequest | null>(null);
+  const [cardLoading, setCardLoading] = React.useState(true);
+  const [cardLoadError, setCardLoadError] = React.useState("");
+  const [openRequestError, setOpenRequestError] = React.useState("");
+  const [cardLoadRevision, setCardLoadRevision] = React.useState(0);
 
   const { status: plansStatus, data: plans } = useAsync(() => api.getCardPlans());
   const [planModalOpen, setPlanModalOpen] = React.useState(false);
@@ -786,6 +805,14 @@ function CardPage({
   } | null>(null);
   const [resuming, setResuming] = React.useState(false);
   const [cancelling, setCancelling] = React.useState(false);
+  const [withdrawing, setWithdrawing] = React.useState(false);
+  const withdrawalInFlight = React.useRef(false);
+  const [refundInfo, setRefundInfo] = React.useState<{
+    requestId: string; status: string | null; reviewRequired: boolean; message: string | null;
+  } | null>(null);
+  const [refundChecking, setRefundChecking] = React.useState(false);
+  const [refundCheckError, setRefundCheckError] = React.useState("");
+  const [refundCheckRevision, setRefundCheckRevision] = React.useState(0);
 
   const onCardChangeRef = React.useRef(onCardChange);
   onCardChangeRef.current = onCardChange;
@@ -797,19 +824,61 @@ function CardPage({
   }, []);
 
   React.useEffect(() => {
-    void Promise.all([api.request<{ card: CustomerCard | null }>("/api/customer/card"), loadRequest()])
-      .then(([cardData, request]) => {
-        setHasCard(Boolean(cardData.card));
-        setCard(cardData.card);
-        onCardChangeRef.current?.(cardData.card);
-        // A paid request still needs the customer's identity details.
-        if (request?.paymentStatus === "paid" && request.verificationStatus === "not_started") {
-          setDetailsModalOpen(true);
+    let cancelled = false;
+    setCardLoading(true);
+    setCardLoadError("");
+    void Promise.allSettled([api.request<{ card: CustomerCard | null }>("/api/customer/card"), mutationsApi.getCardRequest()])
+      .then(([cardResult, requestResult]) => {
+        if (cancelled) return;
+        if (cardResult.status === "fulfilled") {
+          const loadedCard = cardResult.value.card;
+          // Do not offer a new plan when the absence of an existing request is unknown.
+          setHasCard(loadedCard ? true : requestResult.status === "fulfilled" ? false : null);
+          setCard(loadedCard);
+          onCardChangeRef.current?.(loadedCard);
         }
+        const request = requestResult.status === "fulfilled" ? requestResult.value.request ?? null : null;
+        if (requestResult.status === "fulfilled") setCardRequest(request);
+        // Closed requests cannot resume payment or identity collection, even
+        // when their historical payment remains recorded as paid.
+        if (requestResult.status === "fulfilled") setDetailsModalOpen(requestNeedsDetails(request));
+        const failures = [cardResult, requestResult].filter((result) => result.status === "rejected");
+        setCardLoadError(failures.map((result) => result.status === "rejected" && result.reason instanceof Error ? result.reason.message : "Could not load your card and request status.").join(" "));
+        setCardLoading(false);
       })
-      .catch(() => setHasCard(null));
+      .catch((error) => {
+        if (cancelled) return;
+        setCardLoadError(error instanceof Error ? error.message : "Could not load your card and request status.");
+        setCardLoading(false);
+      });
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshKey]);
+  }, [refreshKey, cardLoadRevision]);
+
+  const closedRequest = requestClosed(cardRequest);
+  const hasRefundRequest = Boolean(cardRequest && (cardRequest.issuanceState === "refund_pending" ||
+    ["withdrawn", "refunded"].includes(cardRequest.status) || cardRequest.paymentStatus === "refunded"));
+  React.useEffect(() => {
+    const reference = cardRequest?.paymentReference;
+    const requestId = cardRequest?.id;
+    if (!hasRefundRequest || !reference || !requestId) return;
+    let cancelled = false;
+    setRefundChecking(true);
+    setRefundCheckError("");
+    void api.request<{ refund: { status: string; kind: string } | null }>(`/api/customer/card-request/refund?reference=${encodeURIComponent(reference)}`)
+      .then(({ refund }) => {
+        // A completed partial/excess refund does not settle this withdrawal.
+        if (!cancelled) setRefundInfo((current) => ({ requestId,
+          status: refund?.kind === "full" ? refund.status : current?.requestId === requestId ? current.status : null,
+          reviewRequired: current?.requestId === requestId ? current.reviewRequired : false,
+          message: current?.requestId === requestId ? current.message : null }));
+      }).catch(() => {
+        if (!cancelled) setRefundCheckError("Could not check the latest refund status. Check again or contact Support.");
+      }).finally(() => {
+        if (!cancelled) setRefundChecking(false);
+      });
+    return () => { cancelled = true; };
+  }, [cardRequest?.id, cardRequest?.paymentReference, hasRefundRequest, refundCheckRevision]);
 
   // An unpaid request in flight is offered straight away rather than waiting for
   // the customer to click a plan and be told they are blocked. Without this the
@@ -823,17 +892,20 @@ function CardPage({
     if (params.get("plan") ?? params.get("tx_ref") ?? params.get("paymentFlow")) return;
 
     let cancelled = false;
+    setOpenRequestError("");
     void mutationsApi.getOpenCardRequest().then((open) => {
       if (cancelled) return;
-      if (open.request && open.reference && open.canResume) {
+      if (open.request && !requestClosed(open.request) && open.reference && open.canResume) {
         setPendingResume({ open, attemptedPlan: null });
       }
+    }).catch((error) => {
+      if (!cancelled) setOpenRequestError(error instanceof Error ? error.message : "Could not check your pending card payment.");
     });
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshKey]);
+  }, [refreshKey, cardLoadRevision]);
 
   // Returning from the payment provider: confirm the charge, then ask for details.
   // Flutterwave redirects back with `status`, `tx_ref` and `transaction_id`; the
@@ -854,8 +926,11 @@ function CardPage({
         // Clearing it here is what stops the customer being told they still owe
         // money on the page they land on straight after paying.
         setPendingResume(null);
-        if (paid.paid) {
-          setDetailsModalOpen(true);
+        if (requestClosed(paid.request)) {
+          setDetailsModalOpen(false);
+          toastSuccess("This application is closed. Check the application and refund status below.");
+        } else if (paid.paid) {
+          setDetailsModalOpen(requestNeedsDetails(paid.request));
           toastSuccess("Payment confirmed.");
         } else {
           toastError(returnedStatus === "failed" ? "That payment did not complete. Please try again." : "We could not confirm your payment yet.");
@@ -879,14 +954,21 @@ function CardPage({
       const result = await mutationsApi.startCardCheckout(plan.code);
       setCheckout(result);
       setCardRequest(result.request);
+      if (requestClosed(result.request)) {
+        setPlanModalOpen(false);
+        toastError("This application is closed. Check its status before choosing another plan.");
+        return;
+      }
       if (result.simulated) {
         // No processor configured locally: confirm the simulated charge so the
         // request reaches the paid state, then collect identity details.
         const paid = await mutationsApi.verifyCardPayment(result.reference, true);
         setCardRequest(paid.request);
         setPlanModalOpen(false);
-        setDetailsModalOpen(true);
-        toastSuccess("Payment confirmed. Complete your details to continue.");
+        setDetailsModalOpen(paid.paid && requestNeedsDetails(paid.request));
+        if (requestClosed(paid.request)) toastSuccess("This application is closed. Check its status below.");
+        else if (paid.paid) toastSuccess("Payment confirmed. Complete your details to continue.");
+        else toastError("We could not confirm your payment yet.");
         return;
       }
       if (result.paymentUrl) {
@@ -900,10 +982,16 @@ function CardPage({
       // that they are blocked leaves them stuck, so fetch the pending request
       // and offer the two real ways out of it.
       if (err instanceof ApiError && err.status === 409) {
-        const open = await mutationsApi.getOpenCardRequest();
-        if (open.request && (open.canResume || open.canCancel)) {
-          setPlanModalOpen(false);
-          setPendingResume({ open, attemptedPlan: plan });
+        try {
+          const open = await mutationsApi.getOpenCardRequest();
+          if (open.request && !requestClosed(open.request) && (open.canResume || open.canCancel)) {
+            setPlanModalOpen(false);
+            setPendingResume({ open, attemptedPlan: plan });
+            return;
+          }
+        } catch (lookupError) {
+          toastError(lookupError instanceof Error ? lookupError.message : "Could not check your pending card payment. Retry loading your card.");
+          setOpenRequestError(lookupError instanceof Error ? lookupError.message : "Could not check your pending card payment.");
           return;
         }
       }
@@ -916,18 +1004,25 @@ function CardPage({
   /** Take the customer back to the payment they already started. */
   async function handleResumePending() {
     const target = pendingResume;
-    if (!target?.open.reference) return;
+    if (!target?.open.reference || requestClosed(target.open.request)) return;
     setResuming(true);
     try {
       const result = await mutationsApi.resumeCardCheckout(target.open.reference);
       setCheckout(result);
       setCardRequest(result.request);
       setPendingResume(null);
+      if (requestClosed(result.request)) {
+        setDetailsModalOpen(false);
+        toastError("This application is closed. Check its status before choosing another plan.");
+        return;
+      }
       if (result.simulated) {
         const paid = await mutationsApi.verifyCardPayment(result.reference, true);
         setCardRequest(paid.request);
-        setDetailsModalOpen(true);
-        toastSuccess("Payment confirmed. Complete your details to continue.");
+        setDetailsModalOpen(paid.paid && requestNeedsDetails(paid.request));
+        if (requestClosed(paid.request)) toastSuccess("This application is closed. Check its status below.");
+        else if (paid.paid) toastSuccess("Payment confirmed. Complete your details to continue.");
+        else toastError("We could not confirm your payment yet.");
         return;
       }
       if (result.paymentUrl) {
@@ -991,7 +1086,7 @@ function CardPage({
     state: string;
     dateOfBirth:string;postalCode:string;phone:string;
   }) {
-    if (!checkout?.reference && !cardRequest?.paymentReference) return;
+    if (requestClosed(cardRequest) || (!checkout?.reference && !cardRequest?.paymentReference)) return;
     setSubmittingDetails(true);
     try {
       const result = await mutationsApi.submitCardRequestDetails({
@@ -1007,6 +1102,45 @@ function CardPage({
       setSubmittingDetails(false);
     }
   }
+
+  async function handleWithdrawApplication() {
+    if (!cardRequest?.paymentReference || requestClosed(cardRequest) || withdrawalInFlight.current) return;
+    withdrawalInFlight.current = true;
+    setWithdrawing(true);
+    try {
+      const result = await api.request<{ request: CardRequest; message?: string; reviewRequired?: boolean; refundStatus?: string }>(
+        "/api/customer/card-request/withdraw", { method: "POST", body: JSON.stringify({ reference: cardRequest.paymentReference, reason: "Identity application rejected" }) }
+      );
+      const message = result.message ?? (result.refundStatus === "succeeded"
+        ? "Your withdrawal refund has been confirmed by the payment provider."
+        : result.reviewRequired
+          ? "Your withdrawal is recorded. The refund needs support review and has not been confirmed as paid."
+          : "Your withdrawal is recorded. The refund has not yet been confirmed.");
+      const request = result.request ?? { ...cardRequest, issuanceState: "refund_pending" };
+      setCardRequest(request);
+      setRefundInfo({ requestId: request.id, status: result.refundStatus ?? null, reviewRequired: result.reviewRequired === true, message });
+      setDetailsModalOpen(false);
+      setProgressOpen(false);
+      setPendingResume(null);
+      toastSuccess(message);
+      try { await loadRequest(); }
+      catch { setCardLoadError("Your withdrawal is recorded, but we could not refresh the application. Retry loading your card for the latest status."); }
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : "Could not confirm your withdrawal. Check the request status before trying again.");
+    } finally {
+      withdrawalInFlight.current = false;
+      setWithdrawing(false);
+    }
+  }
+
+  const currentRefund = refundInfo?.requestId === cardRequest?.id ? refundInfo : null;
+  const refundConfirmed = Boolean(cardRequest?.paymentStatus === "refunded" ||
+    (cardRequest && ["refunded"].includes(cardRequest.status)) || currentRefund?.status === "succeeded");
+  const refundReviewRequired = !refundConfirmed && (currentRefund?.reviewRequired || ["failed", "review_required"].includes(currentRefund?.status ?? ""));
+  const refundMessage = refundConfirmed ? "Your refund has been confirmed by the payment provider."
+    : refundReviewRequired ? currentRefund?.reviewRequired && currentRefund.message
+      ? currentRefund.message : "The refund needs support review and has not been confirmed as paid."
+      : currentRefund?.message ?? "The refund has not yet been confirmed. Check Notifications for updates or contact Support.";
 
   const frozen = card?.status === "frozen";
   const blocked = card?.status === "blocked";
@@ -1034,6 +1168,13 @@ function CardPage({
         <p className="mt-1 text-obligon-text">View your Fuelvista card status and manage your subscription.</p>
       </div>
 
+      {cardLoading ? <p role="status" className="mb-6 text-sm text-obligon-text">{hasCard === null ? "Loading your card and request status…" : "Refreshing your card and request status…"}</p> : null}
+      {cardLoadError || openRequestError ? <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
+        <p>{cardLoadError || openRequestError}</p>
+        <p className="mt-1">Your latest card or payment request status could not be checked.</p>
+        <button type="button" disabled={cardLoading} onClick={() => setCardLoadRevision((revision) => revision + 1)} className="mt-3 min-h-11 rounded-lg border border-current px-4 font-bold disabled:opacity-50">Retry loading card</button>
+      </div> : null}
+
       {hasCard === false ? (
         <Card className="mb-8 border-obligon-green/30 bg-[#f7fbf8] p-6">
           <h2 className="font-display text-xl font-extrabold text-obligon-navy">Get your Fuelvista Card</h2>
@@ -1050,14 +1191,18 @@ function CardPage({
                 </span>
                 <span
                   className={`rounded-full px-3 py-1 text-[10px] font-extrabold uppercase ${
-                    cardRequest.paymentStatus === "paid"
+                    closedRequest
+                      ? refundConfirmed ? "bg-[#e8fbd7] text-obligon-green" : "bg-[#fff3d8] text-[#9a6300]"
+                      : cardRequest.paymentStatus === "paid"
                       ? "bg-[#e8fbd7] text-obligon-green"
                       : cardRequest.paymentStatus === "failed"
                         ? "bg-[#ffe8e8] text-[#c1121f]"
                         : "bg-[#fff3d8] text-[#9a6300]"
                   }`}
                 >
-                  {cardRequest.paymentStatus === "paid"
+                  {closedRequest
+                    ? refundConfirmed ? "Refund confirmed" : hasRefundRequest ? "Refund not confirmed" : "Application closed"
+                    : cardRequest.paymentStatus === "paid"
                     ? "Payment confirmed"
                     : cardRequest.paymentStatus === "failed"
                       ? "Payment failed"
@@ -1065,7 +1210,30 @@ function CardPage({
                 </span>
               </div>
 
-              {cardRequest.paymentStatus !== "paid" ? (
+              {closedRequest ? (
+                <>
+                  <p className="text-sm font-bold text-obligon-navy">
+                    {["cancelled"].includes(cardRequest.status) ? "This card application was cancelled."
+                      : ["withdrawn"].includes(cardRequest.status) ? "This card application was withdrawn."
+                      : "This card application is closed."}
+                  </p>
+                  <p className="text-sm text-obligon-text">Payment and identity verification cannot continue for this request.</p>
+                  {hasRefundRequest ? (
+                    <>
+                      <p role={refundReviewRequired ? "alert" : "status"} className="text-sm text-obligon-text">{refundMessage}</p>
+                      {refundCheckError ? <p role="alert" className="text-sm text-red-700">{refundCheckError}</p> : null}
+                      <button type="button" disabled={refundChecking} onClick={() => setRefundCheckRevision((revision) => revision + 1)} className="min-h-11 rounded-xl border border-obligon-border px-4 text-sm font-bold disabled:opacity-50">
+                        {refundChecking ? "Checking refund status…" : "Check refund status"}
+                      </button>
+                    </>
+                  ) : null}
+                  <div className="flex flex-wrap items-center gap-3">
+                    <a href="/customer/notifications" className="inline-flex min-h-11 items-center text-sm font-bold text-obligon-navy underline">Notifications</a>
+                    <a href="/customer/support" className="inline-flex min-h-11 items-center text-sm font-bold text-obligon-navy underline">Contact Support</a>
+                    <button type="button" onClick={() => setPlanModalOpen(true)} className="min-h-11 rounded-xl border border-obligon-border px-4 text-sm font-bold">Choose another plan</button>
+                  </div>
+                </>
+              ) : cardRequest.paymentStatus !== "paid" ? (
                 <>
                   <p className="text-sm font-bold text-obligon-navy">
                     Your {cardRequest.planName ?? "plan"} selection is waiting for payment.
@@ -1078,7 +1246,7 @@ function CardPage({
                     {cardRequest.paymentStatus === "failed" ? "Try payment again" : "Complete payment"}
                   </button>
                 </>
-              ) : cardRequest.verificationStatus === "not_started" ? (
+              ) : requestNeedsDetails(cardRequest) ? (
                 <>
                   <p className="text-sm font-bold text-obligon-navy">
                     Payment received. Tell us who the card belongs to so we can verify you.
@@ -1094,9 +1262,9 @@ function CardPage({
               ) : cardRequest.verificationStatus === "rejected" ? (
                 <>
                   <p role="alert" className="text-sm font-bold text-red-700">Verification rejected: {cardRequest.rejectionReason ?? "Contact support for the reason"}</p>
-                  <button type="button" className="h-11 rounded-xl border border-obligon-border px-5 font-bold" onClick={async () => {
-                    try { await api.request("/api/customer/card-request/withdraw", { method: "POST", body: JSON.stringify({ reference: cardRequest.paymentReference, reason: "Identity application rejected" }) }); await loadRequest(); toastSuccess("Refund requested. The payment provider will process it."); } catch(e) { toastError(e instanceof Error ? e.message : "Unable to request refund"); }
-                  }}>Withdraw application & request refund</button>
+                  <button type="button" disabled={withdrawing} className="h-11 rounded-xl border border-obligon-border px-5 font-bold disabled:opacity-50" onClick={handleWithdrawApplication}>
+                    {withdrawing ? "Recording withdrawal…" : "Withdraw application & request refund"}
+                  </button>
                 </>
               ) : (
                 <>
@@ -1146,7 +1314,7 @@ function CardPage({
         />
       ) : null}
 
-      {pendingResume?.open.request && pendingResume.open.reference ? (
+      {pendingResume?.open.request && !requestClosed(pendingResume.open.request) && pendingResume.open.reference ? (
         <PendingPaymentModal
           request={pendingResume.open.request}
           reference={pendingResume.open.reference}
@@ -1159,7 +1327,7 @@ function CardPage({
         />
       ) : null}
 
-      {detailsModalOpen ? (
+      {detailsModalOpen && !closedRequest ? (
         <CardDetailsModal
           defaultName={user?.name ?? ""}
           defaultPhone={user?.phone ?? ""}
@@ -1277,6 +1445,8 @@ function WalletPage({
     reload: reloadWallet,
     refresh: refreshWallet
   } = useAsync(() => api.getCustomerWallet(), [balanceRefreshKey]);
+  const [walletLoadedAt, setWalletLoadedAt] = React.useState<number | null>(null);
+  React.useEffect(() => { if (wallet) setWalletLoadedAt(Date.now()); }, [wallet]);
   const { data: topUpHistory } = useAsync(() => api.getCustomerTopUpHistory());
   // The overview carries the MTD figures the wallet page reuses, and it is a
   // separate aggregate, so it is refreshed on the same tick rather than folded
@@ -1299,7 +1469,8 @@ function WalletPage({
   // Taken from the wallet response rather than the overview metric: this is the
   // same number the ledger that produced it reports, so the figure on this page
   // and the entries beneath it cannot disagree.
-  const totalBalance = wallet?.balanceLabel ?? "₦0.00";
+  const unknownBalanceLabel = walletStatus === "loading" ? "Loading balance…" : "Balance unavailable";
+  const totalBalance = wallet?.balanceLabel ?? unknownBalanceLabel;
   const lastTopUp = wallet?.lastTopUp ?? null;
   // The real budget limit, or nothing. Showing a badge only when there is an
   // actual limit avoids implying a facility that was never set.
@@ -1342,6 +1513,10 @@ function WalletPage({
         <p className="mt-3 text-sm font-bold text-obligon-green">
           {customerWalletHint(wallet?.balanceKobo)}
         </p>
+        {walletError ? <div role="alert" className="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-900">
+          <p>{wallet ? "Showing your last known balance. We could not refresh the latest balance." : "We could not load your balance. Check again before making a fuel payment."}{walletLoadedAt ? ` Last updated ${new Date(walletLoadedAt).toLocaleString("en-NG")}.` : ""}</p>
+          <button type="button" onClick={reloadWallet} className="mt-3 min-h-11 rounded-lg border border-current px-4 font-bold">Retry wallet balance</button>
+        </div> : null}
         {/* What the processor says about the last payment, next to our figure.
             A customer who is told a transaction succeeded and sees nothing change
             has no way to tell a missed credit from a stale screen. Naming the
@@ -1360,10 +1535,10 @@ function WalletPage({
           <div className="rounded-xl border border-obligon-border bg-[#f7fbf8] p-4">
             <p className="text-xs font-extrabold uppercase text-obligon-text">Settled with Flutterwave</p>
             <p className="mt-1 font-display text-2xl font-extrabold text-obligon-navy">
-              {wallet?.settledInLabel ?? "₦0.00"}
+              {wallet?.settledInLabel ?? (walletStatus === "loading" ? "Loading payments…" : "Payments unavailable")}
             </p>
             <p className="mt-1 text-[11px] font-semibold text-obligon-text">
-              {wallet?.settledCount
+              {!wallet ? "Confirmed payment history has not loaded." : wallet.settledCount
                 ? `${wallet.settledCount} confirmed payment${wallet.settledCount === 1 ? "" : "s"}`
                 : "No confirmed payments yet"}
             </p>
@@ -1506,7 +1681,7 @@ function StationsPage() {
   const [query, setQuery] = React.useState("");
   const [fuelsOpen, setFuelsOpen] = React.useState(false);
   const [selectedFuels, setSelectedFuels] = React.useState<string[]>([]);
-  const [detail, setDetail] = React.useState<{ name: string; address: string; distance: string; hours?: string; diesel?: string; unleaded?: string; fuels?: string[] } | null>(null);
+  const [detail, setDetail] = React.useState<{ name: string; address: string; distance: string; distanceKm?: number | null; hours?: string; diesel?: string; unleaded?: string; fuels?: string[] } | null>(null);
   const [directionTarget, setDirectionTarget] = React.useState<{ name: string; address: string; distance: string } | null>(null);
 
   const allFuels = Array.from(new Set(stations?.flatMap((station) => station.fuels.map(stationFuelName)) ?? []));
@@ -1638,7 +1813,7 @@ function StationsPage() {
             <div className="p-6 sm:p-8">
               <h2 className="font-display text-3xl font-extrabold text-obligon-navy">{detail.name}</h2>
               <p className="mt-1 text-sm text-obligon-text">{detail.address}</p>
-              <p className="mt-1 text-xs font-bold text-obligon-green">{detail.distance} away • {detail.hours}</p>
+              <p className="mt-1 text-xs font-bold text-obligon-green">{detail.distanceKm != null ? `${detail.distance} away` : "Distance unavailable"} • {detail.hours}</p>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-xl bg-[#f7fbf8] p-4">
@@ -1849,7 +2024,10 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
   const [prefsSaving, setPrefsSaving] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
-  const [pushAvailable, setPushAvailable] = useState(true);
+  const [pushState, setPushState] = useState<PushState | null>(null);
+  const [pushChecking, setPushChecking] = useState(true);
+  const [pushCheckRevision, setPushCheckRevision] = useState(0);
+  const [pushError, setPushError] = useState("");
 
   const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_NOTIFICATION_PREFS);
   const [hydrated, setHydrated] = useState(false);
@@ -1866,19 +2044,41 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
     setHydrated(true);
   }, [profile, hydrated]);
 
-  // Reflect the browser's real push state so the toggle cannot claim push is on
-  // when the browser has never been subscribed.
+  // An account preference can be enabled on another device. Check this browser
+  // separately without requesting permission or changing the account preference.
   React.useEffect(() => {
     let active = true;
-    setPushAvailable(pushSupported());
+    setPushChecking(true);
+    setPushError("");
     void currentPushState().then((state) => {
       if (!active) return;
-      if (state.permission === "denied") setPushAvailable(false);
+      setPushState(state);
+    }).catch(() => {
+      if (active) {
+        setPushState(null);
+        setPushError("Could not check push notifications in this browser. Check this device again.");
+      }
+    }).finally(() => {
+      if (active) setPushChecking(false);
     });
     return () => {
       active = false;
     };
-  }, []);
+  }, [pushCheckRevision, user?.id]);
+
+  const pushDeviceStatus = pushChecking
+    ? "Checking push setup in this browser…"
+    : !pushState
+      ? "Push setup is unknown in this browser."
+      : pushState.permission === "unsupported"
+        ? "This browser does not support push notifications."
+        : pushState.permission === "denied"
+          ? "Push notifications are blocked in this browser. Allow notifications in your browser site settings, then check this device again."
+          : pushState.subscribed
+            ? "This browser has a push subscription. Your account preference controls whether alerts are sent."
+            : "Push is not set up in this browser. Other subscribed devices keep your account preference.";
+  const canEnablePushDevice = prefs.push && pushState && !pushState.subscribed &&
+    pushState.permission !== "denied" && pushState.permission !== "unsupported";
 
   const twoFactor = Boolean(profile?.user.twoFactorEnabled);
 
@@ -1904,18 +2104,28 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
     const previous = prefs;
 
     if (channel === "push") {
-      if (!pushAvailable) {
-        toastError("Push notifications are blocked or unsupported in this browser.");
+      if (pushBusy || prefsSaving) return;
+      if (next && (!pushState || pushState.permission === "denied" || pushState.permission === "unsupported")) {
+        const message = "Push notifications are blocked or unsupported in this browser. Check this site's notification settings in your browser.";
+        setPushError(message);
+        toastError(message);
         return;
       }
       setPushBusy(true);
+      setPushError("");
       try {
         const state = next ? await enableWebPush() : await disableWebPush();
+        setPushState(state);
         const result = await savePrefs(
           { ...previous, push: next },
           state.reason ?? (next ? "Mobile push notifications enabled." : "Mobile push notifications disabled.")
         );
         if (result === false) setPrefs(previous);
+      } catch (error) {
+        setPrefs(previous);
+        const message = error instanceof Error ? error.message : "Could not change push notifications. Check your browser settings and try again.";
+        setPushError(message);
+        toastError(message);
       } finally {
         setPushBusy(false);
       }
@@ -2027,11 +2237,7 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
                     {
                       key: "push" as const,
                       label: "Mobile Push Notifications",
-                      description: !pushAvailable
-                        ? "Blocked or unsupported in this browser. Enable it in your browser site settings."
-                        : pushBusy
-                          ? "Contacting your browser…"
-                          : "Real-time alerts on this device, even when the dashboard is closed."
+                      description: "Allow push alerts on subscribed devices. Turning this off stops push alerts for your account."
                     }
                   ] as const
                 ).map((row) => (
@@ -2040,13 +2246,42 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
                       label={row.label}
                       description={row.description}
                       checked={prefs[row.key]}
-                      disabled={prefsSaving || (row.key === "push" && pushBusy) || (row.key === "sms" && !profile?.user.phoneVerified)}
+                      disabled={prefsSaving || (row.key === "push" && (pushBusy || pushChecking)) || (row.key === "sms" && !profile?.user.phoneVerified)}
                       onCheckedChange={(next) => void handleToggle(row.key, next)}
                     />
+                    {row.key === "push" ? (
+                      <div className="mt-3 border-t border-obligon-border pt-3">
+                        <p role="status" aria-live="polite" className="text-xs leading-5 text-obligon-text">
+                          {pushBusy ? "Contacting your browser…" : pushDeviceStatus}
+                          {pushState?.reason ? ` ${pushState.reason}` : ""}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {canEnablePushDevice ? (
+                            <button
+                              type="button"
+                              disabled={pushBusy || pushChecking || prefsSaving}
+                              onClick={() => handleToggle("push", true)}
+                              className="min-h-11 rounded-lg border border-obligon-border bg-white px-3 py-2 text-xs font-bold text-obligon-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-obligon-green focus-visible:ring-offset-2 disabled:opacity-50"
+                            >
+                              Enable on this device
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            disabled={pushBusy || pushChecking || prefsSaving}
+                            onClick={() => setPushCheckRevision((revision) => revision + 1)}
+                            className="min-h-11 rounded-lg border border-obligon-border bg-white px-3 py-2 text-xs font-bold text-obligon-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-obligon-green focus-visible:ring-offset-2 disabled:opacity-50"
+                          >
+                            Check this device again
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </div>
 
+              {pushError ? <p role="alert" className="mt-3 text-sm text-red-700">{pushError}</p> : null}
               <div className="mt-4 rounded-xl border border-obligon-border bg-white p-3.5">
                 <p className="text-xs font-bold text-obligon-navy">Alert Categories</p>
                 <p className="mt-1 text-[11px] leading-4 text-obligon-text">

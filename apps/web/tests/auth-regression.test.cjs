@@ -10,7 +10,7 @@ function loadAuth(logout, getSession = async () => null) {
   const React = { createContext: () => ({ Provider: ({ value: v }) => { value = v; } }), useState: initial => { const index = stateIndex++; return [initial, next => events.push(['state', index, next])]; }, useRef: initial => ({ current: initial }), useEffect: () => {}, useCallback: fn => fn, useMemo: fn => fn(), createElement: (component, props) => component(props) };
   const exports = {};
   const code = ts.transpileModule(fs.readFileSync(require.resolve('../components/shared/AuthContext.tsx'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React } }).outputText;
-  vm.runInNewContext(code, { exports, require: name => name === 'react' ? React : name.includes('session-store') ? { writePersistedSession: v => events.push(['session', v]), writeTokens: v => events.push(['tokens', v]), readRememberedEmail: () => '', writeRememberedEmail: () => {} } : { api: { getSession }, mutationsApi: {}, authApi: { logout, login: async () => { events.push(['login']); return { user: { id: 'new' } }; } } } });
+  vm.runInNewContext(code, { exports, require: name => name === 'react' ? React : name.includes('session-store') ? { writePersistedSession: v => events.push(['session', v]), writeTokens: v => events.push(['tokens', v]), readRememberedEmail: () => '', writeRememberedEmail: () => {} } : { api: { getSession }, mutationsApi: {}, authApi: { logout, isCurrentAuthResult: () => true, login: async () => { events.push(['login']); return { user: { id: 'new' } }; } } } });
   exports.AuthProvider({ children: null });
   return { value, events };
 }

@@ -1,11 +1,8 @@
 import { badRequest } from './errors.js';
+import { nairaToKobo } from './money-amounts.js';
 
 function nairaAmount(value, label) {
-  const text = String(value ?? '').trim();
-  if (!/^(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d{1,2})?$/.test(text)) throw badRequest(`${label} must be a valid naira amount`);
-  const kobo = Math.round(Number(text.replaceAll(',', '')) * 100);
-  if (!Number.isSafeInteger(kobo) || kobo < 10000 || kobo > 100000000000) throw badRequest(`${label} must be between ₦100 and ₦1,000,000,000`);
-  return kobo;
+  return nairaToKobo(value, { min: 10000, max: 100000000000, label });
 }
 export function cardLimits(daily, monthly) {
   const dailyKobo = nairaAmount(daily, 'Daily limit');

@@ -42,11 +42,11 @@ async function ensureUser(account) {
     // unverified, or carrying a second factor cannot be entered in one click, and
     // the panel has no way to explain that.
     const fixes = [];
-    if (existing.status !== "active") fixes.push(["status", "'active'"]);
+    if (existing.status !== "active") fixes.push(["status", "active"]);
     // MFA is the one that breaks a demo silently: the panel detects it and says so,
     // but the correct state is simply off.
-    if (existing.two_factor_enabled) fixes.push(["two_factor_enabled", "FALSE"]);
-    if (!existing.email_verified) fixes.push(["email_verified", "TRUE"]);
+    if (existing.two_factor_enabled) fixes.push(["two_factor_enabled", false]);
+    if (!existing.email_verified) fixes.push(["email_verified", true]);
     if (fixes.length) {
       const set = fixes.map(([column], i) => `${column} = $${i + 2}`).join(", ");
       await q(`UPDATE users SET ${set} WHERE id = $1`, [existing.id, ...fixes.map(([, value]) => value)]);

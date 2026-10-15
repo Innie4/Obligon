@@ -37,11 +37,13 @@ export function useAsync<T>(fn: () => Promise<T>, deps: React.DependencyList = [
   // A poll can outlive its interval on a slow network. Without this the requests
   // queue up and responses can arrive out of order, leaving the balance showing
   // a value older than the one already on screen.
-  const inFlight = React.useRef(false);
+  const inFlight = React.useRef<number | null>(null);
+  const requestSequence = React.useRef(0);
 
   React.useEffect(() => {
     let active = true;
-    inFlight.current = true;
+    const request = ++requestSequence.current;
+    inFlight.current = request;
     setStatus("loading");
     fnRef
       .current()
@@ -57,7 +59,7 @@ export function useAsync<T>(fn: () => Promise<T>, deps: React.DependencyList = [
         setStatus("error");
       })
       .finally(() => {
-        inFlight.current = false;
+        if (inFlight.current === request) inFlight.current = null;
       });
     return () => {
       active = false;
@@ -72,16 +74,16 @@ export function useAsync<T>(fn: () => Promise<T>, deps: React.DependencyList = [
     // request that would have to wait is not one worth holding onto: the value it
     // would return is already superseded by the time it could run.
     if (inFlight.current) return;
-    inFlight.current = true;
+    const request = ++requestSequence.current;
+    inFlight.current = request;
     fnRef
       .current()
       .then((result) => {
         if (!active) return;
         setData(result);
         setError(null);
-        // Only success once data exists, so a silent refresh during the very
-        // first load cannot briefly claim success with nothing to show.
-        setStatus((current) => (current === "loading" ? "success" : current));
+        // A later successful poll can also recover the initial failed load.
+        setStatus("success");
       })
       .catch((err) => {
         if (!active) return;
@@ -90,7 +92,7 @@ export function useAsync<T>(fn: () => Promise<T>, deps: React.DependencyList = [
         setError(err instanceof Error ? err : new Error(String(err)));
       })
       .finally(() => {
-        inFlight.current = false;
+        if (inFlight.current === request) inFlight.current = null;
       });
     return () => {
       active = false;
@@ -104,6 +106,6 @@ export function useAsync<T>(fn: () => Promise<T>, deps: React.DependencyList = [
     data,
     error,
     reload: () => setNonce((n) => n + 1),
-    refresh: () => setSilentNonce((n) => n + 1)
+    refresh: () => { if (inFlight.current === null) setSilentNonce((n) => n + 1); }
   };
 }

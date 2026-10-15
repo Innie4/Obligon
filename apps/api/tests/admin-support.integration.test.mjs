@@ -19,7 +19,7 @@ before(async()=>{
  await pool.query(`CREATE TABLE fuel_orders(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),reference text UNIQUE,user_id uuid,station_id uuid,provider text DEFAULT 'flutterwave',provider_transaction_id text,amount_kobo bigint,transaction_id uuid,status text CHECK(status IN('awaiting_payment','paid','paid_review','fulfilled','refund_pending','refunded')),review_reason text,created_at timestamptz DEFAULT now(),paid_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());`);
  await pool.query(await readFile(new URL('../src/migrations/024_bank_settlement_binding.sql',import.meta.url),'utf8'));
  await pool.query('CREATE TRIGGER business_activity AFTER INSERT OR UPDATE OR DELETE ON stations FOR EACH ROW EXECUTE FUNCTION public.record_business_activity()');
- const app=express();app.set('trust proxy',1);app.use(express.json());app.use((req,_res,next)=>{const role=req.headers['x-test-role'];if(role)req.user={...(role==='admin'?fixtures?.admin:role==='partner'?fixtures?.partner:fixtures?.customer),role,orgId:fixtures?.org?.id};next();});
+ const app=express();app.set('trust proxy',1);app.use(express.json());app.use((req,_res,next)=>{const role=req.headers['x-test-role'];if(role)req.user={...(role==='admin'?fixtures?.admin:role==='partner'?fixtures?.partner:fixtures?.customer),role,orgType:role==='partner'?'partner':undefined,orgId:fixtures?.org?.id};next();});
  app.use((await import('../src/middleware/auth.js')).attachUser);
  app.use('/api/auth',(await import('../src/routes/auth.routes.js')).default);
  app.use('/api/customer',(await import('../src/routes/customer.routes.js')).default);
@@ -45,7 +45,107 @@ beforeEach(async()=>{
 });
 after(async()=>{globalThis.fetch=originalFetch;if(!url)return;await new Promise(resolve=>server?.close(resolve));await pool?.end();await setup.query(`DROP SCHEMA ${schema} CASCADE`);await setup.end();});
 async function request(path,{role='admin',body,method=body?'POST':'GET'}={}){const response=await originalFetch(`${base}/api/admin${path}`,{method,headers:{'Content-Type':'application/json',...(role?{'x-test-role':role}:{})},...(body?{body:JSON.stringify(body)}:{})});return{status:response.status,body:await response.json()};}
-function refundProvider(status='completed') {globalThis.fetch=async(url,options)=>{assert.match(String(url),/\/transactions\/[^/]+\/refund$/);fixtures.calls.push({url,body:JSON.parse(options.body)});return new Response(JSON.stringify({status:'success',data:{id:999,status}}),{status:200});};}
+for (const [label, creditLimit] of [['malformed','abc'],['negative','-1'],['sub-kobo','100.005'],['oversized','1000000000.01']]) {
+ integration(`company provisioning rejects ${label} credit before user, organization or email writes`, async()=>{
+  const before=(await pool.query('SELECT (SELECT count(*)::int FROM users) AS users,(SELECT count(*)::int FROM organizations) AS organizations,(SELECT count(*)::int FROM email_outbox) AS emails')).rows[0];
+  const result=await request('/companies',{body:{companyName:'Synthetic new fleet',adminEmail:'new-owner@test.invalid',adminName:'New Owner',creditLimit}});
+  assert.equal(result.status,400,JSON.stringify(result));
+  const after=(await pool.query('SELECT (SELECT count(*)::int FROM users) AS users,(SELECT count(*)::int FROM organizations) AS organizations,(SELECT count(*)::int FROM email_outbox) AS emails')).rows[0];
+  assert.deepEqual(after,before);
+ });
+}
+for (const [label, creditLimit, expected] of [['default',undefined,'0'],['zero',0,'0'],['decimal','100.29','10029'],['maximum','1000000000.00','100000000000']]) {
+ integration(`company provisioning stores the exact ${label} credit ceiling`,async()=>{
+  const result=await request('/companies',{body:{companyName:'Synthetic exact fleet',adminEmail:'exact-owner@test.invalid',adminName:'Exact Owner',creditLimit}});
+  assert.equal(result.status,200,JSON.stringify(result));
+  const organization=(await pool.query('SELECT credit_limit_kobo FROM organizations WHERE id=$1',[result.body.orgId])).rows[0];
+  assert.equal(organization.credit_limit_kobo,expected);
+ });
+}
+for (const [label, amount, expected] of [['ten million naira','1000000000','₦10,000,000'],['one billion naira','100000000000','₦1.0B']]) {
+ integration(`revenue report labels ${label} at the correct kobo boundary`,async()=>{
+  await pool.query("INSERT INTO transactions(reference,customer_user_id,amount_kobo,status)VALUES($1,$2,$3,'success')",[randomUUID(),fixtures.customer.id,amount]);
+  const result=await request('/reports');assert.equal(result.status,200);
+  assert.equal(result.body.metrics.find(metric=>metric.label==='TOTAL REVENUE').value,expected);
+ });
+}
+async function companyForApproval(verification='pending',status='canceled') {
+ const {rows:[company]}=await pool.query("INSERT INTO organizations(owner_user_id,name,type,verification_status,subscription_status)VALUES($1,'Approval Fleet','company',$2,$3)RETURNING *",[fixtures.customer.id,verification,status]);
+ return company;
+}
+integration('admin provisioning creates a pending company and sends an honest review invitation',async()=>{
+ const result=await request('/companies',{body:{companyName:'Pending Fleet',adminEmail:'pending-owner@test.invalid',adminName:'Pending Owner'}});assert.equal(result.status,200);
+ const company=(await pool.query('SELECT * FROM organizations WHERE id=$1',[result.body.orgId])).rows[0];
+ assert.equal(company.verification_status,'pending');assert.equal(company.subscription_status,'canceled');assert.equal(company.next_billing_date,null);
+ assert.equal((await pool.query('SELECT count(*)::int n FROM subscriptions WHERE organization_id=$1',[company.id])).rows[0].n,0);
+ const wallet=(await pool.query('SELECT user_id,organization_id,kind,currency,balance_kobo FROM wallets WHERE organization_id=$1',[company.id])).rows[0];
+ assert.deepEqual(wallet,{user_id:company.owner_user_id,organization_id:company.id,kind:'company',currency:'NGN',balance_kobo:'0'});
+ const listing=await request('/companies');assert.equal(listing.body.companies.find(row=>row.id===company.id).status,'Pending');
+ // Local delivery only. The pending message must not promise operational access.
+ await new Promise(resolve=>setImmediate(resolve));
+ const outbox=await readFile(env.LOCAL_OUTBOX_PATH,'utf8');const messages=outbox.trim().split('\n').map(line=>JSON.parse(line));
+ const invitation=messages.filter(message=>message.to==='pending-owner@test.invalid').at(-1);assert.ok(invitation);
+ assert.match(invitation.message,/pending.*approval|awaiting.*approval/i);assert.match(invitation.message,/contract/i);
+});
+integration('pending company verification takes priority over the canceled subscription badge',async()=>{
+ const company=await companyForApproval();const listing=await request('/companies');const row=listing.body.companies.find(row=>row.id===company.id);
+ assert.equal(row.status,'Pending');assert.equal(row.tone,'amber');assert.equal(row.verificationStatus,'pending');assert.equal(row.subscriptionStatus,'canceled');
+});
+integration('verification approval requires a literal contract confirmation before any state write',async()=>{
+ const company=await companyForApproval();
+ for(const contractAgreed of [undefined,false,'true']) {
+  const result=await request(`/companies/${company.id}`,{method:'PUT',body:{verificationStatus:'verified',status:'active',creditLimit:'500.00',contractAgreed}});assert.equal(result.status,400);
+  const current=(await pool.query('SELECT verification_status,subscription_status,credit_limit_kobo FROM organizations WHERE id=$1',[company.id])).rows[0];
+  assert.deepEqual(current,{verification_status:'pending',subscription_status:'canceled',credit_limit_kobo:'0'});
+ }
+});
+integration('explicit contract confirmation approves the company with an attributable atomic audit',async()=>{
+ const company=await companyForApproval();const result=await request(`/companies/${company.id}`,{method:'PUT',body:{verificationStatus:'verified',status:'active',contractAgreed:true}});assert.equal(result.status,200);
+ const current=(await pool.query('SELECT verification_status,subscription_status FROM organizations WHERE id=$1',[company.id])).rows[0];assert.deepEqual(current,{verification_status:'verified',subscription_status:'active'});
+ const audit=(await pool.query("SELECT * FROM audit_logs WHERE action='company.approved' AND entity_id=$1",[company.id])).rows[0];assert.ok(audit);assert.equal(audit.actor_user_id,fixtures.admin.id);assert.equal(audit.metadata.contractAgreed,true);assert.equal(audit.metadata.previousVerificationStatus,'pending');assert.equal(audit.metadata.verificationStatus,'verified');
+});
+integration('approval audit failure leaves the company pending instead of granting operations',async()=>{
+ const company=await companyForApproval();await pool.query("ALTER TABLE audit_logs ADD CONSTRAINT deny_approval_audit CHECK(action<>'company.approved')");
+ try {assert.equal((await request(`/companies/${company.id}`,{method:'PUT',body:{verificationStatus:'verified',contractAgreed:true}})).status,500);assert.equal((await pool.query('SELECT verification_status FROM organizations WHERE id=$1',[company.id])).rows[0].verification_status,'pending');}
+ finally {await pool.query('ALTER TABLE audit_logs DROP CONSTRAINT deny_approval_audit');}
+});
+integration('invalid verification or subscription status rejects company edits before writes',async()=>{
+ const company=await companyForApproval();for(const body of [{verificationStatus:'approved'},{status:'pending'},{verificationStatus:[]},{status:false}]){
+  const result=await request(`/companies/${company.id}`,{method:'PUT',body:{creditLimit:'500.00',...body}});assert.equal(result.status,400);
+  assert.equal((await pool.query('SELECT credit_limit_kobo FROM organizations WHERE id=$1',[company.id])).rows[0].credit_limit_kobo,'0');
+ }
+});
+integration('editing an already verified company preserves approval without requiring another agreement',async()=>{
+ const company=await companyForApproval('verified','active');assert.equal((await request(`/companies/${company.id}`,{method:'PUT',body:{creditLimit:'500.00',verificationStatus:'verified'}})).status,200);
+ const current=(await pool.query('SELECT verification_status,subscription_status,credit_limit_kobo FROM organizations WHERE id=$1',[company.id])).rows[0];assert.deepEqual(current,{verification_status:'verified',subscription_status:'active',credit_limit_kobo:'50000'});
+});
+integration('admin review restores a missing legacy company wallet with zero NGN balance',async()=>{
+ const company=await companyForApproval('verified','active');
+ const result=await request(`/companies/${company.id}`,{method:'PUT',body:{verificationStatus:'verified'}});assert.equal(result.status,200);
+ const wallet=(await pool.query('SELECT user_id,organization_id,kind,currency,balance_kobo FROM wallets WHERE organization_id=$1',[company.id])).rows[0];
+ assert.deepEqual(wallet,{user_id:company.owner_user_id,organization_id:company.id,kind:'company',currency:'NGN',balance_kobo:'0'});
+});
+integration('repeated admin review preserves an existing funded company wallet',async()=>{
+ const company=await companyForApproval('verified','active');
+ const original=(await pool.query("INSERT INTO wallets(user_id,organization_id,kind,balance_kobo)VALUES($1,$2,'company',2750)RETURNING id,user_id,organization_id,kind,currency,balance_kobo",[company.owner_user_id,company.id])).rows[0];
+ for(let attempt=0;attempt<2;attempt++)assert.equal((await request(`/companies/${company.id}`,{method:'PUT',body:{verificationStatus:'verified'}})).status,200);
+ const wallets=(await pool.query('SELECT id,user_id,organization_id,kind,currency,balance_kobo FROM wallets WHERE organization_id=$1',[company.id])).rows;assert.deepEqual(wallets,[original]);
+});
+integration('admin review audit failure rolls back legacy wallet restoration and company edits',async()=>{
+ const company=await companyForApproval('verified','active');await pool.query("ALTER TABLE audit_logs ADD CONSTRAINT deny_company_update_audit CHECK(action<>'company.updated')");
+ try {
+  assert.equal((await request(`/companies/${company.id}`,{method:'PUT',body:{creditLimit:'500.00',verificationStatus:'verified'}})).status,500);
+  assert.equal((await pool.query('SELECT count(*)::int n FROM wallets WHERE organization_id=$1',[company.id])).rows[0].n,0);
+  assert.equal((await pool.query('SELECT credit_limit_kobo FROM organizations WHERE id=$1',[company.id])).rows[0].credit_limit_kobo,'0');
+ } finally {await pool.query('ALTER TABLE audit_logs DROP CONSTRAINT deny_company_update_audit');}
+});
+function refundProvider(status='completed') {globalThis.fetch=async(url,options)=>{
+ if(options.method==='POST'){assert.match(String(url),/\/transactions\/[^/]+\/refund$/);fixtures.calls.push({url,body:JSON.parse(options.body)});return new Response(JSON.stringify({status:'success',data:{id:999,status}}),{status:200});}
+ assert.equal(String(url),'https://api.flutterwave.com/v3/refunds/999');
+ const refund=(await pool.query('SELECT * FROM payment_refunds WHERE provider_refund_id=$1',['999'])).rows[0];
+ return new Response(JSON.stringify({status:'success',data:{id:999,tx_id:refund.metadata.providerTransactionId,amount_refunded:'1000.00',currency:'NGN',status:'completed-bank-transfer'}}),{status:200});
+};}
+async function reconcileRefund(){return(await import('../src/lib/reconcile.js')).reconcileRefunds(20);}
 async function order(status='paid_review') {
  const {rows:[transaction]}=await pool.query("INSERT INTO transactions(reference,customer_user_id,amount_kobo,status)VALUES($1,$2,100000,'pending')RETURNING id",[randomUUID(),fixtures.customer.id]);
  const {rows:[record]}=await pool.query('INSERT INTO fuel_orders(reference,user_id,provider_transaction_id,amount_kobo,transaction_id,status)VALUES($1,$2,$3,100000,$4,$5)RETURNING *',[randomUUID(),fixtures.customer.id,randomUUID(),transaction.id,status]);return record;
@@ -72,7 +172,9 @@ integration('support, fuel refund and payout verification routes reject unauthen
 });
 integration('paid_review refund persists the exact provider amount and final refunded states',async()=>{
  const fuel=await order();refundProvider();
- const result=await request(`/fuel-review/${fuel.id}/refund`,{body:{reason:'Unable to fulfill paid fuel purchase'}});assert.equal(result.status,200);assert.equal(result.body.status,'refunded');
+ const result=await request(`/fuel-review/${fuel.id}/refund`,{body:{reason:'Unable to fulfill paid fuel purchase'}});assert.equal(result.status,200);assert.equal(result.body.status,'refund_pending');
+ assert.equal((await pool.query('SELECT status FROM transactions WHERE id=$1',[fuel.transaction_id])).rows[0].status,'pending');
+ assert.equal((await reconcileRefund()).settled,1);
  assert.equal(fixtures.calls.length,1);assert.equal(fixtures.calls[0].body.amount,1000);
  assert.equal((await pool.query('SELECT status FROM fuel_orders WHERE id=$1',[fuel.id])).rows[0].status,'refunded');
  assert.equal((await pool.query('SELECT status FROM transactions WHERE id=$1',[fuel.transaction_id])).rows[0].status,'refunded');
@@ -82,8 +184,10 @@ integration('pending refund replay sends no duplicate money and final reconcilia
  const fuel=await order();refundProvider('pending');
  assert.equal((await request(`/fuel-review/${fuel.id}/refund`,{body:{reason:'Station unavailable'}})).body.status,'refund_pending');
  assert.equal((await request(`/fuel-review/${fuel.id}/refund`,{body:{reason:'Station unavailable'}})).body.status,'refund_pending');assert.equal(fixtures.calls.length,1);
- await pool.query("UPDATE payment_refunds SET status='succeeded'");
- assert.equal((await request(`/fuel-review/${fuel.id}/refund`,{body:{reason:'Confirm completed refund'}})).body.status,'refunded');assert.equal(fixtures.calls.length,1);
+ assert.equal((await reconcileRefund()).settled,1);
+ assert.equal((await pool.query('SELECT status FROM fuel_orders WHERE id=$1',[fuel.id])).rows[0].status,'refunded');
+ assert.equal((await pool.query('SELECT status FROM transactions WHERE id=$1',[fuel.transaction_id])).rows[0].status,'refunded');
+ assert.equal((await request(`/fuel-review/${fuel.id}/refund`,{body:{reason:'Confirm completed refund'}})).status,404);assert.equal(fixtures.calls.length,1);
 });
 integration('awaiting, authorized and fulfilled purchases cannot enter the exception refund route',async()=>{
  refundProvider();for(const status of ['awaiting_payment','paid','fulfilled','refunded']){
@@ -95,6 +199,8 @@ integration('concurrent exception refund requests create one provider refund and
  const fuel=await order();refundProvider();
  const results=await Promise.all([request(`/fuel-review/${fuel.id}/refund`,{body:{reason:'Concurrency test refund'}}),request(`/fuel-review/${fuel.id}/refund`,{body:{reason:'Concurrency test refund'}})]);
  assert.ok(results.every(r=>[200,404].includes(r.status)));assert.equal(fixtures.calls.length,1);
+ assert.equal((await pool.query('SELECT status FROM fuel_orders WHERE id=$1',[fuel.id])).rows[0].status,'refund_pending');
+ assert.equal((await reconcileRefund()).settled,1);
  assert.equal((await pool.query('SELECT status FROM fuel_orders WHERE id=$1',[fuel.id])).rows[0].status,'refunded');
 });
 async function bankFixture({isDefault=true,bound=true,verified=false}={}){

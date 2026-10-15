@@ -1,12 +1,12 @@
 import { tx } from "../db.js";
 import { hashPassword } from "./security.js";
+import { env } from "../config/env.js";
 
-// Temporary access requested for partner dashboard testing. Set this to false
-// and deploy once to suspend the account and revoke its sessions before removal.
-export const TEMPORARY_PARTNER_ACCOUNT_ENABLED = true;
+// Retired test access: approved deployment suspends the known account and
+// revokes existing application sessions. Fixtures may opt in only outside production.
+export const TEMPORARY_PARTNER_ACCOUNT_ENABLED = false;
 export const TEMPORARY_PARTNER_ACCOUNT = Object.freeze({
   email: "partner.test@obligon.com",
-  password: "ObligonPartnerTest!2026",
   userId: "98b0f86a-5969-4ef3-9308-b6444c7af539",
   orgId: "67221556-a8a0-40b0-a357-9ac929d64bcc",
   organizationName: "Obligon Partner Testing",
@@ -30,7 +30,8 @@ function outcome(status) {
  * An existing account is never reset, reactivated, or granted a longer test plan.
  * Supabase migration is handled by the existing login route after verification.
  */
-export async function ensureTemporaryPartnerAccount({ enabled = TEMPORARY_PARTNER_ACCOUNT_ENABLED } = {}) {
+export async function ensureTemporaryPartnerAccount({ enabled = TEMPORARY_PARTNER_ACCOUNT_ENABLED, password } = {}) {
+  if (env.NODE_ENV === "production") enabled = false;
   return tx(async (t) => {
     await t.query("SELECT pg_advisory_xact_lock(hashtext($1))", ["obligon:temporary-partner-account"]);
 
@@ -86,7 +87,10 @@ export async function ensureTemporaryPartnerAccount({ enabled = TEMPORARY_PARTNE
     const plan = await t.one("SELECT code FROM pricing_plans WHERE code = 'enterprise' AND active");
     if (!plan) throw new Error("The enterprise plan is unavailable for temporary partner testing.");
 
-    const passwordHash = await hashPassword(account.password);
+    if (typeof password !== "string" || password.length < 16) {
+      throw new Error("An explicit nonproduction fixture password is required for temporary testing.");
+    }
+    const passwordHash = await hashPassword(password);
     await t.query(
       `INSERT INTO users (id, email, password_hash, full_name, role, organization_name,
                           account_tier, partner_type, email_verified, phone_verified, notification_prefs)

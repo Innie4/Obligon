@@ -3,19 +3,39 @@
  *
  * The HTTP suites can only prove that money routes are guarded. These prove the
  * arithmetic and the idempotency, which is where an accounting bug would actually
- * lose a customer their balance. Runs directly against the test database, in a
- * transaction that is rolled back so fixtures are never touched.
+ * lose a customer their balance. An explicit local test database opt-in creates
+ * one owned schema; cleanup drops only that schema and never deletes by prefix.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { q, one, getPool } from "../src/db.js";
-import { transferFromCompanyWallet, creditWalletOnce, debitWalletOnce } from "../src/lib/money.js";
-import { createWalletForAccount } from "../src/lib/wallets.js";
+import { randomUUID } from "node:crypto";
+import pg from "pg";
 
 const stamp = Date.now();
-// Every wallet this file creates, so cleanup can be scoped to them rather than
-// matching on reference prefixes across the whole table.
-const testWalletIds = [];
+const database = process.env.OBLIGON_TEST_DATABASE_URL;
+let fixtureAdmin, applicationPool, q, one, transferFromCompanyWallet, creditWalletOnce, debitWalletOnce, createWalletForAccount;
+let ownsFixtureSchema = false;
+const integration = (name, run) => test(name, { skip: !database ? "OBLIGON_TEST_DATABASE_URL local opt-in required" : false }, run);
+const fixtureSchema = `money_${process.pid}_${randomUUID().replaceAll("-", "")}`;
+test.before(async () => {
+  if (!database) return;
+  const target = new URL(database);
+  assert.ok(["postgres:", "postgresql:"].includes(target.protocol), "An explicit PostgreSQL test URL is required");
+  assert.ok(["localhost", "127.0.0.1", "[::1]"].includes(target.hostname), "Only an explicit local test database is permitted");
+  fixtureAdmin = new pg.Pool({ connectionString: database });
+  await fixtureAdmin.query(`CREATE SCHEMA ${fixtureSchema}`);
+  ownsFixtureSchema = true;
+  for (const table of ["users", "organizations", "memberships", "wallets", "wallet_ledger", "idempotency_keys", "audit_logs", "notifications", "card_plans", "card_requests", "plan_wallet_credits"]) {
+    await fixtureAdmin.query(`CREATE TABLE ${fixtureSchema}.${table} (LIKE public.${table} INCLUDING ALL)`);
+  }
+  await fixtureAdmin.query(`INSERT INTO ${fixtureSchema}.card_plans(code,name,amount_kobo,interval) VALUES('unit-plan','Synthetic Unit Plan',100000,'one-time')`);
+  const isolated = new URL(database); isolated.searchParams.set("options", `-c search_path=${fixtureSchema}`);
+  Object.assign(process.env, { DATABASE_URL: isolated.toString(), DATABASE_SSL: "false", DOTENV_CONFIG_PATH: "/dev/null", NODE_ENV: "test", EMAIL_PROVIDER: "local", SMS_PROVIDER: "local", LOCAL_OUTBOX_PATH: `/tmp/obligon-money-${fixtureSchema}.jsonl`, RESEND_API_KEY: "", TERMII_API_KEY: "", WEB_PUSH_VAPID_PRIVATE_KEY: "" });
+  const db = await import("../src/db.js");
+  ({ q, one } = db); applicationPool = db.getPool();
+  ({ transferFromCompanyWallet, creditWalletOnce, debitWalletOnce } = await import("../src/lib/money.js"));
+  ({ createWalletForAccount } = await import("../src/lib/wallets.js"));
+});
 
 async function seedOrg(label) {
   const email = `unit-${label}-${stamp}@example.com`;
@@ -25,7 +45,7 @@ async function seedOrg(label) {
     [email, `Unit ${label}`]
   );
   const org = await one(
-    "INSERT INTO organizations (name, owner_user_id, type) VALUES ($1,$2,'company') RETURNING id",
+    "INSERT INTO organizations (name, owner_user_id, type, verification_status) VALUES ($1,$2,'company','verified') RETURNING id",
     [`Unit ${label} ${stamp}`, user.id]
   );
   await q(
@@ -33,7 +53,6 @@ async function seedOrg(label) {
     [org.id, user.id, email]
   );
   const wallet = await createWalletForAccount({ userId: user.id, organizationId: org.id });
-  testWalletIds.push(wallet.id);
   return { user, org, wallet };
 }
 
@@ -51,7 +70,6 @@ async function seedIndividual(label, organizationId = null) {
     );
   }
   const wallet = await createWalletForAccount({ userId: user.id, organizationId: null });
-  testWalletIds.push(wallet.id);
   return { user, org: null, wallet };
 }
 
@@ -73,7 +91,7 @@ async function ledgerCount(walletId) {
 
 // ---------------------------------------------------------------- crediting
 
-test("creditWalletOnce credits exactly once for the same idempotency key", async () => {
+integration("creditWalletOnce credits exactly once for the same idempotency key", async () => {
   const { wallet } = await seedIndividual("credit-once");
   const first = await creditWalletOnce({
     walletId: wallet.id,
@@ -96,7 +114,7 @@ test("creditWalletOnce credits exactly once for the same idempotency key", async
   assert.equal(await ledgerCount(wallet.id), 1, "only one ledger row per idempotency key");
 });
 
-test("debitWalletOnce refuses to overdraw and never goes negative", async () => {
+integration("debitWalletOnce refuses to overdraw and never goes negative", async () => {
   const { wallet } = await seedIndividual("overdraw");
   await fund(wallet.id, 10_000);
 
@@ -112,7 +130,7 @@ test("debitWalletOnce refuses to overdraw and never goes negative", async () => 
   assert.equal(await balance(wallet.id), 6_000);
 });
 
-test("debitWalletOnce is idempotent", async () => {
+integration("debitWalletOnce is idempotent", async () => {
   const { wallet } = await seedIndividual("debit-once");
   await fund(wallet.id, 20_000);
   await debitWalletOnce({ walletId: wallet.id, amountKobo: 5_000, idempotencyKey: `unit:d-once:${stamp}`, description: "x" });
@@ -123,7 +141,7 @@ test("debitWalletOnce is idempotent", async () => {
 
 // ------------------------------------------------------- company transfer
 
-test("transferFromCompanyWallet moves funds atomically and writes both legs", async () => {
+integration("transferFromCompanyWallet moves funds atomically and writes both legs", async () => {
   const org = await seedOrg("xfer-ok");
   const member = await seedIndividual("xfer-member", org.org.id);
   await fund(org.wallet.id, 200_000);
@@ -134,7 +152,8 @@ test("transferFromCompanyWallet moves funds atomically and writes both legs", as
     toUserId: member.user.id,
     amountKobo: 75_000,
     actorUserId: org.user.id,
-    actorRole: "company"
+    actorRole: "company",
+    idempotencyKey: `unit:xfer-ok:${stamp}`
   });
 
   assert.equal(await balance(org.wallet.id), 125_000, "company wallet is debited");
@@ -150,7 +169,7 @@ test("transferFromCompanyWallet moves funds atomically and writes both legs", as
   assert.equal(legs.length, 2, "both legs are recorded");
 });
 
-test("transferFromCompanyWallet refuses to overdraw the company wallet", async () => {
+integration("transferFromCompanyWallet refuses to overdraw the company wallet", async () => {
   const org = await seedOrg("xfer-over");
   const member = await seedIndividual("xfer-over-member", org.org.id);
   await fund(org.wallet.id, 5_000);
@@ -162,7 +181,8 @@ test("transferFromCompanyWallet refuses to overdraw the company wallet", async (
       toUserId: member.user.id,
       amountKobo: 5_001,
       actorUserId: org.user.id,
-      actorRole: "company"
+      actorRole: "company",
+      idempotencyKey: `unit:xfer-over:${stamp}`
     }),
     /only has/i
   );
@@ -170,7 +190,7 @@ test("transferFromCompanyWallet refuses to overdraw the company wallet", async (
   assert.equal(await balance(member.wallet.id), 0, "the member must not be credited on a failed transfer");
 });
 
-test("transferFromCompanyWallet refuses non-positive amounts", async () => {
+integration("transferFromCompanyWallet refuses non-positive amounts", async () => {
   const org = await seedOrg("xfer-zero");
   const member = await seedIndividual("xfer-zero-member", org.org.id);
   await fund(org.wallet.id, 100_000);
@@ -181,9 +201,10 @@ test("transferFromCompanyWallet refuses non-positive amounts", async () => {
         toUserId: member.user.id,
         amountKobo: amount,
         actorUserId: org.user.id,
-        actorRole: "company"
+        actorRole: "company",
+        idempotencyKey: `unit:xfer-invalid:${stamp}`
       }),
-      /greater than zero/i,
+      /integer|range/i,
       `amount ${amount} must be rejected`
     );
   }
@@ -191,7 +212,7 @@ test("transferFromCompanyWallet refuses non-positive amounts", async () => {
   assert.equal(await balance(member.wallet.id), 0);
 });
 
-test("a company cannot credit a user who is not its member", async () => {
+integration("a company cannot credit a user who is not its member", async () => {
   const org = await seedOrg("xfer-outsider");
   const outsider = await seedIndividual("xfer-outsider-user"); // no membership
   await fund(org.wallet.id, 100_000);
@@ -203,7 +224,8 @@ test("a company cannot credit a user who is not its member", async () => {
       toUserId: outsider.user.id,
       amountKobo: 10_000,
       actorUserId: org.user.id,
-      actorRole: "company"
+      actorRole: "company",
+      idempotencyKey: `unit:xfer-outsider:${stamp}`
     }),
     /not an active member|member/i
   );
@@ -211,7 +233,7 @@ test("a company cannot credit a user who is not its member", async () => {
   assert.equal(await balance(org.wallet.id), 100_000);
 });
 
-test("concurrent transfers cannot overdraw the company wallet", async () => {
+integration("concurrent transfers cannot overdraw the company wallet", async () => {
   const org = await seedOrg("xfer-race");
   const members = [];
   for (let i = 0; i < 4; i += 1) members.push(await seedIndividual(`xfer-race-${i}`, org.org.id));
@@ -225,7 +247,8 @@ test("concurrent transfers cannot overdraw the company wallet", async () => {
       toUserId: m.user.id,
       amountKobo: 40_000,
       actorUserId: org.user.id,
-      actorRole: "company"
+      actorRole: "company",
+      idempotencyKey: `unit:xfer-race:${stamp}:${m.user.id}`
     }))
   );
   const succeeded = outcomes.filter((o) => o.status === "fulfilled").length;
@@ -241,10 +264,9 @@ test("concurrent transfers cannot overdraw the company wallet", async () => {
 
 // ----------------------------------------------------- plan wallet crediting
 
-test("paying for a plan does NOT fund the fuel wallet", async () => {
+integration("paying for a plan does NOT fund the fuel wallet", async () => {
   const { user } = await seedIndividual("plan-nowallet");
   const wallet = await one("SELECT * FROM wallets WHERE user_id = $1", [user.id]);
-  testWalletIds.push(wallet.id);
   const plan = await one("SELECT * FROM card_plans ORDER BY amount_kobo LIMIT 1");
 
   // charged_kobo is NOT NULL with no default on purpose: a default of zero would
@@ -278,17 +300,11 @@ test("paying for a plan does NOT fund the fuel wallet", async () => {
 // ------------------------------------------------------------------ cleanup
 
 test.after(async () => {
-  // Remove everything this file created so fixtures stay pristine.
-// Scoped strictly to the wallets this file created. An earlier version deleted
-// by reference prefix across the whole table, which silently deleted real
-// customers' ledger history: three wallets were left holding balances that no
-// longer had any entry explaining where the money came from.
-await q("DELETE FROM wallet_ledger WHERE wallet_id = ANY($1::uuid[])", [testWalletIds]);
-await q("DELETE FROM plan_wallet_credits WHERE card_request_id IN (SELECT id FROM card_requests WHERE payment_reference LIKE 'unit-%')");
-await q("DELETE FROM card_requests WHERE payment_reference LIKE 'unit-%'");
-await q("DELETE FROM memberships WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'unit-%')");
-await q("DELETE FROM wallets WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'unit-%')");
-  await q("DELETE FROM organizations WHERE name LIKE 'Unit %'");
-  await q("DELETE FROM users WHERE email LIKE 'unit-%'");
-  await getPool().end();
+  if (!fixtureAdmin) return;
+  try {
+    await applicationPool?.end();
+    if (ownsFixtureSchema) await fixtureAdmin.query(`DROP SCHEMA ${fixtureSchema} CASCADE`);
+  } finally {
+    await fixtureAdmin.end();
+  }
 });

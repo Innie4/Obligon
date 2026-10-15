@@ -88,11 +88,12 @@ test("the range parameter cannot be steered", () => {
   assert.doesNotMatch(code(partnerRoutes), /Math\.min\(Number\(range\)/);
 });
 
-test("pagination bounds are floored", () => {
+test("pagination uses validated integer bounds and bound SQL parameters", () => {
   // `limit=-5` reached Postgres as `LIMIT -5` and raised, as a 500.
   const body = handler(code(partnerRoutes), 'router.get("/transactions"');
-  assert.match(body, /Math\.max\(Number\(limit\) \|\| 20, 1\)/);
-  assert.match(body, /Math\.max\(Number\(offset\) \|\| 0, 0\)/);
+  assert.match(body, /transactionPagination\(req.query\)/);
+  assert.match(body, /\.\.\.params, limit, offset/);
+  assert.match(body, /ORDER BY t.created_at DESC, t.id DESC/);
 });
 
 // ============================================================ OTP delivery
@@ -128,7 +129,7 @@ test("an undelivered code is not left live", () => {
   // way forward, since the customer cannot receive the one that would unlock it.
   assert.match(
     read(apiRoot, "src", "routes", "auth.routes.js"),
-    /SET consumed_at = now\(\)\s*\n\s*WHERE user_id = \$1 AND purpose = \$2 AND consumed_at IS NULL`,\s*\n\s*\[userId, purpose\]/
+    /SET consumed_at=clock_timestamp\(\) WHERE id=\$1 AND consumed_at IS NULL", \[record\.id\]/
   );
 });
 
@@ -492,7 +493,7 @@ const exportRoute = handler(partnerRoutes, 'router.get("/reports/export"');
 
 test("the transactions export honours the search the operator typed", () => {
   const exportRoute = handler(partnerRoutes, 'router.get("/transactions/export"');
-  assert.match(exportRoute, /const \{ search, status, date \} = req\.query/);
+  assert.match(exportRoute, /const \{ search, status, date \} = transactionFilters\(req\.query\)/);
   assert.match(exportRoute, /ILIKE/);
 });
 
@@ -545,7 +546,6 @@ test("the other shells pass a non-empty role list, so the stricter guard cannot 
   // started passing `[]`, this fails rather than quietly locking a whole dashboard.
 const dirs = {
     CustomerShell: "customer-dashboard",
-    CompanyShell: "company-dashboard",
     AdminShell: "admin-dashboard"
   };
   for (const [file, dir] of Object.entries(dirs)) {
@@ -557,4 +557,10 @@ const dirs = {
       `${file} passes an empty role list and would now be denied everything`
     );
   }
+  // A fleet member keeps their primary account role. Company access instead
+  // requires an explicitly selected, server-verified company context.
+  const companyShell = read(webRoot,"components","company-dashboard","CompanyShell.tsx");
+  assert.match(companyShell, /<AuthGuard>/);
+  assert.match(companyShell, /organizationType !== "company"/);
+  assert.match(companyShell, /CompanyContextSelector/);
 });

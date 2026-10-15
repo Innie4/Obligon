@@ -26,6 +26,7 @@ import {
 import { companyNav, type CompanyPageKey } from "@/lib/mock/company-data";
 import { useSession } from "@/components/shared/AuthContext";
 import { AuthGuard } from "@/components/auth/AuthGuard";
+import { CompanyContextSelector, ReturnToPrimaryAccount } from "@/components/company-dashboard/CompanyContextSelector";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 
 type CompanyShellProps = {
@@ -68,6 +69,7 @@ function CompanySidebar() {
   const pathname = usePathname();
   const { user } = useSession();
   const active = activePage(pathname);
+  const visibleNav = user?.organizationVerificationStatus === "verified" ? companyNav : companyNav.filter(item => ["overview", "support", "settings", "notifications"].includes(item.key));
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r border-[#dfe5ec] bg-white px-6 py-8 lg:flex">
@@ -75,7 +77,7 @@ function CompanySidebar() {
         <DashboardLogo priority />
       </Link>
       <nav className="mt-10 flex-1 space-y-1 overflow-y-auto pr-1">
-        {companyNav.map((item) => (
+        {visibleNav.map((item) => (
           <Link
             key={item.key}
             href={item.href}
@@ -90,24 +92,27 @@ function CompanySidebar() {
       </nav>
       <div className="mt-6 rounded-lg bg-[#f2f6f2] p-4">
         <p className="text-sm font-extrabold text-[#07162f]">{user?.organization || "Your company"}</p>
-        <p className="mt-1 text-xs text-obligon-text">Company account</p>
+        <div className="mt-4"><CompanyContextSelector compact /></div>
+        <p className="mt-1 text-xs text-obligon-text">Company workspace</p>
+        <ReturnToPrimaryAccount />
       </div>
       <LogoutButton className="mt-3 w-full justify-start" />
     </aside>
   );
 }
 
-function CompanyTopbar({ onOpenMenu }: { onOpenMenu: () => void }) {
+function CompanyTopbar({ onOpenMenu, menuButtonRef }: { onOpenMenu: () => void; menuButtonRef?: React.RefObject<HTMLButtonElement | null> }) {
   const pathname = usePathname();
   const { user } = useSession();
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
-  const filteredNav = companyNav.filter((item) => item.label.toLowerCase().includes(query.trim().toLowerCase()));
+  const visibleNav = user?.organizationVerificationStatus === "verified" ? companyNav : companyNav.filter(item => ["overview", "support", "settings", "notifications"].includes(item.key));
+  const filteredNav = visibleNav.filter((item) => item.label.toLowerCase().includes(query.trim().toLowerCase()));
 
   return (
     <header className="sticky top-0 z-30 border-b border-[#dfe5ec] bg-[#f8fafc]/95 backdrop-blur">
       <div className="flex h-16 items-center gap-4 px-5 lg:px-8">
-        <button type="button" onClick={onOpenMenu} className="grid size-10 place-items-center rounded-lg border border-[#dfe5ec] bg-white lg:hidden" aria-label="Open company menu">
+        <button ref={menuButtonRef} type="button" onClick={onOpenMenu} className="grid size-10 place-items-center rounded-lg border border-[#dfe5ec] bg-white lg:hidden" aria-label="Open company menu">
           <Menu size={20} />
         </button>
         <div
@@ -176,9 +181,22 @@ function CompanyTopbar({ onOpenMenu }: { onOpenMenu: () => void }) {
 }
 
 export function CompanyShell({ children }: CompanyShellProps) {
+  const { user } = useSession();
+  const pathname = usePathname();
+  const approved = user?.organizationVerificationStatus === "verified";
+  const visibleNav = approved ? companyNav : companyNav.filter(item => ["overview", "support", "settings", "notifications"].includes(item.key));
+  const onboardingPage = ["support", "settings", "notifications"].includes(activePage(pathname));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const previousOrganization = useRef(user?.organizationId);
   useDialogFocus(mobileMenuRef, () => setMobileMenuOpen(false), mobileMenuOpen);
+  useEffect(() => {
+    if (previousOrganization.current === user?.organizationId) return;
+    previousOrganization.current = user?.organizationId;
+    setMobileMenuOpen(false);
+    if (mobileMenuOpen) menuButtonRef.current?.focus();
+  }, [user?.organizationId, mobileMenuOpen]);
   useEffect(() => {
     const desktop = window.matchMedia("(min-width: 1024px)");
     const closeOnDesktop = () => { if (desktop.matches) setMobileMenuOpen(false); };
@@ -187,16 +205,17 @@ export function CompanyShell({ children }: CompanyShellProps) {
   }, []);
 
   return (
-    <AuthGuard allowedRoles={["company"]}>
-      <main className="min-h-screen bg-[#f8fafc] text-[#07162f]">
+    <AuthGuard>
+      {user?.organizationType !== "company" ? <main className="flex min-h-screen items-center justify-center bg-obligon-mist p-5"><section aria-labelledby="company-context-title" className="w-full max-w-lg space-y-5 rounded-2xl border border-obligon-border bg-white p-6 shadow-card"><h1 id="company-context-title" className="font-display text-2xl font-extrabold">Choose your company</h1><p className="text-sm leading-6 text-obligon-text">Select a fleet you belong to. Your account type stays the same.</p><CompanyContextSelector /><ReturnToPrimaryAccount /><LogoutButton /></section></main> :
+      <main key={user.organizationId} className="min-h-screen bg-[#f8fafc] text-[#07162f]">
         <CompanySidebar />
-      {mobileMenuOpen ? <div className="fixed inset-0 z-50 bg-[#07162f]/55 lg:hidden" onMouseDown={() => setMobileMenuOpen(false)}><aside ref={mobileMenuRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Company navigation" onMouseDown={(event) => event.stopPropagation()} className="h-full w-[280px] max-w-[90vw] overflow-y-auto bg-white p-5 shadow-hero"><div className="flex items-center justify-between"><p className="font-display text-xl font-extrabold">Menu</p><button type="button" onClick={() => setMobileMenuOpen(false)} className="grid size-10 place-items-center rounded-lg bg-[#f2f6fa]" aria-label="Close company menu"><X size={20} /></button></div><nav className="mt-7 space-y-1">{companyNav.map((item) => <Link key={item.key} href={item.href} onClick={() => setMobileMenuOpen(false)} className="flex h-11 items-center gap-3 rounded-lg px-4 text-sm font-bold text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green">{iconMap[item.key]}<span>{item.label}</span></Link>)}</nav><LogoutButton className="mt-6 w-full justify-start" /></aside></div> : null}
+      {mobileMenuOpen ? <div className="fixed inset-0 z-50 bg-[#07162f]/55 lg:hidden" onMouseDown={() => setMobileMenuOpen(false)}><aside ref={mobileMenuRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Company navigation" onMouseDown={(event) => event.stopPropagation()} className="h-full w-[280px] max-w-[90vw] overflow-y-auto bg-white p-5 shadow-hero"><div className="flex items-center justify-between"><p className="font-display text-xl font-extrabold">Menu</p><button type="button" onClick={() => setMobileMenuOpen(false)} className="grid size-10 place-items-center rounded-lg bg-[#f2f6fa]" aria-label="Close company menu"><X size={20} /></button></div><nav className="mt-7 space-y-1">{visibleNav.map((item) => <Link key={item.key} href={item.href} onClick={() => setMobileMenuOpen(false)} className="flex h-11 items-center gap-3 rounded-lg px-4 text-sm font-bold text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green">{iconMap[item.key]}<span>{item.label}</span></Link>)}</nav><CompanyContextSelector compact /><ReturnToPrimaryAccount /><LogoutButton className="mt-6 w-full justify-start" /></aside></div> : null}
       <div className="lg:pl-[280px]">
-        <CompanyTopbar onOpenMenu={() => setMobileMenuOpen(true)} />
-        {children}
+        <CompanyTopbar menuButtonRef={menuButtonRef} onOpenMenu={() => setMobileMenuOpen(true)} />
+        {user.organizationVerificationStatus !== "verified" ? <section role="status" className="mx-5 mt-5 rounded-xl border border-obligon-border bg-white p-5 lg:mx-8"><h2 className="text-lg font-extrabold">Contract approval required</h2><p className="mt-2 text-sm leading-6">Company operations become available after your contract is agreed and an admin approves your company. Refresh this page after approval.</p><Link href="/company/support" className="mt-3 inline-flex min-h-11 items-center font-bold text-obligon-green underline">Contact Support</Link></section> : null}
+        {approved || onboardingPage ? children : null}
       </div>
-      </main>
+      </main>}
     </AuthGuard>
   );
 }
-

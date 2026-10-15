@@ -147,16 +147,24 @@ export async function reconcilePayouts() {
         await markPayoutForReview(payout.id,'Transfer outcome is unknown; reservation retained pending reference reconciliation.',{reference:payout.reference,amountKobo:payout.amount_kobo,provider});
         const recovered=await recoverTransferByReference({provider,reference:payout.reference,amountKobo:payout.amount_kobo});
         if(!recovered){summary.stillPending+=1;continue;}
-        await q("UPDATE payouts SET provider_reference=$2 WHERE id=$1 AND status='processing'",[payout.id,recovered]);
+        const attached = await q(`UPDATE payouts SET provider_reference=$2 WHERE id=$1 AND status='processing'
+          AND provider_reference IS NULL AND amount_kobo=$3 AND reference IS NOT DISTINCT FROM $4 RETURNING id`,
+        [payout.id,recovered,payout.amount_kobo,payout.reference]);
+        if (!attached.length) continue;
         payout.provider_reference=recovered;
       }
 
       const state = await fetchTransfer(provider, payout.provider_reference);
 
-      if (state.settled) {
-        if (Number(state.amountKobo) !== Number(payout.amount_kobo)) {
-          throw new Error("Confirmed transfer amount differs from the reserved payout; reconciliation required");
+      if (state.settled || state.failed) {
+        const { integerKobo } = await import("./money-amounts.js");
+        if (state.currency !== "NGN" || String(state.transferCode) !== String(payout.provider_reference) ||
+            (payout.reference && state.reference !== payout.reference) ||
+            integerKobo(state.amountKobo, { max:Number.MAX_SAFE_INTEGER }) !== integerKobo(payout.amount_kobo, { max:Number.MAX_SAFE_INTEGER })) {
+          throw new Error("Transfer evidence does not match the reserved identity, NGN currency, reference and amount; reconciliation required");
         }
+      }
+      if (state.settled) {
         // Mark the payout paid AND the settlements it covers — oldest first, up to
         // the amount transferred. The previous statement marked *every* pending
         // settlement for the org, so a period accrued after the transfer was queued
@@ -164,8 +172,9 @@ export async function reconcilePayouts() {
         // unclaimable. `net_kobo` is BIGINT, so it is cast, not compared as text.
         const applied = await tx(async (t) => {
           await t.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [payout.partner_org_id]);
-          const fresh = await t.one("SELECT status FROM payouts WHERE id=$1 FOR UPDATE", [payout.id]);
+          const fresh = await t.one("SELECT status,amount_kobo,provider_reference,reference FROM payouts WHERE id=$1 FOR UPDATE", [payout.id]);
           if (fresh?.status !== "processing") return false;
+          if (["amount_kobo","provider_reference","reference"].some(field => String(fresh[field] ?? "") !== String(payout[field] ?? ""))) throw new Error("The reserved payout changed during verification; review required");
           let remaining = Number(payout.amount_kobo);
           const coverable = await t.query(`SELECT id, net_kobo, paid_kobo FROM settlements
             WHERE partner_org_id=$1 AND status='pending'
@@ -203,10 +212,12 @@ export async function reconcilePayouts() {
       } else if (state.failed) {
         // The processor's own explanation, which is the difference between "the
         // bank declined it" and "we never sent it".
-        await q(
-          `UPDATE payouts SET status = 'failed', failure_reason = $2 WHERE id = $1`,
-          [payout.id, state.message ?? `Transfer ${state.status}`]
+        const marked = await q(
+          `UPDATE payouts SET status='failed',failure_reason=$2 WHERE id=$1 AND status='processing'
+            AND amount_kobo=$3 AND provider_reference=$4 AND reference IS NOT DISTINCT FROM $5 RETURNING id`,
+          [payout.id, state.message ?? `Transfer ${state.status}`, payout.amount_kobo, payout.provider_reference, payout.reference]
         );
+        if (!marked.length) continue;
         await audit({
           actorRole: "system",
           action: "settlement.payout_failed",

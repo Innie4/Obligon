@@ -29,6 +29,10 @@ export interface SessionUser {
   email: string;
   role: UserRole;
   organization: string;
+  organizationId?: string | null;
+  organizationType?: "company" | "partner" | "mechanic" | null;
+  organizationVerificationStatus?: "unverified" | "pending" | "verified" | "rejected" | null;
+  organizationRole?: "owner" | "admin" | "manager" | "dispatcher" | "viewer" | null;
   initials: string;
   accountTier: string;
   phone?: string;
@@ -51,7 +55,9 @@ export type CardRequestStatus =
   | "pending_verification"
   | "approved"
   | "rejected"
-  | "cancelled";
+  | "cancelled"
+  | "withdrawn"
+  | "refunded";
 
 export interface CardPlanFeature {
   label: string;

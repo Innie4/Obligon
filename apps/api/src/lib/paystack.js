@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { env } from "../config/env.js";
 import { misconfigured } from "./errors.js";
 import { providerFetch } from "./http.js";
+import { integerKobo } from "./money-amounts.js";
 
 /**
  * Paystack integration (https://paystack.com/docs).
@@ -65,16 +66,23 @@ export async function verifyTransaction(reference) {
 }
 
 /**
- * Refund a charge. Paystack only supports full refunds through its API, so
- * `amountKobo` is accepted for interface symmetry but must be omitted.
+ * Refund a legacy charge. Paystack's optional amount is in integer minor units.
  */
-export async function refundTransaction(transactionId) {
+export async function refundTransaction(transactionId, amountKobo = null, reason = null) {
   if (!enabled()) throw misconfigured("Paystack is not configured");
   if (!transactionId) throw misconfigured("A transaction id is required to refund this charge");
   return paystackFetch("/refund", {
     method: "POST",
-    body: { transaction: String(transactionId) }
+    body: { transaction: String(transactionId), currency: "NGN",
+      ...(amountKobo == null ? {} : { amount: integerKobo(amountKobo, { max: Number.MAX_SAFE_INTEGER, label: "Refund amount" }) }),
+      ...(reason ? { merchant_note: String(reason).slice(0, 500) } : {}) }
   });
+}
+
+/** Read the exact legacy refund; never route it through the active provider. */
+export async function fetchRefund(refundId) {
+  if (!enabled() || !refundId) throw misconfigured("A configured provider and refund identifier are required");
+  return paystackFetch(`/refund/${encodeURIComponent(refundId)}`);
 }
 
 /**

@@ -5,8 +5,9 @@ import { providerFetch } from "./http.js";
 
 /**
  * Sudo Africa virtual card issuing (https://docs.sudo.africa).
- * Cards are created as NGN virtual cards, funded from the customer's Obligon
- * wallet balance, and managed (freeze/unfreeze/terminate) through this client.
+ * Cards are created as zero-funded NGN virtual cards and managed
+ * (freeze/unfreeze/terminate) through this client. Fuel uses the internal wallet;
+ * issuer spending and account-backed funding require a separate approved integration.
  *
  * SUDO_SECRET_API_KEY is mandatory for card operations. Local card records
  * must never imply that a provider-side card action succeeded.
@@ -49,8 +50,9 @@ export async function createSudoCustomer({ firstName, lastName, email, phoneNumb
 export async function issueSudoCard({ customerId, currency="NGN", amount=0, replacementFor, replacementReason="lost" }) {
   if (!sudoEnabled() || !env.SUDO_DEBIT_ACCOUNT_ID) throw misconfigured("Card issuer debit account is not configured");
   if (!customerId || currency!=="NGN" || amount!==0) throw badRequest("Only verified zero-funded NGN virtual card issuance is supported");
+  if (env.SUDO_FUNDING_SOURCE_ID) throw misconfigured("Account-backed issuer spending requires an approved wallet authorization and reconciliation integration");
   const data=await sudoFetch("/cards",{method:"POST",body:{customerId,type:"virtual",currency,status:"active",issuerCountry:"NGA",enable2FA:true,
-    debitAccountId:env.SUDO_DEBIT_ACCOUNT_ID,...(env.SUDO_FUNDING_SOURCE_ID?{fundingSourceId:env.SUDO_FUNDING_SOURCE_ID}:{}),amount,
+    debitAccountId:env.SUDO_DEBIT_ACCOUNT_ID,amount,
     ...(replacementFor?{replacementFor,replacementReason}:{})}});
   return data.data??data;
 }

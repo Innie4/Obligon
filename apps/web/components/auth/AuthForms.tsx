@@ -32,6 +32,8 @@ import { readPersistedSession, readRememberedEmail, writeRememberedEmail } from 
 import { authApi, LIVE_MODE } from "@/lib/services";
 import type { UserRole } from "@/lib/services/types";
 
+import { authReturnPath, withAuthReturn } from "@/lib/company-invitation-routing";
+
 export type AuthFormMode = "login" | "signup";
 type TopRole = "customer" | "company" | "partner";
 
@@ -213,6 +215,8 @@ function AuthErrorDialog({ message, onClose }: { message: string | null; onClose
 
 function LoginForm() {
   const router = useRouter();
+  const [returnPath, setReturnPath] = React.useState<string | null>(null);
+  React.useEffect(() => { setReturnPath(authReturnPath(window.location.search)); }, []);
   const { login, status, user } = useSession();
   const { error: toastError, success: toastSuccess } = useToast();
 
@@ -291,7 +295,7 @@ function LoginForm() {
       });
       if (result?.mfaRequired) {
         writeRememberedEmail(loginForm.email, loginForm.rememberMe);
-        router.push(`${routes.mfaChallenge}?email=${encodeURIComponent(loginForm.email)}`);
+        router.push(withAuthReturn(routes.mfaChallenge, returnPath));
         return;
       }
       writeRememberedEmail(loginForm.email, loginForm.rememberMe);
@@ -307,7 +311,7 @@ function LoginForm() {
               ? routes.dashboard
               : routes.customerDashboard;
 
-      router.push(destination);
+      router.push(returnPath ?? destination);
     } catch (err) {
       const message = friendlyAuthError(err, "sign in");
       setLoginServerError(message);
@@ -336,14 +340,14 @@ function LoginForm() {
         <div className="mt-4 rounded-xl border border-obligon-border bg-obligon-mist p-3.5 text-sm text-obligon-text">
           Active session as <strong>{user.email}</strong> ({user.role}).{" "}
           <Link
-            href={
+            href={returnPath ?? (
               user.role === "admin"
                 ? routes.adminDashboard
                 : user.role === "company"
                   ? routes.companyDashboard
                   : user.role === "partner" || user.role === "mechanic"
                     ? routes.dashboard
-                    : routes.customerDashboard
+                    : routes.customerDashboard)
             }
             className="font-bold text-obligon-green hover:underline"
           >
@@ -461,7 +465,7 @@ function LoginForm() {
         <div className="pt-3 text-center space-y-2">
           <p className="text-sm text-obligon-text">
             New to Obligon?{" "}
-            <Link href={routes.signup} className="font-bold text-obligon-green hover:underline">
+            <Link href={withAuthReturn(routes.signup, returnPath)} className="font-bold text-obligon-green hover:underline">
               Create an account
             </Link>
           </p>
@@ -487,6 +491,8 @@ function LoginForm() {
 
 function SignupForm() {
   const router = useRouter();
+  const [returnPath, setReturnPath] = React.useState<string | null>(null);
+  React.useEffect(() => { setReturnPath(authReturnPath(window.location.search)); }, []);
   const { login, setUser } = useSession();
   const { error: toastError, success: toastSuccess } = useToast();
 
@@ -639,11 +645,11 @@ function SignupForm() {
       // inside the signup transaction — so a customer who never finishes here
       // still has an account that can be funded.
       if (LIVE_MODE) {
-        router.push(routes.verifyEmail);
+        router.push(withAuthReturn(routes.verifyEmail, returnPath));
         return;
       }
 
-      router.push(`${routes.authSuccess}?redirect=${destination}`);
+      router.push(`${routes.authSuccess}?redirect=${encodeURIComponent(returnPath ?? destination)}`);
     } catch (err) {
       const message = friendlyAuthError(err, "create your account");
       setSignupServerError(message);
@@ -881,7 +887,7 @@ function SignupForm() {
 
       <p className="mt-4 text-center text-sm text-obligon-text">
         Already registered on Obligon?{" "}
-        <Link href={routes.login} className="font-bold text-obligon-green hover:underline">
+        <Link href={withAuthReturn(routes.login, returnPath)} className="font-bold text-obligon-green hover:underline">
           Sign In Here
         </Link>
       </p>

@@ -9,7 +9,7 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { classifyResendFailure, emailFallbackAllowed } from "../src/lib/mailer.js";
+import { classifyResendFailure, emailFallbackAllowed, emailTemplates } from "../src/lib/mailer.js";
 import { classifyTermiiFailure, smsFallbackAllowed } from "../src/lib/sms.js";
 
 /** Captured verbatim from the providers while this was being built. */
@@ -17,6 +17,13 @@ const RESEND_UNVERIFIED_DOMAIN =
   '{"message":"The gmail.com domain is not verified. Please, add and verify your domain on https://resend.com/domains","name":"validation_error","statusCode":403}';
 const TERMII_UNAPPROVED_SENDER =
   '{"status":422,"error":"Unprocessable Content","message":"SENDER_ID_NOT_APPROVED: sender ID \'Obligon\' is not registered for workspace 01a0f7eb"}';
+
+test("password-reset subject preserves readable text and the one-time code", () => {
+  const subject = emailTemplates.resetRequested("123456").subject;
+  assert.match(subject, /Reset your Obligon password/);
+  assert.match(subject, /code 123456$/);
+  assert.doesNotMatch(subject, /\uFFFD/);
+});
 
 test("the real Resend refusal for an unverified domain is recognised", () => {
   const result = classifyResendFailure(403, RESEND_UNVERIFIED_DOMAIN);

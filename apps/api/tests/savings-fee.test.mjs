@@ -31,7 +31,11 @@ test('rounding never undercollects and adds less than one naira',()=>configured(
  assert.ok(p.feeKobo>=proportional);assert.ok(p.feeKobo<proportional+100);assert.equal(p.roundingKobo,p.totalKobo-250050-proportional);
 }));
 test('zero and negative amounts cannot invent customer principal',()=>configured(FEE_BEARERS.customer,150,()=>{
- assert.equal(priceWithFee(0).totalKobo,0);assert.equal(priceWithFee(-500).baseKobo,0);
+ assert.equal(priceWithFee(0).totalKobo,0);assert.throws(()=>priceWithFee(-500),/integer/);
 }));
 test('absurd fee rate is capped at 100 percent',()=>configured(FEE_BEARERS.customer,20000,()=>assert.equal(priceWithFee(100000).feeKobo,100000)));
 test('malformed fee rate never creates NaN money',()=>configured(FEE_BEARERS.customer,'not-a-number',()=>assert.equal(priceWithFee(100000).feeKobo,0)));
+
+test('platform-borne fees never silently surcharge a fractional checkout',()=>configured(FEE_BEARERS.platform,150,()=>{
+ assert.throws(()=>priceWithFee(10025),/whole number of naira/);
+}));

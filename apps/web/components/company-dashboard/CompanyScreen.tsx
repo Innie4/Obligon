@@ -2,15 +2,15 @@
 import * as React from "react";
 import Link from "next/link";
 import { Car, CreditCard, Download, Fuel, Loader2, Plus, Search } from "lucide-react";
-import { pageCopy, type CompanyModalKey, type CompanyPageKey, type CompanyTone, type Metric } from "@/lib/mock/company-data";
-import { CompanyModals, type CompanyModalContext } from "./CompanyModals";
+import { pageCopy, type CompanyPageKey, type CompanyTone, type Metric } from "@/lib/mock/company-data";
+import { CompanyModals, companyTopupStorageKey, type CompanyModalContext, type CompanyOperationModalKey } from "./CompanyModals";
 import { companyApi, type CompanyRow } from "@/lib/services/company";
 import { mutationsApi } from "@/lib/services";
 import { useAsync, type AsyncResult } from "@/components/shared/useAsync";
 import { AsyncBoundary, EmptyState } from "@/components/shared/States";
 import { useToast } from "@/components/shared/Toast";
 import { useSession } from "@/components/shared/AuthContext";
-type OpenModal = (modal: CompanyModalKey, context?: CompanyModalContext) => void;
+type OpenModal = (modal: CompanyOperationModalKey, context?: CompanyModalContext) => void;
 type PageProps = {
   onModal: OpenModal;
 };
@@ -24,7 +24,7 @@ function Header({ pageKey, action, onModal }: {
   pageKey: CompanyPageKey;
   action?: {
     label: string;
-    modal: CompanyModalKey;
+    modal: CompanyOperationModalKey;
     context?: CompanyModalContext;
   };
   onModal: OpenModal;
@@ -89,7 +89,7 @@ function Metrics({ metrics }: {
 
   </div>;
 }
-function Table({ title, columns, rows, empty = "No records yet.", actionLabel, onAction, onRowAction }: {
+function Table({ title, columns, rows, empty = "No records yet.", actionLabel, onAction, onRowAction, rowActionLabel = "Manage" }: {
   title: string;
   columns: string[];
   rows: CompanyRow[];
@@ -97,6 +97,7 @@ function Table({ title, columns, rows, empty = "No records yet.", actionLabel, o
   actionLabel?: string;
   onAction?: () => void;
   onRowAction?: (row: CompanyRow) => void;
+  rowActionLabel?: string;
 }) {
   const hasStatus = rows.some(row => row.status);
   return <section className="mt-6 overflow-hidden rounded-xl border border-[#dfe5ec] bg-white">
@@ -145,7 +146,7 @@ function Table({ title, columns, rows, empty = "No records yet.", actionLabel, o
 
             {onRowAction ? <td className="px-5 py-4">
 
-              <button type="button" onClick={() => onRowAction(row)} className="relative min-h-11 rounded-lg px-3 font-bold text-obligon-green">Manage<span className="sr-only"> {row.cells[0]}</span></button>
+              <button type="button" onClick={() => onRowAction(row)} className="relative min-h-11 rounded-lg px-3 font-bold text-obligon-green">{rowActionLabel}<span className="sr-only"> {row.cells[0]}</span></button>
 
             </td> : null}
 
@@ -179,8 +180,17 @@ function Overview({ onModal }: PageProps) {
 
   </Canvas>;
 }
+const pageSize = 20;
+function CompanyPagination({ page, total, count, onPageChange }: { page: number; total: number; count: number; onPageChange: (page: number) => void }) {
+  return <nav aria-label="Record pages" className="mt-4 flex flex-wrap items-center justify-between gap-3">
+    <p role="status" className="text-sm text-obligon-text">{count ? `${page * pageSize + 1}–${page * pageSize + count}` : "0"} of {total} records · Page {page + 1} of {Math.max(1, Math.ceil(total / pageSize))}</p>
+    <div className="flex gap-2"><button type="button" className={`${controlClass} disabled:opacity-50`} disabled={page === 0} onClick={() => onPageChange(page - 1)}>Previous</button><button type="button" className={`${controlClass} disabled:opacity-50`} disabled={(page + 1) * pageSize >= total} onClick={() => onPageChange(page + 1)}>Next</button></div>
+  </nav>;
+}
 function Vehicles({ onModal }: PageProps) {
-  const result = useAsync(companyApi.vehicles);
+  const [page, setPage] = React.useState(0);
+  const [search, setSearch] = React.useState("");
+  const result = useAsync(() => companyApi.vehicles(new URLSearchParams({ limit: String(pageSize), offset: String(page * pageSize), search }).toString()), [page, search]);
   return <Canvas>
 
     <Header pageKey="vehicles" action={{ label: "Add Vehicle", modal: "vehicle" }} onModal={onModal} />
@@ -194,17 +204,21 @@ function Vehicles({ onModal }: PageProps) {
       <button type="button" onClick={() => onModal("export", { scope: "vehicles" })} className={controlClass}>Export Fleet</button>
 
     </div>
+    <label className="mt-4 block max-w-lg text-sm font-bold">Search fleet vehicles<input type="search" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} className={`${controlClass} mt-1 w-full`} /></label>
 
     <DataBoundary result={result}>
 
       <Table title="Fleet vehicles" columns={["Vehicle", "Plate", "Assigned card"]} rows={result.data?.vehicles ?? []} empty="No vehicles. Add your first vehicle above." onRowAction={row => onModal("assign", { vehicleId: row.id })} />
+      <CompanyPagination page={page} total={result.data?.total ?? 0} count={result.data?.vehicles.length ?? 0} onPageChange={setPage} />
 
     </DataBoundary>
 
   </Canvas>;
 }
 function Cards({ onModal }: PageProps) {
-  const result = useAsync(companyApi.cards);
+  const [page, setPage] = React.useState(0);
+  const [search, setSearch] = React.useState("");
+  const result = useAsync(() => companyApi.cards(new URLSearchParams({ limit: String(pageSize), offset: String(page * pageSize), search }).toString()), [page, search]);
   return <Canvas>
 
     <Header pageKey="cards" action={{ label: "Issue New Card", modal: "newCard" }} onModal={onModal} />
@@ -214,20 +228,24 @@ function Cards({ onModal }: PageProps) {
       <button type="button" onClick={() => onModal("assign")} className={controlClass}>Assign Card</button>
 
       <button type="button" onClick={() => onModal("cardConfirm")} className={controlClass}>Freeze / Unfreeze Card</button>
+      <button type="button" onClick={() => onModal("posCode")} className={controlClass}>Get single-use fuel code</button>
 
     </div>
+    <label className="mt-4 block max-w-lg text-sm font-bold">Search fuel cards<input type="search" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} className={`${controlClass} mt-1 w-full`} /></label>
 
     <DataBoundary result={result}>
 
       <Metrics metrics={result.data?.metrics ?? []} />
 
       <Table title="All cards" columns={["Card", "Number", "Assignment", "Remaining monthly limit"]} rows={result.data?.cards ?? []} empty="No cards. Issue your first card above." onRowAction={row => onModal("cardConfirm", { cardId: row.cardId ?? row.id })} />
+      <CompanyPagination page={page} total={result.data?.total ?? 0} count={result.data?.cards.length ?? 0} onPageChange={setPage} />
 
     </DataBoundary>
 
   </Canvas>;
 }
 function Transactions({ onModal }: PageProps) {
+  const [page, setPage] = React.useState(0);
   const [vehicle, setVehicle] = React.useState("");
   const [driver, setDriver] = React.useState("");
   const [range, setRange] = React.useState("30");
@@ -235,14 +253,14 @@ function Transactions({ onModal }: PageProps) {
   const choices = useAsync(companyApi.choices);
   const driverFilterReady = choices.data?.capabilities?.stableDriverFilters === true;
   const effectiveDriverId = driverFilterReady ? driver : "";
-  const query = new URLSearchParams({ range, limit: "100" });
+  const query = new URLSearchParams({ range, limit: String(pageSize), offset: String(page * pageSize) });
   if (vehicle)
     query.set("vehicle", vehicle);
   if (effectiveDriverId)
     query.set("driverId", effectiveDriverId);
   if (date)
     query.set("date", date);
-  const result = useAsync(() => companyApi.transactions(query.toString()), [vehicle, effectiveDriverId, range, date]);
+  const result = useAsync(() => companyApi.transactions(query.toString()), [vehicle, effectiveDriverId, range, date, page]);
   const context = { scope: "transactions", range, vehicle, driverId: effectiveDriverId, date };
   return <Canvas>
 
@@ -250,7 +268,7 @@ function Transactions({ onModal }: PageProps) {
 
     <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 
-      <label className="text-xs font-bold">Vehicle<select className={`${controlClass} mt-1 w-full`} value={vehicle} onChange={e => setVehicle(e.target.value)}>
+      <label className="text-xs font-bold">Vehicle<select className={`${controlClass} mt-1 w-full`} value={vehicle} onChange={e => { setVehicle(e.target.value); setPage(0); }}>
 
         <option value="">All vehicles</option>
 
@@ -258,7 +276,7 @@ function Transactions({ onModal }: PageProps) {
 
       </select></label>
 
-      <label className="text-xs font-bold">Driver<select className={`${controlClass} mt-1 w-full`} value={driver} disabled={!driverFilterReady} onChange={e => setDriver(e.target.value)}>
+      <label className="text-xs font-bold">Driver<select className={`${controlClass} mt-1 w-full`} value={driver} disabled={!driverFilterReady} onChange={e => { setDriver(e.target.value); setPage(0); }}>
 
         <option value="">All drivers</option>
 
@@ -266,13 +284,13 @@ function Transactions({ onModal }: PageProps) {
 
       </select></label>
 
-      <label className="text-xs font-bold">Period<select className={`${controlClass} mt-1 w-full`} value={range} onChange={e => { setRange(e.target.value); setDate(""); }}>
+      <label className="text-xs font-bold">Period<select className={`${controlClass} mt-1 w-full`} value={range} onChange={e => { setRange(e.target.value); setDate(""); setPage(0); }}>
 
         {[7, 30, 90, 365].map(days => <option key={days} value={days}>Last {days} days</option>)}
 
       </select></label>
 
-      <label className="text-xs font-bold">Specific date<input className={`${controlClass} mt-1 w-full`} type="date" value={date} onChange={e => setDate(e.target.value)} /></label>
+      <label className="text-xs font-bold">Specific date<input className={`${controlClass} mt-1 w-full`} type="date" value={date} onChange={e => { setDate(e.target.value); setPage(0); }} /></label>
 
     </div>
 
@@ -283,7 +301,8 @@ function Transactions({ onModal }: PageProps) {
 
       <Table title="Transactions" columns={["Date & time", "Vehicle / driver", "Station / fuel", "Card", "Amount"]} rows={result.data?.transactions ?? []} empty="No transactions match these filters." />
 
-      <p className="mt-3 text-xs text-obligon-text">Showing {result.data?.transactions.length ?? 0} of {result.data?.total ?? 0} matching transactions. Export includes all matching records.</p>
+      <CompanyPagination page={page} total={result.data?.total ?? 0} count={result.data?.transactions.length ?? 0} onPageChange={setPage} />
+      <p className="mt-3 text-xs text-obligon-text">Export includes all matching records.</p>
 
     </DataBoundary>
 
@@ -382,9 +401,20 @@ function Stations({ onModal }: PageProps) {
 }
 function Roadside({ onModal }: PageProps) {
   const result = useAsync(companyApi.roadside);
+  const [busyId, setBusyId] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const cancelling = React.useRef(false);
+  async function cancel(id: string) {
+    if (cancelling.current) return;
+    cancelling.current = true; setBusyId(id); setError(null);
+    try { await mutationsApi.cancelRoadsideRequest(id); result.reload(); } catch (err) { setError(err instanceof Error ? err.message : "Could not cancel this request."); } finally { cancelling.current = false; setBusyId(null); }
+  }
   return <Canvas>
 
     <Header pageKey="roadside" action={{ label: "Request Emergency Help", modal: "roadside" }} onModal={onModal} />
+    <p className="mt-5 text-sm text-obligon-text">Requests record your location and issue. Assistance requires manual coordination; this screen does not confirm a dispatched provider or arrival time. Open Support and include the request ID for follow-up.</p>
+    <Link href="/company/support" className="mt-2 inline-flex min-h-11 items-center font-bold text-obligon-green">Follow up with Support →</Link>
+    {error ? <p role="alert" className="mt-3 text-sm text-red-700">{error}</p> : null}
 
     <DataBoundary result={result}>
 
@@ -397,6 +427,8 @@ function Roadside({ onModal }: PageProps) {
         <p className="mt-2 text-sm">{request.location}</p>
 
         <p className="mt-2 text-sm text-obligon-text">Received: {request.time}{request.etaMinutes == null ? " · Arrival estimate pending" : ` · Estimated arrival: ${request.etaMinutes} minutes`}</p>
+        <p className="mt-2 break-all text-xs text-obligon-text">Request ID: {request.id}</p>
+        {["RECEIVED", "DISPATCHING"].includes(request.status) ? <button type="button" disabled={Boolean(busyId)} onClick={() => cancel(request.id)} className={`${controlClass} mt-4 disabled:opacity-50`}>{busyId === request.id ? "Cancelling…" : "Cancel request"}</button> : null}
 
       </article>)}
 
@@ -406,12 +438,53 @@ function Roadside({ onModal }: PageProps) {
 
   </Canvas>;
 }
+function CompanyWalletPanel({ onModal }: PageProps) {
+  const result = useAsync(companyApi.wallet);
+  const { user } = useSession();
+  const [reference, setReference] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [confirmed, setConfirmed] = React.useState<string | null>(null);
+  const checking = React.useRef(false);
+  React.useEffect(() => {
+    if (!user) return;
+    const query = new URLSearchParams(window.location.search);
+    const returned = query.get("topup") || query.get("tx_ref") || query.get("reference");
+    try { const stored = sessionStorage.getItem(companyTopupStorageKey(user.id)); setReference(returned || stored || ""); } catch { if (returned) setReference(returned); }
+  }, [user]);
+  async function confirm() {
+    if (!reference.trim() || checking.current || !user) return;
+    checking.current = true; setBusy(true); setError(null); setConfirmed(null);
+    try {
+      const query = new URLSearchParams(window.location.search);
+      const response = await mutationsApi.companyConfirmTopUp(reference.trim(), query.get("transaction_id") ?? undefined);
+      if (!response.ok) throw new Error("Payment has not been confirmed. Check again after completing checkout.");
+      setConfirmed(`Company wallet funding confirmed${response.balanceLabel ? `. Balance: ${response.balanceLabel}` : "."}`);
+      try { sessionStorage.removeItem(companyTopupStorageKey(user.id)); } catch { /* Server confirmation remains authoritative. */ }
+      for (const key of ["topup", "tx_ref", "reference", "transaction_id", "status"]) query.delete(key);
+      window.history.replaceState({}, "", `${window.location.pathname}${query.toString() ? `?${query}` : ""}`);
+      setReference(""); result.reload();
+    } catch (err) { setError(err instanceof Error ? err.message : "Payment is unconfirmed. Keep this reference and try again."); } finally { checking.current = false; setBusy(false); }
+  }
+  return <section className="mt-6 rounded-xl border border-[#dfe5ec] bg-white p-5">
+    <h2 className="text-xl font-extrabold">Company fuel wallet</h2>
+    <p className="mt-3 text-sm text-obligon-text">Fleet cards spend directly from the company wallet. Member allocations transfer funds to personal wallets.</p>
+    <DataBoundary result={result}>
+      <p className="mt-4 text-3xl font-extrabold">{result.data?.company?.balanceLabel ?? "Balance unavailable"}</p>
+      <div className="mt-4 flex flex-wrap gap-3"><button type="button" className={buttonClass} onClick={() => onModal("walletFund")}>Fund company wallet</button><button type="button" className={controlClass} onClick={() => onModal("walletAllocate")}>Allocate to member</button></div>
+      {result.data?.recent?.length ? <ul className="mt-5 divide-y divide-[#dfe5ec]">{result.data.recent.map(entry => <li key={entry.id} className="py-3 text-sm"><p className="font-bold">{entry.direction === "credit" ? "+" : "−"}{entry.amountLabel} · {entry.description}</p><p className="mt-1 break-all text-xs text-obligon-text">{entry.reference} · {entry.date}</p></li>)}</ul> : <p className="mt-4 text-sm text-obligon-text">No recorded company wallet movements.</p>}
+    </DataBoundary>
+    <div className="mt-5 border-t border-[#dfe5ec] pt-4"><label className="block text-sm font-bold">Check a pending funding reference<input value={reference} disabled={busy} onChange={event => { setReference(event.target.value); setConfirmed(null); }} className={`${controlClass} mt-1 w-full`} /></label><button type="button" className={`${controlClass} mt-3 disabled:opacity-50`} disabled={busy || !reference.trim()} onClick={confirm}>{busy ? "Checking payment…" : "Check payment"}</button></div>
+    {error ? <p role="alert" className="mt-3 text-sm text-red-700">{error}</p> : null}{confirmed ? <p role="status" className="mt-3 text-sm">{confirmed}</p> : null}
+  </section>;
+}
 function Billing({ onModal }: PageProps) {
   const result = useAsync(companyApi.billing);
   const { user } = useSession();
   return <Canvas>
 
     <Header pageKey="billing" action={{ label: "Export Invoices", modal: "export", context: { scope: "invoices" } }} onModal={onModal} />
+    <CompanyWalletPanel onModal={onModal} />
 
     <DataBoundary result={result}>
 
@@ -550,7 +623,7 @@ function Support({ onModal }: PageProps) {
 
       <h2 className="text-xl font-extrabold">Frequently asked questions</h2>
 
-      {[["How do I add a fleet vehicle?", "Open Vehicles, choose Add Vehicle, and save its plate, model, fuel type and tank capacity."], ["How are company billing terms agreed?", "Company access requires a contract. Submit a billing support ticket to confirm your agreed terms."], ["When will roadside assistance arrive?", "Submit the vehicle, location and issue. The request status and arrival estimate appear after the dispatch team confirms them."]].map(([question, answer]) => <details key={question} className="border-b py-4">
+      {[["How do I add a fleet vehicle?", "Open Vehicles, choose Add Vehicle, and save its plate, model, fuel type and tank capacity."], ["How are company billing terms agreed?", "Company access requires a contract. Submit a billing support ticket to confirm your agreed terms."], ["When will roadside assistance arrive?", "Requests require manual coordination. Include your request ID in a support conversation to confirm arrangements; submitting a request does not confirm dispatch or arrival."]].map(([question, answer]) => <details key={question} className="border-b py-4">
 
         <summary className="cursor-pointer text-sm font-bold">{question}</summary>
 
@@ -562,7 +635,7 @@ function Support({ onModal }: PageProps) {
 
     <DataBoundary result={result}>
 
-      <Table title="Support tickets" columns={["Reference", "Date", "Subject"]} rows={result.data?.tickets ?? []} empty="No support tickets. Raise a ticket above." />
+      <Table title="Support tickets" columns={["Reference", "Date", "Subject"]} rows={result.data?.tickets ?? []} empty="No support tickets. Raise a ticket above." rowActionLabel="Open conversation" onRowAction={row => onModal("supportConversation", { ticketId: row.id, reference: row.reference ?? row.cells[0] })} />
 
     </DataBoundary>
 
@@ -655,12 +728,14 @@ function Maintenance({ onModal }: PageProps) {
   return <Canvas>
 
     <Header pageKey="maintenance" action={{ label: "Schedule Service", modal: "service" }} onModal={onModal} />
+    <p className="mt-5 text-sm text-obligon-text">Schedules are company records. Confirm the appointment with your service provider directly, then update the confirmed status here. Use Support with the schedule ID if you need help coordinating.</p>
+    <Link href="/company/support" className="mt-2 inline-flex min-h-11 items-center font-bold text-obligon-green">Follow up with Support →</Link>
 
     <DataBoundary result={result}>
 
       <Metrics metrics={[{ label: "Fleet vehicles", value: String(result.data?.fleetHealth.total ?? 0) }, { label: "Active vehicles", value: result.data?.fleetHealth.total ? `${result.data.fleetHealth.healthyPct}%` : "No vehicles", helper: "Based on recorded vehicle status" }, { label: "In maintenance", value: String(result.data?.fleetHealth.inService ?? 0) }]} />
 
-      <Table title="Service schedules" columns={["Date", "Vehicle", "Service", "Cost"]} rows={result.data?.schedules ?? []} empty="No schedules. Schedule a service above." actionLabel="Export" onAction={() => onModal("export", { scope: "maintenance" })} />
+      <Table title="Service schedules" columns={["Date", "Vehicle", "Service", "Cost"]} rows={(result.data?.schedules ?? []).map(row => ({ ...row, cells: row.cells.map((cell, index) => index === 2 ? `${cell}\nSchedule ID: ${row.id}` : cell) }))} empty="No schedules. Schedule a service above." actionLabel="Export" onAction={() => onModal("export", { scope: "maintenance" })} rowActionLabel="Update status" onRowAction={row => onModal("maintenanceStatus", { maintenanceId: row.id, status: row.statusRaw })} />
 
     </DataBoundary>
 
@@ -670,7 +745,7 @@ const pages: Record<CompanyPageKey, React.ComponentType<PageProps>> = { overview
 export function CompanyScreen({ pageKey }: {
   pageKey: CompanyPageKey;
 }) {
-  const [modal, setModal] = React.useState<CompanyModalKey>(null);
+  const [modal, setModal] = React.useState<CompanyOperationModalKey>(null);
   const [context, setContext] = React.useState<CompanyModalContext>({});
   const [revision, setRevision] = React.useState(0);
   const Page = pages[pageKey];

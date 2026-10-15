@@ -124,6 +124,10 @@ test("card requests require a paid plan, and staff can still open one directly",
     await api("/api/customer/card-request/cancel", {
       method: "POST", token: customerToken, body: { reference: retry.data.reference }
     });
+  } else if (checkout.status === 503) {
+    // The no-provider local smoke environment must reject checkout honestly.
+    // Paid/cancel/retry behavior is exercised separately with isolated provider mocks.
+    assert.match(checkout.data.error?.message ?? "", /provider.*not configured|payment provider.*configured/i);
   } else {
     // Already mid-verification from a previous run: the guard must still hold.
     assert.equal(checkout.status, 409);

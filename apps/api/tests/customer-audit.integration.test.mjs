@@ -32,8 +32,8 @@ before(async () => {
   env.PAYMENT_PROVIDER = "flutterwave";
   env.FLW_PAYMENT_OPTIONS = "";
   await pool.query(`
-    CREATE TABLE notifications(id uuid PRIMARY KEY,user_id uuid,organization_id uuid,title text,body text,created_at timestamptz DEFAULT now(),read_at timestamptz,in_app_visible boolean DEFAULT TRUE,action_required boolean DEFAULT FALSE,link text);
-    CREATE TABLE transactions(id uuid PRIMARY KEY,reference text,customer_user_id uuid,station_id uuid,vehicle_id uuid,card_id uuid,amount_kobo bigint,litres numeric,fuel_type text,status text,created_at timestamptz DEFAULT now());
+    CREATE TABLE notifications(id uuid PRIMARY KEY,user_id uuid,organization_id uuid,title text,body text,created_at timestamptz DEFAULT now(),read_at timestamptz,dismissed_at timestamptz,in_app_visible boolean DEFAULT TRUE,action_required boolean DEFAULT FALSE,link text);
+    CREATE TABLE transactions(id uuid PRIMARY KEY,reference text,customer_user_id uuid,organization_id uuid,station_id uuid,vehicle_id uuid,card_id uuid,amount_kobo bigint,litres numeric,fuel_type text,status text,created_at timestamptz DEFAULT now());
     CREATE TABLE stations(id uuid PRIMARY KEY,name text);
     CREATE TABLE vehicles(id uuid PRIMARY KEY,plate text);
     CREATE TABLE cards(id uuid PRIMARY KEY,masked_pan text);

@@ -2,7 +2,13 @@
  * Targeted check for the notification-preference + security work.
  * Uses exactly ONE login so it stays inside the auth rate limit.
  */
-const BASE = process.env.SMOKE_BASE_URL || "http://127.0.0.1:4000";
+const target = new URL(process.env.SMOKE_BASE_URL || "http://127.0.0.1:4000");
+const BASE = target.origin;
+if (process.env.OBLIGON_ALLOW_LOCAL_CHECKS !== "true" || !["http:", "https:"].includes(target.protocol) ||
+    !["127.0.0.1", "localhost", "[::1]"].includes(target.hostname) || target.username || target.password ||
+    target.pathname !== "/" || target.search || target.hash) {
+  throw new Error("This mutating diagnostic requires OBLIGON_ALLOW_LOCAL_CHECKS=true and a loopback API connected to disposable test data.");
+}
 
 async function call(method, path, { token, body } = {}) {
   const res = await fetch(`${BASE}${path}`, {
@@ -28,12 +34,14 @@ function check(name, pass, detail = "") {
   console.log(`${pass ? "PASS" : "FAIL"}  ${name}${detail ? ` — ${detail}` : ""}`);
 }
 
+const email = process.env.SMOKE_EMAIL, password = process.env.SMOKE_PASSWORD;
+if (!email || !password) throw new Error("Provide explicit disposable SMOKE_EMAIL and SMOKE_PASSWORD credentials.");
 const login = await call("POST", "/api/auth/login", {
-  body: { email: "customer@obligon.com", password: "Customer#123" }
+  body: { email, password }
 });
 
 if (login.status !== 200) {
-  console.log(`FATAL: login failed with ${login.status}`, JSON.stringify(login.data));
+  console.log(`FATAL: login failed with ${login.status}; a customer test account without MFA is required.`);
   process.exit(1);
 }
 const token = login.data.accessToken;
@@ -54,6 +62,9 @@ check(
 check("GET /profile exposes twoFactorEnabled", "twoFactorEnabled" in (before.data?.user ?? {}));
 check("GET /profile exposes biometricsEnabled", "biometricsEnabled" in (before.data?.user ?? {}));
 
+if (!prefsBefore || typeof prefsBefore !== "object") throw new Error("Original preferences could not be read; no account changes were made.");
+let testEndpoint;
+try {
 // PUT: valid prefs must persist and be echoed back.
 const turnedOff = { ...prefsBefore, sms: !prefsBefore.sms, push: false };
 const put = await call("PUT", "/api/customer/profile", { token, body: { notificationPrefs: turnedOff } });
@@ -100,8 +111,9 @@ check("POST /push/subscribe rejects incomplete subscription", badSub.status === 
 
 const fakeSub = {
   endpoint: `https://fcm.googleapis.com/fcm/send/smoke-${Date.now()}`,
-  keys: { p256dh: "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM", auth: "8eDyX_uCN0XRh0Y4T3t9BhJEHl_QPdjTbYFNgkVrK9g" }
+  keys: { p256dh: "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM", auth: "AAAAAAAAAAAAAAAAAAAAAA" }
 };
+testEndpoint = fakeSub.endpoint;
 const okSub = await call("POST", "/api/push/subscribe", { token, body: fakeSub });
 check("POST /push/subscribe stores a full subscription", okSub.status === 200, `status=${okSub.status}`);
 
@@ -117,12 +129,18 @@ check("change-password rejects a wrong current password", badPw.status === 400 |
 
 const shortPw = await call("POST", "/api/auth/change-password", {
   token,
-  body: { currentPassword: "Customer#123", newPassword: "short" }
+  body: { currentPassword: password, newPassword: "short" }
 });
 check("change-password enforces an 8 character minimum", shortPw.status === 400, `status=${shortPw.status}`);
 
-// Restore the original preference state so the suite leaves no residue.
-await call("PUT", "/api/customer/profile", { token, body: { notificationPrefs: prefsBefore } });
+} finally {
+  if (testEndpoint) {
+    const removed = await call("POST", "/api/push/unsubscribe", { token, body: { endpoint: testEndpoint } });
+    check("temporary push subscription cleanup succeeds", removed.status === 200, `status=${removed.status}`);
+  }
+  const restored = await call("PUT", "/api/customer/profile", { token, body: { notificationPrefs: prefsBefore } });
+  check("original notification preferences are restored", restored.status === 200 && JSON.stringify(restored.data?.user?.notificationPrefs) === JSON.stringify(prefsBefore), `status=${restored.status}`);
+}
 
 const failed = results.filter((r) => !r.pass);
 console.log(`\n${results.length - failed.length}/${results.length} checks passed`);

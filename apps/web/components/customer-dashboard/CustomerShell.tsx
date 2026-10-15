@@ -78,7 +78,7 @@ function Sidebar() {
   );
 
   return (
-    <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-[#dfe5ec] bg-white px-6 py-8 lg:flex">
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-[#dfe5ec] bg-white px-6 py-8 lg:flex">
       <Link href="/customer" className="block" aria-label="Obligon LTD customer dashboard">
         <DashboardLogo priority />
       </Link>
@@ -136,7 +136,7 @@ function MobileHeader() {
         Account <ChevronDown size={16} />
       </button>
       </div>
-      {accountOpen ? <nav id="customer-mobile-account" aria-label="Customer account" className="absolute right-5 top-[72px] z-40 w-[min(270px,calc(100vw-40px))] rounded-xl border border-obligon-border bg-white p-2 shadow-xl">
+      {accountOpen ? <nav id="customer-mobile-account" aria-label="Customer account" className="absolute right-5 top-[72px] z-50 w-[min(270px,calc(100vw-40px))] rounded-xl border border-obligon-border bg-white p-2 shadow-xl">
         {secondaryCustomerNav.map(item => <Link key={item.key} href={item.href} onClick={() => setAccountOpen(false)} className="flex min-h-12 items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-obligon-navy hover:bg-obligon-mist">
           {iconMap[item.key]} {item.label}
         </Link>)}

@@ -15,6 +15,8 @@ type Row = AdminRow & {
   role?: string;
   statusRaw?: string;
   creditLimit?: number;
+  verificationStatus?: string;
+  subscriptionStatus?: string;
   plan?: string;
   businessName?: string;
   rcNumber?: string;
@@ -79,7 +81,8 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
     [search, setSearch] = React.useState(""),
     [range, setRange] = React.useState("30"),
     [creating, setCreating] = React.useState(false),
-    [notice, setNotice] = React.useState("");
+    [notice, setNotice] = React.useState(""),
+    [reviewVerification, setReviewVerification] = React.useState("pending");
   const sequence = React.useRef(0);
   const load = React.useCallback(async () => {
     const current = ++sequence.current;
@@ -111,15 +114,25 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const body = Object.fromEntries(new FormData(e.currentTarget));
+    if (pageKey === "companies" && !creating) {
+      const contractAgreed = body.contractAgreed === "true";
+      if (body.verificationStatus === "verified" && selected?.verificationStatus !== "verified" && !contractAgreed) {
+        setError("Confirm that the company contract is agreed before approving operations.");
+        return;
+      }
+      Object.assign(body, { contractAgreed });
+    }
     setBusy(true);
     setError("");
     try {
-      if (creating)
-        await authenticatedRequest(`/api/admin/${paths[pageKey]}`, {
+      let savedMessage = "Saved to the backend and activity register.";
+      if (creating) {
+        const result = await authenticatedRequest<{ message?: string }>(`/api/admin/${paths[pageKey]}`, {
           method: "POST",
           body: JSON.stringify(body),
         });
-      else if (selected?.id) {
+        if (pageKey === "companies") savedMessage = result.message ?? "Fleet created pending contract approval.";
+      } else if (selected?.id) {
         const path =
           pageKey === "applications"
             ? `applications/${selected.id}/review`
@@ -133,7 +146,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
           body: JSON.stringify(body),
         });
       }
-      setNotice("Saved to the backend and activity register.");
+      setNotice(savedMessage);
       setSelected(null);
       setCreating(false);
       await load();
@@ -163,6 +176,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
           </button>
           {["companies", "staff"].includes(pageKey) && (
             <button
+              disabled={busy}
               className="min-h-12 rounded bg-obligon-green px-5 font-bold text-white"
               onClick={() => {
                 setCreating(true);
@@ -274,10 +288,12 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
                     {pageKey !== "reports" && (
                       <td className="p-4">
                         <button
+                          disabled={busy}
                           className="min-h-12 underline"
                           onClick={() => {
                             setSelected(row);
                             setCreating(false);
+                            setReviewVerification(row.verificationStatus ?? "pending");
                           }}
                         >
                           Review record
@@ -343,6 +359,9 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
             <>
               {pageKey === "companies" ? (
                 <>
+                  <p className="text-sm">
+                    New fleets remain pending. Company operations require admin approval after the contract is agreed.
+                  </p>
                   <label>
                     Company name
                     <input
@@ -447,7 +466,8 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
                 </select>
               </label>
             </>
-          ) : (
+          ) : pageKey === "companies" ? (
+            <>
             <label>
               Credit ceiling (naira)
               <input
@@ -459,7 +479,35 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
                 defaultValue={selected?.creditLimit ?? 0}
               />
             </label>
-          )}
+              <label className="block">
+                Verification decision
+                <select name="verificationStatus" className={field} value={reviewVerification} onChange={event => setReviewVerification(event.target.value)}>
+                  <option value="unverified">Unverified</option>
+                  <option value="pending">Pending contract review</option>
+                  <option value="verified">Approve company operations</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </label>
+              <label className="block">
+                Subscription state
+                <select name="status" className={field} defaultValue={selected?.subscriptionStatus ?? "canceled"}>
+                  <option value="canceled">Inactive</option>
+                  <option value="active">Active</option>
+                  <option value="past_due">Past due</option>
+                  <option value="trialing">Trialing</option>
+                </select>
+              </label>
+              {reviewVerification === "verified" && selected?.verificationStatus !== "verified" && (
+                <label className="flex min-h-12 items-start gap-3 rounded border p-3">
+                  <input type="checkbox" name="contractAgreed" value="true" required aria-describedby="company-contract-approval-help" className="mt-1 size-5" />
+                  <span>I confirm the company contract is agreed and company operations may be approved.</span>
+                </label>
+              )}
+              <p id="company-contract-approval-help" className="text-sm">
+                Approval enables company operations. The decision and contract confirmation are recorded under your administrator account.
+              </p>
+            </>
+          ) : null}
           {["applications", "disputes"].includes(pageKey) && (
             <label>
               Review note
@@ -480,6 +528,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
             </button>
             <button
               type="button"
+              disabled={busy}
               className="min-h-12 underline"
               onClick={() => {
                 setSelected(null);

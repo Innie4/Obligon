@@ -55,9 +55,10 @@ export function Header() {
         </div>
 
         <button
-          className="inline-flex size-10 items-center justify-center rounded-lg border border-obligon-border bg-white text-obligon-navy md:hidden"
+          className="inline-flex size-10 items-center justify-center rounded-lg border border-obligon-border bg-white text-obligon-navy lg:hidden"
           type="button"
           aria-expanded={open}
+          aria-controls="landing-mobile-navigation"
           aria-label={open ? "Close navigation menu" : "Open navigation menu"}
           onClick={() => setOpen((value) => !value)}
         >
@@ -66,7 +67,7 @@ export function Header() {
       </nav>
 
       {open ? (
-        <div className="absolute inset-x-0 top-[104px] border-b border-obligon-border bg-white px-5 py-6 shadow-card md:hidden">
+        <div id="landing-mobile-navigation" className="absolute inset-x-0 top-[104px] border-b border-obligon-border bg-white px-5 py-6 shadow-card lg:hidden">
           <div className="flex flex-col gap-4">
             {navItems.map((item) => (
               <Link

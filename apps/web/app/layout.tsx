@@ -1,17 +1,21 @@
 import type { Metadata } from "next";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { Providers } from "@/components/shared/Providers";
 import { CookieConsentBanner } from "@/components/site/CookieConsentBanner";
 
-const inter = Inter({
-  subsets: ["latin"],
+const inter = localFont({
+  src: "./fonts/Inter-variable.woff2",
+  weight: "400 800",
+  style: "normal",
   variable: "--font-inter",
   display: "swap"
 });
 
-const plusJakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
+const plusJakarta = localFont({
+  src: "./fonts/PlusJakartaSans-variable.woff2",
+  weight: "400 800",
+  style: "normal",
   variable: "--font-plus-jakarta",
   display: "swap"
 });

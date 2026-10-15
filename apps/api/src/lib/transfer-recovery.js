@@ -1,5 +1,7 @@
 import { env } from '../config/env.js';
 import { providerFetch } from './http.js';
+import { toKobo } from './flutterwave.js';
+import { integerKobo } from './money-amounts.js';
 
 /** Recover a transfer after its create response was lost, without sending again.
  * Flutterwave's official reference lookup:
@@ -17,7 +19,11 @@ export async function recoverTransferByReference({provider,reference,amountKobo}
   if(matches.length>1)return null; // Multiple receipts require human reconciliation.
   const found=matches[0];
   if(found){
-   if(found.currency==='NGN'&&Math.round(Number(found.amount)*100)===Number(amountKobo)&&/^[1-9]\d*$/.test(String(found.id)))return String(found.id);
+   try {
+    if(found.currency==='NGN'&&toKobo(found.amount,'major')===integerKobo(amountKobo,{max:Number.MAX_SAFE_INTEGER})&&/^[1-9]\d*$/.test(String(found.id)))return String(found.id);
+   } catch {
+    return null; // Invalid monetary evidence remains uncertain, never rounded.
+   }
    return null; // A contradictory receipt must not be replaced by another status lookup.
   }
  }

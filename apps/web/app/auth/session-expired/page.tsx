@@ -3,11 +3,13 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Clock, ShieldCheck, AlertTriangle, RotateCcw } from "lucide-react";
+import { ArrowLeft, Clock, AlertTriangle } from "lucide-react";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { routes } from "@/components/site/routes";
 import { useSession } from "@/components/shared/AuthContext";
 import { useToast } from "@/components/shared/Toast";
+import { api } from "@/lib/services";
+import { dashboardDestination } from "@/lib/auth-routing";
 
 export default function SessionExpiredPage() {
   const router = useRouter();
@@ -21,19 +23,26 @@ export default function SessionExpiredPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
+    if (!email.trim() || !password) {
       setError("Please enter both email and password");
       return;
     }
     setSubmitting(true);
     setError(null);
     try {
-      await login({ email, password, role: "customer" });
+      const result = await login({ email: email.trim(), password });
+      if (result.mfaRequired) {
+        router.push(routes.mfaChallenge);
+        return;
+      }
+      const session = await api.getSession();
+      if (!session) throw new Error("Your session could not be verified. Please sign in again.");
       toastSuccess("Welcome back!");
-      router.push("/customer");
-    } catch {
-      setError("Invalid credentials. Please try again.");
-      toastError("Invalid credentials");
+      router.push(dashboardDestination(session.role));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Sign-in failed. Please try again.";
+      setError(message);
+      toastError(message);
     } finally {
       setSubmitting(false);
     }
@@ -55,13 +64,13 @@ export default function SessionExpiredPage() {
         <form onSubmit={handleLogin} className="mt-8 space-y-5">
           <div className="relative">
             <label htmlFor="reauth-email" className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-1">
-              Corporate Email
+              Email address
             </label>
             <input
               id="reauth-email"
               name="email"
               type="email"
-              placeholder="james@enterprise.ng"
+              placeholder="you@example.com"
               value={email}
               onChange={(e) => { setEmail(e.target.value); setError(null); }}
               className="h-12 w-full rounded-lg border border-obligon-border bg-white px-4 text-sm text-obligon-navy outline-none transition placeholder:text-[#92929c] focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20"

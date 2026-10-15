@@ -8,10 +8,11 @@ import { useSession } from "@/components/shared/AuthContext";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { routes } from "@/components/site/routes";
 import { useToast } from "@/components/shared/Toast";
+import { api } from "@/lib/services";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const { login } = useSession();
+  const { login, logout } = useSession();
   const { success: toastSuccess, error: toastError } = useToast();
 
   const [email, setEmail] = useState("");
@@ -35,11 +36,16 @@ export default function AdminLoginPage() {
     setError(null);
 
     try {
-      const result = await login({ email, password, rememberMe, role: "admin" });
+      const result = await login({ email: email.trim(), password, rememberMe, role: "admin" });
       if (result?.mfaRequired) {
         toastSuccess("Enter your authenticator code to continue.");
-        router.push(`${routes.mfaChallenge}?email=${encodeURIComponent(email)}`);
+        router.push(routes.mfaChallenge);
         return;
+      }
+      const session = await api.getSession();
+      if (!session || session.role !== "admin") {
+        await logout();
+        throw new Error("This account does not have admin access. Use the standard sign-in page for your account.");
       }
       toastSuccess("Admin authorization granted. Welcome back.");
       router.push(routes.adminDashboard);

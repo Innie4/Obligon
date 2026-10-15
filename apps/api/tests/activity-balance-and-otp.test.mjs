@@ -107,15 +107,15 @@ test("a top-up credits the wallet under the reference the customer paid with", (
 
 test("the processor's transaction id is returned and stored", () => {
   assert.match(flutterwave, /providerTransactionId: data\?\.id != null \? String\(data\.id\) : null/);
-  assert.match(customer, /provider_transaction_id=COALESCE\(provider_transaction_id,\$2\)/);
+  assert.match(customer, /provider_transaction_id=COALESCE\(\$2,provider_transaction_id\)/);
   // A simulated payment has no processor, and says so rather than omitting it.
   assert.match(flutterwave, /providerTransactionId: null,\n      simulated: true/);
 });
 
 test("all three completion paths pass it through", () => {
-  assert.match(webhooks, /completeTopUp\(topup, \{ providerTransactionId:/);
-  assert.match(reconcile, /completeTopUp\(topup, \{ providerTransactionId:/);
-  assert.match(customer, /completeTopUp\(topup, \{ providerTransactionId:/);
+  assert.match(webhooks, /completeTopUp\(topup,\s*\{\s*providerTransactionId:/);
+  assert.match(reconcile, /completeTopUp\(topup,\s*\{\s*providerTransactionId:/);
+  assert.match(customer, /completeTopUp\(topup,\s*\{\s*providerTransactionId:/);
 });
 
 test("the wallet shows the processor's record beside our figure", () => {
@@ -135,11 +135,9 @@ test("a verification code has a bounded number of guesses", () => {
   assert.match(migration17, /ADD COLUMN IF NOT EXISTS attempts INTEGER NOT NULL DEFAULT 0/);
   assert.match(auth, /const MAX_CODE_ATTEMPTS = 5/);
   // The counter is on the row, so it survives a restart and a resend is fresh.
-  // Read-then-write rather than `attempts + 1` in the UPDATE: the value was
-  // already fetched to decide whether to refuse, and re-deriving it in SQL means
-  // two sources of truth for the same counter.
-  assert.match(auth, /const attempts = Number\(record\.attempts \?\? 0\) \+ 1;/);
-  assert.match(auth, /SET attempts = \$2 WHERE id = \$1/);
+  // Increment the durable counter in SQL while the account/code is locked.
+  assert.match(auth, /SET attempts=attempts\+1/);
+  assert.match(auth, /attempts\+1 >= \$2/);
   // And the comparison is not short-circuiting, which on a million-key space is a
   // measurable advantage to whoever is guessing.
   assert.match(auth, /crypto\.timingSafeEqual/);
@@ -184,7 +182,7 @@ test("signup sends the customer through verification", () => {
   // It used to redirect to a page reading "Identity Verified" while nothing had
   // been verified at all. It is now one step rather than a chain of two, and the
   // detail is covered in verification-flow.test.mjs.
-  assert.match(signupForm, /router\.push\(routes\.verifyEmail\);/);
+  assert.match(signupForm, /router\.push\(withAuthReturn\(routes\.verifyEmail, returnPath\)\);/);
 });
 
 test("the success page reports what was verified, not what it wishes", () => {

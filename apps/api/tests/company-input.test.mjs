@@ -11,6 +11,12 @@ for (const value of [0, '', 'abc', 'NaN', Infinity, -100, '1,2,3', '100.001']) {
   });
 }
 test('monthly limits cannot be below daily limits', () => assert.throws(() => cardLimits(1000, 999), { status: 400 }));
+test('company card limits retain every kobo in bounded decimal input',()=>{
+ assert.deepEqual(cardLimits('100.29','1,000,000,000.00'),{dailyKobo:10029,monthlyKobo:100000000000});
+});
+test('company card limits reject coerced arrays rather than interpreting them as naira',()=>{
+ assert.throws(()=>cardLimits([100],200),{status:400});
+});
 test('reports retain requested range, scope and row filters', () => {
   assert.deepEqual(companyReportOptions({ range: '90', scope: 'transactions', vehicle: 'LAG-22', driver: 'Ada', format: 'csv' }), {
     days: 90, scope: 'transactions', format: 'csv', vehicle: 'LAG-22', driver: 'Ada', driverId: null, date: null

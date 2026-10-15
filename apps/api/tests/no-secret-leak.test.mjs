@@ -51,7 +51,6 @@ const PUBLIC_BY_DESIGN = new Set([
   "NEXT_PUBLIC_SUPABASE_URL",
   "NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY",
   "WEB_PUSH_CONTACT",
-  "SUDO_WEBHOOK_SECRET",
   "FLW_PUBLIC_KEY",
   "NEXT_PUBLIC_PAYMENT_PROVIDER",
   "PAYMENT_PROVIDER",
@@ -69,6 +68,12 @@ function isSensitive(name, value) {
   // High-entropy: a long opaque token. Short readable values prove nothing.
   return value.length >= 16 && !value.includes(" ");
 }
+
+test("Sudo webhook signing secrets are sensitive while public provider configuration remains public", () => {
+  assert.equal(isSensitive("SUDO_WEBHOOK_SECRET", "synthetic-hmac-signing-secret-only"), true);
+  assert.equal(isSensitive("SUDO_BASE_URL", "https://synthetic-sandbox.example.invalid"), false);
+  assert.equal(isSensitive("FLW_PUBLIC_KEY", "synthetic-public-provider-key-only"), false);
+});
 
 function envValues() {
   if (!hasEnv) return new Map();

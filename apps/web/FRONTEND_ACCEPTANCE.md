@@ -1,9 +1,10 @@
 # Frontend Acceptance Rule
 
 This document governs what counts as a finished, shippable control in the Obligon
-web frontend. It exists because the app is currently **frontend-only**: every
-interactive element must be honest about the fact that no production backend is
-wired yet, and must give the user a clear, visible outcome in every case.
+web frontend. The application includes a live Express API and persisted database
+workflows alongside explicit development mock datasets. Every interactive element
+must be honest about its active mode and confirmed server outcome, and give the
+user a clear, visible outcome in every case.
 
 ## The rule
 
@@ -27,7 +28,7 @@ wired yet, and must give the user a clear, visible outcome in every case.
 - **Service layer** — `@/lib/services` (`api` singleton). Components should read
   data via `api.*`, not import mock files directly. Add new endpoints to
   `ApiClient`; keep `MockApiClient` returning `@/lib/mock` data and `LiveApiClient`
-  as the `fetch` integration point for when the backend lands.
+  as the `fetch` integration point for the existing API.
 - **Mock boundary** — all fake datasets live under `lib/mock/`. They are the only
   place hardcoded fixture data belongs; components import from there, never inline.
 - **Toasts** — `useToast().success/error/warning/info(...)` for transient feedback.
@@ -37,8 +38,9 @@ wired yet, and must give the user a clear, visible outcome in every case.
   is wrapped by `Providers` (`ToastProvider > AuthProvider > ErrorBoundary`). There
   is also `app/not-found.tsx` (404) and `app/global-error.tsx`.
 - **Session** — identity is read from `useSession()` (`AuthContext`), not hardcoded
-  strings. Shells/headers fall back to their previous literal only until the real
-  session is provided by `api.getSession()`.
+  strings. Account and organization identity must come from the authenticated
+  server session. Unknown values must remain unknown rather than resemble a
+  confirmed account.
 
 ## Definition of done for a flow
 
@@ -50,7 +52,14 @@ wired yet, and must give the user a clear, visible outcome in every case.
 
 ## Status
 
-Frontend-only. No real backend, auth SDK, or persistence is connected. The service
-layer, session context, toasts, async states, and error boundaries are in place so
-the app is **backend-ready**: switching `createApiClient("mock")` to `"live"` plus
-implementing `LiveApiClient` is the only change required to go live per endpoint.
+As of 2026-10-14, API, auth and persistence integrations exist. `NEXT_PUBLIC_API_URL`
+selects live transport; development mock mode is a separate local demonstration
+and cannot establish real account, payment, support or provider outcomes.
+
+Current review evidence and remaining production checks are tracked in
+`../../reports/production-readiness-2026-10-14/`. Build, unit and isolated integration
+success do not establish live provider acceptance, deployment correctness or
+production readiness. Qualified human review is required before releasing changes
+to authentication, authorization, tenant isolation, private data access or money
+movement. Responsive browser, keyboard and user-facing error/recovery checks must
+cover each changed flow.

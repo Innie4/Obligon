@@ -147,7 +147,7 @@ Phone (Optional)
             </div>
 
             <div>
-              <label className="text-[11px] font-extrabold uppercase tracking-[1.1px] text-obligon-text block mb-1">
+              <label htmlFor="contact-requestType" className="text-[11px] font-extrabold uppercase tracking-[1.1px] text-obligon-text block mb-1">
                 Inquiry Category
               </label>
               <select

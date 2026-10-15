@@ -39,13 +39,12 @@ export async function attachUser(req, _res, next) {
         return next();
       }
       const payload = verifyAccessToken(token);
+      if (typeof payload.sid !== "string" || !payload.sid) return next();
       const user = await one(
-        payload.sid
-          ? `SELECT u.* FROM users u JOIN sessions s ON s.user_id = u.id
-             WHERE u.id = $1 AND u.status = 'active' AND s.id = $2
-               AND s.revoked_at IS NULL AND s.expires_at > now()`
-          : "SELECT * FROM users WHERE id = $1 AND status = 'active'",
-        payload.sid ? [payload.sub, payload.sid] : [payload.sub],
+        `SELECT u.* FROM users u JOIN sessions s ON s.user_id = u.id
+         WHERE u.id = $1 AND u.status = 'active' AND s.id = $2
+           AND s.revoked_at IS NULL AND s.expires_at > clock_timestamp()`,
+        [payload.sub, payload.sid],
       );
       if (user) {
         req.auth = payload;
@@ -126,6 +125,11 @@ export async function requireOrgMembership(req, _res, next) {
       ),
     );
   }
+  const primaryTypeMatches = req.user.role === "partner" ? membership.org_type === "partner" :
+    req.user.role === "mechanic" && ["mechanic", "partner"].includes(membership.org_type);
+  if (!primaryTypeMatches || req.user.orgType !== membership.org_type) {
+    return next(forbidden("Select your partner account before opening this area."));
+  }
   if (membership.member_status !== "active") {
     return next(forbidden("Your account at this organisation is not active."));
   }
@@ -135,6 +139,30 @@ export async function requireOrgMembership(req, _res, next) {
   // effect on the next request.
   req.orgRole = membership.member_role ?? "viewer";
   next();
+}
+
+/** Resolve an explicitly selected company from current database membership. */
+export async function companyContext(user, orgId, executor = { one }) {
+  const org = await executor.one(
+    `SELECT o.*, m.role AS member_role, m.status AS member_status, m.permissions, count(m.id) OVER() AS membership_count
+     FROM organizations o LEFT JOIN memberships m ON m.organization_id=o.id AND m.user_id=$2
+     WHERE o.id=$1 AND o.type='company'`, [orgId, user.id]);
+  if (!org || Number(org.membership_count) > 1 || (org.member_status && org.member_status !== "active") ||
+      (org.owner_user_id !== user.id && org.member_status !== "active")) {
+    throw forbidden("Your access to this company is not active. Ask the company owner to restore it.");
+  }
+  return { ...org, member_role: org.owner_user_id === user.id ? "owner" : org.member_role };
+}
+
+/** Company routes accept the selected company context, independently of account role. */
+export async function requireCompanyMembership(req, _res, next) {
+  try {
+    if (!req.user) throw unauthorized();
+    if (!req.user.orgId || req.user.orgType !== "company") throw forbidden("Select a company before opening its dashboard");
+    req.org = await companyContext(req.user, req.user.orgId);
+    req.orgRole = req.org.member_role;
+    next();
+  } catch (error) { next(error); }
 }
 
 /**
@@ -177,7 +205,7 @@ export async function requireOrg(req, _res, next) {
     return next(forbidden("No organization is linked to this account"));
   const membership = await one(
     `SELECT m.role AS member_role, m.permissions, o.* FROM organizations o
-     LEFT JOIN memberships m ON m.organization_id = o.id AND m.user_id = $2
+     LEFT JOIN memberships m ON m.organization_id = o.id AND m.user_id = $2 AND m.status = 'active'
      WHERE o.id = $1`,
     [orgId, req.user.id],
   );
