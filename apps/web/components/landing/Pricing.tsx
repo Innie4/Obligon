@@ -1,9 +1,8 @@
 "use client";
 
-import Image from "next/image";
+import { Check } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { assets } from "./assets";
 
 type FeatureCell = true | false | string;
 
@@ -137,7 +136,7 @@ const individualPlans: SourcePlan[] = [
       true,
       false
     ],
-    cta: "Go Gold",
+    cta: "Choose Gold",
     recommended: true
   },
   {
@@ -164,7 +163,7 @@ const individualPlans: SourcePlan[] = [
       true,
       true
     ],
-    cta: "Go Platinum"
+    cta: "Choose Platinum"
   }
 ];
 
@@ -279,11 +278,11 @@ export function Pricing() {
                 )}
               </div>
 
-              <ul className="mt-8 space-y-3.5">
+              <ul className={`mt-8 space-y-3.5 ${tab === "individual" ? "mb-8" : ""}`}>
                 {plan.features.map((feature) => (
                   <li
                     key={feature.label}
-                    className={`flex items-start gap-3 text-sm leading-5 ${
+                    className={`flex items-center gap-3 text-sm leading-5 ${
                       !feature.enabled
                         ? plan.dark
                           ? "text-white/40"
@@ -296,18 +295,17 @@ export function Pricing() {
                     }`}
                   >
                     {feature.enabled ? (
-                      <Image
-                        src={plan.dark ? assets.checkGreen : assets.checkLarge}
-                        width={10}
-                        height={20}
-                        alt=""
-                        className="shrink-0"
+                      <Check
+                        aria-hidden="true"
+                        size={12}
+                        strokeWidth={2.5}
+                        className={`shrink-0 ${plan.dark ? "text-obligon-lime" : "text-obligon-green"}`}
                       />
                     ) : (
                       <>
                         <span
                           aria-hidden="true"
-                          className="inline-flex w-[10px] shrink-0 translate-y-[3px] justify-center text-xs"
+                          className="inline-flex w-3 shrink-0 justify-center text-xs"
                         >
                           &mdash;
                         </span>

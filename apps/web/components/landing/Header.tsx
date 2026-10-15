@@ -1,11 +1,10 @@
 "use client";
 
 import { Menu, X } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { DashboardLogo } from "@/components/shared/DashboardLogo";
 import { LandingButton } from "./Button";
-import { assets } from "./assets";
 
 const navItems = [
   { label: "Home", href: "/" },
@@ -25,8 +24,8 @@ export function Header() {
     >
       <nav className="mx-auto flex h-full max-w-[1280px] items-center justify-between px-5 sm:px-8 lg:px-16">
         <div className="flex h-[95px] items-center gap-12">
-          <Link className="relative block h-[95px] w-[190px]" href="/" aria-label="Obligon LTD home">
-            <Image src={assets.obligonLogo} fill sizes="190px" alt="Obligon LTD" className="scale-[1.4] object-contain" priority />
+          <Link className="flex h-[95px] w-[190px] shrink-0 items-center justify-center" href="/" aria-label="Obligon LTD home">
+            <DashboardLogo width={112} priority />
           </Link>
 
           <div className="hidden items-center gap-8 lg:flex">

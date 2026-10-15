@@ -8,9 +8,9 @@ export function Hero() {
       className="relative overflow-hidden bg-[linear-gradient(137deg,#011554_0%,#00010c_100%)] pt-[104px]"
       data-node-id="2:3"
     >
-      <div className="absolute right-0 top-0 h-full w-1/2 bg-[radial-gradient(circle_at_center,rgba(61,106,0,0.85)_0%,rgba(61,106,0,0.22)_20%,rgba(61,106,0,0)_45%)]" />
+      <div aria-hidden="true" className="absolute right-0 top-0 hidden h-full w-1/2 bg-[radial-gradient(circle_at_center,rgba(61,106,0,0.85)_0%,rgba(61,106,0,0.22)_20%,rgba(61,106,0,0)_45%)] lg:block" />
 
-      <div className="relative mx-auto grid min-h-[764px] w-full max-w-[1280px] min-w-0 items-center gap-16 px-5 py-20 sm:px-8 lg:grid-cols-[544px_544px] lg:px-16 lg:py-0">
+      <div className="relative mx-auto grid min-h-[764px] w-full max-w-[1280px] min-w-0 items-center gap-16 px-5 py-20 sm:px-8 lg:grid-cols-2 lg:px-16 lg:py-0">
         <div className="min-w-0 max-w-[544px]">
           <h1 className="font-display text-[44px] font-extrabold leading-[1.07] text-white sm:text-[56px] lg:text-[64px] lg:leading-[72px]">
             Redefining
@@ -31,14 +31,14 @@ export function Hero() {
             <LandingButton href="/auth/signup" icon="arrow">
               Join the Future
             </LandingButton>
-            <LandingButton href="/solutions/fuelvista" variant="secondary" icon="chevron">
+            <LandingButton href="/solutions/fuelvista" variant="secondary" icon="arrow">
               Our Solutions
             </LandingButton>
           </div>
         </div>
 
         <div className="relative mx-auto w-full max-w-[calc(100vw-40px)] min-w-0 sm:max-w-[544px] lg:mt-[14px]">
-          <div className="absolute -inset-20 rounded-full bg-obligon-green/5 blur-[60px]" />
+          <div aria-hidden="true" className="absolute -inset-20 hidden rounded-full bg-obligon-green/5 blur-[60px] lg:block" />
           <div className="relative mx-auto w-full max-w-[512px] overflow-hidden rounded-3xl border border-obligon-lime/20 shadow-hero">
             <Image
               src={assets.fuelvistaCard}
