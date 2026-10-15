@@ -33,6 +33,7 @@ import { authApi, LIVE_MODE } from "@/lib/services";
 import type { UserRole } from "@/lib/services/types";
 
 import { authReturnPath, withAuthReturn } from "@/lib/company-invitation-routing";
+import { NIGERIA_LOCATIONS, NIGERIA_STATES, isNigeriaLocation, nigeriaLocationLabel } from "../../../../packages/shared/nigeria-locations.mjs";
 
 export type AuthFormMode = "login" | "signup";
 type TopRole = "customer" | "company" | "partner";
@@ -151,7 +152,6 @@ const customerFields = [
   { label: "Full Name", name: "name", placeholder: "Adaora Emeka", required: true },
   { label: "Phone Number", name: "phone", placeholder: "+234 801 234 5678", required: true },
   { label: "Personal Email Address", name: "email", placeholder: "adaora@gmail.com", type: "email", required: true },
-  { label: "City / State", name: "location", placeholder: "Lagos, Nigeria", required: true },
 ];
 
 const companyFields = [
@@ -555,6 +555,11 @@ function SignupForm() {
     if (!password) errors.password = "Password is required";
     else if (password.length < 8) errors.password = "Password must be at least 8 characters";
 
+    if (topRole === "customer") {
+      if (!NIGERIA_STATES.includes(signupForm.state ?? "")) errors.state = "Choose a State or the Federal Capital Territory";
+      if (!isNigeriaLocation(signupForm.state, signupForm.localGovernmentArea)) errors.localGovernmentArea = "Choose a local government area in your selected State / FCT";
+    }
+
     if (topRole === "partner" && selectedCapabilities.length === 0) {
       errors.capabilities = "Select at least one capability / service offered";
     }
@@ -564,8 +569,8 @@ function SignupForm() {
   };
 
   const handleSignupChange = (name: string, value: string) => {
-    setSignupForm((prev) => ({ ...prev, [name]: value }));
-    if (signupErrors[name]) setSignupErrors((prev) => ({ ...prev, [name]: "" }));
+    setSignupForm((prev) => ({ ...prev, [name]: value, ...(name === "state" ? { localGovernmentArea: "" } : {}) }));
+    if (signupErrors[name] || name === "state") setSignupErrors((prev) => ({ ...prev, [name]: "", ...(name === "state" ? { localGovernmentArea: "" } : {}) }));
     if (signupServerError) setSignupServerError(null);
   };
 
@@ -607,13 +612,16 @@ function SignupForm() {
         const signupResult = await authApi.signup({
           email,
           password,
-          fullName: signupForm.contactName ?? signupForm.name ?? email.split("@")[0],
+          fullName: signupForm.contactName ?? signupForm.contact ?? signupForm.name ?? email.split("@")[0],
           role: topRole === "customer" ? "customer" : topRole === "company" ? "company" : topRole === "partner" ? (partnerType === "mechanic" ? "mechanic" : "partner") : "customer",
           partnerType: topRole === "partner" ? (partnerTypeMap[partnerType] ?? "other") : undefined,
           organizationName: orgName,
           phone: signupForm.phone,
-          address: signupForm.location,
-          rcNumber: signupForm.rcNumber ?? signupForm.rc,
+          state: topRole === "customer" ? signupForm.state : undefined,
+          localGovernmentArea: topRole === "customer" ? signupForm.localGovernmentArea : undefined,
+          city: topRole === "customer" ? nigeriaLocationLabel(signupForm.state, signupForm.localGovernmentArea) : undefined,
+          address: topRole === "customer" ? nigeriaLocationLabel(signupForm.state, signupForm.localGovernmentArea) : signupForm.location,
+          rcNumber: topRole === "company" ? signupForm.license : signupForm.rcNumber ?? signupForm.rc,
           licenseReference: signupForm.license,
           planCode: topRole === "company" ? (sessionStorage.getItem("obligon_selected_plan") ?? undefined) : undefined,
           fuelTypes: topRole === "partner" && partnerType === "fuelStation" ? selectedCapabilities : undefined
@@ -789,6 +797,47 @@ function SignupForm() {
               )}
             </div>
           ))}
+          {topRole === "customer" && <>
+            <div>
+              <label htmlFor="signup-state" className="mb-1 block text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">State / FCT</label>
+              <select
+                id="signup-state"
+                name="state"
+                value={signupForm.state ?? ""}
+                onChange={(event) => handleSignupChange("state", event.target.value)}
+                className={fieldClass(!!signupErrors.state)}
+                required
+                autoComplete="address-level1"
+                disabled={signupSubmitting}
+                aria-invalid={!!signupErrors.state}
+                aria-describedby={signupErrors.state ? "signup-state-error" : undefined}
+              >
+                <option value="">Choose State / FCT</option>
+                {NIGERIA_STATES.map((state) => <option key={state} value={state}>{state === "Federal Capital Territory" ? `${state} (FCT)` : state}</option>)}
+              </select>
+              {signupErrors.state && <p id="signup-state-error" className="mt-1 text-xs font-medium text-[#93000a]" role="alert">{signupErrors.state}</p>}
+            </div>
+            <div>
+              <label htmlFor="signup-localGovernmentArea" className="mb-1 block text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Local Government Area / Area Council</label>
+              <select
+                id="signup-localGovernmentArea"
+                name="localGovernmentArea"
+                value={signupForm.localGovernmentArea ?? ""}
+                onChange={(event) => handleSignupChange("localGovernmentArea", event.target.value)}
+                className={fieldClass(!!signupErrors.localGovernmentArea)}
+                required
+                autoComplete="address-level2"
+                disabled={signupSubmitting || !NIGERIA_STATES.includes(signupForm.state ?? "")}
+                aria-invalid={!!signupErrors.localGovernmentArea}
+                aria-describedby={`signup-location-hint${signupErrors.localGovernmentArea ? " signup-localGovernmentArea-error" : ""}`}
+              >
+                <option value="">{signupForm.state ? "Choose LGA / Area Council" : "Choose State / FCT first"}</option>
+                {(NIGERIA_LOCATIONS[signupForm.state ?? ""] ?? []).map((area) => <option key={area} value={area}>{area}</option>)}
+              </select>
+              <p id="signup-location-hint" className="mt-1 text-xs text-obligon-text">Choose the administrative area where you live.</p>
+              {signupErrors.localGovernmentArea && <p id="signup-localGovernmentArea-error" className="mt-1 text-xs font-medium text-[#93000a]" role="alert">{signupErrors.localGovernmentArea}</p>}
+            </div>
+          </>}
         </div>
 
         {/* Partner Capabilities & Specialties */}
@@ -838,7 +887,7 @@ function SignupForm() {
               id="signup-password"
               name="password"
               type={showPassword ? "text" : "password"}
-              placeholder="Minimum 8 characters with numbers & symbols"
+              placeholder="At least 8 characters"
               value={password}
               onChange={(e) => {
                 setPassword(e.target.value);
@@ -846,9 +895,11 @@ function SignupForm() {
               }}
               className={`${fieldClass(!!signupErrors.password)} pl-10 pr-12`}
               required
+              minLength={8}
               autoComplete="new-password"
               disabled={signupSubmitting}
               aria-invalid={!!signupErrors.password}
+              aria-describedby={`signup-password-hint${signupErrors.password ? " signup-password-error" : ""}`}
             />
             <button
               type="button"
@@ -860,8 +911,9 @@ function SignupForm() {
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
+          <p id="signup-password-hint" className="mt-1 text-xs text-obligon-text">Use at least 8 characters.</p>
           {signupErrors.password && (
-            <p className="mt-1 text-xs font-medium text-[#93000a]" role="alert">{signupErrors.password}</p>
+            <p id="signup-password-error" className="mt-1 text-xs font-medium text-[#93000a]" role="alert">{signupErrors.password}</p>
           )}
         </div>
       </div>

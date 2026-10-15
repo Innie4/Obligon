@@ -43,6 +43,7 @@ function fixture(path,componentName,{user=signedUser,status='authenticated',sear
       setTimeout:fn=>{timers.push(fn);return timers.length;},clearTimeout(){},setInterval:()=>1,clearInterval(){},
       require:name=>{
         if(name==='react')return React;
+        if(name.endsWith('/nigeria-locations.mjs'))return require('../../../packages/shared/nigeria-locations.mjs');
         if(name==='next/link')return {default:'Link',__esModule:true};
         if(name==='next/navigation')return {useRouter:()=>router,usePathname:()=>'/company'};
         if(name==='@/lib/company-invitation-routing')return load('../lib/company-invitation-routing.ts');
@@ -65,7 +66,7 @@ function fixture(path,componentName,{user=signedUser,status='authenticated',sear
   let currentProps={token,children:'Fleet content',...(componentName==='MFASetupUI'?{stage:'challenge'}:{})};
   function render(props=currentProps){currentProps=props;stateIndex=0;effectIndex=0;tree=exports[componentName](props);while(pending.length)pending.shift()();return tree;}
   render();
-  return {render,events,timers,nodes:()=>nodes(tree),text:()=>textOf(tree),changeUser(value){currentUser=value;render();render();},async settle(){await flush();render();},change(id,value){nodes(tree).find(n=>n.type==='input'&&n.props.id===id).props.onChange({target:{value}});render();},async click(label){await nodes(tree).find(n=>n.type==='button'&&textOf(n)===label).props.onClick();await flush();render();},async submit(){await nodes(tree).find(n=>n.type==='form').props.onSubmit({preventDefault(){}});await flush();render();},getExports:()=>exports};
+  return {render,events,timers,nodes:()=>nodes(tree),text:()=>textOf(tree),changeUser(value){currentUser=value;render();render();},async settle(){await flush();render();},change(id,value){nodes(tree).find(n=>(n.type==='input'||n.type==='select')&&n.props.id===id).props.onChange({target:{value}});render();},async click(label){await nodes(tree).find(n=>n.type==='button'&&textOf(n)===label).props.onClick();await flush();render();},async submit(){await nodes(tree).find(n=>n.type==='form').props.onSubmit({preventDefault(){}});await flush();render();},getExports:()=>exports};
 }
 test('legacy invitation query maps to a validated internal acceptance destination',()=>{
   const helpers=fixture('../lib/company-invitation-routing.ts','companyInvitationPath',{user:null});
@@ -102,7 +103,7 @@ for(const mfa of [false,true])test(`login preserves invitation through ${mfa?'pa
 });
 test('signup for invitation creates a customer account and keeps the verification return path',async()=>{
   const ui=fixture('../components/auth/AuthForms.tsx','SignupForm',{status:'unauthenticated',user:null,search:`?returnUrl=${encodeURIComponent(destination)}`});await ui.settle();
-  ui.change('signup-name','Synthetic Invitee');ui.change('signup-email','invitee@example.invalid');ui.change('signup-phone','08012345678');ui.change('signup-location','Lagos');ui.change('signup-password','synthetic-password');await ui.submit();
+  ui.change('signup-name','Synthetic Invitee');ui.change('signup-email','invitee@example.invalid');ui.change('signup-phone','08012345678');ui.change('signup-state','Lagos');ui.change('signup-localGovernmentArea','Ikeja');ui.change('signup-password','synthetic-password');await ui.submit();
   assert.equal(ui.events.find(([kind])=>kind==='signup')[1].role,'customer');assert.equal(ui.events.at(-1)[1],`/auth/verify-email?returnUrl=${encodeURIComponent(destination)}`);
 });
 test('MFA completion keeps server role and returns to invitation with no proof in URL',async()=>{

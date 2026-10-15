@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, Bell, CircleHelp } from "lucide-react";
+import { ArrowLeft, Bell, Headset } from "lucide-react";
 import { assets } from "@/components/landing/assets";
 import { routes } from "@/components/site/routes";
 import { useSession } from "@/components/shared/AuthContext";
@@ -23,8 +23,9 @@ export function AuthShell({ children, compact = false }: AuthShellProps) {
           <Image src={assets.obligonLogo} fill sizes="150px" alt="Obligon LTD" className="scale-[1.4] object-contain" priority />
         </Link>
         <div className="flex items-center gap-3 text-obligon-text">
-          <Link href={routes.support} className="inline-flex size-9 items-center justify-center rounded-lg border border-obligon-border bg-white" aria-label="Help">
-            <CircleHelp size={17} />
+          <Link href={routes.support} className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-obligon-border bg-white px-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-obligon-green">
+            <Headset size={18} aria-hidden="true" />
+            Support
           </Link>
           {notificationPath ? <Link href={notificationPath} className="inline-flex size-9 items-center justify-center rounded-lg border border-obligon-border bg-white" aria-label="Notifications">
             <Bell size={17} />

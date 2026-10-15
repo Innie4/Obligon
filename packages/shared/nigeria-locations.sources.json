@@ -1,0 +1,209 @@
+{
+  "reviewedOn": "2026-10-15",
+  "scope": "36 states and FCT; 768 local government areas and six FCT area councils. Administrative choice validation only, not proof of residence.",
+  "directory": "https://inecnigeria.org/about/state-offices/",
+  "counts": {
+    "Abia": 17,
+    "Adamawa": 21,
+    "Akwa Ibom": 31,
+    "Anambra": 21,
+    "Bauchi": 20,
+    "Bayelsa": 8,
+    "Benue": 23,
+    "Borno": 27,
+    "Cross River": 18,
+    "Delta": 25,
+    "Ebonyi": 13,
+    "Edo": 18,
+    "Ekiti": 16,
+    "Enugu": 17,
+    "Federal Capital Territory": 6,
+    "Gombe": 11,
+    "Imo": 27,
+    "Jigawa": 27,
+    "Kaduna": 23,
+    "Kano": 44,
+    "Katsina": 34,
+    "Kebbi": 21,
+    "Kogi": 21,
+    "Kwara": 16,
+    "Lagos": 20,
+    "Nasarawa": 13,
+    "Niger": 25,
+    "Ogun": 20,
+    "Ondo": 18,
+    "Osun": 30,
+    "Oyo": 33,
+    "Plateau": 17,
+    "Rivers": 23,
+    "Sokoto": 23,
+    "Taraba": 16,
+    "Yobe": 17,
+    "Zamfara": 14
+  },
+  "sources": [
+    {
+      "url": "https://inecnigeria.org/documents/ABIA-STATE.pdf",
+      "sha256": "8793514458e89392a96921b97eb3869170c40acb6532da04f39e77735ba4754f"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/ADAMAWA-STATE.pdf",
+      "sha256": "9dab1ca486ca8b52dd9e6d07038f11894cff60bf5f9d85a8750be9ac882ae446"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/AKWA-IBOM-STATE.pdf",
+      "sha256": "03aaf233dc23736adbde44ee9ec4632381b5e4061989c7bc0241512944a6de16"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/ANAMBRA-STATE.pdf",
+      "sha256": "7096400312800aacf1c5ffb418ea92bbc57d562d08a13c47cb63eef77c19e449"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/BAUCHI-STATE.pdf",
+      "sha256": "b4e9be6fa137843e2a90c4e846abcb846f6ac8746d3f75f6c08f815e46ed6faf"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/BAYELSA-STATE.pdf",
+      "sha256": "173df873224681d05627b782cd49e0e8b9ce9199976bf4940c1457dbb840efde"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/BENUE-STATE.pdf",
+      "sha256": "f023548ec39bd9a7e4d6c2bc17ea570c0fe2cc50bdf8f5aa3410b96d4a53e209"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/BORNO-STATE.pdf",
+      "sha256": "57bc7b9c7b90850c8a4d9d9f769bd3fd803d8bbd8b86b1ab4f1d1ebe8f6cd7ff"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/CROSS-RIVER-STATE.pdf",
+      "sha256": "e346c47f1a9a24c01726c589c5e464326a9923189ea6e9649fc2d1485d622983"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/Delta-state-rec.pdf",
+      "sha256": "b43e6b3ec5ce1372bf78218a7696ba8b48e00382113e9c3e0766d3cb485e8001"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/EBONYI-STATE.pdf",
+      "sha256": "820626070ef9c2126722dc5efd5a3bf785c7b61e0fcfa08acf092395d5f0206e"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/EDO-STATE.pdf",
+      "sha256": "06fc26eedfce74964d0da483ae6bc741ddaabd5e245f45286422dcc6d334ffef"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/EKITI-STATE.pdf",
+      "sha256": "e5fde7a3ce62de2191616d6e328c509dd8266c8676d6b2bb7e426f1a5f8a2b6f"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/ENUGU-STATE.pdf",
+      "sha256": "4d3f9057d36eca99d7f2aec6006cd9b75f321c399b5e7bfa151e298c822f6554"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/FEDERAL-CAPITAL-TERRITORY.pdf",
+      "sha256": "b34adf5e19c3f2cf5c2452540cf264d88829b17e2892e904f875174ec7affafe"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/GOMBE-STATE.pdf",
+      "error": "HTTP Error 404: Document 'GOMBE-STATE.pdf' not found"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/IMO-STATE.pdf",
+      "sha256": "f279e5aed7e2508d201b44507ca5a18208deb22f3598c7b1b8b2831191217828"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/JIGAWA-STATE.pdf",
+      "sha256": "3b3ce03ea8076f07ff05fc2fa08da013b6af29260a98136e2c2169683743af05"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/KADUNA-STATE.pdf",
+      "sha256": "4f2e7d8054c231207c00a27cbf50e6113691d109ff489f0147cfb82d066557f1"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/KANO-STATE.pdf",
+      "sha256": "0e684ad6d196389678ab28b8a7f06f14ecf4386b7fcdc9e74de8230de226f474"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/KATSINA-STATE.pdf",
+      "sha256": "0bcc2b15ed3cc1e307c3dda95d8b2c9e244d3539e55fc3b68b1816500dc2ddcc"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/KEBBI-STATE.pdf",
+      "sha256": "a1182b64a248281594f20c4dbadbc730ed2495bf7988c073fb43e1fdbd0cffb7"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/KOGI-STATE.pdf",
+      "sha256": "683eca69c18eae3377027d0b4369e4977a64fa07cf263795c6147ad196e7cbf0"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/KWARA-STATE.pdf",
+      "sha256": "f04db78dd37ed9b14e819db559edd1a0c73ad313fa199b25d9410e5a235dcebb"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/LAGOS-STATE.pdf",
+      "sha256": "2732780a95d448bd1632f7544efc51b0fcc595b2c1e7e255feeed083d50d7cf1"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/NASARAWA-STATE.pdf",
+      "sha256": "c906df4c695ecd7f7d34a2f14f90b2f9d38ff885bba2b4eee276a44aa4567ef8"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/NIGER-STATE.pdf",
+      "sha256": "9a4a29b65de486bf381ce0ed4004658f36765815f386755852e3f7311f94d999"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/OGUN-STATE.pdf",
+      "sha256": "28860e79e1a0d4ceea83374f2f467a9187b7d8ae376cacfc5232a01221a2783e"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/ONDO-STATE.pdf",
+      "sha256": "f3c50932576477da24ac1ab5d01a38144741b11a3261143089b93cd570f980ea"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/OSUN-STATE.pdf",
+      "sha256": "8665ea86d8c7379dd01d295ad24549a62f1ed3b69d83aea7422ae0f9bcf123e3"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/OYO-STATE.pdf",
+      "sha256": "e9dcf4800ad18fbe33ce9f0b2e0b9a7d3e8a0c64d41b64046b05ff2ceb143cd9"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/PLATEAU-STATE.pdf",
+      "sha256": "2b59b2197791aa1ca238f507c2677a416feec9587b915b457896bba1d8d71b0c"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/RIVERS-STATE.pdf",
+      "sha256": "dd917db2507df7a8f7848b3ef112775eb1326d4bebaf8da5ea3704441d3c94b8"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/SOKOTO-STATE.pdf",
+      "sha256": "f6ce2218528ee8a285fbd18750a0e3cad92ab17bc93bc5c698d527c2c41090f1"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/TARABA-STATE.pdf",
+      "sha256": "113ab9a31c8e5fce9dae2c8966862233cef3ae62575f6b3331c1af1e8af1f53d"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/YOBE-STATE.pdf",
+      "sha256": "8289a5cc90c08107c93adc2bf6f5b0f94b73abfe79eba2c24d87033c2a609948"
+    },
+    {
+      "url": "https://inecnigeria.org/documents/ZAMFARA-STATE.pdf",
+      "sha256": "5f3884aa1a254b0ec54a753fe7fc8b1f5cc5a1c44c2ef80b550b0335d6868014"
+    }
+  ],
+  "crossCheck": {
+    "url": "https://www.osgf.gov.ng/storage/app/media/pdf/Nigeria%20Constitution%201999.pdf",
+    "sha256": "5a250a9ebafe49974288ca4146a32b46f3f7b72cd55e3e689714c8fce05a8936"
+  },
+  "gombeSource": "https://gombestate.gov.ng/pages/lgas.php",
+  "transcriptionNotes": [
+    "INEC GOMBE-STATE.pdf returned404; all11 names are from the Gombe State Government LGA page, cross-checked against OSGF First Schedule.",
+    "INEC office descriptors are not LGAs: Bauchi Kofar Ran -> Bauchi; Ohafia Amaekpu -> Ohafia; FCT AMAC -> Abuja Municipal; Borno MMC -> Maiduguri; Kogi K.K. -> Kogi.",
+    "INEC Abia last row wraps UMU-/NNEOCHI across columns -> Umu-Neochi; Isialangwa normalized to Isiala Ngwa.",
+    "INEC Kano row36 says DJ but address identifies Sumaila; OSGF First Schedule confirms Sumaila. Nassarawa normalized to Nasarawa.",
+    "INEC Kebbi omits row3; OSGF First Schedule confirms missing Arewa-Dandi.",
+    "INEC Nasarawa Eggon wraps across rows. Calabar Municipality expands the wrapped label.",
+    "OSGF First Schedule supports corrected obvious INEC typos: Katsina-Ala, Onicha, Uhunmwonde, Ado Ekiti, Nkwerre, Hadejia, Kiri Kasamma; Enugu joined/space artifacts normalized.",
+    "Case was normalized for display; official INEC spelling variants were retained elsewhere rather than fuzzy-matching arbitrary user text."
+  ]
+}

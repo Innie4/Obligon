@@ -13,6 +13,7 @@ import { notify, audit, securityLog, sendEmail, sendSms, emailTemplates } from "
 import { initials } from "../lib/format.js";
 import { supabaseAuthEnabled, supabaseSignUp, supabaseSignIn, supabaseUpdatePassword, LOCAL_AUTH_PLACEHOLDER } from "../lib/supabaseAuth.js";
 import { createWalletForAccount, isCompanyRole, walletKindForRole } from "../lib/wallets.js";
+import { nigeriaLocationLabel } from "../../../../packages/shared/nigeria-locations.mjs";
 
 const router = Router();
 
@@ -447,11 +448,15 @@ router.post("/login", authLimiter, asyncHandler(async (req, res) => {
 router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
   const {
     email, password, fullName, role = "customer", partnerType, organizationName,
-    phone, address, city, fuelTypes, planCode, rcNumber, licenseReference
+    phone, address, city, state, localGovernmentArea, fuelTypes, planCode, rcNumber, licenseReference
   } = req.body ?? {};
   if (!email || !password) throw badRequest("Email and password are required");
   if (password.length < 8) throw badRequest("Password must be at least 8 characters");
   if (!ROLES.includes(role) || role === "admin") throw badRequest("Please choose a valid account type");
+  // Customer signup stores the same canonical administrative area the selectors
+  // show. Requiring the pair here also covers direct API callers and stale forms.
+  const customerLocation = role === "customer" ? nigeriaLocationLabel(state, localGovernmentArea) : null;
+  if (role === "customer" && !customerLocation) throw badRequest("Choose a valid State / FCT and its Local Government Area / Area Council. Refresh the signup page if these choices are missing.");
   // A phone number is required, not optional. Signup verifies both the email and
   // the phone number the account was registered with, and a registration that
   // captured no phone could only ever verify one of the two — leaving the
@@ -480,7 +485,7 @@ router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
     const user = await t.one(
       `INSERT INTO users (email, password_hash, full_name, role, organization_name, phone, address, city, account_tier, partner_type, supabase_auth_uid)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
-      [email.trim(), passwordHash, fullName || email.split("@")[0], role, orgName, phone ?? null, address ?? null, city ?? null,
+      [email.trim(), passwordHash, fullName || email.split("@")[0], role, orgName, phone ?? null, customerLocation ?? address ?? null, customerLocation ?? city ?? null,
         role === "customer" ? "Standard Account" : role === "company" ? "Business Account" : "Partner Review Pending", partnerType ?? null, supabaseUid]
     );
 
