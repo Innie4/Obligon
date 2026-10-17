@@ -9,7 +9,7 @@ function load(path, dependencies = {}, expose = '') {
   const code = ts.transpileModule(fs.readFileSync(require.resolve(path), 'utf8') + expose, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true },
   }).outputText;
-  vm.runInNewContext(code, { exports, require: name => dependencies[name] ?? {}, window: { print() {} } });
+  vm.runInNewContext(code, { exports, require: name => name === 'next/dynamic' ? { default: () => 'StationProfileForm', __esModule: true } : dependencies[name] ?? {}, window: { print() {} } });
   return exports;
 }
 function nodes(node) {

@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+import type { StationProfileSubmission } from "@/lib/station-profile";
 import { PartnerApiKeys } from "./PartnerApiKeys";
 import { PartnerServiceRequests } from "./PartnerServiceRequests";
 
@@ -38,6 +40,10 @@ import type {
 } from "@/lib/services/types";
 import type { DashboardPageKey } from "@/lib/mock/dashboard-data";
 import { usePartnerNotifications } from "./PartnerNotificationsProvider";
+
+const StationProfileForm = dynamic(() => import("./StationProfileForm").then(module => module.StationProfileForm), {
+  loading: () => <p className="p-5 text-sm text-obligon-text" role="status">Loading station editor…</p>
+});
 
 const toneStyles: Record<PartnerTone, string> = {
   success: "bg-[#eaf7db] text-[#315d00]",
@@ -887,182 +893,81 @@ function DisputesPage() {
 // ============ STATION PROFILE ============
 function StationProfilePage() {
   const { success: toastSuccess, error: toastError } = useToast();
-const [selectedId, setSelectedId] = React.useState<string>();
+  const [selectedId, setSelectedId] = React.useState<string>();
   const [creating, setCreating] = React.useState(false);
-  const { data: stationList, reload: reloadList } = useAsync(() => api.request<{stations:Array<{id:string;name:string;status:string;review_note?:string}>}>("/api/partner/stations"));
-  const { status, data, error, reload } = useAsync(() => api.getPartnerStation(selectedId), [selectedId]);
-  const [form, setForm] = React.useState<{ name: string; address: string; city: string; hours: string; fuels: string; lat: string; lng: string } | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [operationsOpen, setOperationsOpen] = React.useState(false);
+  const { data: stationList, error: listError, reload: reloadList } = useAsync(() => api.request<{stations:Array<{id:string;name:string;status:string;review_note?:string}>}>("/api/partner/stations"));
+  const { status, data, error, reload } = useAsync(() => api.getPartnerStation(selectedId), [selectedId]);
+  const fetched = data?.station ?? null;
+  // useAsync retains old data while a new selection loads. Never edit/save that old station.
+  const station = !selectedId || fetched?.id === selectedId ? fetched : null;
+  const stationId = station?.id ?? "";
+  const profileReady = !selectedId || fetched?.id === selectedId;
 
-  const station = data?.station ?? null;
-  const stationId = String(station?.id ?? "");
-  const fields = form ?? (creating ? {name:"",address:"",city:"",hours:"",fuels:"Petrol, Diesel",lat:"",lng:""} : station ? {
-    name: station.name ?? "",
-    address: station.address ?? "",
-    city: station.city ?? "",
-    hours: station.hours ?? "",
-    fuels: Array.isArray(station.fuels) ? station.fuels.join(", ") : station.fuels ?? "",
-    lat: station.lat == null ? "" : String(station.lat),
-    lng: station.lng == null ? "" : String(station.lng)
-  } : null);
-
-  const setField = (key: keyof NonNullable<typeof fields>, value: string) =>
-    setForm({ ...(fields ?? { name: "", address: "", city: "", hours: "", fuels: "", lat: "", lng: "" }), [key]: value });
-
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    if (!fields) return;
+  async function handleSave(payload: StationProfileSubmission) {
     setSaving(true);
     try {
-      const payload = {
-        stationId,
-        name: fields.name,
-        address: fields.address,
-        city: fields.city,
-        hours: fields.hours || null,
-        fuels: fields.fuels.split(",").map(fuel => fuel.trim()).filter(Boolean),
-        lat: Number(fields.lat),
-        lng: Number(fields.lng)
-      };
-      const result = creating ? await api.request<{station:{id:string}}>("/api/partner/stations", {method:"POST",body:JSON.stringify(payload)}) : await mutationsApi.updateStation(payload);
-      if (creating && result && "station" in result) setSelectedId(String(result.station.id));
-      setCreating(false); reloadList();
-      toastSuccess("Station saved. New stations and changed locations require admin approval.");
-      setForm(null);
+      if (creating) {
+        const result = await api.request<{station:{id:string}}>("/api/partner/stations", { method: "POST", body: JSON.stringify(payload) });
+        setSelectedId(result.station.id);
+        setCreating(false);
+      } else {
+        if (!stationId || !profileReady) throw new Error("Wait for the selected station to load before saving.");
+        await mutationsApi.updateStation({ ...payload, stationId });
+      }
+      reloadList();
       reload();
-    } catch (err) {
-      toastError(err instanceof Error ? err.message : "Could not save the station profile.");
+      toastSuccess("Station saved. New stations and changed locations require admin approval.");
+    } catch (error) {
+      toastError(error instanceof Error ? error.message : "Could not save the station profile.");
+      throw error;
     } finally {
       setSaving(false);
     }
   }
 
+  const editor = creating || station ? (
+    <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <StationProfileForm
+        key={creating ? "new-station" : stationId}
+        station={creating ? null : station}
+        creating={creating}
+        saving={saving}
+        fuelChoices={creating ? [] : data?.prices.map(price => price.fuelType)}
+        onSubmit={handleSave}
+        onCancel={() => setCreating(false)}
+      />
+      {!creating && data ? (
+        <article className="h-fit min-w-0 rounded-xl border border-obligon-border bg-white p-5 sm:p-7">
+          <h2 className="font-display text-xl font-extrabold text-obligon-navy">Equipment</h2>
+          {data.equipment.length ? <ul className="mt-5 space-y-3">{data.equipment.map(item => <li key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-obligon-border p-3 text-xs font-bold"><span>{item.name}</span><span className="text-obligon-text">{item.status}{item.lastService ? ` · ${item.lastService}` : ""}</span></li>)}</ul> : <p className="mt-4 text-sm text-obligon-text">No equipment recorded.</p>}
+          <h2 className="mt-8 font-display text-xl font-extrabold text-obligon-navy">Recent dispensing</h2>
+          {data.logs.length ? <ul className="mt-4 space-y-3">{data.logs.slice(0, 8).map(log => <li key={log.id} className="flex flex-wrap justify-between gap-2 text-xs font-bold"><span>{log.fuelType} · {log.litres} L</span><span className="text-obligon-text">{log.time}</span></li>)}</ul> : <p className="mt-4 text-sm text-obligon-text">No dispensing recorded yet.</p>}
+        </article>
+      ) : null}
+    </div>
+  ) : <EmptyState icon={Building2} title="No station linked yet" message="Choose Add station to submit your first location for approval." />;
+
   return (
     <DashboardCanvas>
-<div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Station Profile</h1>
-          <p className="mt-1 text-sm text-obligon-text">The details customers see in the station locator.</p>
-        </div>
-        {station && !creating ? (
-          <button
-            type="button"
-            onClick={() => setOperationsOpen(true)}
-            className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border border-[#d7d8e4] bg-white px-5 text-sm font-extrabold text-obligon-navy hover:bg-[#f7f7fd] transition"
-          >
-            <Fuel size={16} />
-            Station Operations
-          </button>
-        ) : null}
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div><h1 className="font-display text-3xl font-extrabold text-obligon-navy">Station Profile</h1><p className="mt-2 text-sm text-obligon-text">The details customers see in the station locator.</p></div>
+        {station && !creating ? <button type="button" disabled={saving} onClick={() => setOperationsOpen(true)} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-obligon-border bg-white px-5 text-sm font-extrabold text-obligon-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-obligon-green disabled:opacity-50"><Fuel size={16} aria-hidden="true" />Station Operations</button> : null}
       </div>
-
-      <div className="mb-6 flex flex-wrap items-end gap-4"><label className="min-w-0 flex-1">Your stations<select aria-label="Select station" className="mt-2 block min-h-12 w-full rounded-lg border bg-white p-3" value={selectedId ?? String(station?.id ?? "")} onChange={e => {setSelectedId(e.target.value);setCreating(false);setForm(null);}}>{stationList?.stations.map(item => <option key={item.id} value={item.id}>{item.name} · {item.status}</option>)}</select></label><button type="button" className="min-h-12 rounded-lg bg-obligon-green px-6 font-bold text-white" onClick={() => {setCreating(true);setForm(null);}}>Add station</button></div>
-      {stationList?.stations.find(item => item.id === stationId)?.review_note && <p className="mb-4 rounded border p-4" role="status">Admin review: {stationList.stations.find(item => item.id === stationId)?.review_note}</p>}
-      <AsyncBoundary
-        status={status}
-        error={error?.message ?? null}
-        onRetry={reload}
-        loadingLabel="Loading station…"
-      >
-        {data ? (
-          (!station && !creating) || !fields ? (
-            <EmptyState
-              icon={Building2}
-              title="No station linked yet"
-              message="Choose Add station to submit your first location for approval."
-            />
-          ) : (
-            <form onSubmit={handleSave} className="grid gap-8 lg:grid-cols-[1fr_360px]">
-              <article className="rounded-xl border border-[#d7d8e4] bg-white p-7 shadow-sm space-y-4">
-                <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Location Details</h2>
-                {([
-                  ["name", "Station Brand & Name"],
-                  ["address", "Physical Address"],
-                  ["city", "City"],
-                  ["hours", "Opening Hours"]
-                ] as const).map(([key, label]) => (
-                  <label key={key} className="block">
-                    <span className="text-xs font-extrabold uppercase text-obligon-text">{label}</span>
-                    <input
-                      value={fields[key]}
-                      onChange={(e) => setField(key, e.target.value)}
-                      className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 font-bold text-obligon-navy outline-none focus:border-obligon-green"
-                      required={key !== "hours"}
-                    />
-                  </label>
-                ))}
-                <p className="text-sm text-obligon-text">Set the station’s exact coordinates so nearby customers can find it after approval.</p>
-                {(["lat", "lng"] as const).map(key => (
-                  <label key={key} className="block">
-                    <span className="text-xs font-extrabold uppercase text-obligon-text">{key === "lat" ? "Latitude" : "Longitude"}</span>
-                    <input required type="number" step="any" min={key === "lat" ? -90 : -180} max={key === "lat" ? 90 : 180}
-                      value={fields[key]} onChange={e => setField(key, e.target.value)}
-                      className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 font-bold text-obligon-navy" />
-                  </label>
-                ))}
-                <label className="block">
-                  <span className="text-xs font-extrabold uppercase text-obligon-text">Fuels Available</span>
-                  <input
-                    value={fields.fuels}
-                    onChange={(e) => setField("fuels", e.target.value)}
-                    className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 font-bold text-obligon-navy outline-none focus:border-obligon-green"
-                  />
-                </label>
-                <button
-                  disabled={saving}
-                  type="submit"
-                  className="mt-6 h-12 rounded-xl bg-obligon-green px-8 font-extrabold text-white shadow-green disabled:opacity-50"
-                >
-                  {saving ? <Loader2 size={18} className="animate-spin" /> : creating ? "Submit for approval" : "Save Profile"}
-                </button>
-              </article>
-
-              {!creating&&<article className="rounded-xl border border-[#d7d8e4] bg-white p-7 shadow-sm">
-                <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Equipment</h2>
-                {data.equipment.length ? (
-                  <ul className="mt-6 space-y-3">
-                    {data.equipment.map((item) => (
-                      <li key={item.id} className="flex items-center justify-between rounded-xl border border-obligon-border p-3.5">
-                        <span className="text-xs font-bold text-obligon-navy">{item.name}</span>
-                        <span className="text-xs font-extrabold text-obligon-text">
-                          {item.status}{item.lastService ? ` · ${item.lastService}` : ""}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="mt-4 text-sm font-medium text-obligon-text">No equipment recorded.</p>
-                )}
-
-                <h2 className="mt-8 font-display text-2xl font-extrabold text-obligon-navy">Recent Dispensing</h2>
-                {data.logs.length ? (
-                  <ul className="mt-4 space-y-2">
-                    {data.logs.slice(0, 8).map((log) => (
-                      <li key={log.id} className="flex items-center justify-between text-xs font-bold text-obligon-navy">
-                        <span>{log.fuelType} · {log.litres} L</span>
-                        <span className="text-obligon-text">{log.time}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="mt-4 text-sm font-medium text-obligon-text">No dispensing recorded yet.</p>
-                )}
-              </article>}
-            </form>
-          )
-) : null}
-      </AsyncBoundary>
-      {operationsOpen && station && stationId ? (
-        <StationOperationsModal
-          stationId={stationId}
-          onClose={() => setOperationsOpen(false)}
-          onDone={() => {
-            reload();
-            setOperationsOpen(false);
-          }}
-        />
-      ) : null}
+      <div className="mb-6 flex flex-wrap items-end gap-4">
+        <label className="min-w-0 flex-1 text-sm font-bold text-obligon-navy">Your stations
+          <select aria-label="Select station" disabled={saving || creating} className="mt-2 block min-h-12 w-full min-w-0 rounded-xl border border-obligon-border bg-white p-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-obligon-green disabled:opacity-50" value={selectedId ?? stationId} onChange={event => { setSelectedId(event.target.value); setOperationsOpen(false); }}>
+            {!stationList?.stations.length ? <option value="">No stations yet</option> : null}
+            {stationList?.stations.map(item => <option key={item.id} value={item.id}>{item.name} · {item.status}</option>)}
+          </select>
+        </label>
+        <button type="button" disabled={saving || creating} className="min-h-12 rounded-xl bg-obligon-green px-5 text-sm font-bold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-obligon-green disabled:opacity-50" onClick={() => { setCreating(true); setOperationsOpen(false); }}>Add station</button>
+      </div>
+      {listError ? <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-obligon-border bg-white p-4 text-sm" role="alert"><span>The station list could not load: {listError.message}</span><button type="button" onClick={reloadList} className="min-h-11 rounded-lg border border-obligon-border px-3 font-bold">Retry station list</button></div> : null}
+      {!creating && stationList?.stations.find(item => item.id === stationId)?.review_note ? <p className="mb-4 rounded-xl border border-obligon-border bg-white p-4 text-sm" role="status">Admin review: {stationList.stations.find(item => item.id === stationId)?.review_note}</p> : null}
+      {creating ? editor : <AsyncBoundary status={status === "error" ? "error" : profileReady ? status : "loading"} error={error?.message ?? null} onRetry={reload} loadingLabel="Loading station…">{data && profileReady ? editor : null}</AsyncBoundary>}
+      {operationsOpen && station && !creating ? <StationOperationsModal key={stationId} stationId={stationId} onClose={() => setOperationsOpen(false)} onDone={() => { reload(); setOperationsOpen(false); }} /> : null}
     </DashboardCanvas>
   );
 }

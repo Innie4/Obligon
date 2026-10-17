@@ -9,7 +9,7 @@ const text = tree => nodes(tree).flatMap(node => node.props?.children ?? []).fil
 function load(path, { dependencies = {}, globals = {}, expose = '' } = {}) {
  const exports = {};
  const code = ts.transpileModule(fs.readFileSync(require.resolve(path), 'utf8') + expose, { fileName: require.resolve(path), compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }).outputText;
- vm.runInNewContext(code, { exports, Error, URLSearchParams, setTimeout, clearTimeout, require: name => dependencies[name] ?? {}, ...globals });
+ vm.runInNewContext(code, { exports, Error, URLSearchParams, setTimeout, clearTimeout, require: name => name === 'next/dynamic' ? { default: () => 'StationProfileForm', __esModule: true } : dependencies[name] ?? {}, ...globals });
  return exports;
 }
 function hooks() {
