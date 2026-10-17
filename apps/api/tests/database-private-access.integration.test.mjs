@@ -122,7 +122,7 @@ integration("permission maintenance denies every application-private table and c
   await pool.query("REVOKE ALL ON public.settlement_accounts FROM anon,authenticated; GRANT SELECT(account_number),UPDATE(account_number) ON public.settlement_accounts TO PUBLIC,anon,authenticated;");
   assert.equal((await pool.query("SELECT has_table_privilege('anon','public.settlement_accounts','SELECT') AS table_read,has_column_privilege('anon','public.settlement_accounts','account_number','SELECT') AS column_read")).rows[0].table_read, false);
   assert.equal((await pool.query("SELECT has_column_privilege('anon','public.settlement_accounts','account_number','SELECT') AS allowed")).rows[0].allowed, true);
-  assert.deepEqual(await runMigrations(pool, { log: () => {} }), [migrationName]);
+  assert.deepEqual(await runMigrations(pool, { log: () => {} }), [migrationName, "033_account_access_expiry.sql"]);
   const actualTables = (await pool.query("SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname='public' ORDER BY tablename")).rows.map(row => row.tablename);
   assert.deepEqual([...privateTables, ...catalogs].sort(), actualTables, "Explicit permission scope must cover each application table, without unrelated objects");
   for (const role of ["anon", "authenticated"]) {

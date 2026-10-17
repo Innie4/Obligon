@@ -1,0 +1,50 @@
+{
+  "baseline": "088d0f0cdfb5adcecf12d25861eedbf0c9d665c6",
+  "sourceRevision": "79e3a0f94bda6c551d2130cd656f94990b6b73979ac2edf9dfee87c4d914c002",
+  "files": [
+    {
+      "path": "apps/api/src/lib/accountAccess.js",
+      "sha256": "1be74d6652373406c9d39385a3880b1eb95beeabf08153ae29615690eb3bd36c"
+    },
+    {
+      "path": "apps/api/src/lib/sse.js",
+      "sha256": "690501d719a9fbc02fdce9a17dc2a44db61212cb01bdc64ff0a649804bf23ab0"
+    },
+    {
+      "path": "apps/api/src/lib/temporaryPartnerAccount.js",
+      "sha256": "489d93b6d1bb299b8c0776b8511b4869eb1a2cb3f40e30b2cb866afcd140a4a0"
+    },
+    {
+      "path": "apps/api/src/middleware/auth.js",
+      "sha256": "743ff7e56c826dd964758af5e9f2d2349e349bb84798409e83336a1685b23f8f"
+    },
+    {
+      "path": "apps/api/src/migrations/033_account_access_expiry.sql",
+      "sha256": "ffd835e5fbc6b5fa9ee9295565f2a1f79177f34d6581e618fcb8ffdf336b5c52"
+    },
+    {
+      "path": "apps/api/src/routes/auth.routes.js",
+      "sha256": "6a46399f27e8ba77032886374fe5e351d93c3f4bd632ed6802b346a89872eb08"
+    },
+    {
+      "path": "apps/api/src/scripts/grant-partner-test-access.js",
+      "sha256": "8778fd5d0ca87fd9655509cccc3fc6f5fc9a792213096e7d18179ceac7dca909"
+    },
+    {
+      "path": "apps/api/tests/account-access.test.mjs",
+      "sha256": "9923b4119821d5ec1f1a747d64f9e5dd8188df04e9a5b194cd1906a8fa1b6843"
+    },
+    {
+      "path": "apps/api/tests/database-private-access.integration.test.mjs",
+      "sha256": "e386358bb2a2971e26a9db3a1f9db4e9e1101247439016f1c3cfe192eb57c280"
+    },
+    {
+      "path": "apps/api/tests/partner-test-expiry.integration.test.mjs",
+      "sha256": "90c2988fa809f766c85a40c5d95725dbf1349a2e5b5b0ad715b6b581d53f2437"
+    },
+    {
+      "path": "apps/api/tests/sse-access-expiry.test.mjs",
+      "sha256": "5b10f4a33d09bae13fee8edcdca262b68230e5d6c07cb12b43d0538c0641e510"
+    }
+  ]
+}

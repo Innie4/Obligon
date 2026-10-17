@@ -10,14 +10,15 @@ const clients = new Set();
 
 async function streamAuthorized(req) {
   if (!req.user || !req.auth || req.auth.exp*1000 <= Date.now()) return false;
-  const user=await one("SELECT id FROM users WHERE id=$1 AND status='active'",[req.user.id]);
+  const user=await one("SELECT id,access_expires_at FROM users WHERE id=$1 AND status='active' AND (access_expires_at IS NULL OR access_expires_at>clock_timestamp())",[req.user.id]);
   if(!user) return false;
   if(req.auth.sid && !await one("SELECT id FROM sessions WHERE id=$1 AND user_id=$2 AND revoked_at IS NULL AND expires_at>now()",[req.auth.sid,req.user.id])) return false;
   if(req.user.orgId && !await one("SELECT id FROM memberships WHERE organization_id=$1 AND user_id=$2 AND status='active'",[req.user.orgId,req.user.id])) return false;
-  return true;
+  return user;
 }
 export async function sseHandler(req, res) {
-  if(!await streamAuthorized(req)) return res.status(401).json({error:"Session or membership expired"});
+  const user = await streamAuthorized(req);
+  if(!user) return res.status(401).json({error:"Session or membership expired"});
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache, no-transform",
@@ -25,26 +26,49 @@ export async function sseHandler(req, res) {
     "X-Accel-Buffering": "no"
   });
   res.write(`event: connected\ndata: {"ok":true}\n\n`);
-  const client = { res, userId: req.user?.id ?? null, orgId: req.user?.orgId ?? null, role: req.user?.role ?? null };
+  const deadline = Math.min(req.auth.exp * 1000,
+    user.access_expires_at == null ? Infinity : new Date(user.access_expires_at).getTime());
+  const client = { res, deadline, userId: req.user?.id ?? null, orgId: req.user?.orgId ?? null, role: req.user?.role ?? null };
   clients.add(client);
+  let closed = false;
+  let heartbeat;
+  let expiration;
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    clients.delete(client);
+    clearInterval(heartbeat);
+    clearTimeout(expiration);
+    if (!res.writableEnded) res.end();
+  };
+  client.close = close;
+  // Enforce the fixed account deadline even while the scheduler is disabled,
+  // between heartbeats, and before any event can be sent at the cutoff.
+  expiration = setTimeout(close, Math.max(0, deadline - Date.now()));
   let checking=false;
-  const heartbeat = setInterval(async () => {
-    if(checking) return; checking=true;
-    try { if(!await streamAuthorized(req)){clients.delete(client);clearInterval(heartbeat);res.end();return;} res.write(`: ping\n\n`); }
-    catch {clients.delete(client);clearInterval(heartbeat);res.end();}
+  heartbeat = setInterval(async () => {
+    if(closed || checking) return; checking=true;
+    try {
+      const authorized = await streamAuthorized(req);
+      if (closed) return;
+      if(Date.now()>=deadline || !authorized || res.writableEnded){close();return;}
+      res.write(`: ping\n\n`);
+    }
+    catch {close();}
     finally {checking=false;}
   }, 25000);
-  req.on("close", () => {
-    clearInterval(heartbeat);
-    clients.delete(client);
-  });
+  req.on("close", close);
 }
 
 function send(client, event, payload) {
+  if (Date.now() >= client.deadline) {
+    client.close();
+    return;
+  }
   try {
     client.res.write(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`);
   } catch {
-    clients.delete(client);
+    client.close();
   }
 }
 

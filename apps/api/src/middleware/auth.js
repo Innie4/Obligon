@@ -2,6 +2,19 @@ import { createHash } from "node:crypto";
 import { verifyAccessToken } from "../lib/security.js";
 import { unauthorized, forbidden } from "../lib/errors.js";
 import { one } from "../db.js";
+import { TEMPORARY_PARTNER_ACCOUNT } from "../lib/temporaryPartnerAccount.js";
+
+function finishAuthentication(req, next) {
+  // The shared inspection account cannot create credentials, other principals,
+  // financial effects or business records that outlive its account deadline.
+  const allowedAuthWrites = new Set(["/api/auth/login", "/api/auth/refresh", "/api/auth/logout"]);
+  if (req.user?.id === TEMPORARY_PARTNER_ACCOUNT.userId && req.user.access_expires_at != null &&
+      !["GET", "HEAD", "OPTIONS"].includes(req.method) &&
+      !allowedAuthWrites.has(req.originalUrl.split("?")[0])) {
+    return next(forbidden("This temporary testing account provides read-only dashboard access."));
+  }
+  next();
+}
 
 /** Attach req.user when a valid bearer token is present. Optional (public or hybrid routes). */
 export async function attachUser(req, _res, next) {
@@ -31,18 +44,20 @@ export async function attachUser(req, _res, next) {
           JOIN memberships m ON m.organization_id=o.id AND m.user_id=u.id
           JOIN subscriptions s ON s.organization_id=o.id JOIN pricing_plans p ON p.code=s.plan_code
           WHERE k.token_hash=$1 AND k.revoked_at IS NULL AND k.expires_at>now() AND u.status='active'
+          AND (u.access_expires_at IS NULL OR u.access_expires_at>clock_timestamp())
           AND m.status='active' AND m.role IN('owner','admin') AND s.status='active'
           AND s.current_period_start<=now() AND s.current_period_end>now() AND p.active AND p.features @> '["API access"]'::jsonb`,
           [createHash("sha256").update(token).digest("hex")],
         );
         if (user) req.user = user;
-        return next();
+        return finishAuthentication(req, next);
       }
       const payload = verifyAccessToken(token);
       if (typeof payload.sid !== "string" || !payload.sid) return next();
       const user = await one(
         `SELECT u.* FROM users u JOIN sessions s ON s.user_id = u.id
          WHERE u.id = $1 AND u.status = 'active' AND s.id = $2
+           AND (u.access_expires_at IS NULL OR u.access_expires_at > clock_timestamp())
            AND s.revoked_at IS NULL AND s.expires_at > clock_timestamp()`,
         [payload.sub, payload.sid],
       );
@@ -58,7 +73,7 @@ export async function attachUser(req, _res, next) {
       // invalid/expired token -> anonymous
     }
   }
-  next();
+  finishAuthentication(req, next);
 }
 
 export function requireAuth(req, _res, next) {

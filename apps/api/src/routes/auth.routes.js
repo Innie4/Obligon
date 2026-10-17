@@ -14,6 +14,8 @@ import { initials } from "../lib/format.js";
 import { supabaseAuthEnabled, supabaseSignUp, supabaseSignIn, supabaseUpdatePassword, LOCAL_AUTH_PLACEHOLDER } from "../lib/supabaseAuth.js";
 import { createWalletForAccount, isCompanyRole, walletKindForRole } from "../lib/wallets.js";
 import { nigeriaLocationLabel } from "../../../../packages/shared/nigeria-locations.mjs";
+import { accountAccessExpired } from "../lib/accountAccess.js";
+import { TEMPORARY_PARTNER_ACCOUNT } from "../lib/temporaryPartnerAccount.js";
 
 const router = Router();
 
@@ -245,9 +247,13 @@ async function issueSession(req, user, remember, executor = { query: q, one }) {
   const refresh = randomToken(48);
   const session = await executor.one(
     `INSERT INTO sessions (id, user_id, refresh_token_hash, remember_me, user_agent, ip, expires_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING expires_at`,
+     SELECT $1,$2,$3,$4,$5,$6,LEAST($7::timestamptz,u.access_expires_at)
+     FROM users u WHERE u.id=$2 AND u.status='active'
+       AND (u.access_expires_at IS NULL OR u.access_expires_at>clock_timestamp())
+     RETURNING expires_at`,
     [sessionId, user.id, hashToken(refresh), Boolean(remember), req.headers["user-agent"] ?? null, req.ip ?? null, refreshExpiry(remember)]
   );
+  if (!session) throw unauthorized("Account access has expired. Please contact support.");
   const accessToken = signAccessToken(user, await loadOrgForUser(user, executor), sessionId);
   return { sessionId, accessToken, refreshToken: signRefreshToken(sessionId, user.id, null, session.expires_at) + "." + refresh };
 }
@@ -260,7 +266,7 @@ async function issueMfaChallenge(user, rememberMe) {
   const challengeToken = `${id}.${randomToken()}`;
   await tx(async t => {
     const current = await t.one("SELECT * FROM users WHERE id=$1 FOR UPDATE", [user.id]);
-    if (!current || current.status !== "active" || current.role !== user.role ||
+    if (!current || current.status !== "active" || accountAccessExpired(current) || current.role !== user.role ||
         !current.two_factor_enabled || current.two_factor_secret !== user.two_factor_secret ||
         current.password_hash !== user.password_hash || current.supabase_auth_uid !== user.supabase_auth_uid ||
         current.password_hash.startsWith(pendingPasswordPrefix)) {
@@ -303,7 +309,7 @@ async function completeMfaChallenge(req, challengeToken, token) {
     let context;
     try { context = JSON.parse(record.code_hash); } catch { return null; }
     if (!codeMatches({ code_hash: context?.hash }, challengeToken)) return null;
-    if (record.attempts >= MAX_CODE_ATTEMPTS || user.status !== "active" || !user.two_factor_enabled ||
+    if (record.attempts >= MAX_CODE_ATTEMPTS || user.status !== "active" || accountAccessExpired(user) || !user.two_factor_enabled ||
         (user.locked_until && new Date(user.locked_until) > new Date()) ||
         context.role !== user.role || context.secretHash !== sha256(user.two_factor_secret) ||
         context.credentialHash !== sha256(user.password_hash) || user.password_hash.startsWith(pendingPasswordPrefix)) {
@@ -334,7 +340,7 @@ async function verifyCurrentPassword(user, password) {
 // lock. Middleware may have read them before a reset or logout committed.
 async function currentAuthenticatedUser(req, t) {
   const user = await t.one("SELECT * FROM users WHERE id=$1 FOR UPDATE", [req.user.id]);
-  if (!user || user.status !== "active" || user.password_hash !== req.user.password_hash ||
+  if (!user || user.status !== "active" || accountAccessExpired(user) || user.password_hash !== req.user.password_hash ||
       user.supabase_auth_uid !== req.user.supabase_auth_uid || user.password_hash.startsWith(pendingPasswordPrefix)) {
     throw unauthorized("Account changed. Please sign in again.");
   }
@@ -363,12 +369,17 @@ router.post("/login", authLimiter, asyncHandler(async (req, res) => {
     await securityLog({ event: "login_failed_unknown_email", severity: "warning", ip: req.ip, metadata: { email } });
     throw unauthorized("Invalid email or password");
   }
+  if (accountAccessExpired(user)) throw unauthorized("Account access has expired. Please contact support.");
   if (user.locked_until && new Date(user.locked_until) > new Date()) {
     throw unauthorized("Account temporarily locked after repeated failed attempts. Try again later or reset your password.");
   }
   if (user.password_hash.startsWith(pendingPasswordPrefix)) throw passwordRecoveryError();
   let ok;
-  if (supabaseAuthEnabled()) {
+  const temporaryLease = user.id === TEMPORARY_PARTNER_ACCOUNT.userId && user.access_expires_at != null;
+  if (temporaryLease && user.supabase_auth_uid) throw unauthorized("Temporary testing credentials changed. Contact support.");
+  // Keep the explicitly provisioned lease local: creating a permanent provider
+  // identity here would leave credentials behind after the testing deadline.
+  if (supabaseAuthEnabled() && !temporaryLease) {
     if (user.supabase_auth_uid) {
       ok = Boolean(await supabaseSignIn({ email: user.email, password }));
     } else {
@@ -411,7 +422,7 @@ router.post("/login", authLimiter, asyncHandler(async (req, res) => {
 
   const completed = await tx(async t => {
     const current = await t.one("SELECT * FROM users WHERE id=$1 FOR UPDATE", [user.id]);
-    if (!current || current.status !== "active" || current.role !== user.role ||
+    if (!current || current.status !== "active" || accountAccessExpired(current) || current.role !== user.role ||
         current.password_hash !== user.password_hash || current.supabase_auth_uid !== user.supabase_auth_uid ||
         current.two_factor_enabled !== user.two_factor_enabled || current.two_factor_secret !== user.two_factor_secret ||
         current.password_hash.startsWith(pendingPasswordPrefix) ||
@@ -605,7 +616,7 @@ router.post("/refresh", asyncHandler(async (req, res) => {
     await securityLog({ userId: payload.sub, event: "refresh_token_reuse", severity: "critical", ip: req.ip });
     throw unauthorized("Session invalid. Please sign in again.");
   }
-  const user = await one("SELECT * FROM users WHERE id = $1 AND status = 'active'", [payload.sub]);
+  const user = await one("SELECT * FROM users WHERE id = $1 AND status = 'active' AND (access_expires_at IS NULL OR access_expires_at>clock_timestamp())", [payload.sub]);
   if (!user) throw unauthorized("Account unavailable");
   const hasSelection = payload.org !== undefined || payload.orgType !== undefined;
   if (hasSelection && (payload.orgType !== "company" || typeof payload.org !== "string" || !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(payload.org))) throw unauthorized("This company context is invalid. Sign in again.");

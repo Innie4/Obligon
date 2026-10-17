@@ -1,0 +1,63 @@
+{
+  "sourceRevision": "79e3a0f94bda6c551d2130cd656f94990b6b73979ac2edf9dfee87c4d914c002",
+  "api": {
+    "counts": {
+      "tests": 1067,
+      "pass": 1065,
+      "fail": 0,
+      "skipped": 2
+    },
+    "exitCode": 0,
+    "logSha256": "83dff5b75e843c02160b3db1190c4c2316617758b12b6e8aea60d82a2fa8f705",
+    "localHttpSmokeCasesIncluded": 13,
+    "skips": [
+      "missing real .env credential comparison",
+      "missing real .env history comparison"
+    ]
+  },
+  "web": {
+    "tests": 284,
+    "pass": 284,
+    "fail": 0,
+    "skip": 0,
+    "exitCode": 0,
+    "evidence": "fresh tool command output; frontend unchanged"
+  },
+  "newFocusedCases": {
+    "integration": 31,
+    "accountExpiryUnit": 3,
+    "sseRaceUnit": 1,
+    "includedInApiTotal": true
+  },
+  "reproductions": {
+    "priorAuth": {
+      "failed": 3,
+      "logSha256": "830f4f006476d64399e874fd31f348d8ea60920ad9b517ba364a84acc70dce86"
+    },
+    "stationHistoryBeforeFix": {
+      "failed": 2,
+      "logSha256": "a9ca79747aab6eff0d45e12d1d7d335b048dc571bbe6e2d5892c973c49814328"
+    }
+  },
+  "offlineScan": {
+    "productionVulnerabilities": 0,
+    "secrets": 0,
+    "databaseUpdatedAt": "2026-10-14T13:10:32Z",
+    "liveRegistryAudit": false,
+    "sha256": "c9eb2996002d092124e587db3b35062b69528c6d6bc28ba19a9125933859e934"
+  },
+  "productionMutation": false,
+  "activated": false,
+  "pushed": false,
+  "qualifiedHumanReview": {
+    "status": "user-attested approval of exact patch",
+    "sourceRevision": "79e3a0f94bda6c551d2130cd656f94990b6b73979ac2edf9dfee87c4d914c002",
+    "recordedAt": "2026-10-17T18:17:47.991103+00:00"
+  },
+  "cleanup": "local verification API stopped; disposable PostgreSQL cleanup pending",
+  "independentReview": {
+    "status": "approve",
+    "sourceHashesVerified": 11,
+    "remainingConcreteFindings": 0
+  }
+}

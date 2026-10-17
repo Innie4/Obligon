@@ -1,0 +1,930 @@
+diff --git a/apps/api/src/lib/accountAccess.js b/apps/api/src/lib/accountAccess.js
+new file mode 100644
+index 0000000..746a8e9
+--- /dev/null
++++ b/apps/api/src/lib/accountAccess.js
+@@ -0,0 +1,5 @@
++/** NULL preserves ordinary account access; malformed deadlines fail closed. */
++export function accountAccessExpired(user, now = Date.now()) {
++  return user?.access_expires_at != null &&
++    !(new Date(user.access_expires_at).getTime() > now);
++}
+diff --git a/apps/api/src/lib/sse.js b/apps/api/src/lib/sse.js
+index ae2297b..24a2903 100644
+--- a/apps/api/src/lib/sse.js
++++ b/apps/api/src/lib/sse.js
+@@ -13 +13 @@ async function streamAuthorized(req) {
+-  const user=await one("SELECT id FROM users WHERE id=$1 AND status='active'",[req.user.id]);
++  const user=await one("SELECT id,access_expires_at FROM users WHERE id=$1 AND status='active' AND (access_expires_at IS NULL OR access_expires_at>clock_timestamp())",[req.user.id]);
+@@ -17 +17 @@ async function streamAuthorized(req) {
+-  return true;
++  return user;
+@@ -20 +20,2 @@ export async function sseHandler(req, res) {
+-  if(!await streamAuthorized(req)) return res.status(401).json({error:"Session or membership expired"});
++  const user = await streamAuthorized(req);
++  if(!user) return res.status(401).json({error:"Session or membership expired"});
+@@ -28 +29,3 @@ export async function sseHandler(req, res) {
+-  const client = { res, userId: req.user?.id ?? null, orgId: req.user?.orgId ?? null, role: req.user?.role ?? null };
++  const deadline = Math.min(req.auth.exp * 1000,
++    user.access_expires_at == null ? Infinity : new Date(user.access_expires_at).getTime());
++  const client = { res, deadline, userId: req.user?.id ?? null, orgId: req.user?.orgId ?? null, role: req.user?.role ?? null };
+@@ -29,0 +33,15 @@ export async function sseHandler(req, res) {
++  let closed = false;
++  let heartbeat;
++  let expiration;
++  const close = () => {
++    if (closed) return;
++    closed = true;
++    clients.delete(client);
++    clearInterval(heartbeat);
++    clearTimeout(expiration);
++    if (!res.writableEnded) res.end();
++  };
++  client.close = close;
++  // Enforce the fixed account deadline even while the scheduler is disabled,
++  // between heartbeats, and before any event can be sent at the cutoff.
++  expiration = setTimeout(close, Math.max(0, deadline - Date.now()));
+@@ -31,4 +49,9 @@ export async function sseHandler(req, res) {
+-  const heartbeat = setInterval(async () => {
+-    if(checking) return; checking=true;
+-    try { if(!await streamAuthorized(req)){clients.delete(client);clearInterval(heartbeat);res.end();return;} res.write(`: ping\n\n`); }
+-    catch {clients.delete(client);clearInterval(heartbeat);res.end();}
++  heartbeat = setInterval(async () => {
++    if(closed || checking) return; checking=true;
++    try {
++      const authorized = await streamAuthorized(req);
++      if (closed) return;
++      if(Date.now()>=deadline || !authorized || res.writableEnded){close();return;}
++      res.write(`: ping\n\n`);
++    }
++    catch {close();}
+@@ -37,4 +60 @@ export async function sseHandler(req, res) {
+-  req.on("close", () => {
+-    clearInterval(heartbeat);
+-    clients.delete(client);
+-  });
++  req.on("close", close);
+@@ -43,0 +64,4 @@ function send(client, event, payload) {
++  if (Date.now() >= client.deadline) {
++    client.close();
++    return;
++  }
+@@ -47 +71 @@ function send(client, event, payload) {
+-    clients.delete(client);
++    client.close();
+diff --git a/apps/api/src/lib/temporaryPartnerAccount.js b/apps/api/src/lib/temporaryPartnerAccount.js
+index 5638247..c3d041c 100644
+--- a/apps/api/src/lib/temporaryPartnerAccount.js
++++ b/apps/api/src/lib/temporaryPartnerAccount.js
+@@ -5,2 +5,2 @@ import { env } from "../config/env.js";
+-// Retired test access: approved deployment suspends the known account and
+-// revokes existing application sessions. Fixtures may opt in only outside production.
++// Startup never grants access. Only the reviewed operator command can create a
++// fixed production lease; legacy fixtures may opt in outside production.
+@@ -39 +39,4 @@ export async function ensureTemporaryPartnerAccount({ enabled = TEMPORARY_PARTNE
+-      "SELECT id, email, role FROM users WHERE id = $1 OR lower(email) = lower($2) FOR UPDATE",
++      `SELECT id, email, role, status, access_expires_at,
++              access_expires_at > clock_timestamp()
++                AND access_expires_at <= clock_timestamp() + interval '24 hours' AS grant_active
++       FROM users WHERE id = $1 OR lower(email) = lower($2) FOR UPDATE`,
+@@ -58 +61,2 @@ export async function ensureTemporaryPartnerAccount({ enabled = TEMPORARY_PARTNE
+-    if (enabled && user && !org) {
++    const preserveGrant = user?.status === "active" && user.grant_active === true;
++    if ((enabled || preserveGrant) && user && !org) {
+@@ -65 +69 @@ export async function ensureTemporaryPartnerAccount({ enabled = TEMPORARY_PARTNE
+-    if (!enabled) {
++    if (!enabled && !preserveGrant) {
+@@ -72,0 +77 @@ export async function ensureTemporaryPartnerAccount({ enabled = TEMPORARY_PARTNE
++      await t.query("UPDATE partner_api_keys SET revoked_at = now() WHERE (organization_id = $1 OR created_by = $2) AND revoked_at IS NULL", [account.orgId, account.userId]);
+@@ -78 +83 @@ export async function ensureTemporaryPartnerAccount({ enabled = TEMPORARY_PARTNE
+-        "SELECT role, email FROM memberships WHERE organization_id = $1 AND user_id = $2",
++        "SELECT role, email, status FROM memberships WHERE organization_id = $1 AND user_id = $2",
+@@ -81 +86,2 @@ export async function ensureTemporaryPartnerAccount({ enabled = TEMPORARY_PARTNE
+-      if (!membership || membership.role !== "owner" || membership.email.toLowerCase() !== account.email.toLowerCase()) {
++      if (!membership || membership.role !== "owner" || membership.email.toLowerCase() !== account.email.toLowerCase() ||
++          (preserveGrant && membership.status !== "active")) {
+@@ -123,0 +130,110 @@ export async function ensureTemporaryPartnerAccount({ enabled = TEMPORARY_PARTNE
++
++function accessError(message) {
++  return Object.assign(new Error(message), { name: "TemporaryPartnerAccessError" });
++}
++
++/**
++ * Explicit operator action, never called by startup or an HTTP endpoint.
++ * The persisted deadline also bounds the read-only runtime access policy; a
++ * subscription alone is not the authorization cutoff. No provider is contacted.
++ */
++export async function grantTemporaryPartnerAccess({ password } = {}) {
++  if (typeof password !== "string" || password.length < 16 || Buffer.byteLength(password, "utf8") > 72) {
++    throw accessError("Supply an explicit password of at least 16 characters and at most 72 UTF-8 bytes.");
++  }
++  return tx(async (t) => {
++    await t.query("SELECT pg_advisory_xact_lock(hashtext($1))", ["obligon:temporary-partner-account"]);
++    const users = await t.query(
++      `SELECT *, access_expires_at > clock_timestamp() AS grant_active
++       FROM users WHERE id=$1 OR lower(email)=lower($2) FOR UPDATE`, [account.userId, account.email],
++    );
++    const user = users[0];
++    const organizations = await t.query("SELECT * FROM organizations WHERE id=$1 OR owner_user_id=$2 FOR UPDATE", [account.orgId, account.userId]);
++    const org = organizations[0];
++    if (users.length > 1 || (user && (user.id !== account.userId ||
++        user.email.toLowerCase() !== account.email || user.role !== "partner"))) {
++      throw accessError("Temporary partner identity conflicts with existing data; no changes were made.");
++    }
++    if (organizations.length > 1 || (org && (org.id !== account.orgId || org.owner_user_id !== account.userId || org.type !== "partner"))) {
++      throw accessError("Temporary partner organization conflicts with existing data; no changes were made.");
++    }
++    if (Boolean(user) !== Boolean(org)) {
++      throw accessError("The temporary account and organization must either both exist or both be absent.");
++    }
++    if (user?.grant_active) throw accessError("An active temporary grant already exists; it cannot be reset or extended.");
++    if (user && (user.two_factor_enabled || user.two_factor_secret || user.two_factor_backup_codes?.length || user.supabase_auth_uid)) {
++      throw accessError("Existing MFA or linked provider credentials require separate review; no changes were made.");
++    }
++    const memberships = await t.query(
++      "SELECT * FROM memberships WHERE organization_id=$1 OR user_id=$2 FOR UPDATE", [account.orgId, account.userId],
++    );
++    if ((user && memberships.length !== 1) || (!user && memberships.length) || memberships.some((member) =>
++      member.organization_id !== account.orgId || member.user_id !== account.userId ||
++      member.email.toLowerCase() !== account.email || member.role !== "owner" || member.status !== "active")) {
++      throw accessError("The temporary identity must have only its original active owner membership.");
++    }
++    const wallets = await t.query("SELECT * FROM wallets WHERE user_id=$1 OR organization_id=$2 FOR UPDATE", [account.userId, account.orgId]);
++    if (wallets.some((wallet) => String(wallet.balance_kobo) !== "0" || wallet.kind !== "individual" ||
++        wallet.organization_id !== null || wallet.user_id !== account.userId || wallet.currency !== "NGN") || wallets.length > 1 ||
++        (org && (String(org.credit_limit_kobo) !== "0" || String(org.settlement_limit_kobo) !== "0" || org.verification_status !== "unverified"))) {
++      throw accessError("The temporary account must have zero funds and no operational organization configuration.");
++    }
++    const business = await t.one(`SELECT
++      EXISTS(SELECT 1 FROM cards WHERE owner_user_id=$1 OR organization_id=$2) OR
++      EXISTS(SELECT 1 FROM payouts WHERE partner_org_id=$2) OR
++      EXISTS(SELECT 1 FROM settlements WHERE partner_org_id=$2) OR
++      EXISTS(SELECT 1 FROM bank_accounts WHERE organization_id=$2) OR
++      EXISTS(SELECT 1 FROM settlement_accounts WHERE organization_id=$2) OR
++      EXISTS(SELECT 1 FROM transactions tr LEFT JOIN stations st ON st.id=tr.station_id
++        WHERE tr.customer_user_id=$1 OR tr.organization_id=$2 OR st.partner_org_id=$2) OR
++      EXISTS(SELECT 1 FROM top_ups WHERE user_id=$1) OR
++      EXISTS(SELECT 1 FROM payment_refunds WHERE user_id=$1) OR
++      EXISTS(SELECT 1 FROM card_requests WHERE user_id=$1) OR
++      EXISTS(SELECT 1 FROM fuel_orders f LEFT JOIN stations st ON st.id=f.station_id
++        WHERE f.user_id=$1 OR st.partner_org_id=$2) OR
++      EXISTS(SELECT 1 FROM subscription_payments WHERE user_id=$1 OR organization_id=$2) OR
++      EXISTS(SELECT 1 FROM invoices WHERE organization_id=$2) OR
++      EXISTS(SELECT 1 FROM wallet_ledger l JOIN wallets w ON w.id=l.wallet_id WHERE w.user_id=$1 OR w.organization_id=$2)
++      AS present`, [account.userId, account.orgId]);
++    if (business.present) throw accessError("Existing business or financial records prevent a temporary grant; no data was erased.");
++    const previousSubscription = await t.one("SELECT * FROM subscriptions WHERE organization_id=$1 FOR UPDATE", [account.orgId]);
++    if (previousSubscription?.paystack_subscription_code || previousSubscription?.paystack_email_token) {
++      throw accessError("Existing provider subscription details prevent a temporary grant; no changes were made.");
++    }
++    const plan = await t.one("SELECT code FROM pricing_plans WHERE code='enterprise' AND active");
++    if (!plan) throw accessError("The enterprise plan is unavailable for temporary partner testing.");
++    const passwordHash = await hashPassword(password);
++    const lease = await t.one("SELECT clock_timestamp() AS starts_at");
++    const timing = await t.one("SELECT $1::timestamptz AS starts_at, $1::timestamptz + interval '24 hours' AS expires_at", [lease.starts_at]);
++    if (user) {
++      await t.query(`UPDATE users SET password_hash=$2,status='active',access_expires_at=$3,
++        failed_login_attempts=0,locked_until=NULL,notification_prefs=$4,updated_at=clock_timestamp()
++        WHERE id=$1`, [account.userId, passwordHash, timing.expires_at, notificationPrefs]);
++      await t.query("UPDATE sessions SET revoked_at=clock_timestamp() WHERE user_id=$1 AND revoked_at IS NULL", [account.userId]);
++    } else {
++      await t.query(`INSERT INTO users(id,email,password_hash,full_name,role,organization_name,account_tier,
++          partner_type,email_verified,phone_verified,notification_prefs,access_expires_at)
++        VALUES($1,$2,$3,'Partner Test Account','partner',$4,'Temporary Partner Test','other',TRUE,FALSE,$5,$6)`,
++      [account.userId, account.email, passwordHash, account.organizationName, notificationPrefs, timing.expires_at]);
++      await t.query(`INSERT INTO organizations(id,owner_user_id,name,type,plan_code,subscription_status,next_billing_date,verification_status)
++        VALUES($1,$2,$3,'partner','enterprise','active',$4::timestamptz::date,'unverified')`,
++      [account.orgId, account.userId, account.organizationName, timing.expires_at]);
++      await t.query("INSERT INTO memberships(organization_id,user_id,email,role,status) VALUES($1,$2,$3,'owner','active')",
++        [account.orgId, account.userId, account.email]);
++    }
++    if (!wallets.length) await t.query("INSERT INTO wallets(user_id,kind,balance_kobo) VALUES($1,'individual',0)", [account.userId]);
++    await t.query("UPDATE partner_api_keys SET revoked_at=clock_timestamp() WHERE (organization_id=$1 OR created_by=$2) AND revoked_at IS NULL", [account.orgId, account.userId]);
++    // Preserve previously entered station details for inspection. Runtime
++    // read-only access cannot edit them or create financial/business records.
++    await t.query(`UPDATE organizations SET plan_code='enterprise',subscription_status='active',auto_settlement=FALSE,
++      next_billing_date=$2::timestamptz::date,updated_at=clock_timestamp() WHERE id=$1`, [account.orgId, timing.expires_at]);
++    await t.query(`INSERT INTO subscriptions(organization_id,plan_code,status,current_period_start,current_period_end,cancel_at_period_end)
++      VALUES($1,'enterprise','active',$2,$3,TRUE) ON CONFLICT(organization_id) DO UPDATE SET
++      plan_code='enterprise',status='active',current_period_start=EXCLUDED.current_period_start,
++      current_period_end=EXCLUDED.current_period_end,cancel_at_period_end=TRUE`, [account.orgId, timing.starts_at, timing.expires_at]);
++    await t.query(`INSERT INTO audit_logs(actor_user_id,actor_role,action,entity_type,entity_id,metadata)
++      VALUES(NULL,'operator','auth.temporary_partner_access_granted','user',$1,$2)`,
++    [account.userId, { startsAt: timing.starts_at, expiresAt: timing.expires_at, hours: 24, access: "read-only", organizationId: account.orgId }]);
++    return { ...outcome("granted"), startsAt: timing.starts_at, expiresAt: timing.expires_at };
++  });
++}
+diff --git a/apps/api/src/middleware/auth.js b/apps/api/src/middleware/auth.js
+index 3293727..11acf19 100644
+--- a/apps/api/src/middleware/auth.js
++++ b/apps/api/src/middleware/auth.js
+@@ -4,0 +5,13 @@ import { one } from "../db.js";
++import { TEMPORARY_PARTNER_ACCOUNT } from "../lib/temporaryPartnerAccount.js";
++
++function finishAuthentication(req, next) {
++  // The shared inspection account cannot create credentials, other principals,
++  // financial effects or business records that outlive its account deadline.
++  const allowedAuthWrites = new Set(["/api/auth/login", "/api/auth/refresh", "/api/auth/logout"]);
++  if (req.user?.id === TEMPORARY_PARTNER_ACCOUNT.userId && req.user.access_expires_at != null &&
++      !["GET", "HEAD", "OPTIONS"].includes(req.method) &&
++      !allowedAuthWrites.has(req.originalUrl.split("?")[0])) {
++    return next(forbidden("This temporary testing account provides read-only dashboard access."));
++  }
++  next();
++}
+@@ -33,0 +47 @@ export async function attachUser(req, _res, next) {
++          AND (u.access_expires_at IS NULL OR u.access_expires_at>clock_timestamp())
+@@ -39 +53 @@ export async function attachUser(req, _res, next) {
+-        return next();
++        return finishAuthentication(req, next);
+@@ -45,0 +60 @@ export async function attachUser(req, _res, next) {
++           AND (u.access_expires_at IS NULL OR u.access_expires_at > clock_timestamp())
+@@ -61 +76 @@ export async function attachUser(req, _res, next) {
+-  next();
++  finishAuthentication(req, next);
+diff --git a/apps/api/src/migrations/033_account_access_expiry.sql b/apps/api/src/migrations/033_account_access_expiry.sql
+new file mode 100644
+index 0000000..d663123
+--- /dev/null
++++ b/apps/api/src/migrations/033_account_access_expiry.sql
+@@ -0,0 +1,8 @@
++-- Existing public.users is the application's private identity table. Retain its
++-- ownership, RLS and ACLs from migration 032; do not grant access to new roles.
++-- Row count/growth are deployment-specific. This nullable, no-default addition
++-- requires no backfill or table rewrite. Existing accounts remain unrestricted.
++-- Authentication reads by primary key/email, so no additional index is needed.
++ALTER TABLE public.users ADD COLUMN IF NOT EXISTS access_expires_at timestamptz;
++COMMENT ON COLUMN public.users.access_expires_at IS
++  'Server-controlled absolute account access deadline; NULL has no additional account deadline. Expiry denies login, refresh, API requests and realtime delivery independently of subscription or scheduler state.';
+diff --git a/apps/api/src/routes/auth.routes.js b/apps/api/src/routes/auth.routes.js
+index ab79663..3717a04 100644
+--- a/apps/api/src/routes/auth.routes.js
++++ b/apps/api/src/routes/auth.routes.js
+@@ -16,0 +17,2 @@ import { nigeriaLocationLabel } from "../../../../packages/shared/nigeria-locati
++import { accountAccessExpired } from "../lib/accountAccess.js";
++import { TEMPORARY_PARTNER_ACCOUNT } from "../lib/temporaryPartnerAccount.js";
+@@ -248 +250,4 @@ async function issueSession(req, user, remember, executor = { query: q, one }) {
+-     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING expires_at`,
++     SELECT $1,$2,$3,$4,$5,$6,LEAST($7::timestamptz,u.access_expires_at)
++     FROM users u WHERE u.id=$2 AND u.status='active'
++       AND (u.access_expires_at IS NULL OR u.access_expires_at>clock_timestamp())
++     RETURNING expires_at`,
+@@ -250,0 +256 @@ async function issueSession(req, user, remember, executor = { query: q, one }) {
++  if (!session) throw unauthorized("Account access has expired. Please contact support.");
+@@ -263 +269 @@ async function issueMfaChallenge(user, rememberMe) {
+-    if (!current || current.status !== "active" || current.role !== user.role ||
++    if (!current || current.status !== "active" || accountAccessExpired(current) || current.role !== user.role ||
+@@ -306 +312 @@ async function completeMfaChallenge(req, challengeToken, token) {
+-    if (record.attempts >= MAX_CODE_ATTEMPTS || user.status !== "active" || !user.two_factor_enabled ||
++    if (record.attempts >= MAX_CODE_ATTEMPTS || user.status !== "active" || accountAccessExpired(user) || !user.two_factor_enabled ||
+@@ -337 +343 @@ async function currentAuthenticatedUser(req, t) {
+-  if (!user || user.status !== "active" || user.password_hash !== req.user.password_hash ||
++  if (!user || user.status !== "active" || accountAccessExpired(user) || user.password_hash !== req.user.password_hash ||
+@@ -365,0 +372 @@ router.post("/login", authLimiter, asyncHandler(async (req, res) => {
++  if (accountAccessExpired(user)) throw unauthorized("Account access has expired. Please contact support.");
+@@ -371 +378,5 @@ router.post("/login", authLimiter, asyncHandler(async (req, res) => {
+-  if (supabaseAuthEnabled()) {
++  const temporaryLease = user.id === TEMPORARY_PARTNER_ACCOUNT.userId && user.access_expires_at != null;
++  if (temporaryLease && user.supabase_auth_uid) throw unauthorized("Temporary testing credentials changed. Contact support.");
++  // Keep the explicitly provisioned lease local: creating a permanent provider
++  // identity here would leave credentials behind after the testing deadline.
++  if (supabaseAuthEnabled() && !temporaryLease) {
+@@ -414 +425 @@ router.post("/login", authLimiter, asyncHandler(async (req, res) => {
+-    if (!current || current.status !== "active" || current.role !== user.role ||
++    if (!current || current.status !== "active" || accountAccessExpired(current) || current.role !== user.role ||
+@@ -608 +619 @@ router.post("/refresh", asyncHandler(async (req, res) => {
+-  const user = await one("SELECT * FROM users WHERE id = $1 AND status = 'active'", [payload.sub]);
++  const user = await one("SELECT * FROM users WHERE id = $1 AND status = 'active' AND (access_expires_at IS NULL OR access_expires_at>clock_timestamp())", [payload.sub]);
+diff --git a/apps/api/src/scripts/grant-partner-test-access.js b/apps/api/src/scripts/grant-partner-test-access.js
+new file mode 100644
+index 0000000..b477e2d
+--- /dev/null
++++ b/apps/api/src/scripts/grant-partner-test-access.js
+@@ -0,0 +1,57 @@
++import { getPool } from "../db.js";
++import { env } from "../config/env.js";
++import { grantTemporaryPartnerAccess, TEMPORARY_PARTNER_ACCOUNT } from "../lib/temporaryPartnerAccount.js";
++
++let pool;
++function commandError(message) {
++  return Object.assign(new Error(message), { name: "PartnerGrantCommandError" });
++}
++
++// This command is operator-only. It never receives a password in argv or prints
++// one. Runtime middleware separately restricts the grant to dashboard reads.
++async function main() {
++  const flags = new Set(process.argv.slice(2));
++  if ([...flags].some((flag) => !["--apply", "--reviewed", "--help"].includes(flag))) {
++    throw commandError("Use only --apply, --reviewed or --help. Supply credentials through protected environment input.");
++  }
++  if (flags.has("--help")) {
++    console.log("Default: read-only preview. --apply grants one fixed 24-hour lease; production also requires --reviewed.");
++    console.log("The explicit apply password must be supplied through OBLIGON_PARTNER_TEST_PASSWORD; it is never printed.");
++    return;
++  }
++  if (!env.DATABASE_URL) throw commandError("DATABASE_URL is required. No changes were made.");
++  if (flags.has("--apply") && env.NODE_ENV === "production" && !flags.has("--reviewed")) {
++    throw commandError("Production apply requires --reviewed after qualified review of the exact release. No changes were made.");
++  }
++  pool = getPool();
++  if (flags.has("--apply")) {
++    const result = await grantTemporaryPartnerAccess({ password: process.env.OBLIGON_PARTNER_TEST_PASSWORD });
++    console.log(JSON.stringify({ status: result.status, startsAt: result.startsAt, expiresAt: result.expiresAt, hours: 24, access: "read-only" }));
++    return;
++  }
++  const client = await pool.connect();
++  try {
++    await client.query("BEGIN READ ONLY");
++    const { rows } = await client.query(`SELECT id,status,access_expires_at,
++      access_expires_at > clock_timestamp() AS active_grant FROM users
++      WHERE id=$1 OR lower(email)=lower($2)`, [TEMPORARY_PARTNER_ACCOUNT.userId, TEMPORARY_PARTNER_ACCOUNT.email]);
++    console.log(JSON.stringify({ mode: "dry-run", matchingIdentities: rows.length,
++      knownIdentityPresent: rows.some((row) => row.id === TEMPORARY_PARTNER_ACCOUNT.userId),
++      activeGrant: rows.some((row) => row.active_grant),
++      message: "No changes made. Full isolation and credential checks run only for an explicitly reviewed apply." }));
++    await client.query("COMMIT");
++  } catch (error) {
++    await client.query("ROLLBACK");
++    throw error;
++  } finally {
++    client.release();
++  }
++}
++
++main().catch((error) => {
++  // Provider/database errors can contain submitted values. Expose only our
++  // deliberately written validation errors; never dump errors or their detail.
++  const safe = ["TemporaryPartnerAccessError", "PartnerGrantCommandError"].includes(error.name);
++  console.error(safe ? error.message : "Partner test access command failed. Inspect protected server diagnostics; credentials were not printed.");
++  process.exitCode = 1;
++}).finally(() => pool?.end());
+diff --git a/apps/api/tests/account-access.test.mjs b/apps/api/tests/account-access.test.mjs
+new file mode 100644
+index 0000000..bbeb12f
+--- /dev/null
++++ b/apps/api/tests/account-access.test.mjs
+@@ -0,0 +1,20 @@
++import assert from "node:assert/strict";
++import { test } from "node:test";
++import { accountAccessExpired } from "../src/lib/accountAccess.js";
++
++test("ordinary accounts retain existing behavior without an access deadline", () => {
++  assert.equal(accountAccessExpired({}), false);
++  assert.equal(accountAccessExpired({ access_expires_at: null }), false);
++});
++
++test("account deadline is exclusive and does not depend on subscription or email", () => {
++  const deadline = Date.parse("2026-01-02T00:00:00.000Z");
++  const user = { access_expires_at: new Date(deadline), email: "changed@example.test", role: "partner" };
++  assert.equal(accountAccessExpired(user, deadline - 1), false);
++  assert.equal(accountAccessExpired(user, deadline), true);
++  assert.equal(accountAccessExpired(user, deadline + 1), true);
++});
++
++test("malformed configured account deadlines fail closed", () => {
++  assert.equal(accountAccessExpired({ access_expires_at: "not-a-date" }), true);
++});
+diff --git a/apps/api/tests/database-private-access.integration.test.mjs b/apps/api/tests/database-private-access.integration.test.mjs
+index a360ddf..256e698 100644
+--- a/apps/api/tests/database-private-access.integration.test.mjs
++++ b/apps/api/tests/database-private-access.integration.test.mjs
+@@ -125 +125 @@ integration("permission maintenance denies every application-private table and c
+-  assert.deepEqual(await runMigrations(pool, { log: () => {} }), [migrationName]);
++  assert.deepEqual(await runMigrations(pool, { log: () => {} }), [migrationName, "033_account_access_expiry.sql"]);
+diff --git a/apps/api/tests/partner-test-expiry.integration.test.mjs b/apps/api/tests/partner-test-expiry.integration.test.mjs
+new file mode 100644
+index 0000000..8d3437e
+--- /dev/null
++++ b/apps/api/tests/partner-test-expiry.integration.test.mjs
+@@ -0,0 +1,477 @@
++import assert from "node:assert/strict";
++import { after, afterEach, before, beforeEach, test } from "node:test";
++import { randomUUID } from "node:crypto";
++import pg from "pg";
++
++// These are real HTTP/database checks in a unique disposable schema. They never
++// import application database code until the explicit loopback URL is checked.
++const databaseUrl = process.env.OBLIGON_TEST_DATABASE_URL;
++if (databaseUrl) {
++  const parsed = new URL(databaseUrl);
++  assert.ok(["postgres:", "postgresql:"].includes(parsed.protocol));
++  assert.ok(["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname),
++    "Partner expiry tests require a disposable loopback PostgreSQL database");
++}
++const schema = `partner_expiry_${process.pid}_${randomUUID().replaceAll("-", "")}`;
++const identifier = name => `"${name.replaceAll('"', '""')}"`;
++const integration = (name, fn) => test(name, { skip: !databaseUrl }, fn);
++const fixturePassword = "SyntheticPartnerExpiry!2026";
++const realFetch = globalThis.fetch;
++let admin, pool, server, baseUrl, tables, account, temporary, security, env, authLimiter;
++let schemaCreated = false;
++
++const denyProvider = async () => { throw new Error("Unexpected external provider call in isolated partner expiry tests"); };
++
++before(async () => {
++  if (!databaseUrl) return;
++  admin = new pg.Pool({ connectionString: databaseUrl });
++  await admin.query(`CREATE SCHEMA ${identifier(schema)}`);
++  schemaCreated = true;
++  const { rows } = await admin.query("SELECT tablename FROM pg_tables WHERE schemaname='public'");
++  tables = rows.map(({ tablename }) => tablename);
++  assert.ok(tables.includes("users") && tables.includes("pricing_plans"),
++    "Migrate the disposable database before running partner expiry tests");
++  for (const table of tables) {
++    await admin.query(`CREATE TABLE ${identifier(schema)}.${identifier(table)} (LIKE public.${identifier(table)} INCLUDING ALL)`);
++  }
++  const isolatedUrl = new URL(databaseUrl);
++  isolatedUrl.searchParams.set("options", `-c search_path=${schema}`);
++  Object.assign(process.env, {
++    DATABASE_URL: isolatedUrl.toString(), DOTENV_CONFIG_PATH: "/dev/null", NODE_ENV: "test",
++    SUPABASE_AUTH_ENABLED: "false", SUPABASE_URL: "", NEXT_PUBLIC_SUPABASE_URL: "",
++    SUPABASE_SECRET_KEY: "", SUPABASE_SERVICE_ROLE_KEY: "", SUPABASE_ANON_KEY: "",
++    RESEND_API_KEY: "", TERMII_API_KEY: "", WEB_PUSH_VAPID_PRIVATE_KEY: "",
++    JWT_ACCESS_SECRET: "isolated-partner-expiry-access-secret",
++    JWT_REFRESH_SECRET: "isolated-partner-expiry-refresh-secret",
++    DATABASE_SSL: "false", DATABASE_CA_CERT: "",
++  });
++  ({ env } = await import("../src/config/env.js"));
++  pool = (await import("../src/db.js")).getPool();
++  assert.equal((await pool.query("SELECT current_schema() AS schema")).rows[0].schema, schema);
++  temporary = await import("../src/lib/temporaryPartnerAccount.js");
++  account = temporary.TEMPORARY_PARTNER_ACCOUNT;
++  security = await import("../src/lib/security.js");
++  ({ authLimiter } = await import("../src/middleware/security.js"));
++  const { createApp } = await import("../src/app.js");
++  globalThis.fetch = denyProvider;
++  await new Promise(resolve => { server = createApp().listen(0, "127.0.0.1", resolve); });
++  baseUrl = `http://127.0.0.1:${server.address().port}`;
++});
++
++beforeEach(async () => {
++  if (!databaseUrl) return;
++  env.NODE_ENV = "test";
++  authLimiter.resetKey("127.0.0.1");
++  await pool.query(`TRUNCATE ${tables.map(identifier).join(", ")}`);
++  await pool.query(`INSERT INTO pricing_plans(code,name,price_kobo,features)
++    VALUES('enterprise','Enterprise',50000000,'["Advanced analytics","API access","SLA support"]')`);
++});
++
++afterEach(() => {
++  if (!databaseUrl) return;
++  env.NODE_ENV = "test";
++  env.SUPABASE_AUTH_ENABLED = false;
++  env.SUPABASE_URL = "";
++  env.SUPABASE_SERVICE_ROLE_KEY = "";
++  env.SUPABASE_ANON_KEY = "";
++  globalThis.fetch = denyProvider;
++});
++
++after(async () => {
++  globalThis.fetch = realFetch;
++  if (server) await new Promise(resolve => { server.closeAllConnections(); server.close(resolve); });
++  if (pool) await pool.end();
++  if (admin) {
++    if (schemaCreated) await admin.query(`DROP SCHEMA ${identifier(schema)} CASCADE`);
++    await admin.end();
++  }
++});
++
++const row = async (sql, values = []) => (await pool.query(sql, values)).rows[0];
++async function call(path, { body, token, method = body ? "POST" : "GET" } = {}) {
++  const response = await realFetch(baseUrl + path, {
++    method, headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
++    ...(body ? { body: JSON.stringify(body) } : {}),
++    signal: AbortSignal.timeout(10_000),
++  });
++  return { status: response.status, body: await response.json() };
++}
++const grant = () => temporary.grantTemporaryPartnerAccess({ password: fixturePassword });
++const login = (overrides = {}) => call("/api/auth/login", {
++  body: { email: account.email, password: fixturePassword, role: "partner", ...overrides },
++});
++const decodeJwt = token => JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString());
++async function expireAccount(id = account.userId) {
++  await pool.query("UPDATE users SET access_expires_at=clock_timestamp()-interval '1 second' WHERE id=$1", [id]);
++}
++async function legacyFixture() {
++  return temporary.ensureTemporaryPartnerAccount({ enabled: true, password: fixturePassword });
++}
++async function seedOther({ id = randomUUID(), email = `isolated-${randomUUID()}@example.test`, role = "customer", expiry = null } = {}) {
++  await pool.query(`INSERT INTO users(id,email,password_hash,full_name,role,email_verified,access_expires_at,notification_prefs)
++    VALUES($1,$2,$3,'Synthetic Expiry Account',$4,true,$5,'{"email":false,"sms":false,"push":false}')`,
++  [id, email, await security.hashPassword(fixturePassword), role, expiry]);
++  return { id, email };
++}
++async function protectedState() {
++  const result = {};
++  for (const table of ["users", "organizations", "memberships", "wallets", "subscriptions", "stations", "cards", "settlements", "bank_accounts", "transactions"]) {
++    result[table] = (await pool.query(`SELECT * FROM ${identifier(table)} ORDER BY id`)).rows;
++  }
++  return result;
++}
++
++integration("explicit partner grant stores exactly one 24-hour deadline and no business funds", async () => {
++  await grant();
++  const user = await row("SELECT * FROM users WHERE id=$1", [account.userId]);
++  assert.equal(user.email, account.email);
++  assert.equal(user.role, "partner");
++  assert.equal(user.status, "active");
++  assert.equal(user.supabase_auth_uid, null);
++  assert.equal(user.two_factor_enabled, false);
++  assert.notEqual(user.password_hash, fixturePassword);
++  assert.equal(await security.verifyPassword(fixturePassword, user.password_hash), true);
++  const lease = await row(`SELECT extract(epoch FROM u.access_expires_at-s.current_period_start)::numeric AS seconds,
++    u.access_expires_at=s.current_period_end AS same_deadline,u.access_expires_at>clock_timestamp() AS live
++    FROM users u JOIN subscriptions s ON s.organization_id=$2 WHERE u.id=$1`, [account.userId, account.orgId]);
++  assert.equal(Number(lease.seconds), 24 * 60 * 60);
++  assert.equal(lease.same_deadline, true);
++  assert.equal(lease.live, true);
++  for (const table of ["stations", "cards", "transactions", "settlements", "bank_accounts", "invoices"]) {
++    assert.equal(Number((await row(`SELECT COUNT(*) AS count FROM ${identifier(table)}`)).count), 0, table);
++  }
++  assert.equal((await row("SELECT count(*)::int AS count FROM wallets WHERE balance_kobo<>0")).count, 0);
++});
++
++integration("temporary partner uses normal password login and rejects a wrong password", async () => {
++  await grant();
++  assert.equal((await login({ password: "SyntheticWrongPassword!2026" })).status, 401);
++  const authenticated = await login();
++  assert.equal(authenticated.status, 200);
++  assert.equal(authenticated.body.user.role, "partner");
++  assert.equal(authenticated.body.user.organizationId, account.orgId);
++  assert.ok(authenticated.body.accessToken && authenticated.body.refreshToken && authenticated.body.sessionId);
++  assert.equal((await call("/api/auth/session", { token: authenticated.body.accessToken })).status, 200);
++});
++
++integration("provider-enabled temporary login keeps local password verification without creating an external identity", async () => {
++  await grant();
++  const before = await row("SELECT password_hash,supabase_auth_uid,access_expires_at FROM users WHERE id=$1", [account.userId]);
++  Object.assign(env, {
++    SUPABASE_AUTH_ENABLED: true,
++    SUPABASE_URL: "https://isolated-partner-expiry.example.invalid",
++    SUPABASE_SERVICE_ROLE_KEY: "synthetic-partner-expiry-service-key",
++    SUPABASE_ANON_KEY: "synthetic-partner-expiry-anon-key",
++  });
++  let providerCalls = 0;
++  globalThis.fetch = async () => {
++    providerCalls++;
++    throw new Error("Temporary partner login must not create or authenticate an external identity");
++  };
++  assert.equal((await login({ password: "SyntheticWrongPassword!2026" })).status, 401);
++  const authenticated = await login();
++  assert.equal(authenticated.status, 200);
++  assert.ok(authenticated.body.accessToken && authenticated.body.sessionId);
++  assert.equal(providerCalls, 0);
++  assert.equal(await security.verifyPassword(fixturePassword, before.password_hash), true);
++  assert.deepEqual(await row("SELECT password_hash,supabase_auth_uid,access_expires_at FROM users WHERE id=$1", [account.userId]), before);
++  assert.equal(before.supabase_auth_uid, null);
++});
++
++for (const rememberMe of [false, true]) {
++  integration(`partner session and refresh token cannot outlive the fixed lease with rememberMe=${rememberMe}`, async () => {
++    await grant();
++    const authenticated = await login({ rememberMe });
++    assert.equal(authenticated.status, 200);
++    const persisted = await row(`SELECT s.expires_at,u.access_expires_at FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.id=$1`, [authenticated.body.sessionId]);
++    assert.equal(persisted.expires_at.getTime(), persisted.access_expires_at.getTime());
++    assert.ok(decodeJwt(authenticated.body.accessToken).exp * 1000 <= persisted.access_expires_at.getTime());
++    assert.equal(decodeJwt(authenticated.body.refreshToken).exp, Math.floor(persisted.expires_at.getTime() / 1000));
++  });
++}
++
++integration("database expiry immediately rejects old JWT, session, billing, settings and fresh password login", async () => {
++  await grant();
++  const authenticated = await login();
++  assert.equal(authenticated.status, 200);
++  const token = authenticated.body.accessToken;
++  assert.equal((await call("/api/partner/billing", { token })).status, 200);
++  await expireAccount();
++  for (const path of ["/api/auth/session", "/api/partner/overview", "/api/partner/billing", "/api/partner/settings"]) {
++    assert.equal((await call(path, { token })).status, 401, path);
++  }
++  assert.equal((await login()).status, 401);
++});
++
++integration("database expiry rejects refresh even if the plan and stored session are extended", async () => {
++  await grant();
++  const authenticated = await login({ rememberMe: true });
++  assert.equal(authenticated.status, 200);
++  await expireAccount();
++  await pool.query("UPDATE subscriptions SET status='active',current_period_end=now()+interval '1 year' WHERE organization_id=$1", [account.orgId]);
++  await pool.query("UPDATE sessions SET expires_at=now()+interval '30 days' WHERE id=$1", [authenticated.body.sessionId]);
++  assert.equal((await call("/api/auth/refresh", { body: { refreshToken: authenticated.body.refreshToken } })).status, 401);
++  assert.equal((await call("/api/partner/billing", { token: authenticated.body.accessToken })).status, 401);
++});
++
++integration("an expired account cannot enter the realtime stream with a previously valid access token", async () => {
++  await grant();
++  const authenticated = await login();
++  assert.equal(authenticated.status, 200);
++  await expireAccount();
++  assert.equal((await call(`/api/realtime/stream?token=${encodeURIComponent(authenticated.body.accessToken)}`)).status, 401);
++});
++
++integration("API keys from an expired account are rejected despite an active longer subscription", async () => {
++  await grant();
++  const token = `oblp_${randomUUID().replaceAll("-", "")}`;
++  await pool.query(`INSERT INTO partner_api_keys(organization_id,created_by,label,token_hash,token_hint,expires_at)
++    VALUES($1,$2,'Synthetic expiry fixture',$3,'fixture',now()+interval '1 year')`,
++  [account.orgId, account.userId, security.sha256(token)]);
++  assert.equal((await call("/api/partner/stations", { token })).status, 200);
++  await expireAccount();
++  await pool.query("UPDATE subscriptions SET current_period_end=now()+interval '1 year' WHERE organization_id=$1", [account.orgId]);
++  assert.equal((await call("/api/partner/stations", { token })).status, 401);
++});
++
++integration("read-only partner access can read dashboards but cannot change business settings", async () => {
++  await grant();
++  const authenticated = await login();
++  assert.equal(authenticated.status, 200);
++  const token = authenticated.body.accessToken;
++  for (const path of ["overview", "settings", "billing", "notifications"]) {
++    assert.equal((await call(`/api/partner/${path}`, { token })).status, 200, path);
++  }
++  const before = await protectedState();
++  const result = await call("/api/partner/settings", { method: "PUT", token, body: { name: "Must Not Be Written" } });
++  assert.equal(result.status, 403);
++  assert.deepEqual(await protectedState(), before);
++});
++
++integration("read-only partner access refuses POST business actions but permits normal logout", async () => {
++  await grant();
++  const authenticated = await login();
++  assert.equal(authenticated.status, 200);
++  const token = authenticated.body.accessToken;
++  const before = await protectedState();
++  assert.equal((await call("/api/partner/settings/service-requests", { token, body: { type: "integration", message: "Synthetic blocked request" } })).status, 403);
++  assert.deepEqual(await protectedState(), before);
++  const logout = await call("/api/auth/logout", { token, body: { refreshToken: authenticated.body.refreshToken } });
++  assert.equal(logout.status, 200);
++  assert.ok((await row("SELECT revoked_at FROM sessions WHERE id=$1", [authenticated.body.sessionId])).revoked_at);
++  assert.equal((await call("/api/auth/session", { token })).status, 401);
++});
++
++integration("an active lease survives production startup without password reset, deadline extension or session revocation", async () => {
++  await grant();
++  const authenticated = await login();
++  assert.equal(authenticated.status, 200);
++  const changedHash = await security.hashPassword("SyntheticOwnerReplacement!2026");
++  await pool.query("UPDATE users SET password_hash=$2 WHERE id=$1", [account.userId, changedHash]);
++  const before = await protectedState();
++  const session = await row("SELECT * FROM sessions WHERE id=$1", [authenticated.body.sessionId]);
++  env.NODE_ENV = "production";
++  await temporary.ensureTemporaryPartnerAccount();
++  await temporary.ensureTemporaryPartnerAccount();
++  assert.deepEqual(await protectedState(), before);
++  assert.deepEqual(await row("SELECT * FROM sessions WHERE id=$1", [authenticated.body.sessionId]), session);
++});
++
++integration("startup retires an expired grant and revokes only its existing sessions", async () => {
++  await grant();
++  const authenticated = await login();
++  const other = await seedOther();
++  const otherSession = randomUUID();
++  await pool.query("INSERT INTO sessions(id,user_id,refresh_token_hash,expires_at) VALUES($1,$2,'synthetic-other-session',now()+interval '2 days')", [otherSession, other.id]);
++  const before = await row("SELECT * FROM users WHERE id=$1", [other.id]);
++  await expireAccount();
++  const expiry = (await row("SELECT access_expires_at FROM users WHERE id=$1", [account.userId])).access_expires_at;
++  env.NODE_ENV = "production";
++  await temporary.ensureTemporaryPartnerAccount();
++  assert.equal((await row("SELECT status FROM users WHERE id=$1", [account.userId])).status, "suspended");
++  assert.equal((await row("SELECT access_expires_at FROM users WHERE id=$1", [account.userId])).access_expires_at.getTime(), expiry.getTime());
++  assert.ok((await row("SELECT revoked_at FROM sessions WHERE id=$1", [authenticated.body.sessionId])).revoked_at);
++  assert.equal((await row("SELECT status FROM subscriptions WHERE organization_id=$1", [account.orgId])).status, "canceled");
++  assert.deepEqual(await row("SELECT * FROM users WHERE id=$1", [other.id]), before);
++  assert.equal((await row("SELECT revoked_at FROM sessions WHERE id=$1", [otherSession])).revoked_at, null);
++});
++
++integration("regranting an active lease cannot reset a password, extend time or revoke sessions", async () => {
++  await grant();
++  const authenticated = await login();
++  assert.equal(authenticated.status, 200);
++  const before = await protectedState();
++  const sessions = (await pool.query("SELECT * FROM sessions ORDER BY id")).rows;
++  await assert.rejects(temporary.grantTemporaryPartnerAccess({ password: "SyntheticReplacementAttempt!2026" }));
++  assert.deepEqual(await protectedState(), before);
++  assert.deepEqual((await pool.query("SELECT * FROM sessions ORDER BY id")).rows, sessions);
++});
++
++integration("concurrent grants produce exactly one fixed lease and one identity", async () => {
++  const outcomes = await Promise.allSettled(Array.from({ length: 4 }, () => grant()));
++  assert.equal(outcomes.filter(result => result.status === "fulfilled").length, 1);
++  assert.equal(outcomes.filter(result => result.status === "rejected").length, 3);
++  for (const table of ["users", "organizations", "memberships", "wallets", "subscriptions"]) {
++    assert.equal(Number((await row(`SELECT COUNT(*) AS count FROM ${identifier(table)}`)).count), 1, table);
++  }
++  const lease = await row(`SELECT extract(epoch FROM u.access_expires_at-s.current_period_start)::numeric AS seconds
++    FROM users u JOIN subscriptions s ON s.organization_id=$2 WHERE u.id=$1`, [account.userId, account.orgId]);
++  assert.equal(Number(lease.seconds), 86400);
++});
++
++for (const [name, identity] of [
++  ["same email belongs to a different user", () => ({ email: account.email.toUpperCase() })],
++  ["fixed user ID belongs to a different email", () => ({ id: account.userId })],
++  ["fixed identity belongs to an admin", () => ({ id: account.userId, email: account.email, role: "admin" })],
++]) {
++  integration(`grant refuses a collision when ${name} without modifying the existing identity`, async () => {
++    await seedOther(identity());
++    const before = await protectedState();
++    await assert.rejects(grant());
++    assert.deepEqual(await protectedState(), before);
++  });
++}
++
++integration("grant refuses another owner's organization without changing that owner", async () => {
++  const other = await seedOther({ role: "partner" });
++  await pool.query("INSERT INTO organizations(id,owner_user_id,name,type) VALUES($1,$2,'Existing Synthetic Partner','partner')", [account.orgId, other.id]);
++  const before = await protectedState();
++  await assert.rejects(grant());
++  assert.deepEqual(await protectedState(), before);
++});
++
++for (const [name, prepare] of [
++  ["funded wallet", () => pool.query("UPDATE wallets SET balance_kobo=100 WHERE user_id=$1", [account.userId])],
++  ["linked Supabase identity", () => pool.query("UPDATE users SET supabase_auth_uid=$2 WHERE id=$1", [account.userId, randomUUID()])],
++  ["enabled MFA", () => pool.query("UPDATE users SET two_factor_enabled=true,two_factor_secret='JBSWY3DPEHPK3PXP',two_factor_backup_codes='[\"synthetic-preserve-backup\"]' WHERE id=$1", [account.userId])],
++]) {
++  integration(`grant refuses a ${name} rather than resetting credentials or clearing business data`, async () => {
++    await legacyFixture();
++    await prepare();
++    const before = await protectedState();
++    await assert.rejects(grant());
++    assert.deepEqual(await protectedState(), before);
++  });
++}
++
++integration("ordinary unrelated accounts retain their normal remembered-session lifetime", async () => {
++  const other = await seedOther();
++  const before = await row("SELECT * FROM users WHERE id=$1", [other.id]);
++  await grant();
++  assert.deepEqual(await row("SELECT * FROM users WHERE id=$1", [other.id]), before);
++  const authenticated = await call("/api/auth/login", { body: { email: other.email, password: fixturePassword, role: "customer", rememberMe: true } });
++  assert.equal(authenticated.status, 200);
++  const session = await row("SELECT extract(epoch FROM expires_at-created_at)::numeric AS seconds FROM sessions WHERE id=$1", [authenticated.body.sessionId]);
++  assert.ok(Number(session.seconds) >= 30 * 86400 - 2);
++  assert.ok(Number(session.seconds) <= 30 * 86400 + 2);
++  assert.equal((await call("/api/auth/session", { token: authenticated.body.accessToken })).status, 200);
++});
++
++integration("grant preserves the existing test station and disables automatic settlement", async () => {
++  await legacyFixture();
++  await pool.query("UPDATE organizations SET auto_settlement=true WHERE id=$1", [account.orgId]);
++  await pool.query("INSERT INTO stations(partner_org_id,name) VALUES($1,'Synthetic preserved test station')", [account.orgId]);
++  const station = await row("SELECT * FROM stations WHERE partner_org_id=$1", [account.orgId]);
++  await grant();
++  assert.deepEqual(await row("SELECT * FROM stations WHERE partner_org_id=$1", [account.orgId]), station);
++  assert.equal((await row("SELECT auto_settlement FROM organizations WHERE id=$1", [account.orgId])).auto_settlement, false);
++  const authenticated = await login();
++  assert.equal(authenticated.status, 200);
++  assert.equal((await call("/api/partner/stations", { token: authenticated.body.accessToken })).status, 200);
++  assert.equal((await call("/api/partner/settings", { method: "PUT", token: authenticated.body.accessToken, body: { autoSettlement: true } })).status, 403);
++});
++
++for (const kind of ["sale", "fuel order"]) {
++  integration(`grant rejects station-linked ${kind} belonging to another customer`, async () => {
++    await legacyFixture();
++    const customer = await seedOther();
++    const station = await row("INSERT INTO stations(partner_org_id,name) VALUES($1,'Synthetic station with history') RETURNING id", [account.orgId]);
++    if (kind === "sale") {
++      await pool.query("INSERT INTO transactions(reference,customer_user_id,station_id,amount_kobo) VALUES($1,$2,$3,10000)", [randomUUID(),customer.id,station.id]);
++    } else {
++      // Copied test schemas omit foreign keys. Model a retained historical order
++      // independently of today's settlement-account rows so this tests the
++      // station link itself, rather than another financial-record guard.
++      await pool.query(`INSERT INTO fuel_orders(reference,idempotency_key,user_id,station_id,settlement_account_id,
++        fuel_type,litres,unit_price_kobo,base_amount_kobo,amount_kobo,platform_fee_kobo,partner_net_kobo)
++        VALUES($1,$2,$3,$4,$5,'AGO Diesel',1,10000,10000,10000,0,10000)`,
++      [randomUUID(),randomUUID(),customer.id,station.id,randomUUID()]);
++    }
++    const before = await protectedState();
++    await assert.rejects(grant(), /financial records/);
++    assert.deepEqual(await protectedState(), before);
++  });
++}
++
++integration("login and refresh in the final minute remain bounded by the database account deadline", async () => {
++  await grant();
++  await pool.query("UPDATE users SET access_expires_at=clock_timestamp()+interval '30 seconds' WHERE id=$1", [account.userId]);
++  const authenticated = await login({ rememberMe: true });
++  assert.equal(authenticated.status, 200);
++  const user = await row("SELECT access_expires_at FROM users WHERE id=$1", [account.userId]);
++  const session = await row("SELECT expires_at FROM sessions WHERE id=$1", [authenticated.body.sessionId]);
++  assert.equal(session.expires_at.getTime(), user.access_expires_at.getTime());
++  const refreshed = await call("/api/auth/refresh", { body: { refreshToken: authenticated.body.refreshToken } });
++  assert.equal(refreshed.status, 200);
++  // Access JWTs retain their normal TTL; every API request rechecks the account
++  // deadline in the database, including tokens minted just before that cutoff.
++  await expireAccount();
++  assert.equal((await call("/api/auth/session", { token: refreshed.body.accessToken })).status, 401);
++  assert.equal((await call("/api/auth/refresh", { body: { refreshToken: authenticated.body.refreshToken } })).status, 401);
++});
++
++integration("an expired account cannot authenticate with its valid ordinary password", async () => {
++  const other = await seedOther({ expiry: new Date(Date.now() - 60_000) });
++  const authenticated = await call("/api/auth/login", { body: { email: other.email, password: fixturePassword, role: "customer" } });
++  assert.equal(authenticated.status, 401);
++  assert.equal(Number((await row("SELECT COUNT(*) AS count FROM sessions WHERE user_id=$1", [other.id])).count), 0);
++});
++
++integration("an expired account cannot reuse valid JWT and refresh tokens from a longer stored session", async () => {
++  const other = await seedOther({ expiry: new Date(Date.now() - 60_000) });
++  const sessionId = randomUUID();
++  const rawRefresh = "synthetic-expiry-session-refresh";
++  const deadline = new Date(Date.now() + 30 * 86400_000);
++  await pool.query("INSERT INTO sessions(id,user_id,refresh_token_hash,expires_at) VALUES($1,$2,$3,$4)",
++    [sessionId, other.id, security.hashToken(rawRefresh), deadline]);
++  const token = security.signAccessToken({ id: other.id, role: "customer" }, null, sessionId);
++  const refreshToken = `${security.signRefreshToken(sessionId, other.id, null, deadline)}.${rawRefresh}`;
++  assert.equal((await call("/api/auth/session", { token })).status, 401);
++  assert.equal((await call("/api/auth/refresh", { body: { refreshToken } })).status, 401);
++});
++
++integration("a connected realtime stream closes at an ordinary account's fixed access deadline", async () => {
++  const other = await seedOther();
++  const authenticated = await call("/api/auth/login", { body: { email: other.email, password: fixturePassword, role: "customer" } });
++  assert.equal(authenticated.status, 200);
++  await pool.query("UPDATE users SET access_expires_at=clock_timestamp()+interval '1 second' WHERE id=$1", [other.id]);
++  const response = await realFetch(`${baseUrl}/api/realtime/stream?token=${encodeURIComponent(authenticated.body.accessToken)}`, {
++    signal: AbortSignal.timeout(4000),
++  });
++  assert.equal(response.status, 200);
++  assert.match(response.headers.get("content-type"), /text\/event-stream/);
++  const reader = response.body.getReader();
++  try {
++    const connected = await reader.read();
++    assert.equal(connected.done, false);
++    assert.match(new TextDecoder().decode(connected.value), /event: connected/);
++    const closed = await reader.read();
++    assert.equal(closed.done, true, "The stream must close at the lease deadline before the 25-second heartbeat");
++  } finally { await reader.cancel().catch(() => {}); }
++});
++
++integration("expiry applies to an ordinary account's already-issued password-step MFA proof", async () => {
++  const other = await seedOther({ expiry: new Date(Date.now() + 86400_000) });
++  const backup = "ABCD-EF01";
++  await pool.query(`UPDATE users SET two_factor_enabled=true,two_factor_secret='JBSWY3DPEHPK3PXP',two_factor_backup_codes=$2 WHERE id=$1`,
++    [other.id, JSON.stringify([security.sha256(backup)])]);
++  const authenticated = await call("/api/auth/login", { body: { email: other.email, password: fixturePassword, role: "customer" } });
++  assert.equal(authenticated.status, 200);
++  assert.equal(authenticated.body.mfaRequired, true);
++  assert.ok(authenticated.body.challengeToken);
++  await expireAccount(other.id);
++  const completed = await call("/api/auth/mfa/challenge", { body: { challengeToken: authenticated.body.challengeToken, totp: backup } });
++  assert.equal(completed.status, 401);
++  assert.equal(Number((await row("SELECT COUNT(*) AS count FROM sessions WHERE user_id=$1", [other.id])).count), 0);
++  assert.deepEqual((await row("SELECT two_factor_backup_codes FROM users WHERE id=$1", [other.id])).two_factor_backup_codes, [security.sha256(backup)]);
++});
+diff --git a/apps/api/tests/sse-access-expiry.test.mjs b/apps/api/tests/sse-access-expiry.test.mjs
+new file mode 100644
+index 0000000..4d68091
+--- /dev/null
++++ b/apps/api/tests/sse-access-expiry.test.mjs
+@@ -0,0 +1,48 @@
++import assert from "node:assert/strict";
++import { test, mock } from "node:test";
++import { EventEmitter } from "node:events";
++
++process.env.DATABASE_URL = "postgres://localhost:1/unused_sse_fixture";
++process.env.DOTENV_CONFIG_PATH = "/dev/null";
++process.env.NODE_ENV = "test";
++const { getPool } = await import("../src/db.js");
++const { sseHandler } = await import("../src/lib/sse.js");
++
++test("expiry during an awaited heartbeat cannot write to the ended stream", async () => {
++  const pool = getPool();
++  const deadline = new Date(Date.now() + 60_000);
++  let heartbeat, expire, releaseAuthorization;
++  let calls = 0, writesAfterEnd = 0, ended = 0;
++  const deferred = new Promise(resolve => { releaseAuthorization = resolve; });
++  mock.method(pool, "query", async () => {
++    calls++;
++    if (calls === 3) return deferred;
++    return { rows: [{ id: "synthetic-user", access_expires_at: deadline }] };
++  });
++  mock.method(globalThis, "setInterval", fn => { heartbeat = fn; return 1; });
++  mock.method(globalThis, "setTimeout", fn => { expire = fn; return 2; });
++  mock.method(globalThis, "clearInterval", () => {});
++  mock.method(globalThis, "clearTimeout", () => {});
++  const req = new EventEmitter();
++  req.user = { id: "synthetic-user" };
++  req.auth = { sid: "synthetic-session", exp: Math.floor(Date.now() / 1000) + 120 };
++  const res = {
++    writableEnded: false,
++    writeHead() {},
++    write() { if (this.writableEnded) writesAfterEnd++; },
++    end() { this.writableEnded = true; ended++; },
++  };
++  try {
++    await sseHandler(req, res);
++    const pending = heartbeat();
++    expire();
++    releaseAuthorization({ rows: [{ id: "synthetic-user", access_expires_at: deadline }] });
++    await pending;
++    assert.equal(writesAfterEnd, 0);
++    assert.equal(ended, 1);
++  } finally {
++    req.emit("close");
++    mock.restoreAll();
++    await pool.end();
++  }
++});
