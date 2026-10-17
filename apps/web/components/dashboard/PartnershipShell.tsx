@@ -7,7 +7,6 @@ import { DashboardHeader } from "./DashboardHeader";
 import { PartnershipSidebar } from "./PartnershipSidebar";
 import { MobileDashboardNav } from "./MobileDashboardNav";
 import { PartnerNotificationsProvider } from "./PartnerNotificationsProvider";
-import { LogoutButton } from "@/components/auth/LogoutButton";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { useSession } from "@/components/shared/AuthContext";
 
@@ -61,28 +60,13 @@ export function PartnershipShell({ children, allowedRoles }: PartnershipShellPro
       {/* One notification fetch for the whole console, so the header badge and the
           notifications page cannot disagree about what is unread. */}
       <PartnerNotificationsProvider>
-      <main className="min-h-screen bg-[#f7f7fd] text-obligon-navy">
+      <main className="min-h-screen bg-[#f7f7fd] pb-[calc(5rem+env(safe-area-inset-bottom))] text-obligon-navy lg:pb-0">
         <PartnershipSidebar />
         <div className="lg:pl-[280px]">
           <DashboardHeader />
-          {/*
-            Sign-out for viewports below `lg`.
-
-            The only LogoutButton lived inside the sidebar's
-            `hidden ... lg:flex` container, so on a phone — where the sidebar is not
-            rendered at all — a partner could not sign out of the dashboard. The
-            session and its tokens persisted until browser storage was cleared by
-            hand. MobileDashboardNav is rendered here because every page wraps its
-            content in DashboardCanvas, which emits it.
-          */}
-          {allowed ? (
-            <div className="flex justify-end border-b border-[#e3e4ef] px-5 py-2 sm:px-8 lg:hidden">
-              <LogoutButton className="h-9 rounded-lg px-3 text-xs" />
-            </div>
-          ) : null}
-          <MobileDashboardNav />
           <PartnerSubscriptionGate>{children}</PartnerSubscriptionGate>
         </div>
+        <MobileDashboardNav />
       </main>
       </PartnerNotificationsProvider>
     </AuthGuard>

@@ -7,6 +7,7 @@ import { Bell, Search } from "lucide-react";
 import { dashboardNav } from "@/lib/mock/dashboard-data";
 import { useSession } from "@/components/shared/AuthContext";
 import { usePartnerNotifications } from "./PartnerNotificationsProvider";
+import { MobilePartnerAccount } from "./MobileDashboardNav";
 
 function initials(name: string) {
   return name
@@ -38,7 +39,7 @@ export function DashboardHeader() {
   const { unread } = usePartnerNotifications();
 
   return (
-    <header className="sticky top-0 z-30 border-b border-[#e3e4ef] bg-[#f7f7fd]/95 backdrop-blur">
+    <header className="sticky top-0 z-[45] border-b border-[#e3e4ef] bg-[#f7f7fd] lg:z-30 lg:bg-[#f7f7fd]/95 lg:backdrop-blur">
       <div className="flex h-16 items-center justify-between gap-4 px-6 lg:px-12">
         <div
           className="relative hidden w-[288px] md:block"
@@ -101,6 +102,7 @@ export function DashboardHeader() {
         </div>
 
         <div className="ml-auto flex items-center gap-4">
+          <MobilePartnerAccount />
           {/*
             No primary-action button here.
 

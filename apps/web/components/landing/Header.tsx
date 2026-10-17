@@ -41,7 +41,7 @@ export function Header() {
           </div>
         </div>
 
-        <div className="hidden items-center gap-4 md:flex">
+        <div className="hidden items-center gap-4 lg:flex">
           <Link
             className="inline-flex h-8 items-center justify-center px-4 text-xs font-semibold tracking-[0.6px] text-obligon-text"
             href="/auth/login"
@@ -54,7 +54,7 @@ export function Header() {
         </div>
 
         <button
-          className="inline-flex size-10 items-center justify-center rounded-lg border border-obligon-border bg-white text-obligon-navy lg:hidden"
+          className="inline-flex size-11 items-center justify-center rounded-lg border border-obligon-border bg-white text-obligon-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-obligon-green focus-visible:ring-offset-2 lg:hidden"
           type="button"
           aria-expanded={open}
           aria-controls="landing-mobile-navigation"
@@ -78,12 +78,22 @@ export function Header() {
                 {item.label}
               </Link>
             ))}
-            <Link className="text-sm font-semibold text-obligon-navy" href="/auth/login" onClick={() => setOpen(false)}>
-              Login
-            </Link>
-            <Link className="text-sm font-bold text-obligon-green" href="/auth/signup" onClick={() => setOpen(false)}>
-              Get Started
-            </Link>
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              <Link
+                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-obligon-navy bg-obligon-mist px-4 py-2 text-center text-sm font-semibold text-obligon-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-obligon-green focus-visible:ring-offset-2"
+                href="/auth/login"
+                onClick={() => setOpen(false)}
+              >
+                Login
+              </Link>
+              <Link
+                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-obligon-green bg-obligon-green px-4 py-2 text-center text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-obligon-green focus-visible:ring-offset-2"
+                href="/auth/signup"
+                onClick={() => setOpen(false)}
+              >
+                Get Started
+              </Link>
+            </div>
           </div>
         </div>
       ) : null}

@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-17",
+  "webTests": {
+    "passed": 308,
+    "failed": 0,
+    "skipped": 0,
+    "command": "node --test --experimental-test-isolation=none tests/*.test.cjs"
+  },
+  "independentFocusedTests": 24,
+  "productionBuild": "passed",
+  "scopedLint": "no warnings or errors",
+  "review": "no remaining actionable findings",
+  "localBrowserWidths": [
+    320,
+    390,
+    768,
+    1024,
+    1440
+  ],
+  "shortScreen": [
+    320,
+    480
+  ],
+  "screenReaderTested": false,
+  "physicalSafeAreaTested": false
+}

@@ -1,0 +1,170 @@
+[
+  {
+    "accountVisible": true,
+    "barBottom": 740.400016784668,
+    "barVisible": true,
+    "contentPadding": "80px",
+    "documentWidth": 320,
+    "height": 740,
+    "links": [
+      {
+        "current": "page",
+        "height": 73.39688110351562,
+        "label": "Dashboard",
+        "width": 64.078125
+      },
+      {
+        "current": null,
+        "height": 73.39688110351562,
+        "label": "Transactions",
+        "width": 64.078125
+      },
+      {
+        "current": null,
+        "height": 73.39688110351562,
+        "label": "Fuel Stations",
+        "width": 64.078125
+      },
+      {
+        "current": null,
+        "height": 73.39688110351562,
+        "label": "Analytics",
+        "width": 64.078125
+      },
+      {
+        "current": null,
+        "height": 73.39688110351562,
+        "label": "Settlements",
+        "width": 64.0875015258789
+      }
+    ],
+    "sidebarVisible": false,
+    "width": 320
+  },
+  {
+    "accountVisible": true,
+    "barBottom": 844.200065612793,
+    "barVisible": true,
+    "contentPadding": "80px",
+    "documentWidth": 390,
+    "height": 844,
+    "links": [
+      {
+        "current": "page",
+        "height": 73.39688110351562,
+        "label": "Dashboard",
+        "width": 78
+      },
+      {
+        "current": null,
+        "height": 73.39688110351562,
+        "label": "Transactions",
+        "width": 78
+      },
+      {
+        "current": null,
+        "height": 73.39688110351562,
+        "label": "Fuel Stations",
+        "width": 78
+      },
+      {
+        "current": null,
+        "height": 73.39688110351562,
+        "label": "Analytics",
+        "width": 78
+      },
+      {
+        "current": null,
+        "height": 73.39688110351562,
+        "label": "Settlements",
+        "width": 78
+      }
+    ],
+    "sidebarVisible": false,
+    "width": 390
+  },
+  {
+    "accountVisible": true,
+    "barBottom": 1024.200065612793,
+    "barVisible": true,
+    "contentPadding": "80px",
+    "documentWidth": 768,
+    "height": 1024,
+    "links": [
+      {
+        "current": "page",
+        "height": 73.39688110351562,
+        "label": "Dashboard",
+        "width": 153.60000610351562
+      },
+      {
+        "current": null,
+        "height": 73.39688110351562,
+        "label": "Transactions",
+        "width": 153.60000610351562
+      },
+      {
+        "current": null,
+        "height": 73.39688110351562,
+        "label": "Fuel Stations",
+        "width": 153.60000610351562
+      },
+      {
+        "current": null,
+        "height": 73.39688110351562,
+        "label": "Analytics",
+        "width": 153.60000610351562
+      },
+      {
+        "current": null,
+        "height": 73.39688110351562,
+        "label": "Settlements",
+        "width": 153.60000610351562
+      }
+    ],
+    "sidebarVisible": false,
+    "width": 768
+  },
+  {
+    "accountVisible": false,
+    "barBottom": 0,
+    "barVisible": false,
+    "contentPadding": "0px",
+    "documentWidth": 1024,
+    "height": 768,
+    "links": [
+      {
+        "current": "page",
+        "height": 0,
+        "label": "Dashboard",
+        "width": 0
+      },
+      {
+        "current": null,
+        "height": 0,
+        "label": "Transactions",
+        "width": 0
+      },
+      {
+        "current": null,
+        "height": 0,
+        "label": "Fuel Stations",
+        "width": 0
+      },
+      {
+        "current": null,
+        "height": 0,
+        "label": "Analytics",
+        "width": 0
+      },
+      {
+        "current": null,
+        "height": 0,
+        "label": "Settlements",
+        "width": 0
+      }
+    ],
+    "sidebarVisible": true,
+    "width": 1024
+  }
+]

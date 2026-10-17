@@ -212,12 +212,13 @@ test('shared destination validator rejects navigation escapes and normalizes har
   for (const [role, expected] of [['customer', '/customer'], ['company', '/company'], ['partner', '/dashboard'], ['mechanic', '/dashboard'], ['admin', '/admin']]) assert.equal(dashboardDestination(role), expected);
 });
 for (const pathname of ['/mechanic', '/dashboard', '/dashboard/transactions', '/dashboard/reports', '/dashboard/staff', '/dashboard/disputes', '/dashboard/notifications', '/dashboard/settings']) {
-  test(`mechanic can mount the approved route ${pathname} with mobile sign-out and existing plan gate`, () => {
+  test(`mechanic can mount the approved route ${pathname} with mobile navigation and existing plan gate`, () => {
     const ui = fixture('../components/dashboard/PartnershipShell.tsx', { role: 'mechanic', pathname });
     if (pathname === '/mechanic') ui.render({ children: 'Mechanic content', allowedRoles: ['mechanic'] });
     const guard = ui.nodes().find(node => node.type === 'AuthGuard');
     assert.ok(guard.props.allowedRoles.includes('mechanic'));
-    assert.ok(ui.nodes().some(node => node.type === 'LogoutButton' && node.props.className.includes('h-9')));
+    assert.ok(ui.nodes().some(node => node.type === 'DashboardHeader'));
+    assert.ok(ui.nodes().some(node => node.type === 'MobileDashboardNav'));
     assert.ok(ui.nodes().some(node => node.type === 'PartnerSubscriptionGate'));
   });
 }

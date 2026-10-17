@@ -1,3 +1,4 @@
+- [2026-10-17] [Mobile dashboard navigation](2026-10-17-mobile-dashboard-navigation.md): Keep every partner destination reachable with a bottom bar and an accessible Account menu.
 - [2026-10-17] [One day partner dashboard access](2026-10-17-one-day-partner-access.md): Enforce a fixed inspection deadline without extending access on restart.
 - [2026-10-15] [Repair signup and fleet editing](2026-10-15-test-report-repairs.md): Validate administrative choices on both sides, preserve vehicle edits, and explain unavailable provider operations.
 - [2026-10-14] [Production readiness repairs](2026-10-14-production-readiness-repairs.md): How current authorization, exact money, recovery records, and truthful dashboard states work together.
