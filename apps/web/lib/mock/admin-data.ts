@@ -68,7 +68,7 @@ export const adminPageCopy: Record<AdminPageKey, {
   },
   companies: {
     title: "Company Oversight",
-    description: "Monitor enterprise accounts, subscription plans, and fleet performance across the entire Fuelvista ecosystem.",
+    description: "Review company accounts, subscription plans, and recorded fleet activity.",
     search: "Global Admin Search...",
     user: "Adekunle Smith",
     role: "Fleet Overseer"

@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-18",
+  "recordedAt": "2026-10-18T21:23:55.454Z",
+  "baseRevision": "877b5ea965de5ea5fd87e98ef98737a4688a2eee",
+  "api": {
+    "tests": 1070,
+    "passed": 1070,
+    "failed": 0,
+    "skipped": 0,
+    "concurrency": 4,
+    "externalProviderMode": "controlled fixtures; no live money"
+  },
+  "migrations": {
+    "count": 33,
+    "environment": "disposable localhost PostgreSQL18"
+  },
+  "fullLog": "/tmp/obligon-readiness-18-api-final.log",
+  "fullLogSha256": "3b5f6c98d188d056042811a68289dcba629a2e4dd8c43a754370a8e8b4dd7e39",
+  "sources": {
+    "apps/api/src/config/env.js": "bffbf69a83c3dd6dd363e1f2666696785b98a971000f0df2754d267a37653438",
+    "apps/api/src/index.js": "34c7af3d6ad21eb4216a6c72fbc12f78b182d8f3eb50cc6c22daf2d55b54c348",
+    "apps/api/src/lib/mailer.js": "f873a2035afe176f67ec553fd6ff3aa05806ebad8d5af42ae06a4f1eadc56235",
+    "apps/api/src/lib/notify.js": "dd79bb4cf31b3a07cfe84f3808d512c127b7ad644c06d9a4b11ebaccf068c8aa",
+    "apps/api/src/lib/pdf.js": "255793afd1768b7a912652680845d45fc4751775e70cd699f581d6256a138aa4",
+    "apps/api/src/lib/sms.js": "308b5af884194750af2f2e6fe1094d0b303dd4ea773048defcce220c9391fecf",
+    "apps/api/src/routes/admin.routes.js": "11db08c6264ed1171ff98ed1dd00356e75dfeb2983e0d9ac5ca1bb79b73bee3a",
+    "apps/api/src/routes/auth.routes.js": "e930254089861d3e91ed2082ec8ed7de8ff7ad5fb8ab2812f0aae8e8ba824155",
+    "apps/api/src/routes/company.routes.js": "f6e024a2322f822b209575c8d66265f4b5314274c213fdc371998890c8ba8b8b",
+    "apps/api/src/routes/customer.routes.js": "fe23c903dd46d9b4181157b6254a973d97298b4769c3c45552c36c253a1dcad8",
+    "apps/api/src/routes/intake-admin.routes.js": "c5f3cac19c63ef282afaba573d2461fdbd94b027384866d0470c6d18d48c2fcb",
+    "apps/api/src/routes/partner.routes.js": "ac8188d3fcca2029a03f32907e29d0bc0e5583cd196ef08ff6e407e66d76d39a",
+    "apps/api/src/routes/public.routes.js": "82d0cb2d3a4103d8f1acdb6f00c7b52a834b423374e2e5559efe03f9d0cf0f3d",
+    "apps/api/src/routes/subscription.routes.js": "1eeea551775d9ffcab2379308607a39a2669a5298bb1ed71ff9acf46ba80a272",
+    "apps/api/src/routes/support-admin.routes.js": "474f1dfa8eeaa0b0586df0a8874bd8d7424c76b99e127d3df553c19df2329d19",
+    "apps/api/src/scripts/seed.js": "270eaf3a46c2fdc2fa61d86505004a73b726106d898877bc148205a9a18cbc68",
+    "apps/api/tests/admin-support.integration.test.mjs": "fe0cb1896c4e51d083a46ac7402778918937185242a6c1a1f6ca6c5f2821f19c",
+    "apps/api/tests/backend-copy.test.mjs": "f3757173b1e6b8eb5b3abc215a29af08cad515387cf4b38b4f9bb10aa53ee009",
+    "apps/api/tests/partner-dashboard-wiring.test.mjs": "2602fa60a72a249ad3fe53a95f5e7dc39050a80c27cbca6774d6dfbc25c1c790",
+    "apps/api/tests/partner-production-readiness.test.mjs": "5a950c9ebd168531d7cf61db1f81243d7924eaba5c953cedaf6cd26251d03e5a",
+    "apps/api/tests/seed-subscription.integration.test.mjs": "c4667a0ace7289a7ae093c4b3953ad5e4587f763cf59f2dea269cb823603699d"
+  }
+}

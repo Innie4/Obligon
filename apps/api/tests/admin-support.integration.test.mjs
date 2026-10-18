@@ -374,6 +374,15 @@ integration('public forms reject invalid input before database writes',async()=>
  }
  assert.equal((await pool.query('SELECT count(*)::int total FROM leads')).rows[0].total,0);
 });
+integration('careers rejects blank or malformed applicant email before application or email writes',async()=>{
+ const {rows:[job]}=await pool.query("INSERT INTO job_postings(title,status)VALUES('Fixture vacancy','open')RETURNING id");
+ for(const email of ['', '   ', 'not-an-email', 'invalid@']) {
+  const response=await originalFetch(`${base}/api/public/jobs/apply`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({jobId:job.id,name:'Fixture applicant',email})});
+  assert.equal(response.status,400,JSON.stringify({email,status:response.status}));
+ }
+ assert.equal((await pool.query('SELECT count(*)::int total FROM job_applications')).rows[0].total,0);
+ assert.equal((await pool.query('SELECT count(*)::int total FROM email_outbox')).rows[0].total,0);
+});
 integration('admin reads show live records and operator approval never publishes pending locations',async()=>{
  const {rows:[application]}=await pool.query("INSERT INTO partner_applications(reference,business_name,contact_email,user_id,status)VALUES('APP_TEST','Operator','partner@test.invalid',$1,'submitted')RETURNING id",[fixtures.partner.id]);
  const {rows:[station]}=await pool.query("INSERT INTO stations(name,partner_org_id,status)VALUES('Pending location',$1,'pending')RETURNING id",[fixtures.org.id]);

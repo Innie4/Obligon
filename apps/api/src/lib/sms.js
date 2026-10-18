@@ -75,7 +75,7 @@ export async function sendSms({ to, message }) {
     );
     if (smsFallbackAllowed()) {
       console.warn(
-        `[sms:fallback] ${classified.code} — NOT SENDING. Delivering in-process because ` +
+        `[sms:fallback] ${classified.code} - NOT SENDING. Delivering in-process because ` +
           `NODE_ENV=${env.NODE_ENV}. The message was:\n` +
           `  to: ${to}\n  message: ${message}\n`
       );

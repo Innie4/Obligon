@@ -23,7 +23,7 @@ export function LogoutButton({ variant = "button", className = "" }: { variant?:
       toastSuccess("You have been logged out");
       router.push(routes.login);
     } catch {
-      toastError("Could not reach the server — you have been signed out locally.");
+      toastError("Could not reach the server. You have been signed out locally.");
       router.push(routes.login);
     } finally {
       setLoggingOut(false);

@@ -1,0 +1,50 @@
+{
+  "metrics": [
+    {
+      "minimumDayHeight": 44,
+      "minimumDayWidth": 30.421875,
+      "monthWidth": 125,
+      "overflow": false,
+      "width": 320
+    },
+    {
+      "minimumDayHeight": 44,
+      "minimumDayWidth": 40.421875,
+      "monthWidth": 195,
+      "overflow": false,
+      "width": 390
+    },
+    {
+      "minimumDayHeight": 44,
+      "minimumDayWidth": 44,
+      "monthWidth": 270,
+      "overflow": false,
+      "width": 768
+    },
+    {
+      "minimumDayHeight": 44,
+      "minimumDayWidth": 44,
+      "monthWidth": 270,
+      "overflow": false,
+      "width": 1024
+    },
+    {
+      "minimumDayHeight": 44,
+      "minimumDayWidth": 44,
+      "monthWidth": 270,
+      "overflow": false,
+      "width": 1440
+    }
+  ],
+  "localFormResult": {
+    "dateOfBirth": "1990-03-10",
+    "starts": "2026-10-18T13:15",
+    "ends": "2026-10-19T08:05"
+  },
+  "checked": [
+    "Manual future birth date blocked",
+    "ArrowRight crosses December 31 to January 1 without selection",
+    "Keyboard time input and exact local form values",
+    "Month/year readable at320px"
+  ]
+}

@@ -135,7 +135,7 @@ router.get("/companies", asyncHandler(async (req, res) => {
     companies: rows.map((r) => ({
       id: r.id,
       avatar: initialsOf(r.name),
-      cells: [`${r.name.split(" ")[0]}\n${r.name.split(" ").slice(1).join(" ") || "—"}\n${r.city ?? "NG"}`, r.fleet_id ?? "—", (r.plan_name ?? r.plan_code ?? "basic").toUpperCase(), r.subscription_status === "active" ? String(r.active_cards) : "ONBOARDING", naira(r.credit_limit_kobo)],
+      cells: [`${r.name.split(" ")[0]}\n${r.name.split(" ").slice(1).join(" ") || "Not available"}\n${r.city ?? "NG"}`, r.fleet_id ?? "Not available", (r.plan_name ?? r.plan_code ?? "basic").toUpperCase(), r.subscription_status === "active" ? String(r.active_cards) : "ONBOARDING", naira(r.credit_limit_kobo)],
       status: r.verification_status === "rejected" ? "Rejected" : r.verification_status !== "verified" ? "Pending"
         : r.subscription_status === "active" ? "Active" : r.subscription_status === "canceled" ? "Frozen" : "Pending",
       tone: r.verification_status === "rejected" ? "red" : r.verification_status !== "verified" ? "amber"
@@ -177,7 +177,7 @@ router.post("/companies", asyncHandler(async (req, res) => {
   const delivery = await sendEmail({
     to: adminEmail,
     subject: "Your Obligon fleet workspace is pending approval",
-    text: `Your fleet workspace is pending admin approval after your company contract is agreed. You can sign in to review your profile and contact Support; company operations become available after approval. Sign in at ${env.APP_URL}/auth/login — email: ${adminEmail}, temporary password: ${tempPassword}`
+    text: `Your fleet workspace is pending admin approval after your company contract is agreed. You can sign in to review your profile and contact Support; company operations become available after approval. Sign in at ${env.APP_URL}/auth/login - email: ${adminEmail}, temporary password: ${tempPassword}`
   });
   res.json({ ok: true, orgId: result.org.id, fleetId: result.org.fleet_id, verificationStatus: "pending", invitationSent: Boolean(delivery?.delivered),
     message: delivery?.delivered ? "Fleet created pending contract approval. The owner invitation was delivered."
@@ -482,7 +482,7 @@ router.get("/applications", asyncHandler(async (req, res) => {
     applications: rows.map((r) => ({
       id: r.id,
       avatar: initialsOf(r.business_name),
-      cells: [`#${r.reference}`, `${r.business_name.split(" ")[0]}\n${r.business_name.split(" ").slice(1).join(" ") || ""}`, `${(r.city ?? "—").split(",")[0]},\nNigeria`, (r.contact_name ?? r.contact_email.split("@")[0]).split(" ")[0], fmtDate(r.created_at)],
+      cells: [`#${r.reference}`, `${r.business_name.split(" ")[0]}\n${r.business_name.split(" ").slice(1).join(" ") || ""}`, `${(r.city ?? "Not available").split(",")[0]},\nNigeria`, (r.contact_name ?? r.contact_email.split("@")[0]).split(" ")[0], fmtDate(r.created_at)],
       status: r.status.replace("_", " ").toUpperCase(), tone: r.status === "approved" ? "green" : r.status === "rejected" ? "red" : "dark",
       applicationId: r.id, businessName: r.business_name, partnerType: r.partner_type,
       contactEmail: r.contact_email, contactPhone: r.contact_phone, rcNumber: r.rc_number,
@@ -628,7 +628,7 @@ router.get("/disputes", asyncHandler(async (req, res) => {
     ],
     disputes: rows.map((d) => ({
       id: d.id,
-      cells: [`#${d.reference}`, `${fmtDate(d.created_at)},\n${fmtDateTime(d.created_at).split(", ")[1] ?? ""}`, `${(d.station_name ?? "Platform").split(" ")[0]} -\n${d.station_name ?? ""}\nID: ${d.station_org_id ? String(d.station_org_id).slice(0, 8) : "—"}`, d.category.replace(/_/g, " "), naira(d.refund_amount_kobo || d.tx_amount || 0)],
+      cells: [`#${d.reference}`, `${fmtDate(d.created_at)},\n${fmtDateTime(d.created_at).split(", ")[1] ?? ""}`, `${(d.station_name ?? "Platform").split(" ")[0]} -\n${d.station_name ?? ""}\nID: ${d.station_org_id ? String(d.station_org_id).slice(0, 8) : "Not available"}`, d.category.replace(/_/g, " "), naira(d.refund_amount_kobo || d.tx_amount || 0)],
       status: d.status.replace("_", " ").toUpperCase(), tone: d.status === "resolved" || d.status === "refunded" ? "green" : d.status === "escalated" ? "red" : "blue",
       flagged: d.status === "escalated",
       disputeId: d.id, reference: d.reference, subject: d.subject, category: d.category,
@@ -684,7 +684,7 @@ router.get("/staff", asyncHandler(async (req, res) => {
       { label: "TOTAL INTERNAL STAFF", value: String(stats.total), helper: `${stats.active} active`, tone: "green" },
       { label: "ACTIVE ROLES", value: String(stats.roles), tone: "green" },
       { label: "PENDING INVITES", value: String(invites?.count ?? 0), tone: "muted" },
-      { label: "LAST AUDIT", value: lastAudit?.last ? fmtDate(lastAudit.last).toUpperCase() : "—",  tone: "muted" }
+      { label: "LAST AUDIT", value: lastAudit?.last ? fmtDate(lastAudit.last).toUpperCase() : "Not available",  tone: "muted" }
     ],
     total:total.count,
     staff: rows.map((r) => ({
@@ -713,7 +713,7 @@ router.post("/staff", asyncHandler(async (req, res) => {
   void sendEmail({
     to: email,
     subject: "Your Obligon internal staff account",
-    text: `Sign in at ${env.APP_URL}/admin/login — email: ${email}, temporary password: ${tempPassword}`,
+    text: `Sign in at ${env.APP_URL}/admin/login - email: ${email}, temporary password: ${tempPassword}`,
     html: `<div style="font-family:sans-serif"><h2>Internal account created</h2><p>Sign in at ${env.APP_URL}/admin/login</p><p>Email: ${email}<br/>Temporary password: <b>${tempPassword}</b></p></div>`
   });
   audit({ actorUserId: req.user.id, actorRole: "admin", action: "admin.staff_created", metadata: { email, role } });

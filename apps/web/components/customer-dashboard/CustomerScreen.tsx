@@ -220,7 +220,7 @@ function ActivityList({ desktop = false }: { desktop?: boolean }) {
   );
 }
 
-function metricValue(metrics: { label: string; value: string; helper?: string }[] | null, label: string, fallback = "—") {
+function metricValue(metrics: { label: string; value: string; helper?: string }[] | null, label: string, fallback = "N/A") {
   return metrics?.find((item) => item.label === label)?.value ?? fallback;
 }
 
@@ -276,7 +276,7 @@ function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
   return (
     <Canvas>
       <div className="lg:hidden">
-        <h1 className="font-display text-[34px] font-extrabold leading-tight text-obligon-green">{greetingHour()}, {firstName}</h1>
+        <h2 className="font-display text-[34px] font-extrabold leading-tight text-obligon-green">{greetingHour()}, {firstName}</h2>
         <p className="mt-2 text-base text-[#3f463d]">Here is your personal account overview for today.</p>
       </div>
 
@@ -464,7 +464,7 @@ function TransactionsPage() {
       <Canvas compact>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
-            <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Transaction History</h1>
+            <h2 className="font-display text-3xl font-extrabold text-obligon-navy">Transaction History</h2>
             <p className="mt-1 text-sm text-obligon-text">Complete ledger of fuel card dispenses and wallet top-ups.</p>
           </div>
           <div className="flex gap-2">
@@ -540,13 +540,13 @@ function TransactionsPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-xs font-bold text-obligon-text">
-                        {row.reference ?? "—"}
+                        {row.reference ?? "N/A"}
                       </td>
                       <td className={`px-6 py-4 font-extrabold ${row.signedKobo >= 0 ? "text-obligon-green" : "text-obligon-navy"}`}>
                         {row.amount}
                       </td>
                       <td className="px-6 py-4 text-xs font-bold text-obligon-text">
-                        {row.balanceAfterLabel ?? "—"}
+                        {row.balanceAfterLabel ?? "N/A"}
                       </td>
                       <td className="px-6 py-4 text-xs text-obligon-text">{row.time}</td>
                       <td className="px-6 py-4">
@@ -1164,7 +1164,7 @@ function CardPage({
   return (
     <Canvas>
       <div className="mb-8">
-        <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Card Management</h1>
+        <h2 className="font-display text-3xl font-extrabold text-obligon-navy">Card Management</h2>
         <p className="mt-1 text-obligon-text">View your Fuelvista card status and manage your subscription.</p>
       </div>
 
@@ -1366,11 +1366,11 @@ function CardPage({
               <div className="mt-8 grid gap-4 sm:grid-cols-2">
                 <div>
                   <p className="text-[10px] uppercase font-bold tracking-wider text-white/60">CARDHOLDER NAME</p>
-                  <p className="font-extrabold text-sm text-white">{card?.holder ?? "—"}</p>
+                  <p className="font-extrabold text-sm text-white">{card?.holder ?? "N/A"}</p>
                 </div>
                 <div>
                   <p className="text-[10px] uppercase font-bold tracking-wider text-white/60">DAILY SPEND LIMIT</p>
-                  <p className="font-extrabold text-sm text-obligon-lime">{card?.dailyLimitLabel ?? "—"}</p>
+                  <p className="font-extrabold text-sm text-obligon-lime">{card?.dailyLimitLabel ?? "N/A"}</p>
                 </div>
               </div>
             </div>
@@ -1482,7 +1482,7 @@ function WalletPage({
     <Canvas>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Wallet Management</h1>
+          <h2 className="font-display text-3xl font-extrabold text-obligon-navy">Wallet Management</h2>
           <p className="mt-1 text-obligon-text">Fund your prepaid fuel balance and manage your spending.</p>
         </div>
         <button
@@ -1953,7 +1953,7 @@ function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void 
     <Canvas>
       <section className="mb-6 rounded-xl border bg-white p-6"><h2 className="text-2xl font-bold">Request a plan service</h2><p className="mt-2 text-sm text-obligon-text">{services?.message}</p>{services&&<form className="mt-4 space-y-4" onSubmit={async e=>{e.preventDefault();const form=new FormData(e.currentTarget);setSending(true);try{const result=await api.request<{reference:string}>("/api/customer/services",{method:"POST",body:JSON.stringify(Object.fromEntries(form))});setServiceReference(result.reference);await loadTickets();}catch(e){toastError((e as Error).message);}finally{setSending(false);}}}><label className="block">Service<select name="service" required className="mt-2 block min-h-12 w-full rounded border p-3"><option value="">Choose an included service</option>{services.services.map(service=><option key={service.label} disabled={!service.available} value={service.label}>{service.label}{!service.available?" · Not included / active plan required":""}</option>)}</select></label><label className="block">Location and requirements<textarea name="message" required maxLength={5000} className="mt-2 block min-h-28 w-full rounded border p-3"/></label><button disabled={sending||!services.services.some(service=>service.available)} className="min-h-12 rounded bg-obligon-green px-6 font-bold text-white">{sending?"Submitting…":"Request coordination"}</button></form>}{serviceReference&&<p role="status" className="mt-4">Request {serviceReference} recorded. Use Open Support Messages below to follow the response.</p>}</section>
       <div className="mb-8">
-        <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Customer Support Center</h1>
+        <h2 className="font-display text-3xl font-extrabold text-obligon-navy">Customer Support Center</h2>
         <p className="mt-1 text-obligon-text">Billing, card, and transaction assistance.</p>
       </div>
       <div className="grid gap-6 sm:grid-cols-2">
@@ -1978,7 +1978,7 @@ function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void 
               <label htmlFor="support-ticket" className="sr-only">Support request</label>
               <select id="support-ticket" value={ticketId} disabled={sending || loading} onChange={(e) => { setTicketId(e.target.value); setMessages([]); setTicketStatus(""); }} className="mt-2 w-full rounded-lg border p-2 text-sm">
                 <option value="">New support request</option>
-                {tickets.map((ticket) => <option key={ticket.id} value={ticket.id}>{ticket.reference} — {ticket.subject}</option>)}
+                {tickets.map((ticket) => <option key={ticket.id} value={ticket.id}>{ticket.reference} · {ticket.subject}</option>)}
               </select>
               <p className="mt-2 text-xs text-obligon-text">{ticketId ? `Request ${ticketStatus || "loading"}. Replies appear here when the team responds.` : "Your first message opens a support request. The team will reply here."}</p>
             </div>
@@ -2165,7 +2165,7 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
       <Canvas>
         <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
         <Card className="p-6 sm:p-8">
-          <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Profile &amp; Settings</h1>
+          <h2 className="font-display text-3xl font-extrabold text-obligon-navy">Profile &amp; Settings</h2>
           <p className="mt-1 text-sm text-obligon-text">Manage your personal details and communication preferences.</p>
 
           <form onSubmit={handleSave} className="mt-6 space-y-4">
@@ -2365,7 +2365,7 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
                   <div>
                     <p className="text-xs font-extrabold text-obligon-navy">Two-Factor Authentication</p>
                     <p className="text-[11px] text-obligon-text">
-                      {twoFactor ? "Enabled — a code is required at sign-in" : "Add a verification code at sign-in"}
+                      {twoFactor ? "Enabled. A code is required at sign-in." : "Add a verification code at sign-in"}
                     </p>
                   </div>
                 </div>
@@ -2379,7 +2379,7 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
               </button>
 
               <div className="rounded-xl border border-obligon-border p-3.5">
-                <p className="text-sm font-bold text-obligon-navy">Biometric Sign-In — Coming soon</p>
+                <p className="text-sm font-bold text-obligon-navy">Biometric Sign-In (not available yet)</p>
                 <p className="mt-1 text-xs text-obligon-text">Biometric transaction approval is not yet available. Use your password, card PIN, and two-factor authentication.</p>
               </div>
             </div>
@@ -2453,7 +2453,7 @@ function NotificationsPage() {
       <Canvas>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
           <div>
-            <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Notifications</h1>
+            <h2 className="font-display text-3xl font-extrabold text-obligon-navy">Notifications</h2>
             <p className="mt-1 text-obligon-text">Security alerts, transaction confirmations, and system notices.</p>
           </div>
           <button

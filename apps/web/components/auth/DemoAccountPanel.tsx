@@ -79,7 +79,7 @@ function DemoAccountPanelBody() {
             Explore a demo account
           </h3>
           <p className="mt-0.5 text-xs font-medium text-obligon-text">
-            One click per role. No email, no password — each opens the dashboard for that role.
+            One click per role. No email or password. Each opens the dashboard for that role.
           </p>
         </div>
       </div>

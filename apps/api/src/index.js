@@ -23,7 +23,7 @@ function reportConfig() {
   // Non-fatal by design: these degrade one integration and must not stop the API
   // from serving sign-in, dashboards, wallets and reporting.
   if (warnings.length) {
-    console.warn(`⚠ ${warnings.length} configuration warning(s) — the affected features are degraded, the API is running:`);
+    console.warn(`⚠ ${warnings.length} configuration warning(s) - the affected features are degraded, the API is running:`);
     for (const w of warnings) console.warn(`  - ${w}`);
   }
 }
@@ -32,7 +32,7 @@ async function main() {
   reportConfig();
   if (!env.DATABASE_URL) {
     console.error("✗ DATABASE_URL is not configured.");
-    console.error("  Check DATABASE_URL in apps/api/.env — Supabase: Project Settings → Database → Connection string (URI).");
+    console.error("  Check DATABASE_URL in apps/api/.env - Supabase: Project Settings → Database → Connection string (URI).");
     process.exit(1);
   }
 
@@ -42,7 +42,7 @@ async function main() {
     console.log("✓ Database connected (Supabase Postgres)");
   } catch (err) {
     console.error(`✗ Database connection failed: ${err.code ?? ""} ${err.message}`);
-    console.error("  Check DATABASE_URL in apps/api/.env — Supabase: Project Settings → Database → Connection string (URI).");
+    console.error("  Check DATABASE_URL in apps/api/.env - Supabase: Project Settings → Database → Connection string (URI).");
     process.exit(1);
   }
 
@@ -85,7 +85,7 @@ async function main() {
       if (status.active) {
         console.log(`  Payment provider: ${status.active}`);
       } else {
-        console.warn("  Payment provider: NONE — every checkout will fail with 503");
+        console.warn("  Payment provider: NONE - every checkout will fail with 503");
       }
       if (missing.length) {
         console.warn(`  ⚠ Missing payment credentials: ${missing.join(", ")}`);

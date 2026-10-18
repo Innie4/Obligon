@@ -1,0 +1,11 @@
+{
+  "checkedFiles": 178,
+  "scope": "Application-authored string/template literals and JSX text; comments excluded. User-supplied content and external API responses are not rewritten.",
+  "remaining": [
+    {
+      "file": "apps/web/lib/customer-entitlements.ts",
+      "line": 10,
+      "text": "—"
+    }
+  ]
+}

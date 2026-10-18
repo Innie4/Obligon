@@ -1,0 +1,28 @@
+{
+  "ok": true,
+  "service": "obligon-api",
+  "time": "2026-10-18T21:19:53.273Z",
+  "businessTimeZone": "UTC",
+  "providers": {
+    "supabase": true,
+    "supabaseAuth": true,
+    "storage": true,
+    "sudo": false,
+    "paystack": false,
+    "flutterwave": true,
+    "flutterwaveWebhooks": true,
+    "email": true,
+    "sms": true,
+    "push": true,
+    "maps": false
+  },
+  "scheduler": {
+    "enabled": false,
+    "running": false,
+    "lastRunAt": null,
+    "lastReconciliationAt": null,
+    "overdue": false,
+    "msSinceLastReconciliation": null,
+    "lastReconciliationError": null
+  }
+}

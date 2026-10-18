@@ -122,7 +122,7 @@ Full Name
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="contact-email" className="text-[11px] font-extrabold uppercase tracking-[1.1px] text-obligon-text block mb-1">
-Work Email
+Email Address
 </label>
                 <input
                   id="contact-email" value={email}
@@ -171,7 +171,7 @@ Message
                 id="contact-message" value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 rows={4}
-                placeholder="Describe your fleet size, question, or specific requirement..."
+                placeholder="Describe your question, issue, or service requirements..."
                 className="w-full rounded-xl border border-obligon-border bg-white p-4 text-sm font-medium text-obligon-navy outline-none focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20"
                 required
               />

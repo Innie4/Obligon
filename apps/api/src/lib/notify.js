@@ -86,7 +86,7 @@ export async function notify({
     if (catAllowed) {
       if (prefs.email !== false && catAllowed) {
         const to = emailOverride ?? user.email;
-        const tpl = { subject: `Obligon — ${title}`, text: body };
+        const tpl = { subject: `Obligon - ${title}`, text: body };
         await sendEmail({ to, ...tpl });
       }
       if (prefs.sms === true && catAllowed) {

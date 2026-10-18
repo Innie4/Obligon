@@ -133,7 +133,7 @@ router.post(
       await queueEmail(t, {
         eventKey: `plan-inquiry:${lead.id}`,
         to: email,
-        subject: `Obligon ${plan.name} plan — next steps`,
+        subject: `Obligon ${plan.name} plan: next steps`,
         body: `Your ${plan.name} plan inquiry has been recorded. Our onboarding team will contact you to confirm the requirements.`,
       });
     });
@@ -215,7 +215,7 @@ router.post(
       String(coverNote ?? "").length > 5000
     )
       throw badRequest("Enter valid application details");
-    if (req.body?.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
       throw badRequest("Enter a valid email address");
     if (
       !jobId ||
@@ -261,7 +261,7 @@ router.post(
     void flushEmailOutbox().catch(() => {});
     res.json({
       ok: true,
-      message: "Application received — we'll be in touch if there's a match.",
+      message: "Application received. We'll be in touch if there's a match.",
     });
   }),
 );
@@ -306,7 +306,7 @@ router.post(
       message:
         type === "newsletter"
           ? "You're subscribed to Obligon updates."
-          : "Thanks — our sales team will reach out shortly.",
+          : "Thanks. Our sales team will contact you shortly.",
     });
   }),
 );
@@ -386,7 +386,7 @@ router.post(
       await queueEmail(t, {
         eventKey: `contact:${saved.id}`,
         to: email.trim(),
-        subject: `Obligon support — ${saved.reference}`,
+        subject: `Obligon support - ${saved.reference}`,
         body: `Your request ${saved.reference} has been received. Our team will respond by email.`,
       });
       return saved;

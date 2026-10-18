@@ -1,0 +1,406 @@
+{
+  "sourceRevision": "877b5ea965de5ea5fd87e98ef98737a4688a2eee",
+  "workingTree": true,
+  "excludedTemporaryFixture": "apps/web/app/calendar-qa/page.tsx",
+  "scope": "Static page/asset target and fragment existence. No role authorization, runtime API behavior, or external provider success inference.",
+  "pages": 73,
+  "groups": {
+    "admin": [
+      "/admin/companies",
+      "/admin/discount-approvals",
+      "/admin/disputes",
+      "/admin/intake",
+      "/admin/login",
+      "/admin/operations",
+      "/admin",
+      "/admin/partner-applications",
+      "/admin/reports",
+      "/admin/staff"
+    ],
+    "auth": [
+      "/auth/company-invitation",
+      "/auth/failure",
+      "/auth/in-progress",
+      "/auth/login",
+      "/auth/logout",
+      "/auth/mfa/challenge",
+      "/auth/mfa/setup",
+      "/auth/session-expired",
+      "/auth/signup",
+      "/auth/success",
+      "/auth/verify-email",
+      "/auth/verify-phone"
+    ],
+    "public": [
+      "/careers",
+      "/cookie-policy",
+      "/forgot-password",
+      "/login",
+      "/mechanic",
+      "/",
+      "/privacy-policy",
+      "/reset-password",
+      "/solutions/energyvista",
+      "/solutions/fuelvista",
+      "/solutions/genvista",
+      "/support",
+      "/terms-of-service"
+    ],
+    "company": [
+      "/company/billing",
+      "/company/cards",
+      "/company/maintenance",
+      "/company/notifications",
+      "/company",
+      "/company/reports",
+      "/company/roadside",
+      "/company/settings",
+      "/company/stations",
+      "/company/support",
+      "/company/team",
+      "/company/transactions",
+      "/company/vehicles"
+    ],
+    "customer": [
+      "/customer/card",
+      "/customer/fuel-checkout",
+      "/customer/notifications",
+      "/customer",
+      "/customer/profile",
+      "/customer/report-problem",
+      "/customer/stations",
+      "/customer/subscription",
+      "/customer/support",
+      "/customer/transaction-detail",
+      "/customer/transactions",
+      "/customer/wallet"
+    ],
+    "dashboard": [
+      "/dashboard/billing",
+      "/dashboard/card-verification",
+      "/dashboard/disputes",
+      "/dashboard/fuel-pricing",
+      "/dashboard/notifications",
+      "/dashboard",
+      "/dashboard/reports",
+      "/dashboard/settings",
+      "/dashboard/settlements",
+      "/dashboard/staff",
+      "/dashboard/station-profile",
+      "/dashboard/transactions",
+      "/dashboard/verify"
+    ]
+  },
+  "staticNavigationReferences": 186,
+  "checkedLocalReferences": 183,
+  "externalReferences": 3,
+  "apiReferences": 0,
+  "broken": [],
+  "unresolvedDynamicReferences": [
+    {
+      "file": "apps/web/app/auth/failure/page.tsx",
+      "line": 22,
+      "expression": "signInDestination(returnPath)"
+    },
+    {
+      "file": "apps/web/app/auth/in-progress/page.tsx",
+      "line": 51,
+      "expression": "nextPath"
+    },
+    {
+      "file": "apps/web/app/auth/in-progress/page.tsx",
+      "line": 68,
+      "expression": "signInDestination(returnPath)"
+    },
+    {
+      "file": "apps/web/app/auth/session-expired/page.tsx",
+      "line": 41,
+      "expression": "dashboardDestination(session.role)"
+    },
+    {
+      "file": "apps/web/app/forgot-password/page.tsx",
+      "line": 87,
+      "expression": "{`/reset-password${email ? `?email=${encodeURIComponent(email)}` : \"\"}`}"
+    },
+    {
+      "file": "apps/web/app/reset-password/page.tsx",
+      "line": 217,
+      "expression": "{routes.forgotPassword ?? \"/forgot-password\"}"
+    },
+    {
+      "file": "apps/web/components/admin-dashboard/AdminHeader.tsx",
+      "line": 68,
+      "expression": "{item.href}"
+    },
+    {
+      "file": "apps/web/components/admin-dashboard/AdminShell.tsx",
+      "line": 40,
+      "expression": "{item.href}"
+    },
+    {
+      "file": "apps/web/components/admin-dashboard/AdminSidebar.tsx",
+      "line": 51,
+      "expression": "{item.href}"
+    },
+    {
+      "file": "apps/web/components/auth/AuthForms.tsx",
+      "line": 298,
+      "expression": "withAuthReturn(routes.mfaChallenge, returnPath)"
+    },
+    {
+      "file": "apps/web/components/auth/AuthForms.tsx",
+      "line": 314,
+      "expression": "returnPath ?? destination"
+    },
+    {
+      "file": "apps/web/components/auth/AuthForms.tsx",
+      "line": 343,
+      "expression": "{returnPath ?? (\n              user.role === \"admin\"\n                ? routes.adminDashboard\n                : user.role === \"company\"\n                  ? routes.companyDashboard\n                  : user.role === \"partner\" || user.role === \"mechanic\"\n                    ? routes.dashboard\n                    : routes.customerDashboard)\n            }"
+    },
+    {
+      "file": "apps/web/components/auth/AuthForms.tsx",
+      "line": 468,
+      "expression": "{withAuthReturn(routes.signup, returnPath)}"
+    },
+    {
+      "file": "apps/web/components/auth/AuthForms.tsx",
+      "line": 656,
+      "expression": "withAuthReturn(routes.verifyEmail, returnPath)"
+    },
+    {
+      "file": "apps/web/components/auth/AuthForms.tsx",
+      "line": 660,
+      "expression": "`${routes.authSuccess}?redirect=${encodeURIComponent(returnPath ?? destination)}`"
+    },
+    {
+      "file": "apps/web/components/auth/AuthForms.tsx",
+      "line": 942,
+      "expression": "{withAuthReturn(routes.login, returnPath)}"
+    },
+    {
+      "file": "apps/web/components/auth/AuthGuard.tsx",
+      "line": 41,
+      "expression": "`${redirectUrl}?returnUrl=${encodeURIComponent(pathname)}`"
+    },
+    {
+      "file": "apps/web/components/auth/AuthGuard.tsx",
+      "line": 64,
+      "expression": "correctPath"
+    },
+    {
+      "file": "apps/web/components/auth/AuthGuard.tsx",
+      "line": 139,
+      "expression": "correctPath"
+    },
+    {
+      "file": "apps/web/components/auth/AuthShell.tsx",
+      "line": 30,
+      "expression": "{notificationPath}"
+    },
+    {
+      "file": "apps/web/components/auth/AuthStatus.tsx",
+      "line": 86,
+      "expression": "{redirect}"
+    },
+    {
+      "file": "apps/web/components/auth/AuthStatus.tsx",
+      "line": 107,
+      "expression": "{status === \"success\" ? routes.fuelvista : routes.support}"
+    },
+    {
+      "file": "apps/web/components/auth/CompanyInvitation.tsx",
+      "line": 45,
+      "expression": "withAuthReturn(routes.login,destination)"
+    },
+    {
+      "file": "apps/web/components/auth/CompanyInvitation.tsx",
+      "line": 53,
+      "expression": "{withAuthReturn(routes.login,destination)}"
+    },
+    {
+      "file": "apps/web/components/auth/CompanyInvitation.tsx",
+      "line": 54,
+      "expression": "{withAuthReturn(routes.signup,destination)}"
+    },
+    {
+      "file": "apps/web/components/auth/CompanyInvitation.tsx",
+      "line": 59,
+      "expression": "{withAuthReturn(routes.verifyEmail,destination)}"
+    },
+    {
+      "file": "apps/web/components/auth/DemoAccountPanel.tsx",
+      "line": 57,
+      "expression": "role ? destinationForRole(role) : account.landing"
+    },
+    {
+      "file": "apps/web/components/auth/MFAUI.tsx",
+      "line": 137,
+      "expression": "user ? dashboardForRole(user.role) : redirect ?? routes.login"
+    },
+    {
+      "file": "apps/web/components/auth/MFAUI.tsx",
+      "line": 156,
+      "expression": "returnPath ?? dashboardForRole(result.user.role)"
+    },
+    {
+      "file": "apps/web/components/auth/SuccessAutoRedirect.tsx",
+      "line": 36,
+      "expression": "targetDestination"
+    },
+    {
+      "file": "apps/web/components/auth/SuccessAutoRedirect.tsx",
+      "line": 70,
+      "expression": "{targetDestination}"
+    },
+    {
+      "file": "apps/web/components/auth/VerificationUI.tsx",
+      "line": 152,
+      "expression": "returnPath ?? destination"
+    },
+    {
+      "file": "apps/web/components/auth/VerificationUI.tsx",
+      "line": 252,
+      "expression": "returnPath ?? (user?.role===\"company\"?routes.companyDashboard:user?.role===\"partner\"||user?.role===\"mechanic\"?\"/dashboard/billing\":plan?`/customer/card?chosenPlan=${encodeURIComponent(plan)}`:routes.customerDashboard)"
+    },
+    {
+      "file": "apps/web/components/company-dashboard/CompanyContextSelector.tsx",
+      "line": 54,
+      "expression": "dashboardDestination(next.role)"
+    },
+    {
+      "file": "apps/web/components/company-dashboard/CompanyScreen.tsx",
+      "line": 391,
+      "expression": "{`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`}"
+    },
+    {
+      "file": "apps/web/components/company-dashboard/CompanyScreen.tsx",
+      "line": 606,
+      "expression": "{notification.link}"
+    },
+    {
+      "file": "apps/web/components/company-dashboard/CompanyShell.tsx",
+      "line": 83,
+      "expression": "{item.href}"
+    },
+    {
+      "file": "apps/web/components/company-dashboard/CompanyShell.tsx",
+      "line": 151,
+      "expression": "{item.href}"
+    },
+    {
+      "file": "apps/web/components/company-dashboard/CompanyShell.tsx",
+      "line": 212,
+      "expression": "{item.href}"
+    },
+    {
+      "file": "apps/web/components/customer-dashboard/CustomerFuelCheckout.tsx",
+      "line": 82,
+      "expression": "{order.checkoutUrl}"
+    },
+    {
+      "file": "apps/web/components/customer-dashboard/CustomerScreen.tsx",
+      "line": 193,
+      "expression": "item.link || \"/customer/transactions\""
+    },
+    {
+      "file": "apps/web/components/customer-dashboard/CustomerScreen.tsx",
+      "line": 1865,
+      "expression": "{`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(directionTarget.address)}${location ? `&origin=${location.lat},${location.lng}` : \"\"}`}"
+    },
+    {
+      "file": "apps/web/components/customer-dashboard/CustomerShell.tsx",
+      "line": 70,
+      "expression": "{item.href}"
+    },
+    {
+      "file": "apps/web/components/customer-dashboard/CustomerShell.tsx",
+      "line": 140,
+      "expression": "{item.href}"
+    },
+    {
+      "file": "apps/web/components/customer-dashboard/CustomerShell.tsx",
+      "line": 178,
+      "expression": "{item.href}"
+    },
+    {
+      "file": "apps/web/components/dashboard/DashboardHeader.tsx",
+      "line": 80,
+      "expression": "{item.href}"
+    },
+    {
+      "file": "apps/web/components/dashboard/MobileDashboardNav.tsx",
+      "line": 98,
+      "expression": "{item.href}"
+    },
+    {
+      "file": "apps/web/components/dashboard/MobileDashboardNav.tsx",
+      "line": 122,
+      "expression": "{item.href}"
+    },
+    {
+      "file": "apps/web/components/dashboard/PartnershipSidebar.tsx",
+      "line": 121,
+      "expression": "{nav.href}"
+    },
+    {
+      "file": "apps/web/components/landing/Button.tsx",
+      "line": 40,
+      "expression": "{href}"
+    },
+    {
+      "file": "apps/web/components/landing/Button.tsx",
+      "line": 44,
+      "expression": "{href}"
+    },
+    {
+      "file": "apps/web/components/landing/Footer.tsx",
+      "line": 62,
+      "expression": "{link.href}"
+    },
+    {
+      "file": "apps/web/components/landing/Header.tsx",
+      "line": 36,
+      "expression": "{item.href}"
+    },
+    {
+      "file": "apps/web/components/landing/Header.tsx",
+      "line": 75,
+      "expression": "{item.href}"
+    },
+    {
+      "file": "apps/web/components/landing/Pricing.tsx",
+      "line": 325,
+      "expression": "{\n                  tab === \"individual\"\n                    ? `/auth/signup?role=customer&plan=${plan.name.toLowerCase()}`\n                    : `/support?request=${encodeURIComponent(`${plan.name} organization contract`)}`\n                }"
+    },
+    {
+      "file": "apps/web/components/legal/LegalPage.tsx",
+      "line": 135,
+      "expression": "{`#${section.id}`}"
+    },
+    {
+      "file": "apps/web/components/shared/SubscriptionPanel.tsx",
+      "line": 139,
+      "expression": "{`/customer/card?chosenPlan=${p.code}`}"
+    },
+    {
+      "file": "apps/web/components/site/SiteFooter.tsx",
+      "line": 81,
+      "expression": "{link.href}"
+    },
+    {
+      "file": "apps/web/components/site/SiteHeader.tsx",
+      "line": 25,
+      "expression": "{link.href}"
+    },
+    {
+      "file": "apps/web/components/solutions/SolutionPage.tsx",
+      "line": 59,
+      "expression": "{name===\"FuelVista\"?routes.signup:`/support?request=${name}` }"
+    },
+    {
+      "file": "apps/web/components/solutions/SolutionPage.tsx",
+      "line": 150,
+      "expression": "{name===\"FuelVista\"?routes.signup:`/support?request=${name}` }"
+    }
+  ]
+}

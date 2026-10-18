@@ -1,0 +1,1849 @@
+{
+ "url": "http://127.0.0.1:4310",
+ "at": "2026-10-18T21:37:38.809Z",
+ "allow": [],
+ "viewports": [
+  {
+   "width": 1440,
+   "height": 900,
+   "load": "load",
+   "screens": 6,
+   "filled": [
+    1,
+    1,
+    0.8,
+    0.7,
+    0.84,
+    0.74
+   ],
+   "motion": {
+    "elements": 1,
+    "css": 0,
+    "transitions": 0,
+    "scripted": 1,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "page": {
+     "height": 5381,
+     "screens": 6,
+     "words": 562,
+     "img": 10,
+     "video": 0,
+     "canvas": 0,
+     "svg": 61,
+     "sections": 6,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 4,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [
+      "image?url=%2Fassets%2Ffigma%2Fobligon-logo.png&w",
+      "image?url=%2Fassets%2Ffigma%2Ffuelvista-card.png",
+      "image?url=%2Fassets%2Ffigma%2Ffuelvista-card.png",
+      "image?url=%2Fassets%2Ffigma%2Fobligon-logo.png&w"
+     ],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": []
+    },
+    "hero": {
+     "text": "Your fuel. Your control.",
+     "words": 4,
+     "chars": 24,
+     "lines": 2,
+     "size": 64,
+     "vw": 4.4,
+     "font": "plusJakarta",
+     "weight": 800,
+     "tracking": 0,
+     "leading": 1.13,
+     "upper": false,
+     "italic": false,
+     "mono": false,
+     "align": "left",
+     "position": "left",
+     "widthRatio": 0.38,
+     "top": 325,
+     "tag": "h1",
+     "kind": "heading"
+    },
+    "h1": {
+     "text": "Your fuel. Your control.",
+     "words": 4,
+     "lines": 2,
+     "size": 64,
+     "font": "plusJakarta"
+    },
+    "headings": [
+     {
+      "text": "Your fuel. Your control.",
+      "words": 4,
+      "chars": 24,
+      "lines": 2,
+      "size": 64,
+      "vw": 4.4,
+      "font": "plusJakarta",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.13,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.38,
+      "top": 325,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "Fuel tools for people and businesses.",
+      "words": 6,
+      "chars": 37,
+      "lines": 2,
+      "size": 36,
+      "vw": 2.5,
+      "font": "plusJakarta",
+      "weight": 400,
+      "tracking": 0,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.31,
+      "top": 1032,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Fuel Controls for Every Vehicle.",
+      "words": 5,
+      "chars": 32,
+      "lines": 2,
+      "size": 48,
+      "vw": 3.3,
+      "font": "plusJakarta",
+      "weight": 400,
+      "tracking": 0,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.33,
+      "top": 1865,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Plans for People and Businesses",
+      "words": 5,
+      "chars": 31,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "plusJakarta",
+      "weight": 400,
+      "tracking": 0,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.47,
+      "top": 2628,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "₦3,500",
+      "words": 1,
+      "chars": 6,
+      "lines": 1,
+      "size": 30,
+      "vw": 2.1,
+      "font": "plusJakarta",
+      "weight": 400,
+      "tracking": 0,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.08,
+      "top": 2917,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "₦2,500",
+      "words": 1,
+      "chars": 6,
+      "lines": 1,
+      "size": 30,
+      "vw": 2.1,
+      "font": "plusJakarta",
+      "weight": 400,
+      "tracking": 0,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.08,
+      "top": 2942,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "₦5,000",
+      "words": 1,
+      "chars": 6,
+      "lines": 1,
+      "size": 30,
+      "vw": 2.1,
+      "font": "plusJakarta",
+      "weight": 400,
+      "tracking": 0,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.08,
+      "top": 2942,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "Our Commitment to the Nation",
+      "words": 5,
+      "chars": 28,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "plusJakarta",
+      "weight": 400,
+      "tracking": 0,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.67,
+      "top": 4050,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Build the station network with us.",
+      "words": 6,
+      "chars": 34,
+      "lines": 1,
+      "size": 30,
+      "vw": 2.1,
+      "font": "plusJakarta",
+      "weight": 700,
+      "tracking": 0,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.53,
+      "top": 4706,
+      "tag": "h2",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 9,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 3,
+     "centered": 3,
+     "medianWords": 5,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "inter",
+       "share": 0.93,
+       "mono": false
+      },
+      {
+       "family": "plusJakarta",
+       "share": 0.07,
+       "mono": false
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      12,
+      13,
+      14,
+      16,
+      18,
+      20,
+      30,
+      36,
+      48,
+      64
+     ],
+     "sizeCount": 10,
+     "notLoaded": [],
+     "body": {
+      "font": "inter",
+      "size": 16,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 20.8
+     },
+     "measureChars": 53,
+     "max": {
+      "size": 64,
+      "vw": 4.4,
+      "font": "plusJakarta",
+      "text": "Your fuel."
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 8,
+     "microLabelShare": 0.019,
+     "microSamples": [
+      "The Obligon LTD Story",
+      "Plans and Access",
+      "Bronze",
+      "Gold",
+      "Platinum",
+      "Company"
+     ],
+     "upperShare": 0.02,
+     "centerShare": 0.13,
+     "smallText": 2
+    },
+    "eyebrows": [
+     {
+      "text": "The Obligon LTD Story",
+      "above": "Fuel tools for people and businesses.",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 996
+     },
+     {
+      "text": "Plans and Access",
+      "above": "Plans for People and Businesses",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 2592
+     },
+     {
+      "text": "Gold",
+      "above": "₦3,500",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 2884
+     },
+     {
+      "text": "Bronze",
+      "above": "₦2,500",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 2911
+     },
+     {
+      "text": "Platinum",
+      "above": "₦5,000",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 2911
+     }
+    ],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#f9f9ff",
+     "bodyBgHsl": {
+      "h": 240,
+      "s": 1,
+      "l": 0.99
+     },
+     "dark": false,
+     "sectionBgs": [
+      {
+       "color": "#f9f9ff",
+       "top": 0,
+       "hsl": {
+        "h": 240,
+        "s": 1,
+        "l": 0.99
+       }
+      },
+      {
+       "color": "#00010c",
+       "top": 0,
+       "hsl": {
+        "h": 235,
+        "s": 1,
+        "l": 0.02
+       }
+      },
+      {
+       "color": "#ffffff",
+       "top": 868,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 1
+       }
+      },
+      {
+       "color": "#011554",
+       "top": 1800,
+       "hsl": {
+        "h": 226,
+        "s": 0.98,
+        "l": 0.17
+       }
+      },
+      {
+       "color": "#eff3ff",
+       "top": 3953,
+       "hsl": {
+        "h": 225,
+        "s": 1,
+        "l": 0.97
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#454650",
+       "share": 0.5
+      },
+      {
+       "color": "#ffffff",
+       "share": 0.24
+      },
+      {
+       "color": "#00010c",
+       "share": 0.15
+      },
+      {
+       "color": "#464650",
+       "share": 0.05
+      },
+      {
+       "color": "#3d6a00",
+       "share": 0.05
+      }
+     ],
+     "button": {
+      "bg": "#3d6a00",
+      "hsl": {
+       "h": 85,
+       "s": 1,
+       "l": 0.21
+      },
+      "fg": "#ffffff"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 13,
+     "inHero": 5,
+     "radius": 8,
+     "height": 58,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Get Started",
+      "Get Started",
+      "Explore FuelVista",
+      "Essential Only",
+      "Accept All"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 10,
+     "shadowOverlay": 2,
+     "shadowSamples": [
+      "a.inline-flex.h-[58px] → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(61, 106",
+      "a.inline-flex.h-[58px] → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(61, 106",
+      "div.relative.mx-auto → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+      "div.flex.size-14 → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0"
+     ],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 3,
+     "hairlineSamples": [
+      "header.absolute.left-0 1440px",
+      "div.mt-16.flex 958px",
+      "div.mt-16.border-t 1152px"
+     ],
+     "outlinedBoxes": 10,
+     "dashed": 0,
+     "blurred": 3,
+     "roundedBoxes": 11,
+     "boxRadius": 24,
+     "squareMedia": 0,
+     "roundedMedia": 2,
+     "mediaRadius": 24,
+     "textShadow": 0,
+     "cardRows": [
+      {
+       "count": 4,
+       "iconTopped": true,
+       "rounded": true,
+       "top": 996
+      }
+     ]
+    },
+    "heroMedia": [
+     {
+      "type": "img",
+      "ratio": 0.13
+     }
+    ],
+    "nav": {
+     "links": 8,
+     "fixed": false,
+     "height": 104,
+     "floatingPill": false,
+     "blur": true
+    },
+    "fontsLoaded": [
+     "inter",
+     "plusjakarta"
+    ]
+   },
+   "consoleErrors": []
+  },
+  {
+   "width": 768,
+   "height": 1024,
+   "load": "load",
+   "screens": 9,
+   "filled": [
+    1,
+    1,
+    1,
+    0.75,
+    0.86,
+    0.92,
+    0.93,
+    0.78,
+    1
+   ],
+   "motion": {
+    "elements": 1,
+    "css": 0,
+    "transitions": 0,
+    "scripted": 1,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "page": {
+     "height": 8598,
+     "screens": 8.4,
+     "words": 553,
+     "img": 10,
+     "video": 0,
+     "canvas": 0,
+     "svg": 61,
+     "sections": 6,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 4,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [
+      "image?url=%2Fassets%2Ffigma%2Fobligon-logo.png&w",
+      "image?url=%2Fassets%2Ffigma%2Ffuelvista-card.png",
+      "image?url=%2Fassets%2Ffigma%2Ffuelvista-card.png",
+      "image?url=%2Fassets%2Ffigma%2Fobligon-logo.png&w"
+     ],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": []
+    },
+    "hero": {
+     "text": "Your fuel. Your control.",
+     "words": 4,
+     "chars": 24,
+     "lines": 2,
+     "size": 56,
+     "vw": 7.3,
+     "font": "plusJakarta",
+     "weight": 800,
+     "tracking": 0,
+     "leading": 1.07,
+     "upper": false,
+     "italic": false,
+     "mono": false,
+     "align": "left",
+     "position": "left",
+     "widthRatio": 0.71,
+     "top": 184,
+     "tag": "h1",
+     "kind": "heading"
+    },
+    "h1": {
+     "text": "Your fuel. Your control.",
+     "words": 4,
+     "lines": 2,
+     "size": 56,
+     "font": "plusJakarta"
+    },
+    "headings": [
+     {
+      "text": "Your fuel. Your control.",
+      "words": 4,
+      "chars": 24,
+      "lines": 2,
+      "size": 56,
+      "vw": 7.3,
+      "font": "plusJakarta",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.07,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.71,
+      "top": 184,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "Fuel tools for people and businesses.",
+      "words": 6,
+      "chars": 37,
+      "lines": 1,
+      "size": 36,
+      "vw": 4.7,
+      "font": "plusJakarta",
+      "weight": 400,
+      "tracking": 0,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 1075,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Fuel Controls for Every Vehicle.",
+      "words": 5,
+      "chars": 32,
+      "lines": 2,
+      "size": 48,
+      "vw": 6.3,
+      "font": "plusJakarta",
+      "weight": 400,
+      "tracking": 0,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.89,
+      "top": 2619,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Plans for People and Businesses",
+      "words": 5,
+      "chars": 31,
+      "lines": 1,
+      "size": 36,
+      "vw": 4.7,
+      "font": "plusJakarta",
+      "weight": 400,
+      "tracking": 0,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.88,
+      "top": 3301,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "₦2,500",
+      "words": 1,
+      "chars": 6,
+      "lines": 1,
+      "size": 30,
+      "vw": 3.9,
+      "font": "plusJakarta",
+      "weight": 400,
+      "tracking": 0,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.14,
+      "top": 3616,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "₦3,500",
+      "words": 1,
+      "chars": 6,
+      "lines": 1,
+      "size": 30,
+      "vw": 3.9,
+      "font": "plusJakarta",
+      "weight": 400,
+      "tracking": 0,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.14,
+      "top": 4480,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "₦5,000",
+      "words": 1,
+      "chars": 6,
+      "lines": 1,
+      "size": 30,
+      "vw": 3.9,
+      "font": "plusJakarta",
+      "weight": 400,
+      "tracking": 0,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.15,
+      "top": 5353,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "Our Commitment to the Nation",
+      "words": 5,
+      "chars": 28,
+      "lines": 1,
+      "size": 36,
+      "vw": 4.7,
+      "font": "plusJakarta",
+      "weight": 400,
+      "tracking": 0,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.87,
+      "top": 6381,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Build the station network with us.",
+      "words": 6,
+      "chars": 34,
+      "lines": 1,
+      "size": 30,
+      "vw": 3.9,
+      "font": "plusJakarta",
+      "weight": 700,
+      "tracking": 0,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.95,
+      "top": 7233,
+      "tag": "h2",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 9,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 3,
+     "centered": 3,
+     "medianWords": 5,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "inter",
+       "share": 0.93,
+       "mono": false
+      },
+      {
+       "family": "plusJakarta",
+       "share": 0.07,
+       "mono": false
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      12,
+      13,
+      14,
+      16,
+      18,
+      20,
+      30,
+      36,
+      48,
+      56
+     ],
+     "sizeCount": 10,
+     "notLoaded": [],
+     "body": {
+      "font": "inter",
+      "size": 16,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 20.8
+     },
+     "measureChars": 53,
+     "max": {
+      "size": 56,
+      "vw": 7.3,
+      "font": "plusJakarta",
+      "text": "Your fuel."
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 8,
+     "microLabelShare": 0.02,
+     "microSamples": [
+      "The Obligon LTD Story",
+      "Plans and Access",
+      "Bronze",
+      "Gold",
+      "Platinum",
+      "Company"
+     ],
+     "upperShare": 0.02,
+     "centerShare": 0.13,
+     "smallText": 2
+    },
+    "eyebrows": [
+     {
+      "text": "The Obligon LTD Story",
+      "above": "Fuel tools for people and businesses.",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 1039
+     },
+     {
+      "text": "Plans and Access",
+      "above": "Plans for People and Businesses",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 3266
+     },
+     {
+      "text": "Bronze",
+      "above": "₦2,500",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 3584
+     },
+     {
+      "text": "Gold",
+      "above": "₦3,500",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 4449
+     },
+     {
+      "text": "Platinum",
+      "above": "₦5,000",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 5321
+     }
+    ],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#f9f9ff",
+     "bodyBgHsl": {
+      "h": 240,
+      "s": 1,
+      "l": 0.99
+     },
+     "dark": false,
+     "sectionBgs": [
+      {
+       "color": "#f9f9ff",
+       "top": 0,
+       "hsl": {
+        "h": 240,
+        "s": 1,
+        "l": 0.99
+       }
+      },
+      {
+       "color": "#00010c",
+       "top": 0,
+       "hsl": {
+        "h": 235,
+        "s": 1,
+        "l": 0.02
+       }
+      },
+      {
+       "color": "#ffffff",
+       "top": 943,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 1
+       }
+      },
+      {
+       "color": "#011554",
+       "top": 2081,
+       "hsl": {
+        "h": 226,
+        "s": 0.98,
+        "l": 0.17
+       }
+      },
+      {
+       "color": "#eff3ff",
+       "top": 6316,
+       "hsl": {
+        "h": 225,
+        "s": 1,
+        "l": 0.97
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#454650",
+       "share": 0.49
+      },
+      {
+       "color": "#ffffff",
+       "share": 0.24
+      },
+      {
+       "color": "#00010c",
+       "share": 0.15
+      },
+      {
+       "color": "#464650",
+       "share": 0.05
+      },
+      {
+       "color": "#3d6a00",
+       "share": 0.05
+      }
+     ],
+     "button": {
+      "bg": "#3d6a00",
+      "hsl": {
+       "h": 85,
+       "s": 1,
+       "l": 0.21
+      },
+      "fg": "#ffffff"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 12,
+     "inHero": 4,
+     "radius": 8,
+     "height": 58,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Get Started",
+      "Explore FuelVista",
+      "Essential Only",
+      "Accept All"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 9,
+     "shadowOverlay": 2,
+     "shadowSamples": [
+      "a.inline-flex.h-[58px] → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(61, 106",
+      "div.relative.mx-auto → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+      "div.flex.size-14 → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+      "div.flex.size-14 → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0"
+     ],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 3,
+     "hairlineSamples": [
+      "header.absolute.left-0 768px",
+      "div.mt-16.flex 670px",
+      "div.mt-16.border-t 704px"
+     ],
+     "outlinedBoxes": 10,
+     "dashed": 0,
+     "blurred": 3,
+     "roundedBoxes": 11,
+     "boxRadius": 24,
+     "squareMedia": 0,
+     "roundedMedia": 2,
+     "mediaRadius": 24,
+     "textShadow": 0,
+     "cardRows": [
+      {
+       "count": 4,
+       "iconTopped": true,
+       "rounded": true,
+       "top": 1349
+      }
+     ]
+    },
+    "heroMedia": [
+     {
+      "type": "img",
+      "ratio": 0.22
+     }
+    ],
+    "nav": {
+     "links": 1,
+     "fixed": false,
+     "height": 104,
+     "floatingPill": false,
+     "blur": true
+    },
+    "fontsLoaded": [
+     "inter",
+     "plusjakarta"
+    ]
+   },
+   "consoleErrors": []
+  },
+  {
+   "width": 390,
+   "height": 844,
+   "load": "load",
+   "screens": 12,
+   "filled": [
+    0.99,
+    0.99,
+    0.99,
+    0.99,
+    0.76,
+    0.91,
+    0.91,
+    0.85,
+    0.92,
+    0.81,
+    1,
+    0.99
+   ],
+   "motion": {
+    "elements": 1,
+    "css": 0,
+    "transitions": 0,
+    "scripted": 1,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "page": {
+     "height": 9530,
+     "screens": 11.3,
+     "words": 553,
+     "img": 10,
+     "video": 0,
+     "canvas": 0,
+     "svg": 61,
+     "sections": 6,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 4,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [
+      "image?url=%2Fassets%2Ffigma%2Fobligon-logo.png&w",
+      "image?url=%2Fassets%2Ffigma%2Ffuelvista-card.png",
+      "image?url=%2Fassets%2Ffigma%2Ffuelvista-card.png",
+      "image?url=%2Fassets%2Ffigma%2Fobligon-logo.png&w"
+     ],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": []
+    },
+    "hero": {
+     "text": "Your fuel. Your control.",
+     "words": 4,
+     "chars": 24,
+     "lines": 2,
+     "size": 44,
+     "vw": 11.3,
+     "font": "plusJakarta",
+     "weight": 800,
+     "tracking": 0,
+     "leading": 1.07,
+     "upper": false,
+     "italic": false,
+     "mono": false,
+     "align": "left",
+     "position": "center",
+     "widthRatio": 0.9,
+     "top": 184,
+     "tag": "h1",
+     "kind": "heading"
+    },
+    "h1": {
+     "text": "Your fuel. Your control.",
+     "words": 4,
+     "lines": 2,
+     "size": 44,
+     "font": "plusJakarta"
+    },
+    "headings": [
+     {
+      "text": "Your fuel. Your control.",
+      "words": 4,
+      "chars": 24,
+      "lines": 2,
+      "size": 44,
+      "vw": 11.3,
+      "font": "plusJakarta",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.07,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.9,
+      "top": 184,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "Fuel tools for people and businesses.",
+      "words": 6,
+      "chars": 37,
+      "lines": 2,
+      "size": 30,
+      "vw": 7.7,
+      "font": "plusJakarta",
+      "weight": 400,
+      "tracking": 0,
+      "leading": 1.25,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.9,
+      "top": 1023,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Fuel Controls for Every Vehicle.",
+      "words": 5,
+      "chars": 32,
+      "lines": 2,
+      "size": 36,
+      "vw": 9.2,
+      "font": "plusJakarta",
+      "weight": 400,
+      "tracking": 0,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.77,
+      "top": 3005,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Plans for People and Businesses",
+      "words": 5,
+      "chars": 31,
+      "lines": 2,
+      "size": 32,
+      "vw": 8.2,
+      "font": "plusJakarta",
+      "weight": 400,
+      "tracking": 0,
+      "leading": 1.25,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.9,
+      "top": 3830,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "₦2,500",
+      "words": 1,
+      "chars": 6,
+      "lines": 1,
+      "size": 30,
+      "vw": 7.7,
+      "font": "plusJakarta",
+      "weight": 400,
+      "tracking": 0,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.28,
+      "top": 4208,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "₦3,500",
+      "words": 1,
+      "chars": 6,
+      "lines": 1,
+      "size": 30,
+      "vw": 7.7,
+      "font": "plusJakarta",
+      "weight": 400,
+      "tracking": 0,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.29,
+      "top": 5093,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "₦5,000",
+      "words": 1,
+      "chars": 6,
+      "lines": 1,
+      "size": 30,
+      "vw": 7.7,
+      "font": "plusJakarta",
+      "weight": 400,
+      "tracking": 0,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.29,
+      "top": 6005,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "Our Commitment to the Nation",
+      "words": 5,
+      "chars": 28,
+      "lines": 2,
+      "size": 30,
+      "vw": 7.7,
+      "font": "plusJakarta",
+      "weight": 400,
+      "tracking": 0,
+      "leading": 1.25,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.77,
+      "top": 7053,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Build the station network with us.",
+      "words": 6,
+      "chars": 34,
+      "lines": 2,
+      "size": 30,
+      "vw": 7.7,
+      "font": "plusJakarta",
+      "weight": 700,
+      "tracking": 0,
+      "leading": 1.2,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.9,
+      "top": 8062,
+      "tag": "h2",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 9,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 3,
+     "centered": 3,
+     "medianWords": 5,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "inter",
+       "share": 0.93,
+       "mono": false
+      },
+      {
+       "family": "plusJakarta",
+       "share": 0.07,
+       "mono": false
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      12,
+      13,
+      14,
+      16,
+      18,
+      20,
+      30,
+      32,
+      36,
+      44
+     ],
+     "sizeCount": 10,
+     "notLoaded": [],
+     "body": {
+      "font": "inter",
+      "size": 16,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 20.8
+     },
+     "measureChars": 33,
+     "max": {
+      "size": 44,
+      "vw": 11.3,
+      "font": "plusJakarta",
+      "text": "Your fuel."
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 8,
+     "microLabelShare": 0.02,
+     "microSamples": [
+      "The Obligon LTD Story",
+      "Plans and Access",
+      "Bronze",
+      "Gold",
+      "Platinum",
+      "Company"
+     ],
+     "upperShare": 0.02,
+     "centerShare": 0.13,
+     "smallText": 2
+    },
+    "eyebrows": [
+     {
+      "text": "The Obligon LTD Story",
+      "above": "Fuel tools for people and businesses.",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 988
+     },
+     {
+      "text": "Plans and Access",
+      "above": "Plans for People and Businesses",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 3794
+     },
+     {
+      "text": "Bronze",
+      "above": "₦2,500",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 4177
+     },
+     {
+      "text": "Gold",
+      "above": "₦3,500",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 5061
+     },
+     {
+      "text": "Platinum",
+      "above": "₦5,000",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 5974
+     }
+    ],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#f9f9ff",
+     "bodyBgHsl": {
+      "h": 240,
+      "s": 1,
+      "l": 0.99
+     },
+     "dark": false,
+     "sectionBgs": [
+      {
+       "color": "#f9f9ff",
+       "top": 0,
+       "hsl": {
+        "h": 240,
+        "s": 1,
+        "l": 0.99
+       }
+      },
+      {
+       "color": "#00010c",
+       "top": 0,
+       "hsl": {
+        "h": 235,
+        "s": 1,
+        "l": 0.02
+       }
+      },
+      {
+       "color": "#ffffff",
+       "top": 908,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 1
+       }
+      },
+      {
+       "color": "#011554",
+       "top": 2724,
+       "hsl": {
+        "h": 226,
+        "s": 0.98,
+        "l": 0.17
+       }
+      },
+      {
+       "color": "#eff3ff",
+       "top": 6988,
+       "hsl": {
+        "h": 225,
+        "s": 1,
+        "l": 0.97
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#454650",
+       "share": 0.49
+      },
+      {
+       "color": "#ffffff",
+       "share": 0.24
+      },
+      {
+       "color": "#00010c",
+       "share": 0.15
+      },
+      {
+       "color": "#464650",
+       "share": 0.05
+      },
+      {
+       "color": "#3d6a00",
+       "share": 0.05
+      }
+     ],
+     "button": {
+      "bg": "#3d6a00",
+      "hsl": {
+       "h": 85,
+       "s": 1,
+       "l": 0.21
+      },
+      "fg": "#ffffff"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 12,
+     "inHero": 4,
+     "radius": 8,
+     "height": 58,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Get Started",
+      "Explore FuelVista",
+      "Essential Only",
+      "Accept All"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 9,
+     "shadowOverlay": 2,
+     "shadowSamples": [
+      "a.inline-flex.h-[58px] → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(61, 106",
+      "div.relative.mx-auto → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+      "div.flex.size-14 → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+      "div.flex.size-14 → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0"
+     ],
+     "gradients": 0,
+     "scrims": 0,
+     "gradientSamples": [],
+     "gradientText": 0,
+     "hairlines": 3,
+     "hairlineSamples": [
+      "header.absolute.left-0 390px",
+      "div.mt-16.flex 300px",
+      "div.mt-16.border-t 350px"
+     ],
+     "outlinedBoxes": 10,
+     "dashed": 0,
+     "blurred": 3,
+     "roundedBoxes": 11,
+     "boxRadius": 24,
+     "squareMedia": 0,
+     "roundedMedia": 2,
+     "mediaRadius": 24,
+     "textShadow": 0,
+     "cardRows": [
+      {
+       "count": 4,
+       "iconTopped": true,
+       "rounded": true,
+       "top": 1436
+      },
+      {
+       "count": 3,
+       "iconTopped": true,
+       "rounded": true,
+       "top": 4144
+      }
+     ]
+    },
+    "heroMedia": [
+     {
+      "type": "img",
+      "ratio": 0.25
+     }
+    ],
+    "nav": {
+     "links": 1,
+     "fixed": false,
+     "height": 104,
+     "floatingPill": false,
+     "blur": true
+    },
+    "fontsLoaded": [
+     "inter",
+     "plusjakarta"
+    ]
+   },
+   "consoleErrors": []
+  }
+ ],
+ "findings": [
+  {
+   "level": "FAIL",
+   "id": "eyebrow",
+   "width": 1440,
+   "message": "5 eyebrow/kicker label(s) above headings: \"The Obligon LTD Story\" above \"Fuel tools for people and businesses.\"; \"Plans and Access\" above \"Plans for People and Businesses\"; \"Gold\" above \"₦3,500\"; \"Bronze\" above \"₦2,500\"; \"Platinum\" above \"₦5,000\"",
+   "fix": "Delete them. If the label carried real information, fold it into the headline or the supporting sentence.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "micro-label",
+   "width": 1440,
+   "message": "8 tiny uppercase letter-spaced labels (e.g. \"The Obligon LTD Story\", \"Plans and Access\", \"Bronze\", \"Gold\").",
+   "fix": "Use sentence-case text at a readable size, or delete the label.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "shadow",
+   "width": 1440,
+   "message": "10 box-shadow(s) on elements at rest: a.inline-flex.h-[58px] → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(61, 106 | a.inline-flex.h-[58px] → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(61, 106 | div.relative.mx-auto → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+   "fix": "Remove. Separate surfaces with a tone step or space. Shadows are for things that really float (menus, dialogs, sticky bars).",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "hairline",
+   "width": 1440,
+   "message": "3 thin rule(s)/divider line(s): header.absolute.left-0 1440px | div.mt-16.flex 958px | div.mt-16.border-t 1152px",
+   "fix": "Delete. Separate with space, a tone change, or scale. Lines are only for real tables and form fields.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "outlined-box",
+   "width": 1440,
+   "message": "10 boxes drawn with a 1px outline.",
+   "fix": "Define a surface by its fill (one tone step from the page) or leave the content unboxed.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "glass",
+   "width": 1440,
+   "message": "3 backdrop-blur surfaces.",
+   "fix": "One blurred sticky bar at most; glass cards are a tell.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "icon-cards",
+   "width": 1440,
+   "message": "1 row(s) of identical cards each topped with a small icon (4 cards).",
+   "fix": "Replace with one composed section from the direction: a narrative split, a list set in large type, or real imagery per item.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "size-count",
+   "width": 1440,
+   "message": "10 different font sizes (12, 13, 14, 16, 18, 20, 30, 36, 48, 64).",
+   "fix": "A page needs about five: display, heading, lead, body, small.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "no-footage",
+   "width": 1440,
+   "message": "No video anywhere on the page.",
+   "fix": "Look for one honest clip with scripts/assets.mjs --video (the place, the material, the process) and use it as a muted loop with a poster frame. Defend its absence only if no clip fits the subject."
+  },
+  {
+   "level": "WARN",
+   "id": "small-text",
+   "width": 1440,
+   "message": "2 text block(s) under 13px.",
+   "fix": "Nothing meant to be read goes below 13px.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "focal-point",
+   "width": 1440,
+   "message": "The first screen has no dominant element: the largest type is 64px (4.4vw) and no single picture holds a third of the viewport.",
+   "fix": "Make one thing lead: the headline at display size, or one large picture. A grid of many small pictures is not one thing; in blind tests jurors marked a first screen without a headline down every time. On the strongest studied sites the largest type has a median of 8.4vw."
+  },
+  {
+   "level": "FAIL",
+   "id": "covered-text",
+   "width": 1440,
+   "message": "Large text lies under another element at some scroll position: \"Plans for People and Businesses\" (screen 3, 100% hidden)",
+   "fix": "Nothing may sit on top of a headline or statement. Move the picture, shorten the pinned run, or raise the text above it (z-index) and give it a ground."
+  },
+  {
+   "level": "FAIL",
+   "id": "still-page",
+   "width": 1440,
+   "message": "Only 1 element(s) moved while the page loaded and scrolled.",
+   "fix": "Build the motion layer (SKILL.md step 9, references/motion.md): the signature move, an entrance for the parts of every section, feedback on every control, and one moving picture. Transform and opacity only, with a reduced-motion fallback."
+  }
+ ],
+ "images": [
+  {
+   "viewport": "desktop",
+   "width": 1440,
+   "fold": "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-18/evidence/home-final/desktop-fold.jpg",
+   "pages": [
+    "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-18/evidence/home-final/desktop-page-01.jpg",
+    "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-18/evidence/home-final/desktop-page-02.jpg"
+   ]
+  },
+  {
+   "viewport": "tablet",
+   "width": 768,
+   "fold": "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-18/evidence/home-final/tablet-fold.jpg",
+   "pages": [
+    "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-18/evidence/home-final/tablet-page-01.jpg",
+    "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-18/evidence/home-final/tablet-page-02.jpg"
+   ]
+  },
+  {
+   "viewport": "mobile",
+   "width": 390,
+   "fold": "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-18/evidence/home-final/mobile-fold.jpg",
+   "pages": [
+    "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-18/evidence/home-final/mobile-page-01.jpg",
+    "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-18/evidence/home-final/mobile-page-02.jpg"
+   ]
+  }
+ ]
+}

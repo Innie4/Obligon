@@ -26,6 +26,14 @@ const PASSWORD = {
   mechanic: "Mechanic#123"
 };
 
+async function ensureDemoPartnerSubscription() {
+  await q(`INSERT INTO subscriptions (organization_id,plan_code,status,current_period_start,current_period_end)
+    SELECT o.id,'enterprise','active',now(),now()+interval '1 month'
+    FROM organizations o JOIN users u ON u.id=o.owner_user_id
+    WHERE u.email='partner@obligon.com' AND o.name='Core Hub Fuel Station' AND o.type='partner'
+    ON CONFLICT (organization_id) DO NOTHING`);
+}
+
 async function upsertUser({ email, password, name, role, org, tier = "Standard Account", phone = null, verified = true }) {
   const existing = await one("SELECT id FROM users WHERE email = $1", [email]);
   if (existing) return existing.id;
@@ -68,10 +76,12 @@ async function main() {
   if (existing) {
     const jobs = await one("SELECT count(*)::int AS count FROM job_postings");
     if (jobs.count >= 3) {
+      await ensureDemoPartnerSubscription();
       console.log("Seed data already present — skipping.");
       process.exit(0);
     }
     await completeTailSeed(existing.id);
+    await ensureDemoPartnerSubscription();
     console.log("Seed completion finished.");
     process.exit(0);
   }
@@ -227,6 +237,7 @@ async function main() {
   );
   await q(`INSERT INTO subscriptions (organization_id, plan_code, status, current_period_start, current_period_end)
            VALUES ($1,'enterprise','active', now() - interval '10 days', now() + interval '20 days') ON CONFLICT (organization_id) DO NOTHING`, [companyOrgId]);
+  await ensureDemoPartnerSubscription();
   await q(
     `INSERT INTO invoices (organization_id, number, amount_kobo, status, period_start, period_end, description, created_at, paid_at) VALUES
       ($1,'INV-2026-0812',15000000,'paid', date_trunc('month', now()) - interval '1 month', date_trunc('month', now()) - interval '1 month' + interval '1 month - 1 day','Enterprise plan — monthly subscription', now() - interval '1 month', now() - interval '1 month' + interval '2 days'),

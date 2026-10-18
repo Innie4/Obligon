@@ -71,7 +71,7 @@ export function SuccessHonesty() {
 
       <p className="mt-6 text-xs leading-5 text-obligon-text">
         Your fuel wallet was created with your account, so it is ready to be funded. Verification is
-        what confirms we can reach you — on the address and number you gave us.
+        what confirms we can reach you at the address and number you gave us.
       </p>
     </div>
   );

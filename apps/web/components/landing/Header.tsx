@@ -32,7 +32,7 @@ export function Header() {
             {navItems.map((item) => (
               <Link
                 key={item.label}
-                className="text-xs font-semibold tracking-[0.6px] text-obligon-text transition hover:text-obligon-green"
+                className="text-[13px] font-semibold tracking-[0.6px] text-obligon-text transition hover:text-obligon-green"
                 href={item.href}
               >
                 {item.label}
@@ -43,7 +43,7 @@ export function Header() {
 
         <div className="hidden items-center gap-4 lg:flex">
           <Link
-            className="inline-flex h-8 items-center justify-center px-4 text-xs font-semibold tracking-[0.6px] text-obligon-text"
+            className="inline-flex h-8 items-center justify-center px-4 text-[13px] font-semibold tracking-[0.6px] text-obligon-text"
             href="/auth/login"
           >
             Login

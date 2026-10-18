@@ -20,7 +20,7 @@ const sections: LegalSection[] = [
       },
       {
         title: "Automated Data",
-        body: "GPS coordinates, transaction logs, device identifiers, and telemetry from FuelVista or GenVista-enabled operations.",
+        body: "GPS coordinates you choose to share, fuel transaction records, and device details needed for account access and troubleshooting.",
         icon: "database"
       },
       {

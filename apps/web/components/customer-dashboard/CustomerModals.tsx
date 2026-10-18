@@ -256,7 +256,7 @@ function SpendProjectionModal({
         </h2>
         <p className="mt-2 text-sm leading-6 text-obligon-text">
           {isRevision
-            ? "How much do you expect to spend on fuel this month? Raise or lower it whenever your plans change — your MTD Spend card measures against this."
+            ? "How much do you expect to spend on fuel this month? Change it whenever your plans change. Your Month-to-Date Spend card tracks spending against this amount."
             : "How much do you expect to spend on fuel this month? Your MTD Spend card will track your actual spending against it, so you always know where you stand."}
         </p>
 

@@ -1,0 +1,1630 @@
+{
+ "url": "http://127.0.0.1:4310/solutions/energyvista",
+ "at": "2026-10-18T21:44:32.567Z",
+ "allow": [],
+ "viewports": [
+  {
+   "width": 1440,
+   "height": 900,
+   "load": "load",
+   "screens": 4,
+   "filled": [
+    0.88,
+    0.64,
+    0.69,
+    0.89
+   ],
+   "motion": {
+    "elements": 1,
+    "css": 0,
+    "transitions": 0,
+    "scripted": 1,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "page": {
+     "height": 2895,
+     "screens": 3.2,
+     "words": 270,
+     "img": 2,
+     "video": 0,
+     "canvas": 0,
+     "svg": 9,
+     "sections": 4,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 2,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [
+      "image?url=%2Fassets%2Ffigma%2Fobligon-logo.png&w",
+      "image?url=%2Fassets%2Ffigma%2Ffuelvista-card.png"
+     ],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": []
+    },
+    "hero": {
+     "text": "Business fuel supply",
+     "words": 3,
+     "chars": 20,
+     "lines": 2,
+     "size": 64,
+     "vw": 4.4,
+     "font": "plusJakarta",
+     "weight": 800,
+     "tracking": -0.012,
+     "leading": 1.13,
+     "upper": false,
+     "italic": false,
+     "mono": false,
+     "align": "left",
+     "position": "left",
+     "widthRatio": 0.41,
+     "top": 262,
+     "tag": "h1",
+     "kind": "heading"
+    },
+    "h1": {
+     "text": "Business fuel supply",
+     "words": 3,
+     "lines": 2,
+     "size": 64,
+     "font": "plusJakarta"
+    },
+    "headings": [
+     {
+      "text": "Business fuel supply",
+      "words": 3,
+      "chars": 20,
+      "lines": 2,
+      "size": 64,
+      "vw": 4.4,
+      "font": "plusJakarta",
+      "weight": 800,
+      "tracking": -0.012,
+      "leading": 1.13,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.41,
+      "top": 262,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "Designed for daily operators.",
+      "words": 4,
+      "chars": 29,
+      "lines": 2,
+      "size": 36,
+      "vw": 2.5,
+      "font": "plusJakarta",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.22,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.25,
+      "top": 880,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Operational workflow",
+      "words": 2,
+      "chars": 20,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "plusJakarta",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.49,
+      "top": 1461,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Plan your team requirements.",
+      "words": 4,
+      "chars": 28,
+      "lines": 2,
+      "size": 30,
+      "vw": 2.1,
+      "font": "plusJakarta",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.33,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "right",
+      "widthRatio": 0.25,
+      "top": 1529,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Discuss your requirements",
+      "words": 3,
+      "chars": 25,
+      "lines": 1,
+      "size": 36,
+      "vw": 2.5,
+      "font": "plusJakarta",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.73,
+      "top": 2170,
+      "tag": "h2",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 5,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 1,
+     "medianWords": 4,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "inter",
+       "share": 0.88,
+       "mono": false
+      },
+      {
+       "family": "plusJakarta",
+       "share": 0.12,
+       "mono": false
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      12,
+      13,
+      14,
+      16,
+      18,
+      20,
+      24,
+      30,
+      36,
+      64
+     ],
+     "sizeCount": 10,
+     "notLoaded": [],
+     "body": {
+      "font": "inter",
+      "size": 16,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 8.9
+     },
+     "measureChars": 65,
+     "max": {
+      "size": 64,
+      "vw": 4.4,
+      "font": "plusJakarta",
+      "text": "Business"
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 5,
+     "microLabelShare": 0.047,
+     "microSamples": [
+      "EnergyVista Solution",
+      "What to Expect",
+      "Company Enquiries",
+      "EnergyVista Deployment",
+      "Lagos, Nigeria"
+     ],
+     "upperShare": 0.06,
+     "centerShare": 0.06,
+     "smallText": 1
+    },
+    "eyebrows": [
+     {
+      "text": "EnergyVista Solution",
+      "above": "Business fuel supply",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 226
+     },
+     {
+      "text": "What to Expect",
+      "above": "Designed for daily operators.",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 844
+     },
+     {
+      "text": "Company Enquiries",
+      "above": "Plan your team requirements.",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 1493
+     },
+     {
+      "text": "EnergyVista Deployment",
+      "above": "Discuss your requirements",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 2134
+     }
+    ],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#f9f9ff",
+     "bodyBgHsl": {
+      "h": 240,
+      "s": 1,
+      "l": 0.99
+     },
+     "dark": false,
+     "sectionBgs": [
+      {
+       "color": "#f9f9ff",
+       "top": 0,
+       "hsl": {
+        "h": 240,
+        "s": 1,
+        "l": 0.99
+       }
+      },
+      {
+       "color": "#00010c",
+       "top": 92,
+       "hsl": {
+        "h": 235,
+        "s": 1,
+        "l": 0.02
+       }
+      },
+      {
+       "color": "#ffffff",
+       "top": 1364,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 1
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#454650",
+       "share": 0.42
+      },
+      {
+       "color": "#00010c",
+       "share": 0.23
+      },
+      {
+       "color": "#ffffff",
+       "share": 0.2
+      },
+      {
+       "color": "#b8c4ff",
+       "share": 0.06
+      },
+      {
+       "color": "#3d6a00",
+       "share": 0.04
+      }
+     ],
+     "button": {
+      "bg": "#3d6a00",
+      "hsl": {
+       "h": 85,
+       "s": 1,
+       "l": 0.21
+      },
+      "fg": "#ffffff"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 8,
+     "inHero": 5,
+     "radius": 8,
+     "height": 56,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Get Started",
+      "Start with EnergyVista",
+      "Talk to Sales",
+      "Essential Only",
+      "Accept All"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 4,
+     "shadowOverlay": 3,
+     "shadowSamples": [
+      "a.inline-flex.h-14 → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(61, 106",
+      "div.relative.overflow-hidden → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+      "a.inline-flex.h-14 → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(61, 106",
+      "button.inline-flex.h-11 → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(61, 106"
+     ],
+     "gradients": 1,
+     "scrims": 0,
+     "gradientSamples": [
+      "div.absolute.-inset-16 → linear-gradient(to right bottom, rgba(1, 21, 84, 0.35), rgba(0, 0, 0, 0))"
+     ],
+     "gradientText": 0,
+     "hairlines": 4,
+     "hairlineSamples": [
+      "header.sticky.top-0 1440px",
+      "section.border-y.border-obligon-border 1440px",
+      "footer.border-t.border-obligon-border 1440px",
+      "div.border-t.border-obligon-border 1440px"
+     ],
+     "outlinedBoxes": 9,
+     "dashed": 0,
+     "blurred": 2,
+     "roundedBoxes": 12,
+     "boxRadius": 12,
+     "squareMedia": 0,
+     "roundedMedia": 1,
+     "mediaRadius": 16,
+     "textShadow": 0,
+     "cardRows": [
+      {
+       "count": 3,
+       "iconTopped": false,
+       "rounded": true,
+       "top": 533
+      },
+      {
+       "count": 4,
+       "iconTopped": true,
+       "rounded": true,
+       "top": 844
+      }
+     ]
+    },
+    "heroMedia": [
+     {
+      "type": "img",
+      "ratio": 0.1
+     }
+    ],
+    "nav": {
+     "links": 7,
+     "fixed": true,
+     "height": 92,
+     "floatingPill": false,
+     "blur": true
+    },
+    "fontsLoaded": [
+     "inter",
+     "plusjakarta"
+    ]
+   },
+   "consoleErrors": []
+  },
+  {
+   "width": 768,
+   "height": 1024,
+   "load": "load",
+   "screens": 4,
+   "filled": [
+    1,
+    0.69,
+    0.78,
+    0.84
+   ],
+   "motion": {
+    "elements": 1,
+    "css": 0,
+    "transitions": 0,
+    "scripted": 1,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "page": {
+     "height": 3724,
+     "screens": 3.6,
+     "words": 270,
+     "img": 2,
+     "video": 0,
+     "canvas": 0,
+     "svg": 9,
+     "sections": 4,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 2,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [
+      "image?url=%2Fassets%2Ffigma%2Fobligon-logo.png&w",
+      "image?url=%2Fassets%2Ffigma%2Ffuelvista-card.png"
+     ],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": []
+    },
+    "hero": {
+     "text": "Business fuel supply",
+     "words": 3,
+     "chars": 20,
+     "lines": 1,
+     "size": 48,
+     "vw": 6.3,
+     "font": "plusJakarta",
+     "weight": 800,
+     "tracking": -0.017,
+     "leading": 1,
+     "upper": false,
+     "italic": false,
+     "mono": false,
+     "align": "left",
+     "position": "center",
+     "widthRatio": 0.92,
+     "top": 192,
+     "tag": "h1",
+     "kind": "heading"
+    },
+    "h1": {
+     "text": "Business fuel supply",
+     "words": 3,
+     "lines": 1,
+     "size": 48,
+     "font": "plusJakarta"
+    },
+    "headings": [
+     {
+      "text": "Business fuel supply",
+      "words": 3,
+      "chars": 20,
+      "lines": 1,
+      "size": 48,
+      "vw": 6.3,
+      "font": "plusJakarta",
+      "weight": 800,
+      "tracking": -0.017,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 192,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "Designed for daily operators.",
+      "words": 4,
+      "chars": 29,
+      "lines": 1,
+      "size": 36,
+      "vw": 4.7,
+      "font": "plusJakarta",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.22,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 1237,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Operational workflow",
+      "words": 2,
+      "chars": 20,
+      "lines": 1,
+      "size": 36,
+      "vw": 4.7,
+      "font": "plusJakarta",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.92,
+      "top": 1934,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Plan your team requirements.",
+      "words": 4,
+      "chars": 28,
+      "lines": 1,
+      "size": 30,
+      "vw": 3.9,
+      "font": "plusJakarta",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.33,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.83,
+      "top": 2474,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Discuss your requirements",
+      "words": 3,
+      "chars": 25,
+      "lines": 1,
+      "size": 36,
+      "vw": 4.7,
+      "font": "plusJakarta",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.79,
+      "top": 2982,
+      "tag": "h2",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 5,
+     "maxLines": 1,
+     "over2Lines": 0,
+     "statements": 0,
+     "centered": 1,
+     "medianWords": 4,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "inter",
+       "share": 0.88,
+       "mono": false
+      },
+      {
+       "family": "plusJakarta",
+       "share": 0.12,
+       "mono": false
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      12,
+      13,
+      14,
+      16,
+      18,
+      20,
+      24,
+      30,
+      36,
+      48
+     ],
+     "sizeCount": 10,
+     "notLoaded": [],
+     "body": {
+      "font": "inter",
+      "size": 16,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 8.9
+     },
+     "measureChars": 78,
+     "max": {
+      "size": 48,
+      "vw": 6.3,
+      "font": "plusJakarta",
+      "text": "Business"
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 5,
+     "microLabelShare": 0.047,
+     "microSamples": [
+      "EnergyVista Solution",
+      "What to Expect",
+      "Company Enquiries",
+      "EnergyVista Deployment",
+      "Lagos, Nigeria"
+     ],
+     "upperShare": 0.06,
+     "centerShare": 0.06,
+     "smallText": 1
+    },
+    "eyebrows": [
+     {
+      "text": "EnergyVista Solution",
+      "above": "Business fuel supply",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 156
+     },
+     {
+      "text": "What to Expect",
+      "above": "Designed for daily operators.",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 1202
+     },
+     {
+      "text": "Company Enquiries",
+      "above": "Plan your team requirements.",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 2438
+     },
+     {
+      "text": "EnergyVista Deployment",
+      "above": "Discuss your requirements",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 2947
+     }
+    ],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#f9f9ff",
+     "bodyBgHsl": {
+      "h": 240,
+      "s": 1,
+      "l": 0.99
+     },
+     "dark": false,
+     "sectionBgs": [
+      {
+       "color": "#f9f9ff",
+       "top": 0,
+       "hsl": {
+        "h": 240,
+        "s": 1,
+        "l": 0.99
+       }
+      },
+      {
+       "color": "#00010c",
+       "top": 92,
+       "hsl": {
+        "h": 235,
+        "s": 1,
+        "l": 0.02
+       }
+      },
+      {
+       "color": "#ffffff",
+       "top": 473,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 1
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#454650",
+       "share": 0.42
+      },
+      {
+       "color": "#00010c",
+       "share": 0.23
+      },
+      {
+       "color": "#ffffff",
+       "share": 0.2
+      },
+      {
+       "color": "#b8c4ff",
+       "share": 0.06
+      },
+      {
+       "color": "#3d6a00",
+       "share": 0.04
+      }
+     ],
+     "button": {
+      "bg": "#3d6a00",
+      "hsl": {
+       "h": 85,
+       "s": 1,
+       "l": 0.21
+      },
+      "fg": "#ffffff"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 8,
+     "inHero": 5,
+     "radius": 8,
+     "height": 56,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Get Started",
+      "Start with EnergyVista",
+      "Talk to Sales",
+      "Essential Only",
+      "Accept All"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 4,
+     "shadowOverlay": 3,
+     "shadowSamples": [
+      "a.inline-flex.h-14 → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(61, 106",
+      "div.relative.overflow-hidden → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+      "a.inline-flex.h-14 → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(61, 106",
+      "button.inline-flex.h-11 → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(61, 106"
+     ],
+     "gradients": 1,
+     "scrims": 0,
+     "gradientSamples": [
+      "div.absolute.-inset-16 → linear-gradient(to right bottom, rgba(1, 21, 84, 0.35), rgba(0, 0, 0, 0))"
+     ],
+     "gradientText": 0,
+     "hairlines": 4,
+     "hairlineSamples": [
+      "header.sticky.top-0 768px",
+      "section.border-y.border-obligon-border 768px",
+      "footer.border-t.border-obligon-border 768px",
+      "div.border-t.border-obligon-border 768px"
+     ],
+     "outlinedBoxes": 9,
+     "dashed": 0,
+     "blurred": 2,
+     "roundedBoxes": 12,
+     "boxRadius": 12,
+     "squareMedia": 0,
+     "roundedMedia": 1,
+     "mediaRadius": 16,
+     "textShadow": 0,
+     "cardRows": [
+      {
+       "count": 3,
+       "iconTopped": false,
+       "rounded": true,
+       "top": 947
+      },
+      {
+       "count": 4,
+       "iconTopped": true,
+       "rounded": true,
+       "top": 1357
+      }
+     ]
+    },
+    "heroMedia": [
+     {
+      "type": "img",
+      "ratio": 0.33
+     }
+    ],
+    "nav": {
+     "links": 7,
+     "fixed": true,
+     "height": 92,
+     "floatingPill": false,
+     "blur": true
+    },
+    "fontsLoaded": [
+     "inter",
+     "plusjakarta"
+    ]
+   },
+   "consoleErrors": []
+  },
+  {
+   "width": 390,
+   "height": 844,
+   "load": "load",
+   "screens": 7,
+   "filled": [
+    0.99,
+    0.81,
+    0.93,
+    0.62,
+    0.87,
+    0.99,
+    0.99
+   ],
+   "motion": {
+    "elements": 1,
+    "css": 0,
+    "transitions": 0,
+    "scripted": 1,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "page": {
+     "height": 5320,
+     "screens": 6.3,
+     "words": 265,
+     "img": 2,
+     "video": 0,
+     "canvas": 0,
+     "svg": 9,
+     "sections": 4,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 2,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [
+      "image?url=%2Fassets%2Ffigma%2Fobligon-logo.png&w",
+      "image?url=%2Fassets%2Ffigma%2Ffuelvista-card.png"
+     ],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": []
+    },
+    "hero": {
+     "text": "Business fuel supply",
+     "words": 3,
+     "chars": 20,
+     "lines": 2,
+     "size": 40,
+     "vw": 10.3,
+     "font": "plusJakarta",
+     "weight": 800,
+     "tracking": -0.02,
+     "leading": 1.08,
+     "upper": false,
+     "italic": false,
+     "mono": false,
+     "align": "left",
+     "position": "center",
+     "widthRatio": 0.9,
+     "top": 192,
+     "tag": "h1",
+     "kind": "heading"
+    },
+    "h1": {
+     "text": "Business fuel supply",
+     "words": 3,
+     "lines": 2,
+     "size": 40,
+     "font": "plusJakarta"
+    },
+    "headings": [
+     {
+      "text": "Business fuel supply",
+      "words": 3,
+      "chars": 20,
+      "lines": 2,
+      "size": 40,
+      "vw": 10.3,
+      "font": "plusJakarta",
+      "weight": 800,
+      "tracking": -0.02,
+      "leading": 1.08,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.9,
+      "top": 192,
+      "tag": "h1",
+      "kind": "heading"
+     },
+     {
+      "text": "Discuss",
+      "words": 1,
+      "chars": 7,
+      "lines": 1,
+      "size": 24,
+      "vw": 6.2,
+      "font": "plusJakarta",
+      "weight": 700,
+      "tracking": 0,
+      "leading": 1.33,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.7,
+      "top": 878,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "Confirm",
+      "words": 1,
+      "chars": 7,
+      "lines": 1,
+      "size": 24,
+      "vw": 6.2,
+      "font": "plusJakarta",
+      "weight": 700,
+      "tracking": 0,
+      "leading": 1.33,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.7,
+      "top": 980,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "Agree",
+      "words": 1,
+      "chars": 5,
+      "lines": 1,
+      "size": 24,
+      "vw": 6.2,
+      "font": "plusJakarta",
+      "weight": 700,
+      "tracking": 0,
+      "leading": 1.33,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.7,
+      "top": 1082,
+      "tag": "p",
+      "kind": "statement"
+     },
+     {
+      "text": "Designed for daily operators.",
+      "words": 4,
+      "chars": 29,
+      "lines": 2,
+      "size": 36,
+      "vw": 9.2,
+      "font": "plusJakarta",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.22,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.9,
+      "top": 1356,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Operational workflow",
+      "words": 2,
+      "chars": 20,
+      "lines": 2,
+      "size": 36,
+      "vw": 9.2,
+      "font": "plusJakarta",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.9,
+      "top": 2545,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Plan your team requirements.",
+      "words": 4,
+      "chars": 28,
+      "lines": 2,
+      "size": 30,
+      "vw": 7.7,
+      "font": "plusJakarta",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.33,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.73,
+      "top": 3172,
+      "tag": "h3",
+      "kind": "heading"
+     },
+     {
+      "text": "Discuss your requirements",
+      "words": 3,
+      "chars": 25,
+      "lines": 2,
+      "size": 30,
+      "vw": 7.7,
+      "font": "plusJakarta",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.25,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "center",
+      "position": "center",
+      "widthRatio": 0.77,
+      "top": 3769,
+      "tag": "h2",
+      "kind": "heading"
+     },
+     {
+      "text": "Obligon LTD",
+      "words": 2,
+      "chars": 11,
+      "lines": 1,
+      "size": 24,
+      "vw": 6.2,
+      "font": "plusJakarta",
+      "weight": 800,
+      "tracking": 0,
+      "leading": 1.33,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.9,
+      "top": 4205,
+      "tag": "h2",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 9,
+     "maxLines": 2,
+     "over2Lines": 0,
+     "statements": 3,
+     "centered": 1,
+     "medianWords": 2,
+     "mixedFontHeadings": 0
+    },
+    "type": {
+     "families": [
+      {
+       "family": "inter",
+       "share": 0.88,
+       "mono": false
+      },
+      {
+       "family": "plusJakarta",
+       "share": 0.12,
+       "mono": false
+      }
+     ],
+     "familyCount": 2,
+     "sizes": [
+      12,
+      13,
+      14,
+      16,
+      20,
+      24,
+      30,
+      36,
+      40
+     ],
+     "sizeCount": 9,
+     "notLoaded": [],
+     "body": {
+      "font": "inter",
+      "size": 16,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 20.8
+     },
+     "measureChars": 44,
+     "max": {
+      "size": 40,
+      "vw": 10.3,
+      "font": "plusJakarta",
+      "text": "Business"
+     },
+     "monoShare": 0,
+     "monoProseShare": 0,
+     "monoFamilies": [],
+     "monoSamples": [],
+     "microLabels": 5,
+     "microLabelShare": 0.048,
+     "microSamples": [
+      "EnergyVista Solution",
+      "What to Expect",
+      "Company Enquiries",
+      "EnergyVista Deployment",
+      "Lagos, Nigeria"
+     ],
+     "upperShare": 0.07,
+     "centerShare": 0.06,
+     "smallText": 1
+    },
+    "eyebrows": [
+     {
+      "text": "EnergyVista Solution",
+      "above": "Business fuel supply",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 156
+     },
+     {
+      "text": "What to Expect",
+      "above": "Designed for daily operators.",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 1320
+     },
+     {
+      "text": "Company Enquiries",
+      "above": "Plan your team requirements.",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 3137
+     },
+     {
+      "text": "EnergyVista Deployment",
+      "above": "Discuss your requirements",
+      "upper": true,
+      "tracked": true,
+      "mono": false,
+      "pill": false,
+      "size": 13,
+      "top": 3733
+     }
+    ],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#f9f9ff",
+     "bodyBgHsl": {
+      "h": 240,
+      "s": 1,
+      "l": 0.99
+     },
+     "dark": false,
+     "sectionBgs": [
+      {
+       "color": "#f9f9ff",
+       "top": 0,
+       "hsl": {
+        "h": 240,
+        "s": 1,
+        "l": 0.99
+       }
+      },
+      {
+       "color": "#00010c",
+       "top": 92,
+       "hsl": {
+        "h": 235,
+        "s": 1,
+        "l": 0.02
+       }
+      },
+      {
+       "color": "#ffffff",
+       "top": 2480,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 1
+       }
+      },
+      {
+       "color": "#eff3ff",
+       "top": 3677,
+       "hsl": {
+        "h": 225,
+        "s": 1,
+        "l": 0.97
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#454650",
+       "share": 0.41
+      },
+      {
+       "color": "#00010c",
+       "share": 0.23
+      },
+      {
+       "color": "#ffffff",
+       "share": 0.21
+      },
+      {
+       "color": "#b8c4ff",
+       "share": 0.07
+      },
+      {
+       "color": "#3d6a00",
+       "share": 0.04
+      }
+     ],
+     "button": {
+      "bg": "#3d6a00",
+      "hsl": {
+       "h": 85,
+       "s": 1,
+       "l": 0.21
+      },
+      "fg": "#ffffff"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 8,
+     "inHero": 5,
+     "radius": 8,
+     "height": 56,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Get Started",
+      "Start with EnergyVista",
+      "Talk to Sales",
+      "Essential Only",
+      "Accept All"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 4,
+     "shadowOverlay": 3,
+     "shadowSamples": [
+      "a.inline-flex.h-14 → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(61, 106",
+      "div.relative.overflow-hidden → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+      "a.inline-flex.h-14 → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(61, 106",
+      "button.inline-flex.h-11 → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(61, 106"
+     ],
+     "gradients": 1,
+     "scrims": 0,
+     "gradientSamples": [
+      "div.absolute.-inset-16 → linear-gradient(to right bottom, rgba(1, 21, 84, 0.35), rgba(0, 0, 0, 0))"
+     ],
+     "gradientText": 0,
+     "hairlines": 4,
+     "hairlineSamples": [
+      "header.sticky.top-0 390px",
+      "section.border-y.border-obligon-border 390px",
+      "footer.border-t.border-obligon-border 390px",
+      "div.border-t.border-obligon-border 390px"
+     ],
+     "outlinedBoxes": 13,
+     "dashed": 0,
+     "blurred": 2,
+     "roundedBoxes": 16,
+     "boxRadius": 12,
+     "squareMedia": 0,
+     "roundedMedia": 1,
+     "mediaRadius": 16,
+     "textShadow": 0,
+     "cardRows": [
+      {
+       "count": 3,
+       "iconTopped": false,
+       "rounded": true,
+       "top": 861
+      },
+      {
+       "count": 4,
+       "iconTopped": true,
+       "rounded": true,
+       "top": 1568
+      },
+      {
+       "count": 4,
+       "iconTopped": false,
+       "rounded": true,
+       "top": 2665
+      }
+     ]
+    },
+    "heroMedia": [
+     {
+      "type": "img",
+      "ratio": 0.15
+     }
+    ],
+    "nav": {
+     "links": 2,
+     "fixed": true,
+     "height": 92,
+     "floatingPill": false,
+     "blur": true
+    },
+    "fontsLoaded": [
+     "inter",
+     "plusjakarta"
+    ]
+   },
+   "consoleErrors": []
+  }
+ ],
+ "findings": [
+  {
+   "level": "FAIL",
+   "id": "eyebrow",
+   "width": 1440,
+   "message": "4 eyebrow/kicker label(s) above headings: \"EnergyVista Solution\" above \"Business fuel supply\"; \"What to Expect\" above \"Designed for daily operators.\"; \"Company Enquiries\" above \"Plan your team requirements.\"; \"EnergyVista Deployment\" above \"Discuss your requirements\"",
+   "fix": "Delete them. If the label carried real information, fold it into the headline or the supporting sentence.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "micro-label",
+   "width": 1440,
+   "message": "5 tiny uppercase letter-spaced labels (e.g. \"EnergyVista Solution\", \"What to Expect\", \"Company Enquiries\", \"EnergyVista Deployment\").",
+   "fix": "Use sentence-case text at a readable size, or delete the label.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "gradient",
+   "width": 1440,
+   "message": "1 gradient fill(s): div.absolute.-inset-16 → linear-gradient(to right bottom, rgba(1, 21, 84, 0.35), rgba(0, 0, 0, 0))",
+   "fix": "Use a flat colour or a real image. The only gradient allowed by default is a neutral scrim over a photo for legibility.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "shadow",
+   "width": 1440,
+   "message": "4 box-shadow(s) on elements at rest: a.inline-flex.h-14 → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(61, 106 | div.relative.overflow-hidden → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0 | a.inline-flex.h-14 → rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(61, 106",
+   "fix": "Remove. Separate surfaces with a tone step or space. Shadows are for things that really float (menus, dialogs, sticky bars).",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "hairline",
+   "width": 1440,
+   "message": "4 thin rule(s)/divider line(s): header.sticky.top-0 1440px | section.border-y.border-obligon-border 1440px | footer.border-t.border-obligon-border 1440px | div.border-t.border-obligon-border 1440px",
+   "fix": "Delete. Separate with space, a tone change, or scale. Lines are only for real tables and form fields.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "outlined-box",
+   "width": 1440,
+   "message": "9 boxes drawn with a 1px outline.",
+   "fix": "Define a surface by its fill (one tone step from the page) or leave the content unboxed.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "glass",
+   "width": 1440,
+   "message": "2 backdrop-blur surfaces.",
+   "fix": "One blurred sticky bar at most; glass cards are a tell.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "icon-cards",
+   "width": 1440,
+   "message": "1 row(s) of identical cards each topped with a small icon (4 cards).",
+   "fix": "Replace with one composed section from the direction: a narrative split, a list set in large type, or real imagery per item.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "WARN",
+   "id": "size-count",
+   "width": 1440,
+   "message": "10 different font sizes (12, 13, 14, 16, 18, 20, 24, 30, 36, 64).",
+   "fix": "A page needs about five: display, heading, lead, body, small.",
+   "alsoAt": [
+    768
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "few-pictures",
+   "width": 1440,
+   "message": "Only 2 picture(s) on the page (2 photographs, footage or raster images, 0 interface fragments). Drawings in SVG do not count.",
+   "fix": "Find real pictures of the subject's world with scripts/assets.mjs (photographs, archival images, maps, engravings, footage), download them to assets/ and give them room: a hero picture, one per section that has a subject, a full-width band. At least four, usually six to twelve."
+  },
+  {
+   "level": "WARN",
+   "id": "no-footage",
+   "width": 1440,
+   "message": "No video anywhere on the page.",
+   "fix": "Look for one honest clip with scripts/assets.mjs --video (the place, the material, the process) and use it as a muted loop with a poster frame. Defend its absence only if no clip fits the subject."
+  },
+  {
+   "level": "WARN",
+   "id": "small-text",
+   "width": 1440,
+   "message": "1 text block(s) under 13px.",
+   "fix": "Nothing meant to be read goes below 13px.",
+   "alsoAt": [
+    768,
+    390
+   ]
+  },
+  {
+   "level": "FAIL",
+   "id": "focal-point",
+   "width": 1440,
+   "message": "The first screen has no dominant element: the largest type is 64px (4.4vw) and no single picture holds a third of the viewport.",
+   "fix": "Make one thing lead: the headline at display size, or one large picture. A grid of many small pictures is not one thing; in blind tests jurors marked a first screen without a headline down every time. On the strongest studied sites the largest type has a median of 8.4vw."
+  },
+  {
+   "level": "FAIL",
+   "id": "still-page",
+   "width": 1440,
+   "message": "Only 1 element(s) moved while the page loaded and scrolled.",
+   "fix": "Build the motion layer (SKILL.md step 9, references/motion.md): the signature move, an entrance for the parts of every section, feedback on every control, and one moving picture. Transform and opacity only, with a reduced-motion fallback."
+  },
+  {
+   "level": "FAIL",
+   "id": "covered-text",
+   "width": 768,
+   "message": "Large text lies under another element at some scroll position: \"Discuss\" (screen 1, 100% hidden); \"Confirm\" (screen 1, 100% hidden); \"Agree\" (screen 1, 100% hidden); \"Operational workflow\" (screen 2, 100% hidden)",
+   "fix": "Nothing may sit on top of a headline or statement. Move the picture, shorten the pinned run, or raise the text above it (z-index) and give it a ground.",
+   "alsoAt": [
+    390
+   ]
+  }
+ ],
+ "images": [
+  {
+   "viewport": "desktop",
+   "width": 1440,
+   "fold": "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-18/evidence/energyvista-final/desktop-fold.jpg",
+   "pages": [
+    "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-18/evidence/energyvista-final/desktop-page-01.jpg"
+   ]
+  },
+  {
+   "viewport": "tablet",
+   "width": 768,
+   "fold": "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-18/evidence/energyvista-final/tablet-fold.jpg",
+   "pages": [
+    "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-18/evidence/energyvista-final/tablet-page-01.jpg"
+   ]
+  },
+  {
+   "viewport": "mobile",
+   "width": 390,
+   "fold": "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-18/evidence/energyvista-final/mobile-fold.jpg",
+   "pages": [
+    "/home/inimfon-udoh/Obligon/checkout/reports/production-readiness-2026-10-18/evidence/energyvista-final/mobile-page-01.jpg"
+   ]
+  }
+ ]
+}

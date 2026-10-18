@@ -96,7 +96,7 @@ export async function sendEmail({ to, subject, html, text, idempotencyKey }) {
       // the send does not treat a fixed configuration gap as a product defect.
       // The banner above is why this cannot be mistaken for a working provider.
       console.warn(
-        `[email:fallback] ${classified.code} — NOT SENDING. Delivering in-process because ` +
+        `[email:fallback] ${classified.code} - NOT SENDING. Delivering in-process because ` +
           `NODE_ENV=${env.NODE_ENV}. The message was:\n` +
           `  to: ${Array.isArray(to) ? to.join(", ") : to}\n` +
           `  subject: ${subject}\n` +

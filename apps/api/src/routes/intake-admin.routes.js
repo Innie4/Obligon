@@ -106,7 +106,7 @@ router.patch(
         await queueEmail(t, {
           eventKey: `intake:${decision.id}`,
           to: row.email,
-          subject: "Obligon — request update",
+          subject: "Obligon - request update",
           body: `Your request is ${status.replaceAll("_", " ")}. ${note}`,
         });
       return row;

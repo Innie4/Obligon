@@ -246,7 +246,7 @@ export function MFASetupUI({ stage = "setup", redirect }: MFAUIProps) {
             </p>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
-                {(backupCodes.length ? backupCodes : Array.from({ length: 8 }, () => "— — — —")).map((code, i) => (
+                {(backupCodes.length ? backupCodes : Array.from({ length: 8 }, () => "•••• ••••")).map((code, i) => (
                   <div key={i} className="flex items-center gap-2 p-3 rounded-lg border border-obligon-border bg-white">
                     <code className="font-mono text-sm font-bold text-obligon-navy flex-1">
                       {i < 9 ? `0${i + 1}` : i + 1}.{" "}

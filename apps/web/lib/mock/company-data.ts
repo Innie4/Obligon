@@ -70,7 +70,7 @@ export const pageCopy: Record<CompanyPageKey, { title: string; description?: str
   team: { title: "Team & Access Control", description: "Manage permissions and internal access for your organization.", search: "Search staff..." },
   notifications: { title: "Notifications", description: "Alerts & Updates" },
   support: { title: "Help & Support", description: "Manage your support tickets and find answers quickly." },
-  settings: { title: "Account Settings", description: "Manage your organizational profile and security preferences. Ensure your information is up to date for seamless fleet operations.", search: "Search..." },
+  settings: { title: "Account Settings", description: "Manage your organizational profile and security preferences. Keep your company information up to date.", search: "Search..." },
   maintenance: { title: "Maintenance Manager", description: "Track service schedules, view history, and optimize fleet health.", search: "Search vehicles, services..." }
 };
 

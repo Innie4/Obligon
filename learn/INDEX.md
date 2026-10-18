@@ -1,3 +1,4 @@
+- [2026-10-18] [Calendars, copy and reliable requests](2026-10-18-calendars-copy-and-readiness.md): Share validated date controls, preserve request semantics, and distinguish tested repairs from hosted release requirements.
 - [2026-10-17] [Station profile controls](2026-10-17-station-profile-controls.md): Capture a reviewed map position, preserve recorded station details, and save dependent State/city choices.
 - [2026-10-17] [Mobile dashboard navigation](2026-10-17-mobile-dashboard-navigation.md): Keep every partner destination reachable with a bottom bar and an accessible Account menu.
 - [2026-10-17] [One day partner dashboard access](2026-10-17-one-day-partner-access.md): Enforce a fixed inspection deadline without extending access on restart.

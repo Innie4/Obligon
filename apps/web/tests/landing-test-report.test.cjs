@@ -53,9 +53,9 @@ test('individual plan links consistently name the selected plan and preserve sig
   ]);
 });
 
-test('Our Solutions remains a page link with a navigation arrow rather than a disclosure chevron', () => {
+test('Explore FuelVista remains a page link with a navigation arrow rather than a disclosure chevron', () => {
   const tree = fixture('../components/landing/Hero.tsx', 'Hero')();
-  const solutions = nodes(tree, node => node.type === 'landing-button' && text(node) === 'Our Solutions');
+  const solutions = nodes(tree, node => node.type === 'landing-button' && text(node) === 'Explore FuelVista');
   assert.equal(solutions.length, 1);
   assert.equal(solutions[0].props.href, '/solutions/fuelvista');
   assert.equal(solutions[0].props.icon, 'arrow');

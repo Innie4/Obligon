@@ -1052,7 +1052,7 @@ router.post("/mfa/enable", requireAuth, asyncHandler(async (req, res) => {
     const user = await t.one("SELECT two_factor_enabled,two_factor_secret FROM users WHERE id=$1 FOR UPDATE", [req.user.id]);
     if (user?.two_factor_enabled) throw conflict("Two-factor authentication is already enabled.");
     if (!user?.two_factor_secret) throw badRequest("Start MFA setup first");
-    if (typeof token !== "string" || !verifyTotp(user.two_factor_secret, token)) throw badRequest("Invalid authentication code — try the next code");
+    if (typeof token !== "string" || !verifyTotp(user.two_factor_secret, token)) throw badRequest("Invalid authentication code. Try the next code.");
     await t.query("UPDATE users SET two_factor_enabled=TRUE,two_factor_backup_codes=$2 WHERE id=$1", [req.user.id, JSON.stringify(hashedCodes)]);
   });
   await audit({ actorUserId: req.user.id, action: "auth.mfa_enabled", ip: req.ip });

@@ -166,10 +166,10 @@ export function configurationIssues() {
 export function configurationWarnings() {
   const warnings = [];
   if (env.PAYMENT_PROVIDER === "flutterwave" && !env.FLW_SECRET_KEY) {
-    warnings.push("PAYMENT_PROVIDER=flutterwave but FLW_SECRET_KEY is unset — checkout will fail (payments only)");
+    warnings.push("PAYMENT_PROVIDER=flutterwave but FLW_SECRET_KEY is unset - checkout will fail (payments only)");
   }
   if (env.PAYMENT_PROVIDER === "paystack" && !env.PAYSTACK_SECRET_KEY) {
-    warnings.push("PAYMENT_PROVIDER=paystack but PAYSTACK_SECRET_KEY is unset — checkout will fail (payments only)");
+    warnings.push("PAYMENT_PROVIDER=paystack but PAYSTACK_SECRET_KEY is unset - checkout will fail (payments only)");
   }
   if (isProd && /_TEST/.test(env.FLW_SECRET_KEY)) {
     warnings.push(
@@ -177,13 +177,13 @@ export function configurationWarnings() {
     );
   }
   if (env.PAYMENT_PROVIDER === "flutterwave" && !env.FLW_SECRET_HASH) {
-    warnings.push("FLW_SECRET_HASH is unset — /api/webhooks/flutterwave will reject every event with 401. Reconciliation still recovers payments.");
+    warnings.push("FLW_SECRET_HASH is unset - /api/webhooks/flutterwave will reject every event with 401. Reconciliation still recovers payments.");
   }
   if(env.SUDO_SECRET_API_KEY && (!env.SUDO_DEBIT_ACCOUNT_ID || !env.SUDO_CREDIT_ACCOUNT_ID)) warnings.push("SUDO_DEBIT_ACCOUNT_ID and SUDO_CREDIT_ACCOUNT_ID are required for issuing/replacing cards");
-  if (!env.SUDO_SECRET_API_KEY) warnings.push("SUDO_SECRET_API_KEY is unset — card issuing and limits are unavailable");
-  if (!env.RESEND_API_KEY) warnings.push("RESEND_API_KEY is unset — no transactional email will be sent");
-  if (!env.TERMII_API_KEY) warnings.push("TERMII_API_KEY is unset — SMS OTP is unavailable");
-  if (!env.WEB_PUSH_VAPID_PRIVATE_KEY) warnings.push("WEB_PUSH_VAPID_PRIVATE_KEY is unset — web push notifications are disabled");
+  if (!env.SUDO_SECRET_API_KEY) warnings.push("SUDO_SECRET_API_KEY is unset - card issuing and limits are unavailable");
+  if (!env.RESEND_API_KEY) warnings.push("RESEND_API_KEY is unset - no transactional email will be sent");
+  if (!env.TERMII_API_KEY) warnings.push("TERMII_API_KEY is unset - SMS OTP is unavailable");
+  if (!env.WEB_PUSH_VAPID_PRIVATE_KEY) warnings.push("WEB_PUSH_VAPID_PRIVATE_KEY is unset - web push notifications are disabled");
   // A customer-bearer fee with no rate configured collects nothing while the
   // interface may still imply the customer is paying one, so say so plainly.
   if (
@@ -191,7 +191,7 @@ export function configurationWarnings() {
     !Number(env.PAYMENT_FEE_BASIS_POINTS)
   ) {
     warnings.push(
-      "PAYMENT_FEE_BEARER=customer but PAYMENT_FEE_BASIS_POINTS is 0 — the customer will be charged no gateway fee at all"
+      "PAYMENT_FEE_BEARER=customer but PAYMENT_FEE_BASIS_POINTS is 0 - the customer will be charged no gateway fee at all"
     );
   }
   // Overcharging every customer is the worst outcome available here, so an

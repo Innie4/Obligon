@@ -352,9 +352,9 @@ export class ApiError extends Error {
   }
 }
 
-/** Bound all API exchanges, including refresh and exports, so a cold or unavailable server cannot leave controls spinning forever. */
+/** Allow the free API host to wake from idle while keeping requests bounded and cancelable. */
 async function boundedFetch(url: string, init: RequestInit = {}): Promise<Response> {
-  const timeout = AbortSignal.timeout(20000);
+  const timeout = AbortSignal.timeout(75000);
   const signal = init.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
   try {
     return await fetch(url, { ...init, signal });
@@ -913,7 +913,7 @@ class MockApiClient implements ApiClient {
       payouts: partnerPayoutRows as PartnerRow[],
       bankAccounts: [],
       config: { settlementLimitKobo: 0, autoSettlement: false },
-      totals: { totalSettledLabel: "—", pendingLabel: "—", claimableKobo: 0, claimableLabel: "—" }
+      totals: { totalSettledLabel: "N/A", pendingLabel: "N/A", claimableKobo: 0, claimableLabel: "N/A" }
     };
   }
   async getPartnerPricing(): Promise<PartnerPricing> {
@@ -1696,7 +1696,7 @@ export const publicApi = {
     return http<{ ok: boolean; message: string }>("/api/public/plans/select", { method: "POST", body: JSON.stringify(payload) });
   },
   async submitLead(payload: Record<string, unknown>) {
-    if (!LIVE_MODE) { await simulate({}, 700); return { ok: true, message: "Thanks — we'll be in touch.", simulated: true }; }
+    if (!LIVE_MODE) { await simulate({}, 700); return { ok: true, message: "Thanks. We'll be in touch.", simulated: true }; }
     return http<{ ok: boolean; message: string }>("/api/public/leads", { method: "POST", body: JSON.stringify(payload) });
   },
   async submitContact(payload: Record<string, unknown>, attachment?: File | null) {
@@ -1717,7 +1717,7 @@ export const publicApi = {
     return data.jobs;
   },
   async applyToJob(payload: Record<string, unknown>, resume?: File | null) {
-    if (!LIVE_MODE) { await simulate({}, 900); return { ok: true, message: "Application received — we'll be in touch.", simulated: true }; }
+    if (!LIVE_MODE) { await simulate({}, 900); return { ok: true, message: "Application received. We'll be in touch.", simulated: true }; }
     const form = new FormData();
     for (const [k, v] of Object.entries(payload)) form.append(k, String(v));
     if (resume) form.append("resume", resume);

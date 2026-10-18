@@ -30,6 +30,7 @@ function fixture(file, component, { choices = fleet, user = { organization: 'Exa
         if (name === '@/lib/services/company') return { companyApi: { choices: async () => choices } };
         if (name === '@/lib/services') return { mutationsApi: { updateVehicle: async (...args) => calls.push(['updateVehicle', ...args]), createVehicle: async (...args) => calls.push(['createVehicle', ...args]), issueCompanyCard: async (...args) => { calls.push(['issueCompanyCard', ...args]); return {}; }, ...services } };
         if (name === '@/lib/company-input') return load('../lib/company-input.ts');
+        if (name === '@/lib/calendar-date') return load('../lib/calendar-date.ts');
         if (name === '@/lib/mock/company-data') return load('../lib/mock/company-data.ts');
         return new Proxy({}, { get: (_, key) => String(key) });
       },

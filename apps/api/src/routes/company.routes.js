@@ -81,7 +81,7 @@ router.get("/overview", requireOrg, asyncHandler(async (req, res) => {
       { label: "Active Cards", value: String(cards.active), helper: `${cards.total} total issued`, tone: "blue" }
     ],
     recentTransactions: recent.map((t) => ({
-      cells: [fmtDateTime(t.created_at), t.vehicle_plate ?? "—", t.driver_name ?? "Unassigned", naira(t.amount_kobo)],
+      cells: [fmtDateTime(t.created_at), t.vehicle_plate ?? "Not available", t.driver_name ?? "Unassigned", naira(t.amount_kobo)],
       status: (t.status ?? "pending").toUpperCase(),
       tone: t.status === "success" ? "green" : t.status === "failed" ? "red" : "amber"
     }))
@@ -283,7 +283,7 @@ router.get("/cards", requireOrg, asyncHandler(async (req, res) => {
         `${c.label}\n${c.vehicle_plate ? `Assigned • ${c.vehicle_plate}` : "Unassigned"}`,
         c.masked_pan,
         `${c.driver_name ?? "Unassigned"}\n${c.vehicle_plate ?? "Pool Card"}`,
-        c.status === "terminated" || c.status === "lost" ? "—" : `${naira(c.monthly_limit_kobo - c.spend_month_kobo)}\n${Math.round(c.usage_pct)}% used`
+        c.status === "terminated" || c.status === "lost" ? "Not available" : `${naira(c.monthly_limit_kobo - c.spend_month_kobo)}\n${Math.round(c.usage_pct)}% used`
       ],
       status: c.status === "active" ? "Active" : c.status === "frozen" ? "Frozen" : c.status === "lost" ? "Lost" : c.status === "replaced" ? "Cancelled" : capitalize(c.status),
       tone: c.status === "active" ? "green" : c.status === "frozen" ? "red" : c.status === "lost" ? "amber" : "muted",
@@ -396,9 +396,9 @@ router.get("/transactions", requireOrg, asyncHandler(async (req, res) => {
       id: t.id, reference: t.reference,
       cells: [
         fmtDateTime(t.created_at),
-        `${t.vehicle_plate ?? "—"}\n${t.driver_name ?? "Unassigned"}`,
+        `${t.vehicle_plate ?? "Not available"}\n${t.driver_name ?? "Unassigned"}`,
         `${t.station_name ?? "Obligon Network"}\n${t.fuel_type} • ${Math.round(Number(t.litres))}L`,
-        t.masked_pan ?? "•••• —",
+        t.masked_pan ?? "Not available",
         naira(t.amount_kobo)
       ],
       status: t.status === "success" ? "Cleared" : capitalize(t.status),
@@ -455,7 +455,7 @@ router.get("/reports", requireOrg, asyncHandler(async (req, res) => {
       { label: "Transactions", value: String(totalRow.count), tone: "green" }
     ],
     spend: spend.map((r) => ({ cells: [fmtDate(new Date()), r.plate ?? "Unassigned", `${r.fuel_type} • ${Math.round(r.litres)}L`, naira(r.total)] })),
-    stationUsage: stationUsage.map((r) => ({ station: r.station ?? "—", total: naira(r.total), visits: r.visits }))
+    stationUsage: stationUsage.map((r) => ({ station: r.station ?? "Not available", total: naira(r.total), visits: r.visits }))
   });
 }));
 
@@ -523,14 +523,14 @@ router.get("/roadside", requireOrg, asyncHandler(async (req, res) => {
   res.json({
     requests: rows.map((r) => ({
       id: r.id,
-      cells: [fmtDate(r.created_at), r.vehicle_plate ?? "—", capitalize(r.issue_type)],
+      cells: [fmtDate(r.created_at), r.vehicle_plate ?? "Not available", capitalize(r.issue_type)],
       status: r.status === "resolved" ? "Resolved" : r.status === "in_progress" ? "In Progress" : r.status === "dispatching" ? "Dispatching" : r.status === "received" ? "Received" : "Cancelled",
       tone: r.status === "resolved" ? "green" : r.status === "received" ? "amber" : "blue",
       statusRaw: r.status, location: r.location_text, details: r.details, priority: r.priority,
       etaMinutes: r.eta_minutes, time: fmtDateTime(r.created_at)
     })),
     active: rows.filter((r) => ["received", "dispatching", "in_progress"].includes(r.status)).map((r) => ({
-      id: r.id, vehicle: r.vehicle_plate ?? "—", location: r.location_text, issue: capitalize(r.issue_type),
+      id: r.id, vehicle: r.vehicle_plate ?? "Not available", location: r.location_text, issue: capitalize(r.issue_type),
       status: r.status.toUpperCase(), etaMinutes: r.eta_minutes, time: fmtDateTime(r.created_at)
     }))
   });
@@ -996,7 +996,7 @@ router.post("/support/tickets", requireOrg, asyncHandler(async (req, res) => {
     await t.query("INSERT INTO ticket_messages (ticket_id, sender_user_id, sender_role, body) VALUES ($1,$2,$3,$4)", [saved.id, req.user.id, req.user.role, message.trim()]);
     return saved;
   });
-  await notify({ orgId: req.user.orgId, title: "Support ticket received", body: `Ticket ${ticket.reference} — ${subject}. Our team will respond shortly.`, category: "support" });
+  await notify({ orgId: req.user.orgId, title: "Support ticket received", body: `Ticket ${ticket.reference} - ${subject}. Our team will respond shortly.`, category: "support" });
   res.json({ ok: true, reference: ticket.reference });
 }));
 
@@ -1064,7 +1064,7 @@ router.get("/maintenance", requireOrg, asyncHandler(async (req, res) => {
   res.json({
     schedules: rows.map((m) => ({
       id: m.id,
-      cells: [fmtDate(m.scheduled_date), m.vehicle_plate ?? "—", m.service_type, m.cost_kobo ? naira(m.cost_kobo) : "—"],
+      cells: [fmtDate(m.scheduled_date), m.vehicle_plate ?? "Not available", m.service_type, m.cost_kobo ? naira(m.cost_kobo) : "Not available"],
       status: m.status.toUpperCase(), tone: m.status === "completed" ? "green" : m.status === "overdue" ? "red" : m.status === "in_progress" ? "blue" : "amber",
       statusRaw: m.status, notes: m.notes
     })),

@@ -103,10 +103,10 @@ export function CareersPage() {
           <PageIntro
             title={
               <>
-                Join the <span className="text-obligon-green">Energy</span> Revolution.
+                Build with <span className="text-obligon-green">Obligon</span>.
               </>
             }
-            body="We are building the digital infrastructure for Africa's energy and logistics ecosystem. Join a team of mission-driven innovators redefining fintech for physical assets."
+            body="Help build fuel management tools for individuals, companies, and station operators in Nigeria. Browse the roles currently open on our team."
           />
           <div className="mt-8 flex flex-col gap-4 sm:flex-row">
             <a href="#open-roles" className="inline-flex h-14 items-center justify-center gap-2 rounded-xl bg-obligon-navy px-7 text-sm font-bold text-white shadow-hero hover:bg-obligon-navy/90 transition">
@@ -151,7 +151,7 @@ export function CareersPage() {
         <div>
           <h2 className="font-display text-5xl font-extrabold leading-[56px] text-obligon-navy">Life at Obligon LTD</h2>
           <p className="mt-4 max-w-2xl text-lg leading-7 text-obligon-text">
-            We value transparency, physical-world impact, and radical ownership. We don&apos;t just write code; we power national infrastructure.
+            Our work connects software with everyday fuel operations. We value clear communication, reliable tools, and responsibility for the work we deliver.
           </p>
         </div>
 

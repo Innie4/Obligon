@@ -21,8 +21,8 @@ const plusJakarta = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Obligon LTD | Powering Nigeria's Energy Infrastructure",
-  description: "Enterprise-grade fuel card management, POS authorizations, generator IoT telemetry, and logistics solutions for Nigerian fleets.",
+  title: "Obligon LTD | Fuel Cards and Spending Controls",
+  description: "Fuel cards, spending controls, recorded transactions, and approved station access for individuals and businesses in Nigeria.",
   // app/icon.svg is picked up automatically and emitted as the favicon link, but
   // naming it here as well is what puts the brand in the tab for browsers and
   // hostings that read metadata rather than the file convention. There was no

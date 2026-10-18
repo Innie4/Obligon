@@ -101,7 +101,7 @@ export function VerificationUI() {
       } else if (failed.length) {
         // Said plainly rather than as a silent half-delivery: a customer who
         // waits for a text that was never sent has no way to know.
-        setNotice(`We sent your code by ${failed.length === 2 ? "neither channel" : failed[0] === "email" ? "SMS" : "email"} — check your ${failed.join(" and ")}.`);
+        setNotice(`We sent your code by ${failed.length === 2 ? "neither channel" : failed[0] === "email" ? "SMS" : "email"}. We could not send it by ${failed.join(" or ")}. Please retry.`);
       }
       setCooldown(30);
     } catch (err) {

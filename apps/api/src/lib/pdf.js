@@ -105,7 +105,7 @@ export async function receiptPdf({ reference, createdAt, station, fuelType, litr
   doc.fontSize(10).fillColor("#334155");
   doc.text(`Date: ${new Date(createdAt).toLocaleString("en-NG", { timeZone: businessTimeZone() })}`);
   doc.text(`Station: ${station}`);
-  doc.text(`Card holder: ${holder ?? "—"}`);
+  doc.text(`Card holder: ${holder ?? "Not available"}`);
   if (vehicle) doc.text(`Vehicle: ${vehicle}`);
   doc.moveDown(1);
   table(
@@ -136,7 +136,7 @@ export async function invoicePdf({ number, createdAt, orgName, planName, amountL
       { key: "desc", label: "Description", width: 300 },
       { key: "amount", label: "Amount", width: 200 }
     ],
-    [{ desc: `${planName} subscription — ${periodLabel}`, amount: amountLabel }]
+    [{ desc: `${planName} subscription - ${periodLabel}`, amount: amountLabel }]
   );
   doc.fontSize(12).fillColor("#0f172a").text(`Total: ${pdfText(amountLabel)}`, { align: "right" });
   doc.moveDown(1).fontSize(11).fillColor("#059669").text(`Status: ${status.toUpperCase()}`, { align: "right" });

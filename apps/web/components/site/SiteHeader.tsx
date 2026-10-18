@@ -23,7 +23,7 @@ export function SiteHeader() {
             <Link
               key={link.label}
               href={link.href}
-              className="text-xs font-semibold tracking-[0.6px] text-obligon-text transition hover:text-obligon-green"
+              className="text-[13px] font-semibold tracking-[0.6px] text-obligon-text transition hover:text-obligon-green"
             >
               {link.label}
             </Link>
@@ -33,7 +33,7 @@ export function SiteHeader() {
         <div className="flex items-center gap-4">
           <Link
             href={routes.login}
-            className="hidden text-xs font-semibold tracking-[0.6px] text-obligon-navy sm:inline-flex"
+            className="hidden text-[13px] font-semibold tracking-[0.6px] text-obligon-navy sm:inline-flex"
           >
             Login
           </Link>

@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
-function loadClient(fetch, initialTokens = null) {
+function loadClient(fetch, initialTokens = null, timeoutDuration = () => 10) {
   let tokens = initialTokens;
   const timeouts = [];
   const sessions = [];
@@ -11,7 +11,7 @@ function loadClient(fetch, initialTokens = null) {
   const code = ts.transpileModule(fs.readFileSync(require.resolve('../lib/services/client.ts'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
   vm.runInNewContext(code, { exports, process: { env: { NEXT_PUBLIC_API_URL: 'https://api.example.test' } }, fetch,
     Headers, FormData, Response, URLSearchParams, Blob,
-    AbortSignal: { timeout(ms) { timeouts.push(ms); return AbortSignal.timeout(10); }, any: signals => AbortSignal.any(signals) },
+    AbortSignal: { timeout(ms) { timeouts.push(ms); return AbortSignal.timeout(timeoutDuration(ms)); }, any: signals => AbortSignal.any(signals) },
     require: name => name.includes('session-store') ? { readTokens: () => tokens, writeTokens: next => { tokens = next; }, writePersistedSession: value => sessions.push(value), readPersistedSession: () => sessions.at(-1) } : {},
   });
   return { client: exports, tokens: () => tokens, setTokens: value => { tokens = value; }, timeouts, sessions };
@@ -21,7 +21,7 @@ test('an unavailable backend times out with an actionable error', async () => {
   const keepAlive = setTimeout(() => {}, 1000);
   try { await assert.rejects(client.authenticatedRequest('/api/customer/profile'), /too long to respond/); }
   finally { clearTimeout(keepAlive); }
-  assert.deepEqual(timeouts, [20000]);
+  assert.deepEqual(timeouts, [75000]);
 });
 test('caller cancellation is preserved', async () => {
   const { client } = loadClient((url, init) => new Promise((resolve, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason))));
@@ -85,4 +85,18 @@ test('late token refresh cannot replace tokens from a newer login', async () => 
  await request;
  assert.equal(fixture.tokens(), next);
  assert.equal(fixture.sessions.length, 0);
+});
+
+// Scale 75 seconds to 75 milliseconds so the real abort signal can be tested quickly.
+test('a cold API may take 50 seconds without aborting or repeating a write', async () => {
+  let calls = 0;
+  const fixture = loadClient((url, init) => new Promise((resolve, reject) => {
+    calls++;
+    const ready = setTimeout(() => resolve(new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } })), 50);
+    init.signal.addEventListener('abort', () => { clearTimeout(ready); reject(init.signal.reason); }, { once: true });
+  }), null, ms => ms / 1000);
+  const result = await fixture.client.authenticatedRequest('/api/example', { method: 'POST', body: '{}' });
+  assert.equal(result.ok, true);
+  assert.equal(calls, 1);
+  assert.deepEqual(fixture.timeouts, [75000]);
 });

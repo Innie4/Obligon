@@ -5,6 +5,8 @@ import { AlertTriangle, Check, CircleDashed, CircleSlash, Clock, CreditCard, Loa
 import { useToast } from "@/components/shared/Toast";
 import type { CardPlan, CardRequest, CardRequestProgress, ProgressStepState } from "@/lib/services";
 import { ModalFrame } from "./CustomerModals";
+import { DateField } from "@/components/shared/Calendar/DateField";
+import { calendarDateValue } from "@/lib/calendar-date";
 
 /** Nigerian BVN: 11 digits beginning with 2. */
 const BVN_RE = /^2\d{10}$/;
@@ -21,7 +23,7 @@ function PlanBadge({ state }: { state: string }) {
   if (state === "unavailable") {
     return (
       <span className="shrink-0 rounded-full bg-[#f0f4f0] px-2 py-0.5 text-[10px] font-extrabold uppercase text-obligon-text/60">
-        &mdash;
+        Not included
       </span>
     );
   }
@@ -103,9 +105,7 @@ export function CardPlanModal({
                         <li key={feature.label} className="flex items-start justify-between gap-2">
                           <span className="flex min-w-0 items-start gap-2">
                             {unavailable ? (
-                              <span aria-hidden="true" className="mt-px w-3 shrink-0 text-center text-xs text-obligon-text/50">
-                                &mdash;
-                              </span>
+                              <X size={12} aria-hidden="true" className="mt-0.5 shrink-0 text-obligon-text/50" />
                             ) : (
                               <Check size={13} className="mt-0.5 shrink-0 text-obligon-green" />
                             )}
@@ -217,7 +217,7 @@ export function CardDetailsModal({
             />
           </label>
 
-          <label className="block"><span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Date of birth</span><input type="date" className={field} required value={dateOfBirth} onChange={e=>setDateOfBirth(e.target.value)} max={new Date().toISOString().slice(0,10)}/></label>
+          <DateField label="Date of birth" labelClassName="text-[11px] uppercase tracking-[1.1px]" required value={dateOfBirth} onChange={setDateOfBirth} max={calendarDateValue(new Date())} autoComplete="bday" />
           <label className="block"><span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Postal code</span><input className={field} required inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={postalCode} onChange={e=>setPostalCode(e.target.value.replace(/\D/g,""))}/></label>
           <label className="block">
             <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">BVN</span>
@@ -605,7 +605,7 @@ export function PendingPaymentModal({
           <div className="flex items-baseline justify-between gap-3">
             <span className="text-sm font-bold text-obligon-navy">{request.planName ?? "Plan"}</span>
             <span className="text-lg font-extrabold text-obligon-green">
-              {request.planAmountLabel ?? "—"}
+              {request.planAmountLabel ?? "Not available"}
             </span>
           </div>
           <p className="mt-2 text-xs text-obligon-text">

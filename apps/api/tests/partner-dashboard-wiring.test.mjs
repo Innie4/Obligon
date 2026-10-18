@@ -167,9 +167,10 @@ test("the reports table dropped its invented columns", () => {
   assert.doesNotMatch(routes, /status: "ACTIVE", tone: "success"\n    \}\)\)/);
 });
 
-test("manual payout controls are disabled under direct settlement", () => {
+test("manual payout controls are absent under direct settlement", () => {
   const settlement = screen.slice(screen.indexOf('function SettlementsPage'), screen.indexOf('function DisputesPage'));
-  assert.match(settlement, /<button type="button" disabled[\s\S]*Payouts — Coming soon/);
+  assert.match(settlement, /Manual payouts are inactive\. Your settlement account receives funds automatically\./);
+  assert.doesNotMatch(settlement, /Payouts.*Coming soon/);
   assert.doesNotMatch(settlement, /onOpenPayout\(|requestPayout\(/);
 });
 
@@ -222,7 +223,7 @@ test("the POS receipt invents nothing", () => {
   assert.doesNotMatch(code, /Math\.random\(\)/);
   assert.doesNotMatch(code, /POS-\$\{Math\.floor/);
   // Every receipt field is read off the authorization response.
-  assert.match(code, /reference: String\(result\?\.reference \?\? "—"\)/);
+  assert.match(code, /reference: String\(result\?\.reference \?\? "N\/A"\)/);
 });
 
 test("printing offers a real print, not a claimed thermal receipt", () => {

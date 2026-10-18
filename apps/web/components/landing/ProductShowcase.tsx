@@ -3,27 +3,27 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { assets } from "./assets";
 
-const benefits = ["Virtual Card Controls", "Multi-Station Access", "Real-time Alerts", "Daily Limits"];
+const benefits = ["Virtual Card Controls", "Multi-Station Access", "Transaction Notifications", "Daily Limits"];
 
 export function ProductShowcase() {
   return (
     <section id="product" className="bg-obligon-navy py-24" data-node-id="2:33">
       <div className="mx-auto w-[calc(100%-40px)] max-w-landing overflow-hidden rounded-[32px] border border-white/10 bg-obligon-blue px-6 py-8 sm:w-auto sm:px-10 lg:px-16 lg:py-16">
-        <div className="relative grid min-w-0 items-center gap-12 lg:grid-cols-[479px_479px] lg:gap-16">
-          <div className="absolute -right-16 -top-16 size-64 rounded-full bg-obligon-green/10 blur-[50px]" />
+        <div className="relative grid min-w-0 items-center gap-12 lg:grid-cols-2 lg:gap-16">
           <div className="min-w-0 overflow-hidden rounded-3xl">
             <Image src={assets.fuelvistaCard} width={512} height={341} alt="FuelVista Card" className="w-full" />
           </div>
 
           <div className="relative">
             <h2 className="font-display text-[36px] leading-10 text-white sm:text-5xl sm:leading-[48px]">
-              Elite Control for
+              Fuel Controls for
               <br />
               Every Vehicle.
             </h2>
             <p className="mt-8 max-w-[475px] text-lg leading-7 text-white/70">
-              The FuelVista Card is the standard in Nigerian fleet management. A single, powerful tool to manage
-              spending, track usage, and secure discounts at approved partner stations. Physical cards and delivery are coming soon.
+              Use a FuelVista virtual fuel card to set spending limits, review transactions, and buy fuel at approved
+              partner stations. Discounts depend on your plan and participating stations. Physical cards and delivery
+              are not available yet.
             </p>
 
             <Link

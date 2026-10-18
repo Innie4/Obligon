@@ -66,14 +66,14 @@ export function SiteFooter({ active }: SiteFooterProps) {
       <div className="mx-auto grid max-w-[1280px] gap-10 px-5 py-16 sm:px-8 md:grid-cols-5 lg:px-16 lg:py-20">
         <div>
           <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Obligon LTD</h2>
-          <p className="mt-6 max-w-[220px] text-sm leading-5 text-obligon-text">
+          <p className="mt-6 max-w-[220px] text-base leading-6 text-obligon-text">
             Enterprise energy logistics and fintech solutions for Nigerian fleets.
           </p>
         </div>
 
         {columns.map((column) => (
           <div key={column.title}>
-            <h3 className="text-xs font-semibold uppercase tracking-[0.6px] text-obligon-navy">{column.title}</h3>
+            <h3 className="text-[13px] font-semibold uppercase tracking-[0.6px] text-obligon-navy">{column.title}</h3>
             <ul className="mt-6 space-y-4">
               {column.links.map((link) => (
                 <li key={link.label}>
@@ -92,7 +92,7 @@ export function SiteFooter({ active }: SiteFooterProps) {
         ))}
 
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-[0.6px] text-obligon-navy">Stay Updated</h3>
+          <h3 className="text-[13px] font-semibold uppercase tracking-[0.6px] text-obligon-navy">Stay Updated</h3>
           <form onSubmit={handleSubscribe} className="mt-6 space-y-3">
             <label htmlFor="footer-newsletter" className="sr-only">
               Email address
@@ -114,7 +114,7 @@ export function SiteFooter({ active }: SiteFooterProps) {
               {subscribing ? <Loader2 size={16} className="animate-spin" /> : "Subscribe"}
             </button>
           </form>
-          <p className="mt-3 text-xs leading-4 text-obligon-text">Product updates and fleet insights. Contact Support to manage your request.</p>
+          <p className="mt-3 text-[13px] leading-4 text-obligon-text">Product updates and fleet insights. Contact Support to manage your request.</p>
         </div>
       </div>
 
@@ -123,7 +123,7 @@ export function SiteFooter({ active }: SiteFooterProps) {
           <p>&copy; {new Date().getFullYear()} Obligon LTD Energy. All rights reserved.</p>
           <div className="flex items-center gap-6">
             <span className="h-px w-16 bg-gradient-to-r from-transparent via-obligon-green to-transparent" />
-            <span className="text-xs uppercase tracking-[1.6px] text-obligon-navy">Lagos, Nigeria</span>
+            <span className="text-[13px] uppercase tracking-[1.6px] text-obligon-navy">Lagos, Nigeria</span>
           </div>
         </div>
       </div>

@@ -10,6 +10,8 @@ import { useSession } from "@/components/shared/AuthContext";
 import type { PaymentConfig } from "@/lib/services/types";
 import { fundingQuote, fundingMoney, wholeNairaKobo, validFundingConfig } from "@/lib/customer-funding-quote";
 import { companyAssignmentKnown, companyAssignmentPayload, companyAssignmentSelection, companyCardPayload, companyExportQuery } from "@/lib/company-input";
+import { DateField } from "@/components/shared/Calendar/DateField";
+import { calendarDateValue } from "@/lib/calendar-date";
 export type CompanyModalContext = {
   editVehicle?: CompanyVehicle;
   cardId?: string;
@@ -108,7 +110,7 @@ function CompanyFleetModal({ modal, context = {}, onClose, onSaved }: Props & { 
   const selectedCard = choices.cards.find(card => card.id === form.cardId);
   const assignmentUnavailable = modal === "assign" && !companyAssignmentKnown(selectedCard);
   const issuerUnavailable = modal === "newCard" && choices.issuerReady !== true;
-  const field = (label: string, key: keyof typeof form, type = "text", required = true) => <Field label={label}>
+const field = (label: string, key: keyof typeof form, type = "text", required = true) => type === "date" ? <DateField label={label} value={form[key]} onChange={value => update(key, value)} required={required} max={key === "dob" ? calendarDateValue(new Date()) : undefined} autoComplete={key === "dob" ? "bday" : "off"} /> : <Field label={label}>
 
     <input className={inputClass} type={type} autoComplete={key === "bvn" ? "off" : undefined} inputMode={key === "bvn" ? "numeric" : undefined} maxLength={key === "bvn" ? 11 : undefined} value={form[key]} required={required} onChange={e => update(key, e.target.value)} />
 

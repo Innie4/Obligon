@@ -8,7 +8,7 @@ export default function FuelVistaPage() {
       accent="green"
       title={
         <>
-          Elite control for <span className="text-obligon-lime">fleet fuel</span> operations.
+          Control <span className="text-obligon-lime">fuel spending</span>
         </>
       }
       body="FuelVista combines card controls, partner-station access, spend limits, and recorded fuel transactions for Nigerian fleet operators."
@@ -18,8 +18,8 @@ export default function FuelVistaPage() {
         { value: "Recorded", label: "Transactions" }
       ]}
       features={[
-        { title: "Fuel Card Governance", body: "Request cards, manage vehicle and driver assignments, and set daily and monthly spend limits.", icon: "card" },
-        { title: "Partner Station Access", body: "Route drivers through verified stations and keep disbursement records clean.", icon: "map" },
+        { title: "Fuel Card Controls", body: "Request cards, manage vehicle and driver assignments, and set daily and monthly spend limits.", icon: "card" },
+        { title: "Partner Station Access", body: "Find verified partner stations and retain records of fuel purchases.", icon: "map" },
         { title: "Transaction Alerts", body: "Receive notifications of recorded fuel transactions and account updates.", icon: "lock" },
         { title: "Spend Analytics", body: "Track fuel volume, cost trends, station usage, and vehicle-level consumption.", icon: "chart" }
       ]}

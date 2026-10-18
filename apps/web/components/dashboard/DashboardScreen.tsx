@@ -78,7 +78,7 @@ const metricIcons = [
  * it raw would show kobo under an naira label.
  */
 function nairaLabel(kobo: number | null): string {
-  if (kobo == null) return "—";
+  if (kobo == null) return "N/A";
   return `₦${(Number(kobo) / 100).toLocaleString("en-NG", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
@@ -215,7 +215,7 @@ function DataTable<T extends PartnerRow = PartnerRow>({
                       {row.action ?? "Details"}
                     </button>
                   ) : (
-                    <span className="text-xs font-bold text-obligon-text">—</span>
+                  <span className="text-xs font-bold text-obligon-text">N/A</span>
                   )}
                 </td>
               </tr>
@@ -248,6 +248,10 @@ function OverviewPage() {
 
   return (
     <DashboardCanvas>
+            <div className="mb-8">
+              <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Station overview</h1>
+              <p className="mt-2 text-sm text-obligon-text">Review station sales, settlement totals, and recent authorizations.</p>
+            </div>
       <AsyncBoundary
         status={status}
         error={error?.message ?? null}
@@ -256,9 +260,7 @@ function OverviewPage() {
       >
         {data ? (
           <>
-            <div className="mb-8">
-              <p className="text-xs font-bold uppercase tracking-[1.2px] text-obligon-green">Station Operator Console</p>
-            </div>
+
 
             <div className="grid gap-6 xl:grid-cols-3">
               {data.metrics.map((metric, index) => (
@@ -385,7 +387,7 @@ function FuelPricingPage() {
                     />
                   </div>
                   <p className="mt-1 text-xs text-obligon-text">
-                    Last published {data.prices[index]?.updatedAt ?? "—"}
+                    Last published {data.prices[index]?.updatedAt ?? "N/A"}
                   </p>
                   <div className="mt-6 flex items-center rounded-xl border border-[#cfd8cc] bg-[#f7fbf8] px-4">
                     <span className="font-extrabold text-xl text-obligon-navy">₦</span>
@@ -515,13 +517,13 @@ function POSTerminalPage() {
       // Math.random(), so a declined-looking receipt could still name a transaction
       // that never existed.
       setAuthReceipt({
-        reference: String(result?.reference ?? "—"),
+        reference: String(result?.reference ?? "N/A"),
         vehicle: result?.vehicle ? String(result.vehicle) : undefined,
-        amount: String(result?.amountLabel ?? "—"),
+        amount: String(result?.amountLabel ?? "N/A"),
         driver: result?.driver ? String(result.driver) : undefined,
         card: result?.card ? String(result.card) : undefined,
-        litres: result?.litres == null ? "—" : String(result.litres),
-        fuelType: result?.fuelType ? String(result.fuelType) : "—",
+        litres: result?.litres == null ? "N/A" : String(result.litres),
+        fuelType: result?.fuelType ? String(result.fuelType) : "N/A",
         mode
       });
       toastSuccess(mode === "checkout" ? `Paid fuel order ${result?.reference} fulfilled and recorded.` : `Authorization ${result?.reference} approved and recorded.`);
@@ -766,6 +768,7 @@ function SettlementsPage({
 
   return (
     <DashboardCanvas>
+      <h1 className="mb-8 font-display text-3xl font-extrabold text-obligon-navy">Settlements and payouts</h1>
       <AsyncBoundary
         status={status}
         error={error?.message ?? null}
@@ -807,9 +810,6 @@ function SettlementsPage({
                   </div>
                 </div>
 
-<button type="button" disabled className="mt-6 h-11 w-full cursor-not-allowed rounded-xl bg-[#c9ced9] text-sm font-extrabold text-obligon-navy opacity-70">
-                  Payouts — Coming soon
-                </button>
                 <p className="mt-2 text-xs text-obligon-text">Manual payouts are inactive. Your settlement account receives funds automatically.</p>
               </article>
             </aside>
@@ -1382,9 +1382,9 @@ function SettingsPage() {
   const rows: Array<[string, string]> = data
     ? [
         ["Organisation", data.org.name],
-        ["RC Number", data.org.rcNumber ?? "—"],
-        ["Address", data.org.address ?? "—"],
-        ["City", data.org.city ?? "—"],
+        ["RC Number", data.org.rcNumber ?? "N/A"],
+        ["Address", data.org.address ?? "N/A"],
+        ["City", data.org.city ?? "N/A"],
         ["Verification", data.org.verificationStatus],
         ["Two-factor authentication", data.security.twoFactorEnabled ? "Enabled" : "Disabled"]
       ]

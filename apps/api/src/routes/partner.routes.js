@@ -257,7 +257,7 @@ router.get("/transactions", asyncHandler(async (req, res) => {
       cells: [
         fmtDateTime(t.created_at),
         `${t.org_name ?? "Walk-in"}\n${t.fleet_id ? `Fleet ID #${t.fleet_id}` : "Direct"}`,
-        t.masked_pan ?? "•••• —",
+        t.masked_pan ?? "Not available",
         (t.amount_kobo / 100).toLocaleString("en-NG", { minimumFractionDigits: 2 })
       ],
       status: t.status.toUpperCase(), tone: t.status === "success" ? "success" : t.status === "failed" ? "failed" : "pending"
@@ -312,7 +312,7 @@ router.get("/settlements", asyncHandler(async (req, res) => {
     })),
     payouts: payouts.map((p) => ({
       id: p.id, reference: p.reference,
-      cells: [`#${p.reference}`, `${fmtDateTime(p.created_at)} • ${p.paid_at ? fmtDateTime(p.paid_at).split(", ")[1] : "—"}`, naira(p.amount_kobo), p.bank_name ? `${p.bank_name} ${p.account_number_mask ?? ""}` : "Direct Bank"],
+      cells: [`#${p.reference}`, `${fmtDateTime(p.created_at)} • ${p.paid_at ? fmtDateTime(p.paid_at).split(", ")[1] : "Not available"}`, naira(p.amount_kobo), p.bank_name ? `${p.bank_name} ${p.account_number_mask ?? ""}` : "Direct Bank"],
       status: p.status.toUpperCase(), tone: p.status === "success" ? "success" : p.status === "failed" ? "failed" : "pending",
       action: undefined
     })),
@@ -781,7 +781,7 @@ router.get("/pricing", asyncHandler(async (req, res) => {
       const change = h.old_price_kobo ? ((h.new_price_kobo - h.old_price_kobo) / h.old_price_kobo * 100) : 0;
       return {
         id: h.id,
-        cells: [fmtDateTime(h.created_at), h.fuel_type.split(" ")[0], h.old_price_kobo ? naira(h.old_price_kobo) : "—", naira(h.new_price_kobo), `${change >= 0 ? "+" : ""}${change.toFixed(2)}`],
+        cells: [fmtDateTime(h.created_at), h.fuel_type.split(" ")[0], h.old_price_kobo ? naira(h.old_price_kobo) : "Not available", naira(h.new_price_kobo), `${change >= 0 ? "+" : ""}${change.toFixed(2)}`],
         status: "APPLIED", tone: "success"
       };
     })
@@ -908,7 +908,7 @@ router.get("/staff", asyncHandler(async (req, res) => {
       // stored anywhere.
       cells: [
         `ST-${String(s.id).replace(/-/g, "").slice(0, 6).toUpperCase()}`,
-        `${(s.full_name ?? s.email ?? "?").split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()}\n${s.full_name ?? s.email}\n${s.phone ?? "—"}`,
+        `${(s.full_name ?? s.email ?? "?").split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()}\n${s.full_name ?? s.email}\n${s.phone ?? "Not available"}`,
         s.role.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase()),
         s.status === "active" ? "Enabled" : s.status === "suspended" ? "Disabled" : "Pending"
       ],
@@ -1091,7 +1091,7 @@ router.post("/disputes", requireOrgRole("dispatcher"), upload.array("evidence", 
     [txRow?.id ?? null, req.user.id, txRow?.organization_id ?? null, partnerOrgId(req),
       reference("DS"), subject, category, description, JSON.stringify(evidence)]
   );
-  await notify({ orgId: partnerOrgId(req), title: "Dispute raised", body: `Dispute ${dispute.reference} — ${subject}. Our team will review it.`, category: "support" });
+  await notify({ orgId: partnerOrgId(req), title: "Dispute raised", body: `Dispute ${dispute.reference} - ${subject}. Our team will review it.`, category: "support" });
   res.json({ ok: true, reference: dispute.reference });
 }));
 

@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-18",
+  "baseRevision": "877b5ea965de5ea5fd87e98ef98737a4688a2eee",
+  "web": {
+    "passed": 417,
+    "failed": 0,
+    "skipped": 0
+  },
+  "api": {
+    "passed": 1070,
+    "failed": 0,
+    "skipped": 0
+  },
+  "productionBuild": "passed",
+  "secretRegression": {
+    "passed": 4,
+    "failed": 0,
+    "scope": "Existing configured credentials compared to tracked files and webhook hash history; staged diff scanned separately."
+  },
+  "productionAdvisories": 0,
+  "routes": {
+    "pages": 73,
+    "staticTargets": 183,
+    "brokenStaticTargets": 0,
+    "dynamicReferences": 61
+  },
+  "logs": {
+    "web": {
+      "path": "/tmp/obligon-readiness-18-web-release.log",
+      "sha256": "44928e6fc7d8c9563d918ecc106c6b23204d4bfea72589371dd8fbae84b61533"
+    },
+    "api": {
+      "path": "/tmp/obligon-readiness-18-api-final.log",
+      "sha256": "3b5f6c98d188d056042811a68289dcba629a2e4dd8c43a754370a8e8b4dd7e39"
+    },
+    "build": {
+      "path": "/tmp/obligon-readiness-18-build-release.log",
+      "sha256": "8b98c722c3367b81b7bf59723e509872ecd811bd8b653ecca80aeda2fe3eee4d"
+    },
+    "secret": {
+      "path": "/tmp/obligon-readiness-18-hosted-secret-check.log",
+      "sha256": "cb27154d4175cfef0cad141dfc1bb2a7f545232be3d06bff6f919d49d8e5ea82"
+    },
+    "productionAudit": {
+      "path": "/tmp/obligon-readiness-18-prod-audit.json",
+      "sha256": "97ec3cc865c7f505206270666c6515f5eb0375ff4a7d7a9d544a1f7ff8bcd14b"
+    },
+    "transportRed": {
+      "path": "/tmp/obligon-readiness-18-transport-red.log",
+      "sha256": "c33cc83d8683ed5ba54dd5b1f550ccfeaf79363159a839b856f63dfa0b6fad76"
+    }
+  },
+  "limitations": [
+    "Provider contracts and real-money acceptance not established",
+    "Live scheduler disabled; no production scheduler or payment activation",
+    "Sudo credentials blocked at user request",
+    "No hosted backup restore or load test",
+    "Physical device and screen-reader acceptance unverified",
+    "Public-page aesthetic inspector retains FAIL/WARN findings under existing brand conventions"
+  ]
+}

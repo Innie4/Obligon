@@ -622,7 +622,7 @@ router.post("/wallet/topup/confirm", asyncHandler(async (req, res) => {
     // dead end, so the top-up is left pending for reconciliation rather than
     // being failed here.
     if (err?.transactionMissing) {
-      throw serviceUnavailable("We cannot confirm this payment yet. It usually appears within a minute — please try again.");
+      throw serviceUnavailable("We cannot confirm this payment yet. It usually appears within a minute. Please try again.");
     }
     throw err;
   }
@@ -1289,7 +1289,7 @@ router.post("/card-request/verify-payment", asyncHandler(async (req, res) => {
     // Same reasoning as the top-up confirm: a just-returned customer may be
     // ahead of the provider's records, so this must not fail the request.
     if (err?.transactionMissing) {
-      throw serviceUnavailable("We cannot confirm this payment yet. It usually appears within a minute — please try again.");
+      throw serviceUnavailable("We cannot confirm this payment yet. It usually appears within a minute. Please try again.");
     }
     throw err;
   }
@@ -1463,8 +1463,8 @@ router.get("/card", asyncHandler(async (req, res) => {
   if (!card) {
     return res.json({ card: null, metrics: [
       { label: "Card Status", value: "No card", helper: "Request your fuel card", tone: "muted" },
-      { label: "Daily Limit", value: "—", tone: "blue" },
-      { label: "Monthly Spend", value: "—", tone: "dark" }
+      { label: "Daily Limit", value: "Not available", tone: "blue" },
+      { label: "Monthly Spend", value: "Not available", tone: "dark" }
     ] });
   }
   res.json({

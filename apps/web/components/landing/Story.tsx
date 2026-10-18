@@ -1,30 +1,25 @@
-import Image from "next/image";
-import { assets } from "./assets";
+import { CreditCard, Fuel, Truck, Warehouse } from "lucide-react";
 
 const storyCards = [
   {
-    title: "Retail Expansion",
-    text: "Building a network of premium retail filling stations across Nigeria's major transit corridors.",
-    icon: assets.facebook,
-    iconSize: "h-[22.5px] w-[20.625px]"
+    title: "Partner Stations",
+    text: "Find approved filling stations and view the fuels they offer. Confirm current availability with the station.",
+    Icon: Fuel
   },
   {
-    title: "Smart Logistics",
-    text: "Advanced fleet tracking and delivery systems that ensure your energy arrives exactly when needed.",
-    icon: assets.mapPin,
-    iconSize: "h-5 w-[27.5px]"
+    title: "Fleet Records",
+    text: "Review fuel transactions and manage vehicle and driver assignments from the company dashboard.",
+    Icon: Truck
   },
   {
     title: "Bulk Supply",
-    text: "Large-scale energy distribution for industrial and commercial partners with availability confirmed before delivery.",
-    icon: assets.linkedin,
-    iconSize: "h-[25px] w-[24.4375px]"
+    text: "Request bulk fuel for your business. Availability, quantity, and delivery terms are confirmed before an order proceeds.",
+    Icon: Warehouse
   },
   {
-    title: "FuelVista Tech",
-    text: "Our proprietary subscription card system connecting approved stations, spending controls and recorded fuel transactions.",
-    icon: assets.zap,
-    iconSize: "h-[25px] w-[22.5px]"
+    title: "FuelVista Cards",
+    text: "Virtual fuel cards, spending controls, and recorded fuel transactions for individuals and company fleets.",
+    Icon: CreditCard
   }
 ];
 
@@ -33,20 +28,19 @@ export function Story() {
     <section id="about-us" className="bg-white py-20 sm:py-24 lg:py-32" data-node-id="2:279">
       <div className="mx-auto grid w-full max-w-landing min-w-0 gap-16 px-5 sm:px-8 lg:grid-cols-[442.67px_1fr] lg:px-0">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[2.4px] text-obligon-green">The Obligon LTD Story</p>
-          <h2 className="mt-4 font-display text-base leading-6 text-obligon-navy">
-            Innovation-led Narrative of Commitment
+          <p className="text-[13px] font-semibold uppercase tracking-[2.4px] text-obligon-green">The Obligon LTD Story</p>
+          <h2 className="mt-4 font-display text-3xl leading-tight text-obligon-navy sm:text-4xl">
+            Fuel tools for people and businesses.
           </h2>
 
           <div className="mt-4 space-y-6 text-base leading-[26px] text-obligon-text lg:mt-4">
             <p>
-              At Obligon LTD, we are driven by a commitment to bridge the gap between energy accessibility and
-              technological innovation. Our journey began with a vision to transform the Nigerian energy landscape
-              through efficiency and transparency.
+              Obligon LTD brings fuel cards, spending records, and approved stations into one service. Individuals
+              can manage their own fuel budget, while companies can set controls for their fleets.
             </p>
             <p>
-              Today, we are expanding our footprint into retail filling stations, logistics, and bulk supply, ensuring
-              that every business-from local startups to national conglomerates-has the fuel to grow.
+              Our team also coordinates supply, maintenance, and energy service enquiries with partners. Availability
+              and service terms are confirmed before work begins.
             </p>
           </div>
         </div>
@@ -60,11 +54,9 @@ export function Story() {
               }`}
             >
               <div className="flex size-14 items-center justify-center rounded-xl bg-white shadow-[0_1px_1px_rgba(0,0,0,0.05)]">
-                <span className={`relative block ${card.iconSize}`}>
-                  <Image src={card.icon} fill alt="" sizes="28px" />
-                </span>
+                <card.Icon size={24} className="text-obligon-green" aria-hidden="true" />
               </div>
-              <h3 className="mt-8 font-display text-base leading-6 text-obligon-navy">{card.title}</h3>
+              <h3 className="mt-8 font-display text-xl leading-7 text-obligon-navy">{card.title}</h3>
               <p className="mt-3 text-sm leading-5 text-obligon-text">{card.text}</p>
             </article>
           ))}

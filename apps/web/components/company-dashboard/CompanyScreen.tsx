@@ -10,6 +10,7 @@ import { useAsync, type AsyncResult } from "@/components/shared/useAsync";
 import { AsyncBoundary, EmptyState } from "@/components/shared/States";
 import { useToast } from "@/components/shared/Toast";
 import { useSession } from "@/components/shared/AuthContext";
+import { DateField } from "@/components/shared/Calendar/DateField";
 type OpenModal = (modal: CompanyOperationModalKey, context?: CompanyModalContext) => void;
 type PageProps = {
   onModal: OpenModal;
@@ -291,7 +292,7 @@ function Transactions({ onModal }: PageProps) {
 
       </select></label>
 
-      <label className="text-xs font-bold">Specific date<input className={`${controlClass} mt-1 w-full`} type="date" value={date} onChange={e => { setDate(e.target.value); setPage(0); }} /></label>
+      <DateField label="Specific date" value={date} onChange={next => { setDate(next); setPage(0); }} />
 
     </div>
 

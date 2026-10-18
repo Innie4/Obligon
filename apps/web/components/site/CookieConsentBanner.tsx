@@ -45,9 +45,9 @@ export function CookieConsentBanner() {
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-obligon-lime/20 text-obligon-green">
             <Cookie size={20} />
           </span>
-          <div className="text-xs text-obligon-text leading-5">
+          <div className="text-[13px] text-obligon-text leading-5">
             <strong className="text-obligon-navy font-bold block text-sm">Privacy &amp; Cookie Consent</strong>
-            We use essential cookies to maintain secure sessions and optimize fleet logistics telemetry. You can customize your preferences anytime in our{" "}
+            We use essential storage for sign-in and privacy choices. You can manage optional preferences in our{" "}
             <Link href={routes.cookies} className="font-bold text-obligon-green underline hover:text-obligon-navy">
               Cookie Policy
             </Link>

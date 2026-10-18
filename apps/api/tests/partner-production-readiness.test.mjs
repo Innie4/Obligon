@@ -30,6 +30,7 @@ const migration019 = read(apiRoot, "src", "migrations", "019_settlement_accrual.
 const screen = read(webRoot, "components", "dashboard", "DashboardScreen.tsx");
 const header = read(webRoot, "components", "dashboard", "DashboardHeader.tsx");
 const shell = read(webRoot, "components", "dashboard", "PartnershipShell.tsx");
+const mobileNav = read(webRoot, "components", "dashboard", "MobileDashboardNav.tsx");
 const verification = read(webRoot, "components", "dashboard", "PartnerVerification.tsx");
 const verifyPage = read(webRoot, "app", "dashboard", "verify", "page.tsx");
 const nav = read(webRoot, "lib", "mock", "dashboard-data.ts");
@@ -361,10 +362,10 @@ test("a mechanic cannot render a page the API refuses", () => {
 });
 
 test("there is a sign-out below the lg breakpoint", () => {
-  // The only LogoutButton was inside the sidebar's `hidden ... lg:flex` container,
-  // so on a phone a partner could not sign out of the dashboard at all.
-  assert.match(shell, /lg:hidden/);
-  assert.match(shell, /LogoutButton/);
+  assert.match(header, /<MobilePartnerAccount \/>/);
+  assert.match(mobileNav, /export function MobilePartnerAccount/);
+  assert.match(mobileNav, /relative lg:hidden/);
+  assert.match(mobileNav, /<LogoutButton/);
 });
 
 test("the mobile nav is rendered once", () => {

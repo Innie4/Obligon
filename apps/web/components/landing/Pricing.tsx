@@ -1,6 +1,6 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { Check, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -38,14 +38,14 @@ const organizationPlans: SourcePlan[] = [
     price: "150k",
     suffix: "/year",
     features: ["Up to 10 Vehicles", "Basic Reporting", "50 Partner Stations"],
-    cta: "Deploy Now"
+    cta: "Discuss Starter"
   },
   {
     name: "Business",
     price: "250k",
     suffix: "/year",
     features: ["Up to 50 Vehicles", "Advanced Analytics", "250 Partner Stations", "Dedicated Account Exec"],
-    cta: "Scale Faster",
+    cta: "Discuss Business",
     recommended: true
   },
   {
@@ -191,12 +191,12 @@ export function Pricing() {
     <section id="pricing" className="bg-obligon-mist py-20 lg:py-32" data-node-id="2:71">
       <div className="mx-auto w-full max-w-[1216px] min-w-0 px-5 sm:px-8">
         <div className="mx-auto max-w-[672px] text-center">
-          <p className="text-xs font-semibold uppercase tracking-[2.4px] text-obligon-green">Pricing Strategy</p>
+          <p className="text-[13px] font-semibold uppercase tracking-[2.4px] text-obligon-green">Plans and Access</p>
           <h2 className="mt-4 font-display text-[32px] leading-10 text-obligon-navy sm:text-4xl">
-            Built for Scaling Enterprises
+            Plans for People and Businesses
           </h2>
           <p className="mt-4 text-base leading-6 text-obligon-text">
-            Choose a plan that matches your fleet&apos;s complexity and geographical footprint.
+            Compare personal plans and organization options. Company access requires an agreed contract.
           </p>
         </div>
 
@@ -252,13 +252,13 @@ export function Pricing() {
               }`}
             >
               {plan.recommended ? (
-                <div className="absolute right-0 top-0 rounded-tr-[22px] bg-obligon-green px-4 py-1 text-[10px] font-bold uppercase leading-[15px] text-white">
+                <div className="absolute right-0 top-0 rounded-tr-[22px] bg-obligon-green px-4 py-1 text-[13px] font-bold uppercase leading-5 text-white">
                   Recommended
                 </div>
               ) : null}
 
               <p
-                className={`text-xs font-bold uppercase tracking-[1.2px] ${
+                className={`text-[13px] font-bold uppercase tracking-[1.2px] ${
                   plan.dark ? "text-obligon-lime" : plan.recommended ? "text-obligon-green" : "text-obligon-text"
                 }`}
               >
@@ -303,12 +303,7 @@ export function Pricing() {
                       />
                     ) : (
                       <>
-                        <span
-                          aria-hidden="true"
-                          className="inline-flex w-3 shrink-0 justify-center text-xs"
-                        >
-                          &mdash;
-                        </span>
+                        <X aria-hidden="true" size={12} strokeWidth={2.5} className="shrink-0" />
                         <span className="sr-only">Not included</span>
                       </>
                     )}
