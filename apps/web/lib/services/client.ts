@@ -1485,8 +1485,8 @@ export const mutationsApi = {
     return http<{ ok: boolean }>(`/api/company/roadside/${id}/cancel`, { method: "POST" });
   },
   async inviteTeamMember(payload: { email: string; role: string }) {
-    if (!LIVE_MODE) { await simulate({}, 800); return { ok: true, simulated: true }; }
-    return http<{ ok: boolean }>("/api/company/team/invite", { method: "POST", body: JSON.stringify(payload) });
+    if (!LIVE_MODE) { await simulate({}, 800); return { ok: true, emailDelivered: false, simulated: true }; }
+    return http<{ ok: boolean; emailDelivered: boolean }>("/api/company/team/invite", { method: "POST", body: JSON.stringify(payload) });
   },
   async updateTeamMember(id: string, payload: Record<string, unknown>) {
     if (!LIVE_MODE) { await simulate({}); return { ok: true }; }

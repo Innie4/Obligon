@@ -1,0 +1,391 @@
+{
+  "checkedAt": "2026-10-19T03:03:42.955Z",
+  "environment": "Disposable local API/PostgreSQL and synthetic role accounts",
+  "admin": [
+    {
+      "path": "/admin",
+      "title": "Company Oversight",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/admin/discount-approvals",
+      "title": "Station Discount Approvals",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/admin/partner-applications",
+      "title": "Application Review Queue",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/admin/operations",
+      "title": "Support and Settlement Review",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/admin/intake",
+      "title": "Requests and activity",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/admin/reports",
+      "title": "Platform Analytics",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/admin/disputes",
+      "title": "Dispute Resolution",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/admin/staff",
+      "title": "Staff & Access Control",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    }
+  ],
+  "company": [
+    {
+      "path": "/company",
+      "title": "Haulage Dynamics Ltd",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/company/vehicles",
+      "title": "Fleet Overview",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/company/cards",
+      "title": "Fuelvista Cards",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/company/transactions",
+      "title": "Transactions",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/company/reports",
+      "title": "Reports & Analytics",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/company/stations",
+      "title": "Partner Stations",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/company/roadside",
+      "title": "Roadside Assistance",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/company/billing",
+      "title": "Contract & Billing",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/company/team",
+      "title": "Team & Access Control",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/company/notifications",
+      "title": "Notifications",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/company/support",
+      "title": "Help & Support",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/company/settings",
+      "title": "Account Settings",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/company/maintenance",
+      "title": "Maintenance Manager",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    }
+  ],
+  "customer": [
+    {
+      "path": "/customer",
+      "title": "Dashboard Overview",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/customer/card",
+      "title": "My Card",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/customer/transactions",
+      "title": "Transaction History",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/customer/stations",
+      "title": "Nearby Stations",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/customer/support",
+      "title": "Support Center",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/customer/notifications",
+      "title": "Notifications",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/customer/profile",
+      "title": "Profile and Settings",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    }
+  ],
+  "partner": [
+    {
+      "path": "/dashboard",
+      "title": "Station overview",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/dashboard/billing",
+      "title": "Partner Subscription",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/dashboard/verify",
+      "title": "Verified",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/dashboard/transactions",
+      "title": "Fleet Transactions",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/dashboard/station-profile",
+      "title": "Station Profile",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/dashboard/reports",
+      "title": "Analytics & Fleet Reports",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/dashboard/settlements",
+      "title": "Settlements and payouts",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/dashboard/settings",
+      "title": "Organisation Settings",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/dashboard/notifications",
+      "title": "Notifications",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/dashboard/fuel-pricing",
+      "title": "Station Fuel Pricing",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/dashboard/staff",
+      "title": "Station Staff",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/dashboard/card-verification",
+      "title": "POS Authorization Terminal",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    },
+    {
+      "path": "/dashboard/disputes",
+      "title": "Disputes & Reconciliations",
+      "overflow": false,
+      "alerts": [
+        ""
+      ]
+    }
+  ],
+  "adminSearch": {
+    "latencyMs": 400,
+    "during": {
+      "value": "Haul",
+      "focused": true,
+      "loadingVisible": true
+    },
+    "after": {
+      "focused": true,
+      "value": "Haul"
+    },
+    "networkThrottleRestored": true
+  },
+  "mobile": {
+    "width": 390,
+    "adminMenuNavigation": true,
+    "companyMenuNavigation": true,
+    "noObservedPageOverflow": true
+  },
+  "apiResponses": [
+    {
+      "path": "/api/auth/session",
+      "status": 200
+    },
+    {
+      "path": "/api/partner/notifications",
+      "status": 200
+    },
+    {
+      "path": "/api/partner/billing",
+      "status": 200
+    },
+    {
+      "path": "/api/partner/pricing",
+      "status": 200
+    },
+    {
+      "path": "/api/partner/disputes",
+      "status": 204
+    },
+    {
+      "path": "/api/partner/disputes",
+      "status": 200
+    }
+  ],
+  "networkCaptureTruncated": true,
+  "console": {
+    "browserInjectedBodyAttributeWarnings": 40,
+    "otherErrors": []
+  },
+  "liveCompanyAdminCredentialsAvailable": false
+}

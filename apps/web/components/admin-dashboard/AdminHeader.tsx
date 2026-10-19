@@ -63,7 +63,7 @@ export function AdminHeader({ onOpenMenu }: { onOpenMenu: () => void }) {
             <ul id="admin-search-results" role="listbox" className="absolute left-0 right-0 top-[calc(100%+6px)] z-40 max-h-72 overflow-y-auto rounded-lg border border-[#c8ccdb] bg-white p-1.5 shadow-hero">
               {filteredNav.length ? (
                 filteredNav.map((item) => (
-                  <li key={item.key} role="option" aria-selected={pathname === item.href}>
+                  <li key={item.href} role="option" aria-selected={pathname === item.href}>
                     <Link
                       href={item.href}
                       onMouseDown={(event) => event.preventDefault()}

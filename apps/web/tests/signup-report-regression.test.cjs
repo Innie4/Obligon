@@ -85,7 +85,7 @@ test('auth support uses a headset and a visible, accessible Support label', () =
 });
 
 test('company signup preserves the supplied manager name and CAC registration reference', async () => {
-  const ui = fixture(); ui.choose('Fleet Enterprise');
+  const ui = fixture(); ui.choose('Company');
   for (const [field, value] of Object.entries({ company: 'Test Fleet', fleetSize: '35', contact: 'Test Manager', email: 'manager@example.invalid', phone: '08012345678', license: 'RC 123456', password: 'onlyletters' })) ui.change(`signup-${field}`, value);
   await ui.submit();
   const payload = ui.calls.find(([kind]) => kind === 'signup')[1];
@@ -125,7 +125,7 @@ test('a valid FCT area council is accepted and switching roles resets customer l
   const ui = fixture(); fillCustomer(ui, 'onlyletters');
   ui.change('signup-state', 'Federal Capital Territory'); ui.change('signup-localGovernmentArea', 'Abuja Municipal');
   await ui.submit(); assert.equal(ui.calls.find(([kind]) => kind === 'signup')[1].city, 'Abuja Municipal, Federal Capital Territory');
-  ui.choose('Fleet Enterprise'); ui.choose('Customer / Driver');
+  ui.choose('Company'); ui.choose('Customer / Driver');
   assert.equal(ui.one(n => n.props?.id === 'signup-state').props.value, '');
   assert.equal(ui.one(n => n.props?.id === 'signup-localGovernmentArea').props.value, '');
 });

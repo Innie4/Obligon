@@ -1,3 +1,4 @@
+- [2026-10-19] [Reliable dashboard states and Company signup](2026-10-19-dashboard-state-and-signup.md): Keep search focus, distinguish independent request outcomes, and describe company invitation delivery accurately.
 - [2026-10-18] [Calendars, copy and reliable requests](2026-10-18-calendars-copy-and-readiness.md): Share validated date controls, preserve request semantics, and distinguish tested repairs from hosted release requirements.
 - [2026-10-17] [Station profile controls](2026-10-17-station-profile-controls.md): Capture a reviewed map position, preserve recorded station details, and save dependent State/city choices.
 - [2026-10-17] [Mobile dashboard navigation](2026-10-17-mobile-dashboard-navigation.md): Keep every partner destination reachable with a bottom bar and an accessible Account menu.

@@ -74,6 +74,7 @@ const columns: Record<AdminPageKey, string[]> = {
 export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
   const [data, setData] = React.useState<Data | null>(null),
     [error, setError] = React.useState(""),
+    [loadFailed, setLoadFailed] = React.useState(false),
     [loading, setLoading] = React.useState(true),
     [busy, setBusy] = React.useState(false),
     [selected, setSelected] = React.useState<Row | null>(null),
@@ -87,6 +88,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
   const load = React.useCallback(async () => {
     const current = ++sequence.current;
     setLoading(true);
+    setLoadFailed(false);
     setError("");
     try {
       const result = await authenticatedRequest<Data>(
@@ -94,7 +96,10 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
       );
       if (current === sequence.current) setData(result);
     } catch (e) {
-      if (current === sequence.current) setError((e as Error).message);
+      if (current === sequence.current) {
+        setLoadFailed(true);
+        setError((e as Error).message);
+      }
     } finally {
       if (current === sequence.current) setLoading(false);
     }
@@ -223,47 +228,49 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
           {notice}
         </p>
       )}
+      {!loading && !loadFailed && (
+        <div className="my-7 grid gap-4 md:grid-cols-3">
+          {data?.metrics.map((metric) => (
+            <div key={metric.label} className="border-b pb-4">
+              <p className="text-xs font-bold">{metric.label}</p>
+              <p className="mt-2 text-3xl font-bold">{metric.value}</p>
+              {metric.helper && <p className="text-sm">{metric.helper}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+      {pageKey === "reports" ? (
+        <label>
+          Reporting window
+          <select
+            className={field}
+            value={range}
+            onChange={(e) => setRange(e.target.value)}
+          >
+            <option value="7">Last 7 days</option>
+            <option value="30">Last 30 days</option>
+            <option value="90">Last 90 days</option>
+          </select>
+        </label>
+      ) : (
+        <label>
+          Search records
+          <input
+            className={field}
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(0);
+            }}
+          />
+        </label>
+      )}
       {loading ? (
         <p role="status" className="mt-6">
           Loading live records…
         </p>
-      ) : (
+      ) : !loadFailed ? (
         <>
-          <div className="my-7 grid gap-4 md:grid-cols-3">
-            {data?.metrics.map((metric) => (
-              <div key={metric.label} className="border-b pb-4">
-                <p className="text-xs font-bold">{metric.label}</p>
-                <p className="mt-2 text-3xl font-bold">{metric.value}</p>
-                {metric.helper && <p className="text-sm">{metric.helper}</p>}
-              </div>
-            ))}
-          </div>
-          {pageKey === "reports" ? (
-            <label>
-              Reporting window
-              <select
-                className={field}
-                value={range}
-                onChange={(e) => setRange(e.target.value)}
-              >
-                <option value="7">Last 7 days</option>
-                <option value="30">Last 30 days</option>
-                <option value="90">Last 90 days</option>
-              </select>
-            </label>
-          ) : (
-            <label>
-              Search records
-              <input
-                className={field}
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(0);
-                }}
-              />
-            </label>
-          )}
           <div className="mt-5 overflow-x-auto rounded border bg-white">
             <table className="w-full min-w-[750px] text-left text-sm">
               <thead>
@@ -328,7 +335,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
             </div>
           )}
         </>
-      )}
+      ) : null}
       {(selected || creating) && (
         <form
           key={selected?.id ?? "new"}

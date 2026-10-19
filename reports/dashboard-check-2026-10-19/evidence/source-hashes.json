@@ -1,0 +1,18 @@
+{
+  "apps/api/tests/password-reset-claim.integration.test.mjs": "f8b3ab457bf3031f63afddf16c28c4d12e639876f14a596d617106710c4cddd3",
+  "apps/api/tests/timezone-windows.test.mjs": "baf7735fd8eaeee25d5081c3d618ca6c25a5df1b9dab6280fae2269efc3a8dc2",
+  "apps/web/components/admin-dashboard/AdminHeader.tsx": "13010956474e8ec1f984b22c81227688b2c1eb4aa8a3fd1aff56d665de1cae35",
+  "apps/web/components/admin-dashboard/AdminScreen.tsx": "33818ace9a265d98334e91eddadac04e858d6b254ef85227d9e68a55007badf3",
+  "apps/web/components/admin-dashboard/CardApprovalQueue.tsx": "629d5c7e71e455e7bd73b3f05c3c1bc5dc64938df0181a5e61abbe63134229b5",
+  "apps/web/components/admin-dashboard/DiscountApprovals.tsx": "b3ffabf8ad073581d8079fb4d07b45888a412982805eddc7899817dd0f9cb606",
+  "apps/web/components/admin-dashboard/OperationsInbox.tsx": "4b028abc23eaa9285afc59c090a40eb799da456b020f4d5a61f97421d8196528",
+  "apps/web/components/auth/AuthForms.tsx": "278b85c1d7d078064aa29a322ad358a8ff1be2ad82738cf982fbaa2314d97390",
+  "apps/web/components/company-dashboard/CompanyModals.tsx": "dde8bdf7ae99fed619943c062e3a488fb16598c47733b3914928bd6931cbf12f",
+  "apps/web/lib/mock/company-data.ts": "e9ea45bb30a33e042a7c552dd8832b593b3a9838167ae3e5bc3e901e3785fd58",
+  "apps/web/lib/services/client.ts": "92988d621c7372f43a59ea53bd786f767bf1e9c7de776ae8712c13f514cb6dde",
+  "apps/web/tests/admin-navigation.test.cjs": "5c6d8e9084401ccae90f451427077b213aba13183083fc26658987382599c78e",
+  "apps/web/tests/admin-queue-states.test.cjs": "a65060c7ecacf7111f91fc5d2ddadae97cd81eb27a1ba142591fe2013def51f3",
+  "apps/web/tests/admin-screen-loading.test.cjs": "c6a14aabdcff477dbb51cdfbe56ad31ea9519fddaa4ad66dd5c78ceeb1a0aaeb",
+  "apps/web/tests/signup-report-regression.test.cjs": "2a4b7284220f91978db108922219e15339ffe6b2ac7aa0427ab51f3639ed6cef",
+  "apps/web/tests/test-report-company.test.cjs": "29fd3a1cf0ccd8a45653dfb9fcda1d1ad2c8652f9035c5432dbf329f8052dd3d"
+}

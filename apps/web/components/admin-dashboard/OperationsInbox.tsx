@@ -61,9 +61,11 @@ export function OperationsInbox() {
     [error, setError] = React.useState(""),
     [busy, setBusy] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
+  const [loadFailed, setLoadFailed] = React.useState(false);
   const selectSequence = React.useRef(0);
   const load = React.useCallback(async () => {
     setLoading(true);
+    setLoadFailed(false);
     setError("");
     try {
       const [t, o, b, r] = await Promise.all([
@@ -82,6 +84,7 @@ export function OperationsInbox() {
       setBanks(b.accounts);
     } catch (e) {
       setError((e as Error).message);
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -125,18 +128,20 @@ export function OperationsInbox() {
       setBusy(false);
     }
   }
-  if (loading)
+  if (loading || loadFailed)
     return (
       <section className="p-6 sm:p-10">
         <h1 className="text-3xl font-bold">Support and Settlement Review</h1>
-        <p role="status" className="mt-4">
+        <button type="button" disabled={loading || busy} onClick={() => void load()} className="mt-4 min-h-12 rounded border px-4">Refresh</button>
+        {loading ? <p role="status" className="mt-4">
           Loading operational records…
-        </p>
+        </p> : <p role="alert" className="mt-4 text-red-700">{error}</p>}
       </section>
     );
   return (
     <section className="p-6 sm:p-10">
       <h1 className="text-3xl font-bold">Support and Settlement Review</h1>
+      <button type="button" disabled={loading || busy} onClick={() => void load()} className="mt-4 min-h-12 rounded border px-4">Refresh</button>
       {error && (
         <p role="alert" className="my-4 text-red-700">
           {error}

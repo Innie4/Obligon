@@ -1,0 +1,67 @@
+{
+  "checkedAt": "2026-10-19T03:07:32.837Z",
+  "baseRevision": "762c01f671b316719ceb68a9ea808095c701fbaf",
+  "node": "v24.21.0",
+  "api": {
+    "tests": 1070,
+    "passed": 1070,
+    "failed": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "files": 79
+  },
+  "web": {
+    "tests": 431,
+    "passed": 431,
+    "failed": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "files": 40
+  },
+  "productionBuild": "passed",
+  "migrations": 33,
+  "httpSmokeTests": 13,
+  "browserDestinations": 41,
+  "independentReview": "No remaining actionable findings; no authentication, financial or tenant boundary implementation changes.",
+  "supersededInitialFailures": [
+    "MFA fixture returned an intermittent 401; unchanged recheck passed, then the fixture epoch was made deterministic.",
+    "Timezone fallback fixture assumed UTC despite configured Africa/Lagos; now explicitly tests an invalid timezone."
+  ],
+  "logs": [
+    {
+      "path": "/tmp/obligon-dashboard19-api-tests.log",
+      "sha256": "1c2fe478d6f3606c0d0f8216a1991f6e0760ab643f6731861c12037084de9387"
+    },
+    {
+      "path": "/tmp/obligon-dashboard19-api-remaining.log",
+      "sha256": "f5afdadc90361ee1fa4e14a00559168af60cbff56d2a4b9eb703810cdfff140d"
+    },
+    {
+      "path": "/tmp/obligon-dashboard19-api-tail.log",
+      "sha256": "5ac7af74ff4a6918d3114ec239d46986fb0bf829e9906f8730c0cc4cfe48c52d"
+    },
+    {
+      "path": "/tmp/obligon-dashboard19-api-fixtures-final.log",
+      "sha256": "67ef440642c3ad5f422cb8b96526c5de216f73aa3345f3688af53a6583e05209"
+    },
+    {
+      "path": "/tmp/obligon-dashboard19-web-tests.log",
+      "sha256": "8fdc1ca3b4f887029543f17e6386caabc51f394aa8fa30a2e1b559b6322555cc"
+    },
+    {
+      "path": "/tmp/obligon-dashboard19-build.log",
+      "sha256": "11dd71d458810ec6e8002aa7504f34095d65ca636d72f975bc0a984be750698e"
+    },
+    {
+      "path": "/tmp/obligon-dashboard19-migrations.log",
+      "sha256": "00e35db822293bbd5da1104c84d98a7a1f8ec6491de3659f987f5562ba2cd502"
+    }
+  ],
+  "limitations": [
+    "Local synthetic role accounts; hosted company/admin access unavailable",
+    "External provider financial effects use controlled fixtures",
+    "Chrome extension-injected body attribute hydration warnings; no other captured errors",
+    "DevTools response capture truncated; response-status sample is partial",
+    "Existing Sudo, scheduler and operational production requirements remain open"
+  ]
+}

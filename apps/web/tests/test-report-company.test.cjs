@@ -43,6 +43,41 @@ function fixture(file, component, { choices = fleet, user = { organization: 'Exa
 const settle = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
 const field = (tree, label) => nodes(tree).find(node => node.type?.name === 'Field' && node.props.label === label).props.children.flat().find(child => child?.props);
 
+for (const emailDelivered of [true, false, undefined]) test(`company invitation reports the actual email delivery outcome (${emailDelivered})`, async () => {
+  let saved = 0;
+  const f = fixture('CompanyModals', 'CompanyFleetModal', { services: { inviteTeamMember: async payload => {
+    f.calls.push(['inviteTeamMember', payload]);
+    return { ok: true, ...(emailDelivered === undefined ? {} : { emailDelivered }) };
+  } } });
+  const props = { modal: 'teamMember', onClose() {}, onSaved() { saved++; } };
+  let tree = f.render(props);
+  field(tree, 'Email address').props.onChange({ target: { value: ' invited@example.invalid ' } });
+  tree = f.render(props);
+  await nodes(tree).find(node => node.type === 'form').props.onSubmit({ preventDefault() {} });
+  tree = f.render(props);
+  assert.equal(saved, 1);
+  assert.equal(f.calls[0][1].email, 'invited@example.invalid');
+  if (emailDelivered === true) assert.match(text(tree), /Invitation sent to invited@example\.invalid/);
+  else {
+    assert.match(text(tree), /Invitation saved/);
+    assert.match(text(tree), /email delivery was not confirmed/);
+    assert.match(text(tree), /Contact Support/);
+    assert.doesNotMatch(text(tree), /Invitation sent/);
+  }
+});
+test('failed company invitation retains the form and never claims a saved invitation', async () => {
+  let saved = 0;
+  const f = fixture('CompanyModals', 'CompanyFleetModal', { services: { inviteTeamMember: async () => { throw new Error('Invitation could not be saved'); } } });
+  const props = { modal: 'teamMember', onClose() {}, onSaved() { saved++; } };
+  const tree = f.render(props);
+  await nodes(tree).find(node => node.type === 'form').props.onSubmit({ preventDefault() {} });
+  const result = f.render(props);
+  assert.equal(saved, 0);
+  assert.ok(nodes(result).some(node => node.type === 'form'));
+  assert.deepEqual(f.errors, ['Invitation could not be saved']);
+  assert.doesNotMatch(text(result), /Invitation sent|Invitation saved/);
+});
+
 test('company header shows the selected organization rather than a sample company', () => {
   const f = fixture('CompanyShell', 'CompanyTopbar');
   const value = text(f.render());

@@ -197,10 +197,13 @@ const field = (label: string, key: keyof typeof form, type = "text", required = 
           message = `Request received (${result.status}). Request ID: ${result.requestId}. Assistance requires manual coordination. Use Support with this ID to confirm arrangements.`;
           break;
         }
-        case "teamMember":
-          await mutationsApi.inviteTeamMember({ email: form.email.trim(), role: form.role });
-          message = `Invitation sent to ${form.email.trim()}.`;
+        case "teamMember": {
+          const result = await mutationsApi.inviteTeamMember({ email: form.email.trim(), role: form.role });
+          message = result.emailDelivered === true
+            ? `Invitation sent to ${form.email.trim()}.`
+            : "Invitation saved, but email delivery was not confirmed. Contact Support before inviting this person again.";
           break;
+        }
         case "supportTicket": {
           const result = await mutationsApi.createCompanyTicket({ subject: form.subject.trim(), category: form.category, message: form.message.trim(), priority: form.priority });
           message = `Support ticket ${result.reference} submitted.`;

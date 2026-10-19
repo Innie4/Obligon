@@ -11,6 +11,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { one } from "../src/db.js";
+import { env } from "../src/config/env.js";
 import { dayWindowSql, daysForRange, businessTimeZone } from "../src/lib/time.js";
 
 const ZONES = ["UTC", "Africa/Lagos", "America/New_York", "Asia/Kolkata"];
@@ -88,5 +89,11 @@ test("the range parameter can only be one of a fixed set", () => {
 });
 
 test("an unrecognised zone falls back to UTC rather than throwing at query time", () => {
-  assert.equal(businessTimeZone(), "UTC");
+  const previous = env.BUSINESS_TIMEZONE;
+  try {
+    env.BUSINESS_TIMEZONE = "Invalid/Timezone";
+    assert.equal(businessTimeZone(), "UTC");
+  } finally {
+    env.BUSINESS_TIMEZONE = previous;
+  }
 });

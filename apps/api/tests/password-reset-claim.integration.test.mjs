@@ -10,6 +10,7 @@ const integration = (name, run) => test(name, { skip: !database }, run);
 const schema = `password_reset_${process.pid}_${randomUUID().replaceAll("-", "")}`;
 const identifier = name => `"${name.replaceAll('"', '""')}"`;
 const realFetch = globalThis.fetch;
+const originalTotpOptions = authenticator.options;
 const userId = randomUUID();
 const email = "mfa-fixture@example.test";
 const password = "Isolated-test-password-123!";
@@ -42,6 +43,8 @@ before(async () => {
 });
 beforeEach(async () => {
   if (!database) return;
+  // Keep fixture generation and verification in one TOTP step while HTTP/SQL run.
+  authenticator.options = { ...originalTotpOptions, epoch: Date.now() };
   authLimiter.resetKey("127.0.0.1");
   env.SUPABASE_AUTH_ENABLED = false;
   globalThis.fetch = async () => { throw new Error("External providers are prohibited in isolated reset tests"); };
@@ -52,6 +55,8 @@ beforeEach(async () => {
   [userId, email, await security.hashPassword(password), secret, JSON.stringify([security.sha256(backup)])]);
 });
 after(async () => {
+  authenticator.resetOptions();
+  authenticator.options = originalTotpOptions;
   globalThis.fetch = realFetch;
   if (server) await new Promise(resolve => { server.closeAllConnections(); server.close(resolve); });
   await pool?.end();

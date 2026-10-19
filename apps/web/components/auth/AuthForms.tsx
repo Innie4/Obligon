@@ -596,7 +596,7 @@ function SignupForm() {
         topRole === "customer"
           ? "Individual Consumer"
           : topRole === "company"
-            ? (signupForm.company ?? "Fleet Enterprise")
+            ? (signupForm.company ?? "Company")
             : (signupForm.stationName ??
                signupForm.workshopName ??
                signupForm.hubName ??
@@ -695,7 +695,7 @@ function SignupForm() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {[
             { key: "customer" as TopRole, title: "Customer / Driver", desc: "For individual vehicle owners & cards", icon: User },
-            { key: "company" as TopRole, title: "Fleet Enterprise", desc: "For corporate fleets & transport firms", icon: Building2 },
+            { key: "company" as TopRole, title: "Company", desc: "For corporate fleets & transport firms", icon: Building2 },
             { key: "partner" as TopRole, title: "Partner Network", desc: "Stations, Mechanics, EV, CNG & Depots", icon: Fuel },
           ].map((item) => {
             const Icon = item.icon;
