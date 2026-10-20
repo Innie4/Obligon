@@ -1810,7 +1810,8 @@ router.put("/profile", asyncHandler(async (req, res) => {
       accountTier: user.account_tier, phone: user.phone, address: user.address,
       twoFactorEnabled: user.two_factor_enabled, biometricsEnabled: user.biometrics_enabled,
       notificationPrefs: user.notification_prefs,
-      emailVerified: user.email_verified, phoneVerified: user.phone_verified
+      emailVerified: user.email_verified, phoneVerified: user.phone_verified,
+      accountVerified: user.email_verified === true || user.phone_verified === true
     }
   });
 }));
@@ -1824,6 +1825,7 @@ router.get("/profile", asyncHandler(async (req, res) => {
       accountTier: req.user.account_tier, phone: req.user.phone, address: req.user.address, city: req.user.city,
       twoFactorEnabled: req.user.two_factor_enabled, biometricsEnabled: req.user.biometrics_enabled,
       emailVerified: req.user.email_verified, phoneVerified: req.user.phone_verified,
+      accountVerified: req.user.email_verified === true || req.user.phone_verified === true,
       notificationPrefs: req.user.notification_prefs
     },
     wallet: { balanceLabel: naira(wallet.balance_kobo), budgetLimitKobo: wallet.budget_limit_kobo }

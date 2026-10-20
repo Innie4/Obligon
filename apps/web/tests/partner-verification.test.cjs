@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const ts = require('typescript');
 
 function verificationFixture({ user, status = 'authenticated', send, confirm }) {
-  const slots = [], effects = [], intervals = new Map(), toasts = [], requests = [];
+  const slots = [], effects = [], intervals = new Map(), timers = new Map(), navigation = [], toasts = [], requests = [];
   let cursor = 0, dirty = false, tree, nextTimer = 0;
   let session = { user, status, refresh: async () => {} };
   const React = {
@@ -43,13 +43,14 @@ function verificationFixture({ user, status = 'authenticated', send, confirm }) 
   }).outputText;
   vm.runInNewContext(code, {
     exports, Error,
-    setTimeout: () => 0,
+    setTimeout(fn) { const id = ++nextTimer; timers.set(id, fn); return id; },
+    clearTimeout(id) { timers.delete(id); },
     setInterval(fn) { const id = ++nextTimer; intervals.set(id, fn); return id; },
     clearInterval: id => intervals.delete(id),
     require(name) {
       if (name === 'react') return React;
       if (name === 'next/link') return { default: 'a' };
-      if (name === 'next/navigation') return { useRouter: () => ({ push() {} }) };
+      if (name === 'next/navigation') return { useRouter: () => ({ push(path) { navigation.push(path); } }) };
       if (name === 'lucide-react') return new Proxy({}, { get: (_, icon) => String(icon) });
       if (name.includes('/routes')) return { routes: { dashboard: '/dashboard', support: '/support' } };
       if (name.includes('/Toast')) return { useToast: () => ({ success: message => toasts.push(['success', message]), error: message => toasts.push(['error', message]) }) };
@@ -87,7 +88,8 @@ function verificationFixture({ user, status = 'authenticated', send, confirm }) 
     return text(node.children);
   };
   return {
-    render, flush, requests, toasts, nodes, text,
+    render, flush, requests, toasts, nodes, text, navigation,
+    runTimeouts() { const pending = [...timers.values()]; timers.clear(); pending.forEach(run => run()); },
     updateSession(next) { session = { ...session, ...next }; render(); },
     resend() { return nodes().find(node => node.type === 'button' && /Resend/.test(text(node))); },
     async expireCooldown() {
@@ -102,16 +104,12 @@ function verificationFixture({ user, status = 'authenticated', send, confirm }) 
 
 const partner = { id: 'partner-test', email: 'partner.test@obligon.com', phone: '', emailVerified: true, phoneVerified: false };
 
-test('verified email with no phone shows an actionable incomplete-account state without sending', async () => {
-  const fixture = verificationFixture({ user: partner, send: async () => { throw new Error('No phone'); } });
-  fixture.render();
-  await fixture.flush();
+test('verified email completes the partner account without a phone or an automatic SMS request', async () => {
+  const fixture = verificationFixture({ user: partner, send: async () => { throw new Error('No optional send expected'); } });
+  fixture.render(); await fixture.flush();
   assert.equal(fixture.requests.length, 0);
-  assert.match(fixture.text(), /No phone number is saved/);
-  assert.ok(fixture.nodes().some(node => node.type === 'a' && node.props.href === '/support'));
+  assert.match(fixture.text(), /Account verification complete/);
   assert.equal(fixture.nodes().some(node => node.type === 'form'), false);
-  assert.equal(fixture.resend().props.disabled, true);
-  assert.doesNotMatch(fixture.text(), /We sent a 6-digit code/);
   const phoneRow = fixture.nodes().find(node => node.type === 'div' && node.props.key === 'Phone');
   assert.doesNotMatch(fixture.text(phoneRow), /Verified/);
 });
@@ -121,7 +119,7 @@ test('verification waits for the loaded session before choosing delivery channel
   fixture.render();
   await fixture.flush();
   assert.equal(fixture.requests.length, 0);
-  fixture.updateSession({ status: 'authenticated', user: { ...partner, emailVerified: false, phoneVerified: true } });
+  fixture.updateSession({ status: 'authenticated', user: { ...partner, phone: '+2348012345678', emailVerified: false, phoneVerified: false } });
   await fixture.flush();
   assert.equal(fixture.requests.length, 1);
 });
@@ -208,7 +206,8 @@ test('confirming one contact does not automatically replace the remaining delive
   fixture.updateSession({ user: { ...user, emailVerified: true } });
   await fixture.flush();
   assert.equal(fixture.requests.length, 1, 'the original phone code must remain valid after email confirmation');
-  assert.equal(fixture.nodes().some(node => node.type === 'form'), true);
+  assert.equal(fixture.nodes().some(node => node.type === 'form'), false);
+  assert.match(fixture.text(), /Account verification complete/);
   const emailRow = fixture.nodes().find(node => node.type === 'div' && node.props.key === 'Email');
   const phoneRow = fixture.nodes().find(node => node.type === 'div' && node.props.key === 'Phone');
   assert.match(fixture.text(emailRow), /Verified/);
@@ -239,19 +238,84 @@ test('failed replacement delivery clears old successful send claims', async () =
   }
 });
 
-test('confirming one contact does not announce the whole account as verified', async () => {
+for (const channel of ['email', 'phone']) test(`${channel} proof completes the partner account while the other contact remains unverified`, async () => {
   const fixture = verificationFixture({
     user: { ...partner, phone: '+2348012345678', emailVerified: false },
     send: async () => ({ channels: { email: { sent: true }, phone: { sent: true } } }),
-    confirm: async () => ({ allVerified: false, emailVerified: true, phoneVerified: false, remaining: ['phone'] })
+    confirm: async () => ({ accountVerified: true, allVerified: false, emailVerified: channel === 'email', phoneVerified: channel === 'phone', remaining: [channel === 'email' ? 'phone' : 'email'] })
   });
-  fixture.render();
-  await fixture.flush();
-  fixture.nodes().find(node => node.type === 'input').props.onChange({ target: { value: '123456' } });
-  await fixture.flush();
-  await fixture.nodes().find(node => node.type === 'form').props.onSubmit({ preventDefault() {} });
-  await fixture.flush();
-  assert.doesNotMatch(fixture.toasts.map(([, message]) => message).join(' '), /Your partner account is verified/);
-  assert.match(fixture.text(), /phone is still unverified/);
+  fixture.render(); await fixture.flush();
+  fixture.nodes().find(node => node.props?.type === 'radio' && node.props.value === channel).props.onChange(); await fixture.flush();
+  fixture.nodes().find(node => node.props?.id === 'partner-otp-code').props.onChange({ target: { value: '123456' } }); await fixture.flush();
+  await fixture.nodes().find(node => node.type === 'form').props.onSubmit({ preventDefault() {} }); await fixture.flush();
+  assert.match(fixture.toasts.map(([, message]) => message).join(' '), /Your partner account is verified/);
+  assert.match(fixture.text(), /Account verification complete/);
+  assert.equal(fixture.nodes().some(node => node.type === 'form'), false);
+  const unproved = fixture.nodes().find(node => node.type === 'div' && node.props.key === (channel === 'email' ? 'Phone' : 'Email'));
+  assert.doesNotMatch(fixture.text(unproved), /Verified/);
+  assert.equal(fixture.requests.length, 1);
+});
+
+test('partner verification binds each attempt to the selected channel and clears stale input and errors', async () => {
+  const confirmations = [];
+  const fixture = verificationFixture({
+    user: { ...partner, phone: '+2348012345678', emailVerified: false },
+    send: async () => ({ channels: { email: { sent: true }, phone: { sent: true } } }),
+    confirm: async (code, channel) => { confirmations.push({ code, channel }); throw new Error('Fixture code was rejected'); }
+  });
+  fixture.render(); await fixture.flush();
+  const input = () => fixture.nodes().find(node => node.props?.id === 'partner-otp-code');
+  const radio = channel => fixture.nodes().find(node => node.props?.type === 'radio' && node.props.value === channel);
+  input().props.onChange({ target: { value: '123456' } }); await fixture.flush();
+  await fixture.nodes().find(node => node.type === 'form').props.onSubmit({ preventDefault() {} }); await fixture.flush();
+  assert.match(fixture.text(), /Fixture code was rejected/);
+  radio('phone').props.onChange(); await fixture.flush();
+  assert.equal(input().props.value, '');
+  assert.equal(radio('phone').props.checked, true);
+  assert.doesNotMatch(fixture.text(), /Fixture code was rejected/);
+  assert.equal(confirmations.length, 1, 'switching channels must not probe a provider');
+  assert.equal(fixture.requests.length, 1, 'switching must preserve the other delivered challenge');
+  input().props.onChange({ target: { value: '654321' } }); await fixture.flush();
+  await fixture.nodes().find(node => node.type === 'form').props.onSubmit({ preventDefault() {} }); await fixture.flush();
+  assert.deepEqual(confirmations, [{ code: '123456', channel: 'email' }, { code: '654321', channel: 'phone' }]);
+});
+
+test('a phone-verified partner does not automatically request email proof', async () => {
+  const fixture = verificationFixture({ user: { ...partner, phone: '+2348012345678', emailVerified: false, phoneVerified: true }, send: async () => { throw new Error('No optional send expected'); } });
+  fixture.render(); await fixture.flush();
+  assert.equal(fixture.requests.length, 0);
+  assert.match(fixture.text(), /Account verification complete/);
+  const emailRow = fixture.nodes().find(node => node.type === 'div' && node.props.key === 'Email');
+  assert.doesNotMatch(fixture.text(emailRow), /Verified/);
+});
+
+test('an explicit optional-contact action requests SMS and keeps email proof separate', async () => {
+  const fixture = verificationFixture({ user: { ...partner, phone: '+2348012345678' }, send: async () => ({ channels: { email: { sent: false, alreadyVerified: true }, phone: { sent: true } } }) });
+  fixture.render(); await fixture.flush();
+  assert.equal(fixture.requests.length, 0);
+  fixture.nodes().find(node => node.type === 'button' && fixture.text(node) === 'Verify remaining contact').props.onClick(); await fixture.flush();
+  assert.equal(fixture.requests.length, 1);
+  const radios = fixture.nodes().filter(node => node.props?.type === 'radio');
+  assert.equal(radios.find(node => node.props.value === 'email').props.disabled, true);
+  assert.equal(radios.find(node => node.props.value === 'phone').props.checked, true);
+  assert.ok(fixture.nodes().some(node => node.type === 'fieldset'));
+  assert.ok(fixture.nodes().some(node => node.type === 'legend' && fixture.text(node) === 'Code delivery method'));
+});
+
+test('optional partner verification cancels the success redirect before requesting its remaining code', async () => {
+  let sends = 0;
+  const fixture = verificationFixture({
+    user: { ...partner, emailVerified: false, phone: '+2348012345678' },
+    send: async () => ++sends === 1 ? { channels: { email: { sent: true }, phone: { sent: true } } } : { channels: { email: { sent: false, alreadyVerified: true }, phone: { sent: true } } },
+    confirm: async () => ({ accountVerified: true, emailVerified: true, phoneVerified: false, allVerified: false, remaining: ['phone'] })
+  });
+  fixture.render(); await fixture.flush();
+  fixture.nodes().find(node => node.props.id === 'partner-otp-code').props.onChange({ target: { value: '123456' } }); await fixture.flush();
+  await fixture.nodes().find(node => node.type === 'form').props.onSubmit({ preventDefault() {} }); await fixture.flush();
+  fixture.nodes().find(node => node.type === 'button' && fixture.text(node) === 'Verify remaining contact').props.onClick(); await fixture.flush();
+  fixture.runTimeouts(); await fixture.flush();
+  assert.equal(fixture.navigation.length, 0);
+  assert.equal(fixture.requests.length, 2);
   assert.equal(fixture.nodes().some(node => node.type === 'form'), true);
+  assert.equal(fixture.nodes().find(node => node.props.type === 'radio' && node.props.value === 'phone').props.checked, true);
 });

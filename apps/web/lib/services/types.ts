@@ -46,6 +46,8 @@ export interface SessionUser {
    */
   emailVerified?: boolean;
   phoneVerified?: boolean;
+  /** Account verification requires either confirmed contact; individual flags stay separate. */
+  accountVerified?: boolean;
   notificationPrefs?: NotificationPrefs;
 }
 

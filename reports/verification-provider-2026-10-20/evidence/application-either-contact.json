@@ -1,0 +1,15 @@
+{
+  "checkedAt": "2026-10-20T14:12:39.838Z",
+  "isolatedLocalDatabase": true,
+  "emailConfirmedThroughApplication": true,
+  "savedFlags": [
+    {
+      "email_verified": true,
+      "phone_verified": false
+    }
+  ],
+  "accountCompletionScreen": "Account verified",
+  "customerContinueRoute": "/customer",
+  "phoneReceiptConfirmed": false,
+  "productionChanged": false
+}

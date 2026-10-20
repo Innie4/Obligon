@@ -16,6 +16,8 @@ import { createWalletForAccount, isCompanyRole, walletKindForRole } from "../lib
 import { nigeriaLocationLabel } from "../../../../packages/shared/nigeria-locations.mjs";
 import { accountAccessExpired } from "../lib/accountAccess.js";
 import { TEMPORARY_PARTNER_ACCOUNT } from "../lib/temporaryPartnerAccount.js";
+import { env } from "../config/env.js";
+import { normalizeDescopeRecipient, startDescopeVerification, verifyDescopeVerification } from "../lib/descope-verification.js";
 
 const router = Router();
 
@@ -36,6 +38,12 @@ const CODE_TTL_MINUTES = 10;
 const MAX_CODE_ATTEMPTS = 5;
 const MFA_CHALLENGE_TTL_SECONDS = 300;
 
+function contactVerificationStatus(user) {
+  const emailVerified = user.email_verified === true;
+  const phoneVerified = user.phone_verified === true;
+  return { emailVerified, phoneVerified, accountVerified: emailVerified || phoneVerified, allVerified: emailVerified && phoneVerified };
+}
+
 /**
  * Issue a verification code for one purpose and send it on the right channel.
  *
@@ -49,6 +57,8 @@ const MFA_CHALLENGE_TTL_SECONDS = 300;
  */
 async function issueVerificationCode({ userId, purpose, channel, to, message, emailTemplate }) {
   const code = randomCode();
+  const deliveryProvider = env.VERIFICATION_PROVIDER === "descope" && ["email_verify", "phone_verify"].includes(purpose) ? "descope" : "local";
+  const destination = deliveryProvider === "descope" ? normalizeDescopeRecipient(channel, to) : null;
   const record = await tx(async t => {
     const user = await t.one("SELECT email,phone FROM users WHERE id=$1 FOR UPDATE", [userId]);
     if (!user || (channel === "sms" ? user.phone : user.email) !== to) {
@@ -56,14 +66,16 @@ async function issueVerificationCode({ userId, purpose, channel, to, message, em
     }
     await t.query(`UPDATE verification_codes SET consumed_at=clock_timestamp()
       WHERE user_id=$1 AND purpose=$2 AND consumed_at IS NULL`, [userId, purpose]);
-    return t.one(`INSERT INTO verification_codes(user_id,purpose,code_hash,channel,expires_at)
-      VALUES($1,$2,$3,$4,clock_timestamp()+($5 || ' minutes')::interval) RETURNING id`,
-    [userId, purpose, hashToken(code), channel, String(CODE_TTL_MINUTES)]);
+    return t.one(`INSERT INTO verification_codes(user_id,purpose,code_hash,channel,expires_at,delivery_provider,destination)
+      VALUES($1,$2,$3,$4,clock_timestamp()+($5 || ' minutes')::interval,$6,$7) RETURNING id`,
+    [userId, purpose, hashToken(deliveryProvider === "descope" ? randomToken(32) : code), channel, String(CODE_TTL_MINUTES), deliveryProvider, destination]);
   });
 
   let result;
   try {
-    if (channel === "email") {
+    if (deliveryProvider === "descope") {
+      result = await startDescopeVerification({ channel, to: destination });
+    } else if (channel === "email") {
       const tpl = emailTemplates.verifyCode(code, purpose);
       result = await sendEmail({ to, ...tpl });
     } else {
@@ -85,11 +97,8 @@ async function issueVerificationCode({ userId, purpose, channel, to, message, em
       result?.code ?? "unclassified",
       result?.skipped ? "no provider configured" : "provider rejected delivery"
     );
-    // The code is not left live. Outside production the providers fall back and
-    // report delivered, so this branch is reached in development only when no
-    // credentials exist at all — and a stored-but-unsendable code is an account
-    // locked out of verification with no way forward. Consuming it means the
-    // customer can simply ask for another, which fails or succeeds on its merits.
+    // A refused or uncertain send is not a usable challenge. A new request issues
+    // a fresh code; provider failure never becomes simulated delivery.
     await q("UPDATE verification_codes SET consumed_at=clock_timestamp() WHERE id=$1 AND consumed_at IS NULL", [record.id]);
   }
 
@@ -108,7 +117,7 @@ async function issueVerificationCode({ userId, purpose, channel, to, message, em
 /** Lock the latest unconsumed code; the account row must already be locked. */
 async function liveVerificationCode(userId, purpose, executor = { one }) {
   return executor.one(
-    `SELECT id, code_hash, attempts FROM verification_codes
+    `SELECT id, code_hash, attempts, delivery_provider, destination, channel, purpose FROM verification_codes
      WHERE user_id=$1 AND purpose=$2 AND consumed_at IS NULL AND expires_at>clock_timestamp()
      ORDER BY created_at DESC, id DESC LIMIT 1 FOR UPDATE`,
     [userId, purpose]
@@ -123,6 +132,7 @@ async function liveVerificationCode(userId, purpose, executor = { one }) {
  * a 500 instead of "that is not our code".
  */
 function codeMatches(record, code) {
+  if (record?.delivery_provider === "descope") return false;
   const stored = record?.code_hash;
   if (typeof stored !== "string" || stored.length === 0) return false;
   if (code == null || code === "") return false;
@@ -159,7 +169,25 @@ async function consumeVerificationCode({ userId, purpose, code }, t) {
     await t.query("UPDATE verification_codes SET consumed_at=clock_timestamp() WHERE id=$1", [record.id]);
     return { ok: false, reason: "tooManyAttempts" };
   }
-  if (!codeMatches(record, code)) return spendFailedAttempt(record, t);
+  if (record.delivery_provider === "descope") {
+    const channel = purpose === "email_verify" ? "email" : purpose === "phone_verify" ? "sms" : null;
+    const contact = channel && await t.one("SELECT email,phone FROM users WHERE id=$1", [userId]);
+    let destination;
+    try { destination = contact && normalizeDescopeRecipient(channel, channel === "email" ? contact.email : contact.phone); } catch { /* changed or malformed contact invalidates its previous proof */ }
+    if (!channel || record.channel !== channel || !record.destination || destination !== record.destination) {
+      await t.query("UPDATE verification_codes SET consumed_at=clock_timestamp() WHERE id=$1", [record.id]);
+      return { ok: false, reason: "expired" };
+    }
+    const proof = await verifyDescopeVerification({ channel, to: record.destination, code });
+    if (!proof.ok) {
+      if (proof.reason === "mismatch") return spendFailedAttempt(record, t);
+      if (proof.reason === "expired") {
+        await t.query("UPDATE verification_codes SET consumed_at=clock_timestamp() WHERE id=$1", [record.id]);
+        return { ok: false, reason: "expired" };
+      }
+      return { ok: false, reason: "unavailable" };
+    }
+  } else if (!codeMatches(record, code)) return spendFailedAttempt(record, t);
   const claimed = await t.one(`UPDATE verification_codes SET consumed_at=clock_timestamp()
     WHERE id=$1 AND consumed_at IS NULL AND expires_at>clock_timestamp() AND attempts<$2 RETURNING id`, [record.id, MAX_CODE_ATTEMPTS]);
   return claimed ? { ok: true } : { ok: false, reason: "expired" };
@@ -169,7 +197,10 @@ async function confirmContactCode(userId, purpose, code) {
   return tx(async t => {
     if (!await t.one("SELECT id FROM users WHERE id=$1 FOR UPDATE", [userId])) return { ok: false, reason: "expired" };
     const result = await consumeVerificationCode({ userId, purpose, code }, t);
-    if (result.ok) await t.query(`UPDATE users SET ${purpose === "email_verify" ? "email_verified" : "phone_verified"}=TRUE WHERE id=$1`, [userId]);
+    if (result.ok) {
+      const current = await t.one(`UPDATE users SET ${purpose === "email_verify" ? "email_verified" : "phone_verified"}=TRUE WHERE id=$1 RETURNING email_verified,phone_verified`, [userId]);
+      return { ...result, ...contactVerificationStatus(current) };
+    }
     return result;
   });
 }
@@ -233,8 +264,7 @@ function sessionPayload(user, org) {
     address: user.address ?? undefined,
     twoFactorEnabled: user.two_factor_enabled,
     biometricsEnabled: user.biometrics_enabled,
-    emailVerified: user.email_verified,
-    phoneVerified: user.phone_verified,
+    ...contactVerificationStatus(user),
     organizationId: org?.id ?? null,
     organizationType: org?.type ?? null,
     organizationVerificationStatus: org?.verification_status ?? null,
@@ -585,11 +615,13 @@ router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
   res.status(201).json({
     user: sessionPayload(created.user, created.org),
     ...tokens,
-    // Honest about what left the building. `verificationRequired` stays both
-    // channels: a gateway refusing a code does not make that channel need less
-    // verification, only mean the customer has to ask for a new code.
+    // Both contacts receive independent codes. Either confirmed contact qualifies
+    // the account; the remaining contact keeps its own unverified status.
     verificationSent,
+    // Legacy field lists the eligible channels; the mode defines their OR rule.
     verificationRequired: ["email", "phone"],
+    verificationMode: "any",
+    ...contactVerificationStatus(created.user),
     expiresInMinutes: CODE_TTL_MINUTES
   });
 }));
@@ -822,16 +854,15 @@ function describeDeliveryFailure(outcome) {
 }
 
 router.post("/verify/send", authLimiter, requireAuth, asyncHandler(async (req, res) => {
-  if (req.user.email_verified && req.user.phone_verified) return res.json({ ok: true, allVerified: true, channels: { email: { sent: false, alreadyVerified: true }, phone: { sent: false, alreadyVerified: true } } });
-  // A missing account contact is actionable input, not a provider outage. Do
-  // not issue an unsendable code or report the absent phone as verified.
+  const status = contactVerificationStatus(req.user);
+  if (req.user.email_verified && req.user.phone_verified) return res.json({ ok: true, ...status, channels: { email: { sent: false, alreadyVerified: true }, phone: { sent: false, alreadyVerified: true } } });
+  // A missing optional phone must not invalidate an already proved email.
   if (req.user.email_verified && !req.user.phone?.trim()) {
-    throw badRequest("Add a phone number to your account before requesting a verification code.", {
-      code: "VERIFICATION_PHONE_REQUIRED",
+    return res.json({ ok: true, ...status,
       channels: {
         email: { sent: false, alreadyVerified: true },
         phone: { sent: false, reason: "No phone number is saved for this account." }
-      }
+      }, expiresInMinutes: CODE_TTL_MINUTES
     });
   }
   const results = {};
@@ -903,6 +934,7 @@ router.post("/verify/send", authLimiter, requireAuth, asyncHandler(async (req, r
       severity: "warning",
       metadata: { channels: results }
     });
+    if (status.accountVerified) return res.json({ ok: true, ...status, channels: results, expiresInMinutes: CODE_TTL_MINUTES });
     // `misconfigured`, not `serviceUnavailable`: a 5xx message is replaced with a
     // generic apology unless it is flagged exposable. That masking is right for a
     // crash and wrong here — it made an unverified domain and a database fault
@@ -912,7 +944,7 @@ router.post("/verify/send", authLimiter, requireAuth, asyncHandler(async (req, r
     );
   }
 
-  res.json({ ok: true, channels: results, expiresInMinutes: CODE_TTL_MINUTES });
+  res.json({ ok: true, ...status, channels: results, expiresInMinutes: CODE_TTL_MINUTES });
 }));
 
 // ---------- POST /api/auth/verify-email (send code) ----------
@@ -929,7 +961,7 @@ router.post("/verify-email/send", authLimiter, requireAuth, asyncHandler(async (
   if (!outcome.delivered) {
     throw misconfigured(describeDeliveryFailure(outcome));
   }
-  res.json({ ok: true, sentTo: req.user.email, expiresInMinutes: CODE_TTL_MINUTES });
+  res.json({ ok: true, ...contactVerificationStatus(req.user), sentTo: req.user.email, expiresInMinutes: CODE_TTL_MINUTES });
 }));
 
 // ---------- POST /api/auth/verify-email (confirm) ----------
@@ -937,13 +969,14 @@ router.post("/verify-email/confirm", authLimiter, requireAuth, asyncHandler(asyn
   const { code } = req.body ?? {};
   const result = await confirmContactCode(req.user.id, "email_verify", code);
   if (!result.ok) {
+    if (result.reason === "unavailable") throw misconfigured("The verification provider is unavailable. Try again or request a new code.");
     await securityLog({ userId: req.user.id, event: "email_verification_failed", severity: "warning", ip: req.ip });
     if (result.reason === "tooManyAttempts") {
       throw badRequest("Too many incorrect codes. Request a new one.");
     }
     throw badRequest(result.message ?? "Invalid or expired verification code");
   }
-  res.json({ ok: true, emailVerified: true });
+  res.json(result);
 }));
 
 // ---------- POST /api/auth/verify-phone ----------
@@ -951,38 +984,40 @@ router.post("/verify-phone/send", authLimiter, requireAuth, asyncHandler(async (
   const { phone } = req.body ?? {};
   if (phone != null && (typeof phone !== "string" || !phone.trim())) throw badRequest("Enter a phone number");
   const target = await tx(async t => {
-    const current = await t.one("SELECT phone,phone_verified FROM users WHERE id=$1 FOR UPDATE", [req.user.id]);
+    const current = await t.one("SELECT phone,phone_verified,email_verified FROM users WHERE id=$1 FOR UPDATE", [req.user.id]);
     if (!current) throw unauthorized();
     if (phone && phone !== current.phone) {
       await t.query("UPDATE users SET phone=$2,phone_verified=FALSE WHERE id=$1", [req.user.id, phone]);
       await t.query("UPDATE verification_codes SET consumed_at=clock_timestamp() WHERE user_id=$1 AND purpose='phone_verify' AND consumed_at IS NULL", [req.user.id]);
     } else if (current.phone_verified) throw conflict("That phone number is already verified");
     if (!phone && !current.phone) throw badRequest("Add a phone number first");
-    return phone || current.phone;
+    return { phone: phone || current.phone, ...contactVerificationStatus({ ...current, phone_verified: false }) };
   });
   const outcome = await issueVerificationCode({
       userId: req.user.id,
       purpose: "phone_verify",
       channel: "sms",
-      to: target
+      to: target.phone
     });
     if (!outcome.delivered) {
       throw misconfigured(describeDeliveryFailure(outcome));
     }
-    res.json({ ok: true, sentTo: target, expiresInMinutes: CODE_TTL_MINUTES });
+    const { phone: sentTo, ...status } = target;
+    res.json({ ok: true, ...status, sentTo, expiresInMinutes: CODE_TTL_MINUTES });
   }));
 
 router.post("/verify-phone/confirm", authLimiter, requireAuth, asyncHandler(async (req, res) => {
   const { code } = req.body ?? {};
   const result = await confirmContactCode(req.user.id, "phone_verify", code);
   if (!result.ok) {
+    if (result.reason === "unavailable") throw misconfigured("The verification provider is unavailable. Try again or request a new code.");
     await securityLog({ userId: req.user.id, event: "phone_verification_failed", severity: "warning", ip: req.ip });
     if (result.reason === "tooManyAttempts") {
       throw badRequest("Too many incorrect codes. Request a new one.");
     }
     throw badRequest(result.message ?? "Invalid or expired verification code");
   }
-  res.json({ ok: true, phoneVerified: true });
+  res.json(result);
 }));
 
 /**
@@ -1002,7 +1037,8 @@ router.post("/verify-phone/confirm", authLimiter, requireAuth, asyncHandler(asyn
  * there is no preference about which a person should be told to wait for.
  */
 router.post("/verify/confirm", authLimiter, requireAuth, asyncHandler(async (req, res) => {
-  const { code } = req.body ?? {};
+  const { code, channel: requestedChannel } = req.body ?? {};
+  if (requestedChannel !== undefined && !["email", "phone"].includes(requestedChannel)) throw badRequest("Choose email or phone for this verification code.");
   const result = await tx(async t => {
     const current = await t.one("SELECT email_verified,phone_verified FROM users WHERE id=$1 FOR UPDATE", [req.user.id]);
     if (!current) throw unauthorized();
@@ -1012,6 +1048,19 @@ router.post("/verify/confirm", authLimiter, requireAuth, asyncHandler(async (req
       if (outcomes[channel]) continue;
       const record = await liveVerificationCode(req.user.id, purpose, t);
       if (record) live.push({ purpose, channel, record });
+    }
+    if (!requestedChannel && live.some(item => item.record.delivery_provider === "descope")) return { ok: false, reason: "channelRequired" };
+    if (requestedChannel) {
+      const selected = live.find(item => item.channel === requestedChannel);
+      if (!selected) return { ok: false, reason: "expired" };
+      if (selected.record.delivery_provider === "descope") {
+        const claim = await consumeVerificationCode({ userId: req.user.id, purpose: selected.purpose, code }, t);
+        if (!claim.ok) return claim;
+        await t.query(`UPDATE users SET ${selected.channel === "email" ? "email_verified" : "phone_verified"}=TRUE WHERE id=$1`, [req.user.id]);
+        outcomes[selected.channel] = true;
+        return { ok: true, outcomes };
+      }
+      live.splice(0, live.length, selected);
     }
     const hit = live.find(item => item.record.attempts < MAX_CODE_ATTEMPTS && codeMatches(item.record, code));
     if (!hit) {
@@ -1025,12 +1074,14 @@ router.post("/verify/confirm", authLimiter, requireAuth, asyncHandler(async (req
     return { ok: true, outcomes };
   });
   if (!result.ok) {
+    if (result.reason === "channelRequired") throw badRequest("Choose email or phone for this verification code.");
+    if (result.reason === "unavailable") throw misconfigured("The verification provider is unavailable. Try again or request a new code.");
     await securityLog({ userId: req.user.id, event: "verification_code_mismatch", severity: "warning", ip: req.ip });
     if (result.reason === "tooManyAttempts") throw badRequest("Too many incorrect codes. Request a new one.");
     throw badRequest(result.message ?? "That code has already been used, or it has expired. Send yourself a new one.");
   }
   const remaining = Object.entries(result.outcomes).filter(([, verified]) => !verified).map(([channel]) => channel);
-  res.json({ ok: true, emailVerified: result.outcomes.email, phoneVerified: result.outcomes.phone, allVerified: remaining.length === 0, remaining });
+  res.json({ ok: true, emailVerified: result.outcomes.email, phoneVerified: result.outcomes.phone, accountVerified: result.outcomes.email || result.outcomes.phone, allVerified: remaining.length === 0, remaining });
 }));
 
 // ---------- MFA ----------

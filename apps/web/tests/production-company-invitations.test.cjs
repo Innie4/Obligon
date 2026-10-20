@@ -25,8 +25,8 @@ function fixture(path,componentName,{user=signedUser,status='authenticated',sear
     pendingMfaChallenge:()=> 'synthetic-password-proof',
     signup:async payload=>{events.push(['signup',payload]);return {user:{...signedUser,emailVerified:false}};},
     mfaChallenge:async payload=>{events.push(['challenge',payload]);return {user:signedUser};},
-    verifySendBoth:async()=>({channels:{email:{sent:true},phone:{sent:false}}}),
-    verifyConfirmEither:async()=>verifyResult,
+    verifySendBoth:async()=>{events.push(['send']);return {channels:{email:currentUser?.emailVerified?{sent:false,alreadyVerified:true}:{sent:true},phone:currentUser?.phoneVerified?{sent:false,alreadyVerified:true}:{sent:false}}};},
+    verifyConfirmEither:async(code,channel)=>{events.push(['verify',code,channel]);if(verifyResult instanceof Error)throw verifyResult;return verifyResult;},
   };
   const company={
     read:async value=>{events.push(['read',value]);if(readError)throw new Error(readError);return {invitation:invite};},
@@ -40,7 +40,7 @@ function fixture(path,componentName,{user=signedUser,status='authenticated',sear
       exports,React,Error,URL,URLSearchParams,
       window:{location:{search},matchMedia:()=>({matches:false,addEventListener(){},removeEventListener(){}})},
       sessionStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value)},
-      setTimeout:fn=>{timers.push(fn);return timers.length;},clearTimeout(){},setInterval:()=>1,clearInterval(){},
+      setTimeout:fn=>{timers.push(fn);return timers.length;},clearTimeout(id){if(timers[id-1])timers[id-1]=()=>{};},setInterval:()=>1,clearInterval(){},
       require:name=>{
         if(name==='react')return React;
         if(name.endsWith('/nigeria-locations.mjs'))return require('../../../packages/shared/nigeria-locations.mjs');
@@ -53,7 +53,7 @@ function fixture(path,componentName,{user=signedUser,status='authenticated',sear
         if(name==='@/lib/session-store')return {readPersistedSession:()=>currentUser,readRememberedEmail:()=>'',writeRememberedEmail(){}};
         if(name==='@/components/shared/AuthContext')return {useSession:()=>({user:currentUser,status,
           login:async payload=>{events.push(['login',payload]);currentUser=signedUser;return {mfaRequired:mfa};},
-          setUser:value=>{currentUser=value;events.push(['session',value]);},refresh:async()=>{currentUser={...signedUser,emailVerified:verifyResult.emailVerified};},logout:async()=>{currentUser=null;status="unauthenticated";events.push(['logout']);}})};
+          setUser:value=>{currentUser=value;events.push(['session',value]);},refresh:async()=>{currentUser={...currentUser,emailVerified:verifyResult.emailVerified,phoneVerified:verifyResult.phoneVerified,accountVerified:verifyResult.accountVerified};},logout:async()=>{currentUser=null;status="unauthenticated";events.push(['logout']);}})};
         if(name==='@/components/shared/Toast')return {useToast:()=>({success(){},error(){}})};
         if(name==='@/lib/services/company-invitations')return {companyInvitationsApi:company};
         if(name==='@/lib/services')return {authApi:auth,LIVE_MODE:true};
@@ -165,4 +165,112 @@ test('company selection fails without a live refresh credential',async()=>{
 });
 test('company selection failure never overwrites existing signed tokens',async()=>{
   const client=clientFixture({request:async()=>{throw new Error('Membership suspended');}});await assert.rejects(client.api.select('fleet-fixture'),/suspended/);assert.equal(client.writes.length,0);
+});
+
+test('signup verification selects the code channel and submits only that proof',async()=>{
+  const ui=fixture('../components/auth/VerificationUI.tsx','VerificationUI',{user:{...signedUser,emailVerified:false,phoneVerified:false,phone:'+2348012345678'}});
+  await ui.settle();
+  ui.change('otp-code','123456');
+  ui.nodes().find(node=>node.props?.type==='radio'&&node.props.value==='phone').props.onChange();
+  await ui.settle();
+  assert.equal(ui.nodes().find(node=>node.props.id==='otp-code').props.value,'');
+  assert.equal(ui.nodes().find(node=>node.props?.type==='radio'&&node.props.value==='phone').props.checked,true);
+  assert.equal(ui.events.filter(([kind])=>kind==='verify').length,0);
+  ui.change('otp-code','654321');await ui.submit();
+  assert.deepEqual(ui.events.filter(([kind])=>kind==='verify'),[['verify','654321','phone']]);
+});
+
+for(const channel of ['email','phone']) test(`signup ${channel} proof completes the account without marking the other contact verified`,async()=>{
+  const ui=fixture('../components/auth/VerificationUI.tsx','VerificationUI',{user:{...signedUser,emailVerified:false,phoneVerified:false,phone:'+2348012345678'},verifyResult:{accountVerified:true,emailVerified:channel==='email',phoneVerified:channel==='phone',allVerified:false,remaining:[channel==='email'?'phone':'email']}});
+  await ui.settle();ui.nodes().find(node=>node.props?.type==='radio'&&node.props.value===channel).props.onChange();await ui.settle();
+  ui.change('otp-code','123456');await ui.submit();await ui.settle();
+  assert.equal(ui.nodes().some(node=>node.type==='form'),false);
+  assert.match(ui.text(),/Account verification complete/);
+  assert.doesNotMatch(ui.text(),/Your email and phone are verified/);
+  const other=ui.nodes().find(node=>node.type==='div'&&node.props.key===(channel==='email'?'Phone':'Email'));
+  assert.doesNotMatch(textOf(other),/Verified/);
+  assert.deepEqual(ui.events.filter(([kind])=>kind==='verify'),[['verify','123456',channel]]);
+  for(const timer of ui.timers.splice(0))timer();await ui.settle();
+  assert.ok(ui.events.some(([kind,path])=>kind==='push'&&path==='/customer'));
+});
+
+test('switching signup code channels clears a rejected code without trying another channel automatically',async()=>{
+  const ui=fixture('../components/auth/VerificationUI.tsx','VerificationUI',{user:{...signedUser,emailVerified:false,phoneVerified:false,phone:'+2348012345678'},verifyResult:new Error('Fixture email code rejected')});
+  await ui.settle();ui.change('otp-code','123456');await ui.submit();
+  assert.match(ui.text(),/Fixture email code rejected/);
+  ui.nodes().find(node=>node.props?.type==='radio'&&node.props.value==='phone').props.onChange();await ui.settle();
+  assert.equal(ui.nodes().find(node=>node.props.id==='otp-code').props.value,'');
+  assert.doesNotMatch(ui.text(),/Fixture email code rejected/);
+  assert.deepEqual(ui.events.filter(([kind])=>kind==='verify'),[['verify','123456','email']]);
+});
+
+test('invitation email proof remains sufficient without falsely claiming phone verification',async()=>{
+  const ui=fixture('../components/auth/VerificationUI.tsx','VerificationUI',{user:{...signedUser,emailVerified:false,phoneVerified:false,phone:'+2348012345678'},search:`?returnUrl=${encodeURIComponent(destination)}`});
+  await ui.settle();ui.change('otp-code','123456');await ui.submit();await ui.settle();
+  assert.match(ui.text(),/Email verified/);
+  assert.doesNotMatch(ui.text(),/Your account is verified|Your email and phone are verified/);
+  for(const timer of ui.timers.splice(0))timer();await ui.settle();
+  assert.ok(ui.events.some(([kind,path])=>kind==='push'&&path===destination));
+  assert.deepEqual(ui.events.filter(([kind])=>kind==='verify'),[['verify','123456','email']]);
+});
+
+test('phone proof cannot complete an email-required company invitation flow',async()=>{
+  const ui=fixture('../components/auth/VerificationUI.tsx','VerificationUI',{user:{...signedUser,emailVerified:false,phoneVerified:false,phone:'+2348012345678'},search:`?returnUrl=${encodeURIComponent(destination)}`,verifyResult:{accountVerified:true,emailVerified:false,phoneVerified:true,allVerified:false,remaining:['email']}});
+  await ui.settle();ui.nodes().find(node=>node.props?.type==='radio'&&node.props.value==='phone').props.onChange();await ui.settle();
+  ui.change('otp-code','123456');await ui.submit();await ui.settle();
+  assert.equal(ui.nodes().some(node=>node.type==='form'),true);
+  assert.match(ui.text(),/Verify your email address to accept this company invitation/);
+  assert.equal(ui.nodes().find(node=>node.props?.type==='radio'&&node.props.value==='email').props.checked,true);
+  assert.equal(ui.nodes().find(node=>node.props?.type==='radio'&&node.props.value==='phone').props.disabled,true);
+  for(const timer of ui.timers.splice(0))timer();
+  assert.equal(ui.events.some(([kind])=>kind==='push'),false);
+});
+
+for(const channel of ['email','phone']) test(`an existing ${channel} proof skips automatic delivery, with an explicit optional-contact action`,async()=>{
+  const ui=fixture('../components/auth/VerificationUI.tsx','VerificationUI',{user:{...signedUser,emailVerified:channel==='email',phoneVerified:channel==='phone',phone:'+2348012345678'}});
+  await ui.settle();await ui.settle();
+  assert.match(ui.text(),/Account verification complete/);
+  assert.equal(ui.events.filter(([kind])=>kind==='send').length,0);
+  await ui.click('Verify remaining contact');await ui.settle();
+  assert.equal(ui.events.filter(([kind])=>kind==='send').length,1);
+  const radios=ui.nodes().filter(node=>node.props?.type==='radio');
+  assert.equal(radios.find(node=>node.props.value===channel).props.disabled,true);
+  assert.equal(radios.find(node=>node.props.value!==channel).props.checked,true);
+});
+
+test('neither verified contact still triggers the initial dual-channel delivery request',async()=>{
+  const ui=fixture('../components/auth/VerificationUI.tsx','VerificationUI',{user:{...signedUser,emailVerified:false,phoneVerified:false,phone:'+2348012345678'}});
+  await ui.settle();await ui.settle();
+  assert.equal(ui.events.filter(([kind])=>kind==='send').length,1);
+  assert.equal(ui.nodes().some(node=>node.type==='form'),true);
+});
+
+test('phone-only company invitees must still verify email before acceptance',async()=>{
+  const ui=fixture('../components/auth/CompanyInvitation.tsx','CompanyInvitation',{user:{...signedUser,emailVerified:false,phoneVerified:true,accountVerified:true}});
+  await ui.settle();
+  assert.equal(ui.nodes().some(node=>node.type==='button'&&textOf(node)==='Accept invitation'),false);
+  assert.match(ui.text(),/Verify your email address to accept this invitation/);
+});
+
+test('optional signup verification cancels the completed-account redirect and can be skipped',async()=>{
+  const ui=fixture('../components/auth/VerificationUI.tsx','VerificationUI',{user:{...signedUser,emailVerified:false,phoneVerified:false,phone:'+2348012345678'},verifyResult:{accountVerified:true,emailVerified:true,phoneVerified:false,allVerified:false,remaining:['phone']}});
+  await ui.settle();ui.change('otp-code','123456');await ui.submit();await ui.settle();
+  await ui.click('Verify remaining contact');await ui.settle();
+  for(const timer of ui.timers.splice(0))timer();await ui.settle();
+  assert.equal(ui.events.some(([kind])=>kind==='push'),false);
+  assert.equal(ui.events.filter(([kind])=>kind==='send').length,2);
+  assert.equal(ui.nodes().some(node=>node.type==='form'),true);
+  await ui.click('Skip optional verification');
+  assert.match(ui.text(),/Account verification complete/);
+  assert.doesNotMatch(ui.text(),/Your email and phone are verified/);
+});
+
+for(const [emailVerified,phoneVerified] of [[false,false],[true,false],[false,true],[true,true]]) test(`success summary keeps contact badges truthful (${emailVerified}/${phoneVerified})`,async()=>{
+  const ui=fixture('../components/auth/SuccessHonesty.tsx','SuccessHonesty',{user:{...signedUser,emailVerified,phoneVerified}});
+  const complete=emailVerified||phoneVerified;
+  assert.match(ui.text(),complete?/Account Verified/:/Account Created/);
+  const rows=ui.nodes().filter(node=>node.type==='li');
+  assert.match(textOf(rows[0]),emailVerified?/Verified$/:/Not yet verified$/);
+  assert.match(textOf(rows[1]),phoneVerified?/Verified$/:/Not yet verified$/);
+  if(!emailVerified||!phoneVerified)assert.doesNotMatch(ui.text(),/are both confirmed/);
 });

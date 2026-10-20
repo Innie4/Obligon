@@ -165,24 +165,24 @@ integration("temporary credentials reject wrong passwords, wrong portal and admi
   assert.equal((await row("SELECT COUNT(*) AS count FROM sessions")).count, "1");
 });
 
-integration("verification without an unverified contact returns an actionable client error without provider calls", async () => {
+integration("a verified email qualifies an account without an optional phone or provider calls", async () => {
   await ensureAccount();
   const authenticated = await login();
   assert.equal(authenticated.status, 200);
   let providerCalls = 0;
   globalThis.fetch = async () => { providerCalls++; throw new Error("No provider should receive a missing contact"); };
   const result = await call("/api/auth/verify/send", { token: authenticated.body.accessToken, body: {} });
-  assert.equal(result.status, 400);
-  assert.match(result.body.error.message, /add a phone number/i);
-  assert.equal(result.body.error.details.code, "VERIFICATION_PHONE_REQUIRED");
-  assert.equal(result.body.error.details.channels.email.alreadyVerified, true);
-  assert.equal(result.body.error.details.channels.phone.sent, false);
+  assert.equal(result.status, 200);
+  assert.equal(result.body.accountVerified, true);
+  assert.equal(result.body.allVerified, false);
+  assert.equal(result.body.channels.email.alreadyVerified, true);
+  assert.equal(result.body.channels.phone.sent, false);
   assert.equal(providerCalls, 0);
   assert.equal((await row("SELECT COUNT(*) AS count FROM verification_codes")).count, "0");
   assert.equal((await row("SELECT email_verified,phone_verified FROM users WHERE id=$1", [account.userId])).phone_verified, false);
 });
 
-integration("an available phone with a refused SMS delivery still returns 503 and stays unverified", async () => {
+integration("a refused optional SMS leaves email-qualified account verified without claiming phone proof", async () => {
   await ensureAccount();
   await pool.query("UPDATE users SET phone='+2348000000000' WHERE id=$1", [account.userId]);
   const authenticated = await login();
@@ -196,8 +196,10 @@ integration("an available phone with a refused SMS delivery still returns 503 an
   };
   try {
     const result = await call("/api/auth/verify/send", { token: authenticated.body.accessToken, body: {} });
-    assert.equal(result.status, 503);
-    assert.match(result.body.error.message, /sender.*not (registered|approved)/i);
+    assert.equal(result.status, 200);
+    assert.equal(result.body.accountVerified, true);
+    assert.equal(result.body.allVerified, false);
+    assert.match(result.body.channels.phone.reason, /sender.*not (registered|approved)/i);
     assert.equal(providerCalls, 1);
     assert.equal((await row("SELECT phone_verified FROM users WHERE id=$1", [account.userId])).phone_verified, false);
     assert.equal((await row("SELECT COUNT(*) AS count FROM verification_codes WHERE consumed_at IS NULL")).count, "0");

@@ -26,26 +26,29 @@ export function SuccessHonesty() {
   const emailVerified = Boolean(user?.emailVerified);
   const phoneVerified = Boolean(user?.phoneVerified);
   const both = emailVerified && phoneVerified;
+  const accountVerified = emailVerified || phoneVerified || user?.accountVerified === true;
 
   return (
     <div className="w-full max-w-[480px] mx-auto rounded-3xl border border-obligon-border bg-white p-8 shadow-card text-center">
       <span
         className={`inline-flex rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-[1px] ${
-          both ? "bg-obligon-lime/20 text-[#131f00]" : "bg-[#fff3d8] text-[#9a6300]"
+          accountVerified ? "bg-obligon-lime/20 text-[#131f00]" : "bg-[#fff3d8] text-[#9a6300]"
         }`}
       >
-        {both ? "Email and Phone Verified" : "Account Created"}
+        {accountVerified ? "Account Verified" : "Account Created"}
       </span>
       <div className="mx-auto mt-6 grid size-20 place-items-center rounded-full bg-obligon-mist text-obligon-green">
-        {both ? <CheckCircle2 className="size-10" /> : <ShieldCheck className="size-10" />}
+        {accountVerified ? <CheckCircle2 className="size-10" /> : <ShieldCheck className="size-10" />}
       </div>
       <h1 className="mt-6 font-display text-3xl font-extrabold leading-10 text-obligon-navy">
-        {both ? "Welcome to Obligon LTD" : "You are signed in"}
+        {accountVerified ? "Welcome to Obligon LTD" : "You are signed in"}
       </h1>
       <p className="mx-auto mt-3 max-w-sm text-base leading-6 text-obligon-text">
         {both
           ? "Your email address and phone number are both confirmed."
-          : "Your account and your fuel wallet have been created. Confirm the contact details below to finish setting up."}
+          : accountVerified
+            ? `${emailVerified ? "Your email address is confirmed. " : phoneVerified ? "Your phone number is confirmed. " : ""}Account verification is complete.`
+            : "Your account and your fuel wallet have been created. Confirm either your email or your phone to finish verification."}
       </p>
 
       <ul className="mx-auto mt-6 max-w-xs space-y-2 text-left text-sm">
@@ -70,8 +73,7 @@ export function SuccessHonesty() {
       </ul>
 
       <p className="mt-6 text-xs leading-5 text-obligon-text">
-        Your fuel wallet was created with your account, so it is ready to be funded. Verification is
-        what confirms we can reach you at the address and number you gave us.
+        Verification confirms we can reach you by email or phone. You can verify the other contact later.
       </p>
     </div>
   );

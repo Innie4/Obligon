@@ -1157,24 +1157,22 @@ export const authApi = {
     return http<{ ok: boolean }>("/api/auth/verify-phone/confirm", { method: "POST", body: JSON.stringify({ code }) });
   },
   /**
-   * Offer one submitted code to both channels.
-   *
-   * Whichever channel recognises the digits is the one it was sent to; the
-   * response says which verified so the caller can finish the account when both
-   * land and name the one still outstanding when only one does.
+   * Confirm a code for its selected delivery channel. Legacy callers may omit
+   * the channel; provider-managed challenges require an explicit selection.
    */
-  async verifyConfirmEither(code: string) {
+  async verifyConfirmEither(code: string, channel?: "email" | "phone") {
     if (!LIVE_MODE) {
       await simulate({}, 500);
-      return { ok: true, emailVerified: true, phoneVerified: true, allVerified: true, remaining: [] as string[] };
+      return { ok: true, emailVerified: channel !== "phone", phoneVerified: channel !== "email", accountVerified: true, allVerified: !channel, remaining: channel ? [channel === "email" ? "phone" : "email"] : [] as string[] };
     }
     return http<{
       ok: boolean;
       emailVerified: boolean;
       phoneVerified: boolean;
+      accountVerified: boolean;
       allVerified: boolean;
       remaining: string[];
-    }>("/api/auth/verify/confirm", { method: "POST", body: JSON.stringify({ code }) });
+    }>("/api/auth/verify/confirm", { method: "POST", body: JSON.stringify({ code, ...(channel ? { channel } : {}) }) });
   },
   pendingMfaChallenge,
   async mfaChallenge(payload: { totp: string }) {

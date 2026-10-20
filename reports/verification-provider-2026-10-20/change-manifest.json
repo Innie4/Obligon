@@ -1,0 +1,104 @@
+{
+  "recordedAt": "2026-10-20T14:20:54.245Z",
+  "baseRevision": "9c4e9572400e1c857090ddc7d9d0a93e3fa8f7fc",
+  "patchSha256": "1afb8523895787d2e6032660c1272664a97b43880b27a9c8d8dd1097fb1b0839",
+  "files": [
+    {
+      "path": "apps/api/.env.example",
+      "sha256": "772a5ca4c40498930d3b411dd5853c6e5e4227d9973ebb5205f5d9325512a9e5"
+    },
+    {
+      "path": "apps/api/README.md",
+      "sha256": "fea2203e929864fae2b0a8a6b76dc7d8da4c103c8570d634e9e10b2361077ad3"
+    },
+    {
+      "path": "apps/api/src/config/env.js",
+      "sha256": "e3c49c3ef82b61fed9aacb9955a35f9fb1230897f3a729bbf840f2e4b670d128"
+    },
+    {
+      "path": "apps/api/src/lib/descope-verification.js",
+      "sha256": "3c760c9a3ef035cbee9a441f0d3bf94df8e869661410259da5c3883bfc6462cd"
+    },
+    {
+      "path": "apps/api/src/lib/sms.js",
+      "sha256": "d9dd03f9ab01141da11db796bb87758a819bb4dd932f428fd14f33538d26470e"
+    },
+    {
+      "path": "apps/api/src/migrations/034_contact_verification_provider.sql",
+      "sha256": "cf2c43fbb382ee65860c25b51d9c463ad4367c9cda20d5924859c414a6ceac3f"
+    },
+    {
+      "path": "apps/api/src/routes/auth.routes.js",
+      "sha256": "1ffa9306c5b1ca1b7533a07fc1978af4e4ce096e8cad25fe9102d327b8f7b8f7"
+    },
+    {
+      "path": "apps/api/src/routes/customer.routes.js",
+      "sha256": "1601af5ba9c9d53a2699fa67a0d1dcfb007d888b48dbd1c07a13a5ab38f5a743"
+    },
+    {
+      "path": "apps/api/tests/company-invitations.integration.test.mjs",
+      "sha256": "85161e749c5e0614062e39faed62670d8a3b9c898b3b8e06b45cc9f916ad7c3f"
+    },
+    {
+      "path": "apps/api/tests/contact-verification-provider.integration.test.mjs",
+      "sha256": "0b7cfd2b260e26867a1dcd654ad8c0127cc9aed5fa87c33b9a3a7f8dbebccc5e"
+    },
+    {
+      "path": "apps/api/tests/descope-verification.test.mjs",
+      "sha256": "7fac23ee0cb8048cf918c6f971622fd9853cd58b31744d5bb221015613dd5ea6"
+    },
+    {
+      "path": "apps/api/tests/sms-destination.test.mjs",
+      "sha256": "746e1e3d792d55c95187912f27542df7a0040ea24bf239192ce8143d944c6b82"
+    },
+    {
+      "path": "apps/api/tests/temporary-partner-account.integration.test.mjs",
+      "sha256": "6b3df0a8b8b6e2ef7da37c64f6c6c7759bfddcf5a4b5b7316c9b095368ce0d53"
+    },
+    {
+      "path": "apps/api/tests/verification-flow.test.mjs",
+      "sha256": "eaad219d3c7d5e3a819bba6041ce5cf603ec7b7200db69ddba05b4937a2d9b52"
+    },
+    {
+      "path": "apps/api/tests/verification-provider-config.test.mjs",
+      "sha256": "f6ac6bedbdef6d8dd55fab279b48b3cc7001f1042f7b621caac9bebd37af76f3"
+    },
+    {
+      "path": "apps/web/components/auth/SuccessHonesty.tsx",
+      "sha256": "fa756a32a7451e5c3aca4dde609042f7865299bdac129739c296ebcebf27c328"
+    },
+    {
+      "path": "apps/web/components/auth/VerificationUI.tsx",
+      "sha256": "02b9df5116c3a60880295655b373190e3716898f7537739a212a0c5858492159"
+    },
+    {
+      "path": "apps/web/components/dashboard/PartnerVerification.tsx",
+      "sha256": "674b210fbc73d4f5011dcb6f6a339b43ca8404b0ae5c02e8ea5003fc22a11e1d"
+    },
+    {
+      "path": "apps/web/lib/services/client.ts",
+      "sha256": "378621921358c28c0324fc64b77636ff3898dda627285799a29a3f0d7ce5e688"
+    },
+    {
+      "path": "apps/web/lib/services/types.ts",
+      "sha256": "56a9df94c7e2824afac2bcf28d865cba9c36568bd1ffb26df412e7357d376a18"
+    },
+    {
+      "path": "apps/web/tests/partner-verification.test.cjs",
+      "sha256": "af2253ea4c177388940c5bdbb3b2816a363c6c365e78d88293e1704b40e15884"
+    },
+    {
+      "path": "apps/web/tests/production-company-invitations.test.cjs",
+      "sha256": "42214f9ba3273e7ff39e2fee397d0846f40a86952d5758c6ca06d7d29b225a1a"
+    },
+    {
+      "path": "apps/web/tests/verification-channel-client.test.cjs",
+      "sha256": "8e23ea14087a2d8457925ebbb527a68a2633b6c77321eb80f5c9dbba7e736731"
+    },
+    {
+      "path": "docs/contact-verification.md",
+      "sha256": "f845b60ba7b760d506edacb39496787d435facc064c6dfbf6c80914977e47f98"
+    }
+  ],
+  "productionChanged": false
+}

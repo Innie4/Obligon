@@ -180,8 +180,8 @@ test("both channels are shown, with what happened to each", () => {
   assert.match(ui, /setNotice\(/);
 });
 
-test("the code is sent on arrival, not on a second button press", () => {
-  assert.match(ui, /React\.useEffect\(\(\) => \{\r?\n\s*void sendCodes\(\);/);
+test("codes are sent on arrival only while the account still needs verification", () => {
+  assert.match(ui, /if \(verificationComplete\) \{[\s\S]*?setStage\("success"\);\s*return;[\s\S]*?void sendCodes\(\);/);
   assert.match(ui, /const sendCodes = async \(\) =>/);
 });
 

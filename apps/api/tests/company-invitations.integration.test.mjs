@@ -72,8 +72,8 @@ check('concurrent redemption is single use and never duplicates a membership',as
   assert.equal(results.filter(r=>r.status===409).length,9);
   assert.equal((await row('SELECT count(*)::int AS count FROM memberships WHERE organization_id=$1 AND user_id=$2',[org,member])).count,1);
 });
-check('unverified email cannot accept and leaves the invitation untouched',async()=>{
-  await pool.query('UPDATE users SET email_verified=false WHERE id=$1',[member]); assert.equal((await accept()).status,403);
+check('a phone-qualified account still needs email proof to accept and leaves the invitation untouched',async()=>{
+  await pool.query('UPDATE users SET email_verified=false,phone_verified=true WHERE id=$1',[member]); assert.equal((await accept()).status,403);
   assert.equal((await row('SELECT status FROM invites WHERE token=$1',[token])).status,'pending');
 });
 check('another email cannot redeem an invitation',async()=>{assert.equal((await accept(await session(stranger,'partner'))).status,403);});

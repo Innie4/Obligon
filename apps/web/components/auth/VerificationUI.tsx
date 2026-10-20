@@ -31,23 +31,13 @@ function maskPhone(phone: string) {
   return `••• ••• ${digits.slice(-4)}`;
 }
 
-/**
- * Verify an account's email address and phone number.
- *
- * One code for both channels, one form, one field. The previous version was
- * built as two separate pages with six single-character boxes, and asked the
- * customer to press Send once per channel to answer a single question.
- *
- * The two codes are still separate values, confirmed against the channel each
- * was sent to. Sending one code to both would mean an intercepted text message
- * could claim an email address, which is the claim the email code exists to
- * support.
- */
+/** Verify email and phone separately, using the selected delivery channel. */
 export function VerificationUI() {
   const router = useRouter();
   const [returnPath, setReturnPath] = React.useState<string | null>(null);
-  React.useEffect(() => { setReturnPath(authReturnPath(window.location.search)); }, []);
-  const { user, refresh: refreshSession } = useSession();
+  const [returnPathReady, setReturnPathReady] = React.useState(false);
+  React.useEffect(() => { setReturnPath(authReturnPath(window.location.search)); setReturnPathReady(true); }, []);
+  const { user, status: sessionStatus, refresh: refreshSession } = useSession();
   const { success: toastSuccess, error: toastError } = useToast();
 
   // Read from the session rather than the URL. They used to arrive as
@@ -64,9 +54,35 @@ export function VerificationUI() {
   const [sendingCode, setSendingCode] = React.useState(false);
   const [cooldown, setCooldown] = React.useState(0);
   const [channels, setChannels] = React.useState<{ email?: VerificationChannelResult; phone?: VerificationChannelResult }>({});
+  const [optionalContact, setOptionalContact] = React.useState(false);
+  const autoSendAccount = React.useRef<string | null>(null);
+  const redirectTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  React.useEffect(() => () => { if (redirectTimer.current !== null) clearTimeout(redirectTimer.current); }, []);
+  const [selectedChannel, setSelectedChannel] = React.useState<"email" | "phone">(user?.emailVerified ? "phone" : "email");
+  const emailVerified = user?.emailVerified === true || channels.email?.alreadyVerified === true;
+  const phoneVerified = user?.phoneVerified === true || channels.phone?.alreadyVerified === true;
+  const allVerified = emailVerified && phoneVerified;
+  const accountVerified = emailVerified || phoneVerified || user?.accountVerified === true;
+  const invitationRequiresEmail = returnPath?.startsWith("/auth/company-invitation?") === true;
+  const verificationComplete = !optionalContact && (invitationRequiresEmail ? emailVerified : accountVerified);
 
   const busy = stage === "verifying";
-  const ready = code.length === CODE_LENGTH && !busy;
+  const ready = code.length === CODE_LENGTH && !busy && !(selectedChannel === "email" ? emailVerified : phoneVerified);
+
+  const chooseChannel = (channel: "email" | "phone") => {
+    if (busy || channel === selectedChannel) return;
+    setSelectedChannel(channel);
+    setCode("");
+    setError(null);
+    if (stage === "failed") setStage("input");
+  };
+  React.useEffect(() => {
+    if (emailVerified !== phoneVerified) {
+      setSelectedChannel(emailVerified ? "phone" : "email");
+      setCode("");
+      setError(null);
+    }
+  }, [emailVerified, phoneVerified]);
 
   React.useEffect(() => {
     if (cooldown <= 0) return;
@@ -78,9 +94,17 @@ export function VerificationUI() {
   // something asked them to be, and making them press Send first to receive a
   // code that was already on its way is a step that exists only here.
   React.useEffect(() => {
+    if (!returnPathReady || sessionStatus === "loading" || !user) return;
+    if (verificationComplete) {
+      autoSendAccount.current = user.id;
+      setStage("success");
+      return;
+    }
+    if (autoSendAccount.current === user.id) return;
+    autoSendAccount.current = user.id;
     void sendCodes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [returnPathReady, sessionStatus, user?.id, verificationComplete]);
 
   /** Issue a code for every channel that is not already verified, in one call. */
   const sendCodes = async () => {
@@ -90,7 +114,7 @@ export function VerificationUI() {
     try {
       const result = await authApi.verifySendBoth();
       setChannels(result.channels ?? {});
-      if(result.channels?.email?.alreadyVerified&&result.channels?.phone?.alreadyVerified){setStage("success");setNotice("Your contact details are already verified.");setCooldown(0);return;}
+      if ((result.channels?.email?.alreadyVerified && result.channels?.phone?.alreadyVerified) || ((invitationRequiresEmail ? result.channels?.email?.alreadyVerified : result.channels?.email?.alreadyVerified || result.channels?.phone?.alreadyVerified) && !optionalContact)) { setOptionalContact(false); setStage("success"); setNotice("Your account verification is complete."); setCooldown(0); return; }
       const sent = [result.channels?.email?.sent, result.channels?.phone?.sent].filter(Boolean).length;
       const failed = [
         result.channels?.email?.sent === false && !result.channels?.email?.alreadyVerified ? "email" : null,
@@ -112,7 +136,7 @@ export function VerificationUI() {
   };
 
   const resend = async () => {
-    if (cooldown > 0 || sendingCode) return;
+    if (stage === "success" || cooldown > 0 || sendingCode) return;
     setSendingCode(true);
     setError(null);
     try {
@@ -129,29 +153,30 @@ export function VerificationUI() {
     }
   };
 
-  /**
-   * Try the code against each channel in turn.
-   *
-   * One field serves both, so the same digits are offered to each and whichever
-   * accepts is the one that was sent to that channel. A code that matches
-   * neither is reported as such rather than "verification failed", which is what
-   * a single-channel endpoint made of it.
-   */
+  /** Confirm only the channel the user selected. */
   const verify = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!ready) return;
     setStage("verifying");
     setError(null);
     try {
-      const result = await authApi.verifyConfirmEither(code);
+      const result = await authApi.verifyConfirmEither(code, selectedChannel);
+      setChannels(current => ({
+        ...current,
+        email: { sent: false, ...current.email, alreadyVerified: emailVerified || result.emailVerified },
+        phone: { sent: false, ...current.phone, alreadyVerified: phoneVerified || result.phoneVerified }
+      }));
       await refreshSession().catch(() => undefined);
       setStage("success");
-      if (result.allVerified || (returnPath?.startsWith("/auth/company-invitation?") && result.emailVerified)) {
+      const emailComplete = emailVerified || result.emailVerified;
+      const accountComplete = result.accountVerified || emailComplete || phoneVerified || result.phoneVerified;
+      if (invitationRequiresEmail ? emailComplete : accountComplete) {
+        setOptionalContact(false);
         const plan=sessionStorage.getItem("obligon_selected_plan");
         const destination=user?.role==='company'?routes.companyDashboard:user?.role==='partner'||user?.role==='mechanic'?'/dashboard/billing':plan?`/customer/card?chosenPlan=${encodeURIComponent(plan)}`:routes.customerDashboard;
-        setTimeout(() => router.push(returnPath ?? destination),1200);
+        redirectTimer.current = setTimeout(() => router.push(returnPath ?? destination),1200);
       } else {
-        setStage("input");setCode("");setNotice(`Code accepted. Enter the code for your remaining ${(result.remaining??[]).join(' and ')} contact.`);
+        setStage("input"); setCode(""); setNotice("Your account is verified. Verify your email address to accept this company invitation.");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "That code is not correct.");
@@ -168,8 +193,7 @@ export function VerificationUI() {
     if (error) setError(null);
   };
 
-  const emailSent = channels.email?.sent === true || channels.email?.alreadyVerified === true;
-  const phoneSent = channels.phone?.sent === true || channels.phone?.alreadyVerified === true;
+  const sentChannels = [channels.email?.sent === true ? "email" : null, channels.phone?.sent === true ? "SMS" : null].filter(Boolean);
 
   return (
     <AuthShell compact>
@@ -190,19 +214,21 @@ export function VerificationUI() {
         </div>
 
         <h1 className="mt-6 text-center font-display text-3xl font-extrabold leading-10 text-obligon-navy">
-          {stage === "success" ? "Verified" : "Verify your account"}
+          {stage === "success" ? "Account verified" : "Verify your account"}
         </h1>
         <p className="mt-4 text-center text-base leading-6 text-obligon-text">
           {stage === "success"
-            ? "Your account is verified."
-            : "We sent a 6-digit code to your email and phone. Enter whichever one you receive."}
+            ? allVerified ? "Your email and phone are verified." : emailVerified ? "Your email is verified. Account verification is complete." : phoneVerified ? "Your phone is verified. Account verification is complete." : "Account verification is complete."
+            : sentChannels.length
+              ? `We sent a 6-digit code by ${sentChannels.join(" and ")}. Select its delivery method below.`
+              : "Select the delivery method for the 6-digit code you received."}
         </p>
 
         <div className="mt-5 space-y-2">
           {[
-            { label: "Email", Icon: Mail, detail: maskEmail(contactEmail), ok: emailSent },
-            { label: "Phone", Icon: Phone, detail: maskPhone(contactPhone), ok: phoneSent }
-          ].map(({ label, Icon, detail, ok }) => (
+            { label: "Email", Icon: Mail, detail: maskEmail(contactEmail), verified: emailVerified, sent: channels.email?.sent === true },
+            { label: "Phone", Icon: Phone, detail: maskPhone(contactPhone), verified: phoneVerified, sent: channels.phone?.sent === true }
+          ].map(({ label, Icon, detail, verified, sent }) => (
             <div
               key={label}
               className="flex items-center gap-3 rounded-xl border border-obligon-border bg-[#f7fbf8] px-4 py-3"
@@ -212,9 +238,9 @@ export function VerificationUI() {
                 <p className="text-xs font-extrabold uppercase text-obligon-text">{label}</p>
                 <p className="truncate text-sm font-bold text-obligon-navy">{detail}</p>
               </div>
-              {ok ? (
+              {verified || sent ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-obligon-lime/30 px-2.5 py-1 text-[11px] font-extrabold text-obligon-navy">
-                  <Check size={12} /> Sent
+                  <Check size={12} /> {verified ? "Verified" : "Sent"}
                 </span>
               ) : (
                 <span className="rounded-full bg-[#fff3d8] px-2.5 py-1 text-[11px] font-extrabold text-[#9a6300]">
@@ -248,13 +274,27 @@ export function VerificationUI() {
         {stage === "success" ? (
           <div className="mt-8 flex items-center justify-center gap-2 rounded-xl bg-obligon-lime/20 p-4 text-sm font-extrabold text-obligon-navy">
             <Check size={18} />
-            {returnPath?.startsWith("/auth/company-invitation?") ? "Email verified. You can now join your company." : "Contact verification complete"}
+            {invitationRequiresEmail ? "Email verified. You can now join your company." : "Account verification complete"}
             <button type="button" className="min-h-12 underline" onClick={()=>{const plan=sessionStorage.getItem("obligon_selected_plan");router.push(returnPath ?? (user?.role==="company"?routes.companyDashboard:user?.role==="partner"||user?.role==="mechanic"?"/dashboard/billing":plan?`/customer/card?chosenPlan=${encodeURIComponent(plan)}`:routes.customerDashboard));}}>Continue</button>
           </div>
         ) : (
           <form onSubmit={verify} className="mt-8">
+            <fieldset disabled={busy} className="mb-6">
+              <legend className="text-xs font-extrabold uppercase text-obligon-text">Code delivery method</legend>
+              <div className="mt-2 grid grid-cols-2 gap-3">
+                {([
+                  { channel: "email", label: "Email code", verified: emailVerified },
+                  { channel: "phone", label: "SMS code", verified: phoneVerified }
+                ] as const).map(({ channel, label, verified }) => (
+                  <label key={channel} className={`flex min-h-12 items-center gap-2 rounded-xl border border-obligon-border bg-white px-3 py-2 text-sm font-bold text-obligon-navy focus-within:ring-2 focus-within:ring-obligon-green focus-within:ring-offset-2 ${verified ? "opacity-60" : ""}`}>
+                    <input type="radio" name="verification-channel" value={channel} checked={selectedChannel === channel} disabled={verified} onChange={() => chooseChannel(channel)} className="size-4 accent-obligon-green" />
+                    <span>{label}{verified ? " (verified)" : ""}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
             <label htmlFor="otp-code" className="block text-xs font-extrabold uppercase text-obligon-text">
-              6-digit code
+              6-digit {selectedChannel === "email" ? "email" : "SMS"} code
             </label>
             <input
               id="otp-code"
@@ -281,7 +321,7 @@ export function VerificationUI() {
             <p id="otp-code-help" className="mt-2 text-center text-xs font-semibold text-obligon-text">
               {code.length < CODE_LENGTH
                 ? `${CODE_LENGTH - code.length} digit${CODE_LENGTH - code.length === 1 ? "" : "s"} to go`
-                : "Verifying…"}
+                : busy ? "Verifying…" : "Ready to verify."}
             </p>
             <button
               type="submit"
@@ -293,15 +333,18 @@ export function VerificationUI() {
           </form>
         )}
 
+        {optionalContact ? <button type="button" onClick={() => { setOptionalContact(false); setStage("success"); setCode(""); setError(null); }} className="mt-4 min-h-12 w-full font-bold text-obligon-green underline focus-visible:ring-2 focus-visible:ring-obligon-green">Skip optional verification</button> : null}
         <div className="mt-6 flex items-center justify-between text-sm">
+          {stage === "success" && ((!emailVerified && Boolean(contactEmail.trim())) || (!phoneVerified && Boolean(contactPhone.trim()))) ? <button type="button" onClick={() => { if (redirectTimer.current !== null) clearTimeout(redirectTimer.current); autoSendAccount.current = null; setOptionalContact(true); setStage("input"); setCode(""); setError(null); setNotice("Your account is already verified. Verifying your other contact is optional."); }} className="min-h-12 font-bold text-obligon-green underline focus-visible:ring-2 focus-visible:ring-obligon-green">Verify remaining contact</button> :
           <button
             type="button"
             onClick={() => void resend()}
-            disabled={cooldown > 0 || sendingCode}
+            disabled={stage === "success" || cooldown > 0 || sendingCode}
             className="font-bold text-obligon-green hover:underline disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
           >
             {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}
           </button>
+          }
           <Link href={routes.support} className="font-bold text-obligon-text hover:underline">
             Having trouble?
           </Link>

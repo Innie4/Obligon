@@ -68,11 +68,13 @@ access. No shared temporary credential is documented for production use.
 ## Provider status
 
 `GET /health` reports which providers are configured. Run
-`pnpm config:check` before deployment. Production startup fails with a clear
-list when database, authentication, email, SMS, payment, or card credentials
-required by the enabled product flows are missing. Maps and web push remain
-optional because the frontend has an OpenStreetMap fallback and notifications
-are best-effort.
+`pnpm config:check` before deployment. Database/authentication configuration and
+unsafe production simulation settings can prevent startup. Missing delivery,
+payment and issuing integrations generally warn and disable their affected
+features; a running API does not prove those providers work. Maps and web push
+remain optional because the frontend has an OpenStreetMap fallback and
+notifications are best-effort. See [contact verification](../../docs/contact-verification.md)
+for the optional free-tier verification setup and acceptance checks.
 
 | Capability | Provider | Where the key lives |
 |---|---|---|
@@ -82,7 +84,8 @@ are best-effort.
 | Checkout / subscriptions / settlement transfers | Flutterwave | `FLW_SECRET_KEY`, `FLW_PUBLIC_KEY`, `FLW_SECRET_HASH` |
 | Legacy payment compatibility | Paystack | `PAYSTACK_SECRET_KEY` only when recorded legacy flows require it |
 | Transactional email | Resend | `RESEND_API_KEY` |
-| SMS / OTP | Termii | `TERMII_API_KEY` |
+| General SMS / application-generated OTP | Termii | `TERMII_API_KEY` |
+| Managed email and phone contact verification | Descope (optional) | `VERIFICATION_PROVIDER=descope`, `DESCOPE_PROJECT_ID`, `DESCOPE_AUTH_MANAGEMENT_KEY` |
 | Maps / directions | Google Maps Platform | `GOOGLE_MAPS_API_KEY` (server) + `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (browser) |
 | Web push | VAPID web-push | `WEB_PUSH_VAPID_*` |
 

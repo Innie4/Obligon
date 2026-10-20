@@ -53,11 +53,18 @@ export async function sendSms({ to, message }) {
   if (env.SMS_PROVIDER === "local") return writeLocalMessage({channel:"sms",to,message});
   if (!env.TERMII_API_KEY) return { delivered:false, skipped:true, error:"Delivery provider is not configured" };
   if (!to) return { delivered: false, skipped: false, code: "SMS_NO_NUMBER", error: "no phone number on file" };
+  // Termii requires international format: https://developers.termii.com/messaging-api
+  let destination = typeof to === "string" ? to.replace(/[\s()-]/g, "").replace(/^\+/, "") : "";
+  if (/^0\d{10}$/.test(destination)) destination = `234${destination.slice(1)}`;
+  else if (/^[789]\d{9}$/.test(destination) && !to.trim().startsWith("+")) destination = `234${destination}`;
+  if (!/^[1-9]\d{6,14}$/.test(destination)) {
+    return { delivered: false, skipped: false, code: "SMS_NUMBER_REJECTED", error: "Enter a valid phone number in international format" };
+  }
   const res = await providerFetch("https://api.ng.termii.com/api/sms/send", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      to: to.replace(/^\+/, ""),
+      to: destination,
       from: env.TERMII_SENDER_ID,
       sms: message,
       type: "plain",

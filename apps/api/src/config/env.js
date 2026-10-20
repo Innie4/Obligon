@@ -43,6 +43,9 @@ const schema = z.object({
   CARD_IDENTITY_KEY: z.string().default(""),
   EMAIL_PROVIDER: z.enum(["local", "resend"]).default("resend"),
   SMS_PROVIDER: z.enum(["local", "termii"]).default("termii"),
+  VERIFICATION_PROVIDER: z.enum(["local", "descope"]).default("local"),
+  DESCOPE_PROJECT_ID: z.string().trim().default(""),
+  DESCOPE_AUTH_MANAGEMENT_KEY: z.string().trim().default(""),
   LOCAL_OUTBOX_PATH: z.string().default("/tmp/obligon-local-outbox.jsonl"),
   // Sudo Africa (virtual card issuing)
   SUDO_BASE_URL: z.string().default("https://api.sandbox.sudo.cards"),
@@ -182,7 +185,10 @@ export function configurationWarnings() {
   if(env.SUDO_SECRET_API_KEY && (!env.SUDO_DEBIT_ACCOUNT_ID || !env.SUDO_CREDIT_ACCOUNT_ID)) warnings.push("SUDO_DEBIT_ACCOUNT_ID and SUDO_CREDIT_ACCOUNT_ID are required for issuing/replacing cards");
   if (!env.SUDO_SECRET_API_KEY) warnings.push("SUDO_SECRET_API_KEY is unset - card issuing and limits are unavailable");
   if (!env.RESEND_API_KEY) warnings.push("RESEND_API_KEY is unset - no transactional email will be sent");
-  if (!env.TERMII_API_KEY) warnings.push("TERMII_API_KEY is unset - SMS OTP is unavailable");
+  if (!env.TERMII_API_KEY) warnings.push("TERMII_API_KEY is unset - Termii SMS delivery is unavailable");
+  if (env.VERIFICATION_PROVIDER === "descope" && (!env.DESCOPE_PROJECT_ID || !env.DESCOPE_AUTH_MANAGEMENT_KEY)) {
+    warnings.push("DESCOPE_PROJECT_ID and DESCOPE_AUTH_MANAGEMENT_KEY are required for Descope contact verification");
+  }
   if (!env.WEB_PUSH_VAPID_PRIVATE_KEY) warnings.push("WEB_PUSH_VAPID_PRIVATE_KEY is unset - web push notifications are disabled");
   // A customer-bearer fee with no rate configured collects nothing while the
   // interface may still imply the customer is paying one, so say so plainly.
@@ -223,6 +229,10 @@ export const providerStatus = () => ({
   flutterwaveWebhooks: Boolean(env.FLW_SECRET_HASH),
   email: Boolean(env.RESEND_API_KEY),
   sms: Boolean(env.TERMII_API_KEY),
+  emailVerification: env.VERIFICATION_PROVIDER === "descope"
+    ? Boolean(env.DESCOPE_PROJECT_ID && env.DESCOPE_AUTH_MANAGEMENT_KEY) : Boolean(env.RESEND_API_KEY),
+  phoneVerification: env.VERIFICATION_PROVIDER === "descope"
+    ? Boolean(env.DESCOPE_PROJECT_ID && env.DESCOPE_AUTH_MANAGEMENT_KEY) : Boolean(env.TERMII_API_KEY),
   push: Boolean(env.WEB_PUSH_VAPID_PUBLIC_KEY && env.WEB_PUSH_VAPID_PRIVATE_KEY),
   maps: Boolean(env.GOOGLE_MAPS_API_KEY)
 });
