@@ -1,0 +1,55 @@
+diff --git a/apps/api/package.json b/apps/api/package.json
+index 1347669..1488b0b 100644
+--- a/apps/api/package.json
++++ b/apps/api/package.json
+@@ -31,7 +31,7 @@
+     "bcryptjs": "^2.4.3",
+     "cors": "^2.8.5",
+     "dotenv": "^16.4.5",
+-    "express": "^5.1.0",
++    "express": "5.2.1",
+     "express-rate-limit": "^7.4.0",
+     "helmet": "^7.1.0",
+     "jose": "6.2.13",
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index d6f0947..0c17048 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -37,7 +37,7 @@ importers:
+         specifier: ^16.4.5
+         version: 16.6.1
+       express:
+-        specifier: ^5.1.0
++        specifier: 5.2.1
+         version: 5.2.1(supports-color@7.2.0)
+       express-rate-limit:
+         specifier: ^7.4.0
+@@ -982,8 +982,8 @@ packages:
+   bn.js@4.12.5:
+     resolution: {integrity: sha512-3aRg6/JxfffFD+OlOjOFR3Vo79l39ooBTFucxx+MT3dhCtzn3EmiUPQo+6/OZuI2jbXi3YKgmiTFBgChQMwIRQ==}
+ 
+-  body-parser@2.3.0:
+-    resolution: {integrity: sha512-2cGmJupaNgg+QUwVLAucDuWuoMZ6EX9iHDRswZ5lsNYEmwPaRknMPCLZz07yTzVq/83p4o/wzbDZbBrTvGGTIw==}
++  body-parser@2.4.0:
++    resolution: {integrity: sha512-Ifk1KcLrxaGt1occQagQNFNNOqRt1LFuehEnHHzB8Z6cRgIxRU1TBaiIsUiCdA+gy5PL7Y1IX31DNKkRmxtXjQ==}
+     engines: {node: '>=18'}
+ 
+   brace-expansion@1.1.21:
+@@ -3533,7 +3533,7 @@ snapshots:
+ 
+   bn.js@4.12.5: {}
+ 
+-  body-parser@2.3.0(supports-color@7.2.0):
++  body-parser@2.4.0(supports-color@7.2.0):
+     dependencies:
+       bytes: 3.1.2
+       content-type: 2.1.0
+@@ -4119,7 +4119,7 @@ snapshots:
+   express@5.2.1(supports-color@7.2.0):
+     dependencies:
+       accepts: 2.0.0
+-      body-parser: 2.3.0(supports-color@7.2.0)
++      body-parser: 2.4.0(supports-color@7.2.0)
+       content-disposition: 1.1.0
+       content-type: 1.0.5
+       cookie: 0.7.2

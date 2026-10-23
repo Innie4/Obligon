@@ -1,0 +1,17 @@
+[
+  {
+    "number": 47,
+    "package": "body-parser",
+    "scope": "runtime",
+    "manifest": "pnpm-lock.yaml",
+    "severity": "high",
+    "ghsa": "GHSA-27r3-jxmh-p828",
+    "summary": "body-parser vulnerable to Denial of Service via trailing bytes after a compressed request body",
+    "vulnerableRange": ">= 2.0.0, < 2.4.0",
+    "patched": {
+      "identifier": "2.4.0"
+    },
+    "url": "https://github.com/Innie4/Obligon/security/dependabot/47",
+    "updatedAt": "2026-10-23T21:20:10Z"
+  }
+]

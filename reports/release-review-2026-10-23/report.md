@@ -1,6 +1,6 @@
 # Combined release record
 
-23 October 2026. Initial release `0121bf2` was pushed and verified Ready on Vercel and Live on Render. A final dependency/search follow-up is locally verified and awaiting its hosted deployment check. Final hosted results are recorded alongside this report in `evidence/deployment-final.json`.
+23 October 2026. UI/search release `13fc4f0` was pushed and verified Ready on Vercel and Live on Render. The last compatible request-parser update is locally verified. Final hosted status for the resulting revision is recorded alongside this report in `evidence/deployment-final.json`.
 
 ## Changes
 
@@ -17,6 +17,10 @@ The initial popup application/test/dependency patch contains **206 files**, base
 ## Final follow-up
 
 The push exposed an updated Zod advisory. A package-only remediation and the remaining shared-search popup/keyboard corrections are recorded in [the follow-up report](zod-advisory-followup.md). This is separate from the original approval identity. The complete final source hashes and six-file delta are in [followup-source-manifest.json](followup-source-manifest.json). Fresh acceptance passes **646 web tests and 1,251 API tests**, with 13 opt-in API smoke checks skipped; the production build and both dependency audits pass. The two API suites that inspect web source were rerun after their stale assertions were corrected. The earlier backend-only evidence-reuse limit is documented explicitly.
+
+## Request-parser advisory follow-up
+
+GitHub separately identified `GHSA-27r3-jxmh-p828` in Express's body-parser dependency while the release was being checked. The [package-only follow-up](body-parser-followup.md) pins the existing Express runtime and resolves patched body-parser 2.4.0. Only API package.json and the generated lockfile change; application code, tests and workspace configuration remain unchanged. The full API suite was rerun: **1,251 passed, zero failed, 13 opt-in skipped**. Both dependency audits return zero findings. [Complete final application hashes](source-manifest-final.json) cover all 206 files. Earlier zero-audit receipts are historical and do not replace these later checks.
 
 ## Approval and scope
 

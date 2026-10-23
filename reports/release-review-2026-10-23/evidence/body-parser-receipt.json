@@ -1,0 +1,102 @@
+{
+  "checkedAt": "2026-10-23T21:26:56.234491+00:00",
+  "baseRevision": "13fc4f0cde8df54743deedef2d0f42c33df95ba9",
+  "status": "verified; no commit or push performed by subagent",
+  "advisory": {
+    "id": "GHSA-27r3-jxmh-p828",
+    "url": "https://github.com/advisories/GHSA-27r3-jxmh-p828",
+    "severity": "high",
+    "affectedRuntimeRange": ">=2.0.0 <2.4.0",
+    "patchedVersion": "2.4.0"
+  },
+  "sourceChanges": [
+    {
+      "path": "apps/api/package.json",
+      "sha256": "02b80b1762cd8261a0553f84d3711c64b2ac652025fdd6d9f2a2536521affeb4"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "sha256": "3d7fca9da90ffb5d40995a022c6b817f8d72215931c75a9be5ac337f13a79de7"
+    }
+  ],
+  "method": "Pin existing Express runtime to exact 5.2.1; targeted compatible transitive body-parser update to 2.4.0. Root package.json restored. No pnpm-workspace.yaml, source, test or parser logic changes. pnpm 11 ignores package.json pnpm.overrides, so unused direct dependency/ineffective override were avoided.",
+  "runtimeVerified": {
+    "express": "5.2.1",
+    "expressResolvedBodyParser": "2.4.0"
+  },
+  "tests": {
+    "command": "NODE_ENV=test DATABASE_SSL=false DOTENV_CONFIG_PATH=/dev/null DATABASE_URL=<task-owned55423> OBLIGON_TEST_DATABASE_URL=<same task-owned55423> node --test --test-concurrency=2 tests/*.test.mjs",
+    "exitCode": 0,
+    "summary": {
+      "tests": 1264,
+      "suites": 0,
+      "pass": 1251,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 13,
+      "todo": 0,
+      "duration_ms": "75459.240247"
+    },
+    "databaseScope": "Only task-owned PostgreSQL port55423; isolated existing test schemas; no .env or live provider opt-ins"
+  },
+  "audits": {
+    "all": {
+      "exitCode": 0,
+      "advisories": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0
+      }
+    },
+    "production": {
+      "exitCode": 0,
+      "advisories": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0
+      }
+    }
+  },
+  "diffCheckExitCode": 0,
+  "registryLimits": {
+    "fetchTimeoutMs": 120000,
+    "fetchRetries": 0
+  },
+  "artifacts": [
+    {
+      "path": "/tmp/obligon-body-parser240-registry23.json",
+      "sha256": "94a61932b11168f9098b5ba3e6444514d8ad6b489c027350e37693cd5c948446"
+    },
+    {
+      "path": "/tmp/obligon-body-parser240-advisory23.json",
+      "sha256": "049dc19b7fdae482f1f233d4bc3a6db8ae7c9073679d1ea411f424fc66c0aec4"
+    },
+    {
+      "path": "/tmp/obligon-body-parser240-update23.log",
+      "sha256": "633ec69e8315a11931cc28a716370751bb2d414caab5c7eb617b2c3b5a94efa2"
+    },
+    {
+      "path": "/tmp/obligon-body-parser240-api23.log",
+      "sha256": "13fe0039854339945565ec4a54d657bfb4b820681687f0977ac112677c9bfa72"
+    },
+    {
+      "path": "/tmp/obligon-body-parser240-audit-all23.json",
+      "sha256": "1067d6e851cb5cd571801c3c2f423ae099a10261bf0dc8dee665f1f1cc9b99b0"
+    },
+    {
+      "path": "/tmp/obligon-body-parser240-audit-production23.json",
+      "sha256": "c3dd1a03bb47ae73186f3f897f20167cf11a6ca1fe04ec07b343239db73ffa06"
+    }
+  ],
+  "limits": [
+    "Existing13 opt-in external checks remain skipped",
+    "Dependency metadata and tests do not establish overall application security or full external launch readiness",
+    "No git commit, push, browser actions or deployment by this subagent"
+  ]
+}
