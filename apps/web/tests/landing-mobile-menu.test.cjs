@@ -4,11 +4,11 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
 
-function headerFixture() {
+function headerFixture(file = '../components/landing/Header.tsx', exportName = 'Header') {
   let open = false;
   const element = (type, props) => ({ type, props: props ?? {} });
   const exports = {};
-  const code = ts.transpileModule(fs.readFileSync(require.resolve('../components/landing/Header.tsx'), 'utf8'), {
+  const code = ts.transpileModule(fs.readFileSync(require.resolve(file), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
   }).outputText;
   vm.runInNewContext(code, {
@@ -22,11 +22,36 @@ function headerFixture() {
       if (name === 'lucide-react') return { Menu: 'menu-icon', X: 'close-icon' };
       if (name === '@/components/shared/DashboardLogo') return { DashboardLogo: 'logo' };
       if (name === './Button') return { LandingButton: 'landing-button' };
+      if (name === './routes') return { routes: { home: '/', login: '/auth/login', signup: '/auth/signup', fuelvista: '/solutions/fuelvista', careers: '/careers', support: '/support' } };
       throw new Error(`Unexpected import ${name}`);
     },
   });
-  return () => exports.Header();
+  return () => exports[exportName]();
 }
+
+test('Escape closes the landing menu while focus remains in its header', () => {
+  const render = headerFixture();
+  toggle(render()).props.onClick();
+  let focused = false;
+  render().props.onKeyDown({ key: 'Escape', currentTarget: { querySelector: () => ({ focus() { focused = true; } }) } });
+  assert.equal(menu(render()), undefined);
+  assert.equal(focused, true);
+});
+
+test('public-page mobile navigation exposes routes, account buttons and Escape dismissal', () => {
+  const render = headerFixture('../components/site/SiteHeader.tsx', 'SiteHeader');
+  toggle(render()).props.onClick();
+  const nav = nodes(render(), node => node.props.id === 'site-mobile-navigation')[0];
+  assert.ok(nav);
+  for (const href of ['/solutions/fuelvista', '/#pricing', '/careers', '/support', '/auth/login', '/auth/signup']) {
+    assert.equal(nodes(nav, node => node.type === 'a' && node.props.href === href).length, 1);
+  }
+  let focused = false;
+  render().props.onKeyDown({ key: 'Escape', currentTarget: { querySelector: () => ({ focus() { focused = true; } }) } });
+  assert.equal(toggle(render()).props['aria-expanded'], false);
+  assert.equal(nodes(render(), node => node.props.id === 'site-mobile-navigation').length, 0);
+  assert.equal(focused, true);
+});
 
 function nodes(tree, predicate) {
   if (Array.isArray(tree)) return tree.flatMap(child => nodes(child, predicate));

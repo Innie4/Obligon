@@ -27,6 +27,7 @@ function fixture(componentName = 'SignupForm') {
   vm.runInNewContext(code, {
     exports, React: react, URLSearchParams, sessionStorage: { getItem: () => null },
     require(name) {
+      if(name==='@/lib/partner-workshop') return {workshopServices:['Computer Diagnostics','Engine Overhaul','Brake & Suspension','Tyres & Wheel Alignment','Auto Electrical','Mobile Roadside Unit']};
       if (name === 'react') return react;
       if (name === 'next/navigation') return { useRouter: () => ({ push: value => calls.push(['push', value]) }) };
       if (name === 'next/link' || name === 'next/image') return { __esModule: true, default: name };
@@ -128,4 +129,16 @@ test('a valid FCT area council is accepted and switching roles resets customer l
   ui.choose('Company'); ui.choose('Customer / Driver');
   assert.equal(ui.one(n => n.props?.id === 'signup-state').props.value, '');
   assert.equal(ui.one(n => n.props?.id === 'signup-localGovernmentArea').props.value, '');
+});
+
+test('gas station signup submits an explicit subtype and only canonical gas products',async()=>{
+ const ui=fixture();ui.choose('Partner Network');ui.choose('Gas Station / Autogas Retailer');
+ for(const [field,value] of Object.entries({stationName:'Gas test',location:'Test road',contactName:'Test Operator',phone:'08012345678',email:'gas@example.invalid',license:'GAS-TEST',password:'password123'}))ui.change(`signup-${field}`,value);
+ assert.doesNotMatch(ui.text(),/Car Wash Bay/);await ui.submit();const payload=ui.calls.find(([kind])=>kind==='signup')?.[1];assert.equal(payload?.partnerType,'gas_station');assert.deepEqual(Array.from(payload.fuelTypes),['CNG','LPG']);assert.equal(payload.role,'partner');
+});
+
+test('mechanic signup submits workshop services without treating them as fuels',async()=>{
+ const ui=fixture();ui.choose('Partner Network');ui.choose('Auto Mechanic / Repair Center');
+ for(const [field,value] of Object.entries({workshopName:'Repair test',location:'Test road',contactName:'Test Mechanic',phone:'08012345678',email:'mechanic@example.invalid',license:'RC-TEST',password:'password123'}))ui.change(`signup-${field}`,value);
+ await ui.submit();const payload=ui.calls.find(([kind])=>kind==='signup')?.[1];assert.equal(payload?.partnerType,'mechanic');assert.ok(payload.services.includes('Computer Diagnostics'));assert.equal(payload.fuelTypes,undefined);
 });

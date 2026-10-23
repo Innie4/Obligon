@@ -9,17 +9,21 @@ const text = node => node == null ? '' : Array.isArray(node) ? node.map(text).jo
 
 function screenFixture(pageKey = 'companies') {
   const slots = [], effects = [], reads = []; let cursor = 0, tree;
+  let records;
   const React = {
-    createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
+    createElement: (type, props, ...children) => type === records?.AdminRecords ? type({ ...props, children }) : ({ type, props: { ...props, children } }),
     useState(initial) { const index = cursor++; if (!(index in slots)) slots[index] = { value: initial }; return [slots[index].value, value => { slots[index].value = typeof value === 'function' ? value(slots[index].value) : value; }]; },
     useRef(initial) { const index = cursor++; return slots[index] ??= { current: initial }; },
     useCallback(fn, deps) { const index = cursor++, old = slots[index]; if (!old || deps.some((value, i) => !Object.is(value, old.deps[i]))) slots[index] = { fn, deps }; return slots[index].fn; },
     useEffect(fn, deps) { const index = cursor++, old = slots[index]; if (!old || deps.some((value, i) => !Object.is(value, old.deps[i]))) { slots[index] = { deps }; effects.push(fn); } },
   };
+  records = {};
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync(require.resolve('../components/admin-dashboard/AdminRecords.tsx'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React } }).outputText, { exports: records, require: name => name === 'react' ? React : {} });
   const exports = {};
   const code = ts.transpileModule(fs.readFileSync(require.resolve('../components/admin-dashboard/AdminScreen.tsx'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React } }).outputText;
   vm.runInNewContext(code, { exports, require(name) {
     if (name === 'react') return React;
+    if (name === './AdminRecords') return records;
     if (name === '@/lib/services') return {
       authenticatedRequest: path => new Promise((resolve, reject) => reads.push({ path, resolve, reject })),
       api: { download: async () => { throw new Error('Fixture PDF download unavailable'); } },
@@ -84,4 +88,13 @@ test('admin report download failure retains successfully loaded rows and metrics
   assert.match(ui.text(), /Fixture revenue/);
   assert.match(ui.text(), /₦100/);
   assert.ok(ui.all().some(node => node.type === 'table'));
+});
+
+test('compact admin metrics retain four named values and empty pagination remains disabled', async () => {
+  const metrics = ['Total staff', 'Active roles', 'Pending invites', 'Last audit'].map((label, index) => ({ label, value: String(index + 1) }));
+  const ui = screenFixture('staff'); ui.render(); ui.reads[0].resolve({ metrics, staff: [], total: 0 }); await flush(); ui.render();
+  assert.ok(ui.all().some(node => node.type === 'dl' && node.props['aria-label'] === 'Platform metrics'));
+  assert.equal(ui.all().filter(node => node.type === 'dt').length, 4);
+  for (const metric of metrics) assert.ok(ui.text().includes(metric.label));
+  for (const label of ['Previous', 'Next']) assert.equal(ui.all().find(node => node.type === 'button' && text(node) === label).props.disabled, true);
 });

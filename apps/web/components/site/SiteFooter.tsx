@@ -62,7 +62,7 @@ export function SiteFooter({ active }: SiteFooterProps) {
   }
 
   return (
-    <footer className="border-t border-obligon-border bg-white">
+    <footer className="bg-white">
       <div className="mx-auto grid max-w-[1280px] gap-10 px-5 py-16 sm:px-8 md:grid-cols-5 lg:px-16 lg:py-20">
         <div>
           <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Obligon LTD</h2>
@@ -73,7 +73,7 @@ export function SiteFooter({ active }: SiteFooterProps) {
 
         {columns.map((column) => (
           <div key={column.title}>
-            <h3 className="text-[13px] font-semibold uppercase tracking-[0.6px] text-obligon-navy">{column.title}</h3>
+            <h3 className="text-[13px] font-semibold text-obligon-navy">{column.title}</h3>
             <ul className="mt-6 space-y-4">
               {column.links.map((link) => (
                 <li key={link.label}>
@@ -92,7 +92,7 @@ export function SiteFooter({ active }: SiteFooterProps) {
         ))}
 
         <div>
-          <h3 className="text-[13px] font-semibold uppercase tracking-[0.6px] text-obligon-navy">Stay Updated</h3>
+          <h3 className="text-[13px] font-semibold text-obligon-navy">Stay Updated</h3>
           <form onSubmit={handleSubscribe} className="mt-6 space-y-3">
             <label htmlFor="footer-newsletter" className="sr-only">
               Email address
@@ -118,12 +118,11 @@ export function SiteFooter({ active }: SiteFooterProps) {
         </div>
       </div>
 
-      <div className="border-t border-obligon-border">
+      <div className="bg-white">
         <div className="mx-auto flex max-w-[1280px] flex-col gap-4 px-5 py-8 text-sm text-obligon-text sm:px-8 md:flex-row md:items-center md:justify-between lg:px-16">
           <p>&copy; {new Date().getFullYear()} Obligon LTD Energy. All rights reserved.</p>
           <div className="flex items-center gap-6">
-            <span className="h-px w-16 bg-gradient-to-r from-transparent via-obligon-green to-transparent" />
-            <span className="text-[13px] uppercase tracking-[1.6px] text-obligon-navy">Lagos, Nigeria</span>
+            <span className="text-[13px] text-obligon-navy">Lagos, Nigeria</span>
           </div>
         </div>
       </div>

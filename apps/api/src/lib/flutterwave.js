@@ -53,7 +53,9 @@ export function toProviderAmount(amountKobo) {
   const kobo = Number(amountKobo);
   if (!Number.isSafeInteger(kobo)) throw badRequest("Amount must be an integer number of kobo");
   if (kobo < 0) throw badRequest("Amount cannot be negative");
-  return kobo / 100;
+  const major=kobo / 100;
+  if (toKobo(major,"major")!==kobo) throw badRequest("Amount cannot be represented exactly by the payment provider");
+  return major;
 }
 
 /** Convert a documented amount unit without binary floating-point arithmetic. */

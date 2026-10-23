@@ -3,7 +3,7 @@ import { PartnershipShell } from "@/components/dashboard/PartnershipShell";
 
 export default function MechanicDashboardPage() {
   return (
-    <PartnershipShell allowedRoles={["mechanic"]}>
+    <PartnershipShell>
       <DashboardScreen pageKey="overview" />
     </PartnershipShell>
   );

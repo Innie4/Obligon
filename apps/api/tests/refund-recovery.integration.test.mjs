@@ -22,7 +22,7 @@ before(async()=>{
 beforeEach(async()=>{if(url)await pool.query('TRUNCATE payment_refunds,audit_logs,subscription_payments,customer_subscriptions');});
 after(async()=>{globalThis.fetch=originalFetch;if(!url)return;await pool.end();await admin.query(`DROP SCHEMA ${schema} CASCADE`);await admin.end();});
 const request=(extras={})=>({provider:'flutterwave',providerRef:'contract-ref',providerTransactionId:'99',userId:'11111111-1111-1111-1111-111111111111',amountKobo:100000,kind:'excess',...extras});
-const response=data=>({ok:true,status:200,json:async()=>({status:'success',data})});
+const response=data=>new Response(JSON.stringify({status:'success',data}),{headers:{'content-type':'application/json'}});
 integration('refund intent rolls back with its purchase and never contacts provider',async()=>{
  let posts=0;globalThis.fetch=async()=>{posts++;return response({id:7,status:'completed'});};
  await assert.rejects(db.tx(async t=>{await money.queueRefund(t,request());throw new Error('Crash before purchase commit');}),/Crash/);

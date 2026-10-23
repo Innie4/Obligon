@@ -24,7 +24,8 @@ const privateTables = [
   "data_requests", "analytics_events", "push_subscriptions", "idempotency_keys", "role_permissions", "card_requests",
   "payment_refunds", "plan_wallet_credits", "settlement_accounts", "payment_splits", "monthly_spend_projections", "settlement_periods",
   "customer_subscriptions", "subscription_payments", "discount_review_states", "station_discount_requests", "fuel_orders",
-  "email_outbox", "partner_api_keys", "schema_migrations"
+  "email_outbox", "partner_api_keys", "schema_migrations", "company_card_issuances",
+  "account_google_identities", "account_passkeys", "account_auth_challenges"
 ];
 const catalogs = ["pricing_plans", "card_plans", "job_postings", "content_items"];
 const suffix = `${process.pid}_${randomUUID().replaceAll("-", "")}`;
@@ -56,7 +57,8 @@ before(async () => {
     $$;
     GRANT USAGE ON SCHEMA public,auth TO anon,authenticated;
     GRANT EXECUTE ON FUNCTION auth.uid() TO anon,authenticated;
-    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT,INSERT,UPDATE,DELETE ON TABLES TO anon,authenticated;`);
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT,INSERT,UPDATE,DELETE ON TABLES TO anon,authenticated;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT,INSERT,UPDATE,DELETE ON TABLES TO ${backendRole};`);
   baselineDirectory = await mkdtemp(path.join(tmpdir(), "obligon-private-access-baseline-"));
   const files = (await readdir(directory)).filter(file => file.endsWith(".sql") && file < migrationName).sort();
   assert.equal(files.length, 31);
@@ -77,7 +79,7 @@ before(async () => {
   await pool.query("INSERT INTO public.card_plans(code,name,amount_kobo,active) VALUES('private_access_fixture','Fixture',10000,true),('private_access_inactive','Inactive',10000,false)");
   await pool.query("INSERT INTO public.job_postings(title,status) VALUES('Private access fixture open','open'),('Private access fixture closed','closed')");
   await pool.query("INSERT INTO public.content_items(kind,title,active) VALUES('faq','Private access fixture active',true),('faq','Private access fixture inactive',false)");
-  const names = [...privateTables, ...catalogs].map(table => `public.${table}`).join(", ");
+  const names = [...privateTables, ...catalogs].filter(table => !["company_card_issuances","account_google_identities","account_passkeys","account_auth_challenges"].includes(table)).map(table => `public.${table}`).join(", ");
   await pool.query(`GRANT USAGE ON SCHEMA public TO ${backendRole}; GRANT SELECT,INSERT,UPDATE,DELETE ON TABLE ${names} TO ${backendRole}; GRANT EXECUTE ON FUNCTION public.current_obligon_user_id(),public.current_obligon_org_ids() TO ${backendRole}`);
   await pool.query(`CREATE POLICY fixture_backend_private_read ON public.wallets FOR SELECT TO ${backendRole} USING(true)`);
 });
@@ -122,7 +124,7 @@ integration("permission maintenance denies every application-private table and c
   await pool.query("REVOKE ALL ON public.settlement_accounts FROM anon,authenticated; GRANT SELECT(account_number),UPDATE(account_number) ON public.settlement_accounts TO PUBLIC,anon,authenticated;");
   assert.equal((await pool.query("SELECT has_table_privilege('anon','public.settlement_accounts','SELECT') AS table_read,has_column_privilege('anon','public.settlement_accounts','account_number','SELECT') AS column_read")).rows[0].table_read, false);
   assert.equal((await pool.query("SELECT has_column_privilege('anon','public.settlement_accounts','account_number','SELECT') AS allowed")).rows[0].allowed, true);
-  assert.deepEqual(await runMigrations(pool, { log: () => {} }), [migrationName, "033_account_access_expiry.sql"]);
+  assert.deepEqual(await runMigrations(pool, { log: () => {} }), (await readdir(directory)).filter(file => file.endsWith(".sql") && file >= migrationName).sort());
   const actualTables = (await pool.query("SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname='public' ORDER BY tablename")).rows.map(row => row.tablename);
   assert.deepEqual([...privateTables, ...catalogs].sort(), actualTables, "Explicit permission scope must cover each application table, without unrelated objects");
   for (const role of ["anon", "authenticated"]) {
@@ -145,7 +147,7 @@ integration("permission maintenance denies every application-private table and c
     await denied(role, "SELECT public.current_obligon_org_ids()");
   }
   const rows = (await pool.query("SELECT relname,relrowsecurity FROM pg_catalog.pg_class WHERE oid=ANY($1::regclass[])", [privateTables.map(table => `public.${table}`)])).rows;
-  assert.equal(rows.length, 59);
+  assert.equal(rows.length, privateTables.length);
   assert.ok(rows.every(row => row.relrowsecurity));
   assert.equal((await pool.query("SELECT count(*)::int AS count FROM pg_catalog.pg_policy WHERE polrelid=ANY($1::regclass[]) AND polroles && ARRAY[0::oid,'anon'::regrole::oid,'authenticated'::regrole::oid]", [privateTables.map(table => `public.${table}`)])).rows[0].count, 0);
   // Effective direct permissions do not change when an account is suspended.

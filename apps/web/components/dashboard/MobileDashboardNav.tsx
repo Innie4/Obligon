@@ -9,11 +9,12 @@ import {
 } from "lucide-react";
 import { dashboardNav, type DashboardPageKey } from "@/lib/mock/dashboard-data";
 import { useSession } from "@/components/shared/AuthContext";
-import { LogoutButton } from "@/components/auth/LogoutButton";
+import { LogoutButton, SignInOptionsLink } from "@/components/auth/LogoutButton";
+import type { SessionUser } from "@/lib/services/types";
+import { partnerPageAllowed, partnerTypeFor } from "../../../../packages/shared/partner-access.mjs";
 
-const mechanicKeys = new Set<DashboardPageKey>(["overview", "transactions", "reports", "staff", "disputes", "notifications", "settings"]);
 const partnerPrimaryKeys: DashboardPageKey[] = ["overview", "transactions", "station", "reports", "settlements"];
-const mechanicPrimaryKeys: DashboardPageKey[] = ["overview", "transactions", "reports", "staff"];
+const mechanicPrimaryKeys: DashboardPageKey[] = ["overview", "workshop", "staff", "notifications"];
 const icons = {
   overview: LayoutDashboard, wallet: CircleDollarSign, station: Building2,
   pricing: Fuel, transactions: ReceiptText, reports: BarChart3, staff: Users,
@@ -23,9 +24,9 @@ const compactLabels: Partial<Record<DashboardPageKey, string>> = {
   overview: "Home", station: "Stations", settlements: "Payouts", staff: "Staff"
 };
 
-function mobileItems(isMechanic: boolean) {
-  const visible = isMechanic ? dashboardNav.filter(item => mechanicKeys.has(item.key)) : dashboardNav;
-  const primaryKeys = isMechanic ? mechanicPrimaryKeys : partnerPrimaryKeys;
+function mobileItems(user: SessionUser | null) {
+  const visible = dashboardNav.filter(item => partnerPageAllowed(user, item.key));
+  const primaryKeys = partnerTypeFor(user) === "mechanic" ? mechanicPrimaryKeys : partnerPrimaryKeys;
   return {
     primary: primaryKeys.flatMap(key => visible.filter(item => item.key === key)),
     account: visible.filter(item => !primaryKeys.includes(item.key))
@@ -41,7 +42,7 @@ function isActive(pathname: string, href: string) {
 export function MobilePartnerAccount() {
   const pathname = usePathname();
   const { user } = useSession();
-  const { account } = mobileItems(user?.role === "mechanic");
+  const { account } = mobileItems(user);
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -100,6 +101,7 @@ export function MobilePartnerAccount() {
               </Link>
             );
           })}
+          <SignInOptionsLink onClick={() => setOpen(false)} className="min-h-12 w-full justify-start px-3" />
           <LogoutButton className="min-h-12 w-full justify-start rounded-lg px-3 text-sm text-obligon-navy hover:bg-obligon-mist focus-visible:outline focus-visible:outline-2 focus-visible:outline-obligon-green" />
         </nav>
       ) : null}
@@ -110,8 +112,8 @@ export function MobilePartnerAccount() {
 export function MobileDashboardNav() {
   const pathname = usePathname();
   const { user } = useSession();
-  const isMechanic = user?.role === "mechanic";
-  const { primary } = mobileItems(isMechanic);
+  const isMechanic = partnerTypeFor(user) === "mechanic";
+  const { primary } = mobileItems(user);
 
   return (
     <nav aria-label="Partner primary" className={`fixed inset-x-0 bottom-0 z-40 grid h-[calc(74px+env(safe-area-inset-bottom))] border-t border-obligon-border bg-white pb-[env(safe-area-inset-bottom)] lg:hidden ${isMechanic ? "grid-cols-4" : "grid-cols-5"}`}>

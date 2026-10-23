@@ -34,14 +34,14 @@ type Props = {
   onClose: () => void;
   onSaved: () => void;
 };
-const inputClass = "mt-1.5 min-h-11 w-full min-w-0 rounded-xl border border-[#dfe5ec] bg-white px-3 py-2 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green";
+const inputClass = "mt-2 min-h-11 w-full min-w-0 rounded-xl border border-obligon-border bg-white px-3 py-2 text-sm font-medium text-obligon-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-obligon-green";
 function Field({ label, children }: {
   label: string;
   children: React.ReactNode;
 }) {
   return <label className="block min-w-0">
 
-    <span className="text-xs font-extrabold text-obligon-text">{label}</span>
+    <span className="text-sm font-semibold text-obligon-text">{label}</span>
 
     {children}
 
@@ -63,6 +63,7 @@ function CompanyFleetModal({ modal, context = {}, onClose, onSaved }: Props & { 
   const { success, error: toastError } = useToast();
   const dialogRef = React.useRef<HTMLElement>(null);
   const [submitting, setSubmitting] = React.useState(false);
+  const cardRequestKey = React.useRef<string | null>(null);
   useDialogFocus(dialogRef, () => {
     if (!submitting)
       onClose();
@@ -172,7 +173,8 @@ const field = (label: string, key: keyof typeof form, type = "text", required = 
           message = `Driver ${form.name.trim()} registered.`;
           break;
         case "newCard": {
-          const result = await mutationsApi.issueCompanyCard({ ...companyCardPayload(form), ...(!choices.issuerCustomerConfigured ? { holder: { firstName: form.firstName, lastName: form.lastName, dob: form.dob, bvn: form.bvn, address: form.address, city: form.city, state: form.state, postalCode: form.postalCode, phone: form.phone } } : {}) });
+          cardRequestKey.current ??= crypto.randomUUID();
+          const result = await mutationsApi.issueCompanyCard({ ...companyCardPayload(form), idempotencyKey: cardRequestKey.current, ...(!choices.issuerCustomerConfigured ? { holder: { firstName: form.firstName, lastName: form.lastName, dob: form.dob, bvn: form.bvn, address: form.address, city: form.city, state: form.state, postalCode: form.postalCode, phone: form.phone } } : {}) });
           message = `Fuel card issued${result.maskedPan ? ` (${result.maskedPan})` : ""}${form.vehicleId || form.driverId ? " with the selected assignment" : " without an assignment"}.`;
           break;
         }
@@ -237,12 +239,12 @@ const field = (label: string, key: keyof typeof form, type = "text", required = 
   }}>
 
 
-    <section ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="company-dialog-title" className="max-h-[92dvh] w-full min-w-0 max-w-[620px] overflow-y-auto rounded-2xl bg-white shadow-hero outline-none">
+    <section ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="company-dialog-title" className="max-h-[92dvh] w-full min-w-0 max-w-[620px] overflow-y-auto rounded-2xl border border-obligon-border bg-white shadow-lg outline-none">
 
 
-      <header className="flex items-center justify-between gap-3 border-b border-[#e1e6ee] p-5">
+      <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-obligon-border bg-white p-5">
 
-        <h2 id="company-dialog-title" className="font-display text-xl font-extrabold text-obligon-navy">{editingVehicle ? "Edit Fleet Vehicle" : titles[modal]}</h2>
+        <h2 id="company-dialog-title" className="font-display text-xl font-bold text-obligon-navy">{editingVehicle ? "Edit Fleet Vehicle" : titles[modal]}</h2>
 
         <button type="button" disabled={submitting} onClick={onClose} className="grid size-11 shrink-0 place-items-center rounded-lg bg-[#f3f6fa]" aria-label="Close dialog">
 
@@ -493,8 +495,8 @@ function CompanyOperationDialog({ title, busy, onClose, children }: { title: str
   const ref = React.useRef<HTMLElement>(null);
   useDialogFocus(ref, () => { if (!busy) onClose(); });
   return <div className="fixed inset-0 z-50 grid place-items-center bg-[#07162f]/60 p-3 sm:p-5" onMouseDown={event => { if (event.target === event.currentTarget && !busy) onClose(); }}>
-    <section ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="company-operation-title" className="max-h-[92dvh] w-full min-w-0 max-w-[620px] overflow-y-auto rounded-2xl bg-white shadow-hero">
-      <header className="flex items-center justify-between gap-3 border-b border-[#e1e6ee] p-5"><h2 id="company-operation-title" className="font-display text-xl font-extrabold text-obligon-navy">{title}</h2><button type="button" disabled={busy} onClick={onClose} className="grid size-11 shrink-0 place-items-center rounded-lg bg-[#f3f6fa]" aria-label="Close dialog"><X size={20} /></button></header>
+    <section ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="company-operation-title" className="max-h-[92dvh] w-full min-w-0 max-w-[620px] overflow-y-auto rounded-2xl border border-obligon-border bg-white shadow-lg">
+      <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-obligon-border bg-white p-5"><h2 id="company-operation-title" className="font-display text-xl font-bold text-obligon-navy">{title}</h2><button type="button" disabled={busy} onClick={onClose} className="grid size-11 shrink-0 place-items-center rounded-lg bg-[#f3f6fa]" aria-label="Close dialog"><X size={20} /></button></header>
       <div className="space-y-4 p-5 sm:p-7">{children}</div>
     </section>
   </div>;

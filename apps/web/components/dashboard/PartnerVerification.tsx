@@ -56,6 +56,9 @@ function maskPhone(phone: string) {
 export function PartnerVerificationUI() {
   const router = useRouter();
   const { user, status: sessionStatus, refresh: refreshSession } = useSession();
+  const businessLabel = user?.partnerType === "mechanic" || user?.role === "mechanic"
+    ? "workshop"
+    : user?.partnerType === "other" ? "partner" : "station";
   const { success: toastSuccess, error: toastError } = useToast();
 
   // From the session, never the URL. Contact details as `?contact=` query
@@ -254,7 +257,7 @@ export function PartnerVerificationUI() {
           mistyped a code had to scroll past their own mistake to leave. */}
       <Link
         href={routes.dashboard}
-        className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[1.2px] text-obligon-green hover:underline"
+        className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[1.2px] text-obligon-green hover:underline"
       >
         <ArrowLeft size={15} />
         Back to Dashboard
@@ -264,12 +267,12 @@ export function PartnerVerificationUI() {
         <ShieldCheck size={32} />
       </div>
 
-      <h1 className="mt-6 text-center font-display text-3xl font-extrabold leading-10 text-obligon-navy">
-        {stage === "success" ? "Verified" : "Verify your station account"}
+      <h1 className="mt-6 text-center font-display text-2xl font-bold tracking-tight sm:text-3xl leading-10 text-obligon-navy">
+        {stage === "success" ? "Verified" : `Verify your ${businessLabel} account`}
       </h1>
       <p className="mt-4 text-center text-base leading-6 text-obligon-text">
         {stage === "success"
-          ? "Your station account is verified."
+          ? `Your ${businessLabel} account is verified.`
           : sentChannels.length
             ? `We sent a 6-digit code by ${sentChannels.join(" and ")}. Select its delivery method below.`
             : "Select the delivery method for the 6-digit code you received."}
@@ -277,25 +280,25 @@ export function PartnerVerificationUI() {
 
       <div className="mt-5 space-y-2">
         {[
-          { label: "Email", Icon: Mail, detail: maskEmail(contactEmail), verified: emailVerified, sent: channels.email?.sent === true },
-          { label: "Phone", Icon: Phone, detail: contactPhone.trim() ? maskPhone(contactPhone) : "No phone number added", verified: phoneVerified, sent: channels.phone?.sent === true }
-        ].map(({ label, Icon, detail, verified, sent }) => (
+          { label: "Email", Icon: Mail, detail: contactEmail.trim() ? maskEmail(contactEmail) : "No email address added", present: Boolean(contactEmail.trim()), verified: Boolean(contactEmail.trim()) && emailVerified, sent: Boolean(contactEmail.trim()) && channels.email?.sent === true },
+          { label: "Phone", Icon: Phone, detail: contactPhone.trim() ? maskPhone(contactPhone) : "No phone number added", present: Boolean(contactPhone.trim()), verified: Boolean(contactPhone.trim()) && phoneVerified, sent: Boolean(contactPhone.trim()) && channels.phone?.sent === true }
+        ].map(({ label, Icon, detail, present, verified, sent }) => (
           <div
             key={label}
-            className="flex items-center gap-3 rounded-xl border border-obligon-border bg-[#f7fbf8] px-4 py-3"
+            className="flex items-center gap-3 rounded-xl border border-obligon-border bg-obligon-mist/60 px-4 py-3"
           >
             <Icon size={17} className="shrink-0 text-obligon-navy" />
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-extrabold uppercase text-obligon-text">{label}</p>
+              <p className="text-xs font-semibold uppercase text-obligon-text">{label}</p>
               <p className="truncate text-sm font-bold text-obligon-navy">{detail}</p>
             </div>
             {verified || sent ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-obligon-lime/30 px-2.5 py-1 text-[11px] font-extrabold text-obligon-navy">
+              <span className="inline-flex items-center gap-1 rounded-full bg-obligon-lime/30 px-2.5 py-1 text-xs font-extrabold text-obligon-navy">
                 <Check size={12} /> {verified ? "Verified" : "Sent"}
               </span>
             ) : (
-              <span className="rounded-full bg-[#fff3d8] px-2.5 py-1 text-[11px] font-extrabold text-[#9a6300]">
-                Not sent
+              <span className="rounded-full bg-[#fff3d8] px-2.5 py-1 text-xs font-extrabold text-[#9a6300]">
+                {present ? "Not sent" : "Not added"}
               </span>
             )}
           </div>
@@ -304,7 +307,7 @@ export function PartnerVerificationUI() {
 
       {missingPhone ? (
         <p className="mt-5 rounded-lg border border-obligon-border bg-[#fff3d8] p-3 text-sm text-[#9a6300]" role="status">
-          No phone number is saved for this account. Add one before verifying, or{" "}
+          No phone number is saved for this account. You can verify by email, or{" "}
           <Link href={routes.support} className="font-bold underline">contact support</Link>.
         </p>
       ) : null}
@@ -337,7 +340,7 @@ export function PartnerVerificationUI() {
       ) : canRequestCode ? (
         <form onSubmit={verify} className="mt-8">
           <fieldset disabled={busy} className="mb-6">
-            <legend className="text-xs font-extrabold uppercase text-obligon-text">Code delivery method</legend>
+            <legend className="text-xs font-semibold uppercase text-obligon-text">Code delivery method</legend>
             <div className="mt-2 grid grid-cols-2 gap-3">
               {([
                 { channel: "email", label: "Email code", verified: emailVerified },
@@ -350,7 +353,7 @@ export function PartnerVerificationUI() {
               ))}
             </div>
           </fieldset>
-          <label htmlFor="partner-otp-code" className="block text-xs font-extrabold uppercase text-obligon-text">
+          <label htmlFor="partner-otp-code" className="block text-sm font-semibold text-obligon-text">
             6-digit {selectedChannel === "email" ? "email" : "SMS"} code
           </label>
           <input
@@ -380,9 +383,9 @@ export function PartnerVerificationUI() {
           <button
             type="submit"
             disabled={!ready}
-            className="mt-5 h-12 w-full rounded-xl bg-obligon-green font-extrabold text-white shadow-green transition hover:bg-obligon-green/90 disabled:opacity-50"
+            className="mt-5 h-12 w-full rounded-xl bg-obligon-green font-extrabold text-white shadow-none transition hover:bg-obligon-green/90 disabled:opacity-50"
           >
-            {busy ? "Verifying…" : "Verify station account"}
+            {busy ? "Verifying…" : "Verify account"}
           </button>
         </form>
       ) : null}
@@ -409,11 +412,10 @@ export function PartnerVerificationUI() {
         fuel needs to know the operator is reachable. Stated here rather than left as
         an unexplained form.
       */}
-      <p className="mt-8 flex items-start gap-2 rounded-xl border border-obligon-border bg-[#f7fbf8] p-4 text-xs font-medium leading-5 text-obligon-text">
+      <p className="mt-8 flex items-start gap-2 rounded-xl border border-obligon-border bg-obligon-mist/60 p-4 text-xs font-medium leading-5 text-obligon-text">
         <Store size={16} className="mt-0.5 shrink-0 text-obligon-green" />
         <span>
-          Verifying confirms your station operator can be reached at these details.
-          Fleets use it to decide where to fuel.
+          Verifying confirms we can reach you at these contact details.
         </span>
       </p>
     </div>

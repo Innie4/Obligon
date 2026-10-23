@@ -33,8 +33,14 @@ before(async()=>{
  CREATE TABLE transactions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),reference text UNIQUE,customer_user_id uuid,station_id uuid,card_id uuid,fuel_type text,litres numeric,unit_price_kobo bigint,amount_kobo bigint,base_amount_kobo bigint,platform_fee_kobo bigint,partner_net_kobo bigint,discount_request_id uuid,settlement_method text,status text,meta text,created_at timestamptz DEFAULT now());
  CREATE TABLE fueling_logs(station_id uuid,transaction_id uuid,fuel_type text,litres numeric);
  CREATE TABLE payment_refunds(id uuid DEFAULT gen_random_uuid(),user_id uuid,provider text,provider_ref text,kind text,amount_kobo bigint,currency text DEFAULT 'NGN',reason text,idempotency_key text UNIQUE,metadata jsonb,status text DEFAULT 'pending',provider_refund_id text,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now(),settled_at timestamptz);
+ ALTER TABLE organizations ADD COLUMN partner_type text DEFAULT 'fuel_station',ADD COLUMN type text DEFAULT 'partner';
+ ALTER TABLE stations ADD COLUMN fuels text[] DEFAULT '{}',ADD COLUMN selling_units jsonb DEFAULT '{}',ADD COLUMN approved_selling_units jsonb DEFAULT '{}';
+ ALTER TABLE fuel_prices ADD COLUMN selling_unit text DEFAULT 'litre';
+ ALTER TABLE transactions ADD COLUMN selling_unit text DEFAULT 'litre';
+ ALTER TABLE fueling_logs ADD COLUMN selling_unit text DEFAULT 'litre';
  `);
  const migration=await readFile(new URL('../src/migrations/023_fuel_orders.sql',import.meta.url),'utf8');await pool.query(`BEGIN;${migration}COMMIT;`);
+ await pool.query("ALTER TABLE fuel_orders ADD COLUMN selling_unit text DEFAULT 'litre'");
  service=await import('../src/lib/fuel-checkout.js');
 });
 beforeEach(async()=>{
@@ -42,13 +48,13 @@ beforeEach(async()=>{
  await pool.query('TRUNCATE users,organizations,pricing_plans,subscriptions,stations,card_plans,customer_subscriptions,cards,fuel_prices,discount_review_states,station_discount_requests,settlement_accounts,bank_accounts,transactions,fueling_logs,fuel_orders,payment_refunds CASCADE');
  const {rows:[user]}=await pool.query("INSERT INTO users(email,full_name)VALUES('test@example.invalid','Test customer')RETURNING *");
  const {rows:[org]}=await pool.query('INSERT INTO organizations DEFAULT VALUES RETURNING id');
- const {rows:[station]}=await pool.query('INSERT INTO stations(partner_org_id)VALUES($1)RETURNING id',[org.id]);
+ const {rows:[station]}=await pool.query(`INSERT INTO stations(partner_org_id,fuels,selling_units,approved_selling_units)VALUES($1,'{PMS}','{"PMS":"litre"}','{"PMS":"litre"}')RETURNING id`,[org.id]);
  await pool.query("INSERT INTO pricing_plans(code,name)VALUES('basic','Basic')");
  await pool.query("INSERT INTO subscriptions VALUES($1,'basic','active',now()-interval '1 day',now()+interval '1 month')",[org.id]);
  await pool.query("INSERT INTO card_plans(code,name)VALUES('basic','Basic');");
  await pool.query("INSERT INTO customer_subscriptions VALUES($1,'basic',now()-interval '1 day',now()+interval '1 month','active')",[user.id]);
  const {rows:[card]}=await pool.query('INSERT INTO cards(owner_user_id)VALUES($1)RETURNING id',[user.id]);
- await pool.query("INSERT INTO fuel_prices VALUES($1,'PMS Petrol',1000)",[station.id]);
+ await pool.query("INSERT INTO fuel_prices(station_id,fuel_type,price_kobo) VALUES($1,'PMS Petrol',1000)",[station.id]);
  await pool.query("INSERT INTO discount_review_states(code)VALUES('approved'),('pending')");
  await pool.query("INSERT INTO station_discount_requests(station_id,fuel_type,rate_bp,starts_at,ends_at,review_state_id)SELECT $1,'PMS Petrol',1000,now()-interval '1 day',now()+interval '1 day',id FROM discount_review_states WHERE code='approved'",[station.id]);
  const {rows:[bank]}=await pool.query('INSERT INTO bank_accounts(organization_id)VALUES($1)RETURNING id',[org.id]);
@@ -59,6 +65,44 @@ after(async()=>{await pool?.end();if(created)await admin.query(`DROP SCHEMA ${sc
 function payments(overrides={}){
  return {activeProvider:()=> 'flutterwave',startCheckout:async args=>{fixtures.calls.push(args);return{authorization_url:'https://checkout.flutterwave.com/test',simulated:false,provider:'flutterwave',reference:args.txRef};},verifyCheckout:async args=>({paid:true,amountKobo:args.expectedAmountKobo,currency:'NGN',reference:args.reference,providerTransactionId:'101',...overrides})};
 }
+
+async function gasCheckout() {
+ await pool.query("UPDATE organizations SET partner_type='gas_station' WHERE id=$1",[fixtures.orgId]);
+ await pool.query(`UPDATE stations SET fuels='{CNG}',selling_units='{"CNG":"kg"}',approved_selling_units='{"CNG":"kg"}' WHERE id=$1`,[fixtures.stationId]);
+ await pool.query("UPDATE fuel_prices SET fuel_type='CNG',selling_unit='kg' WHERE station_id=$1",[fixtures.stationId]);
+ await pool.query("UPDATE station_discount_requests SET fuel_type='CNG' WHERE station_id=$1",[fixtures.stationId]);
+ return {...fixtures.input,fuelType:'CNG',sellingUnit:'kg',litres:'3.5'};
+}
+
+integration('gas checkout keeps immutable quantity and approved unit through confirmation and fulfillment',async()=>{
+ const input=await gasCheckout();
+ const {order}=await service.startFuelOrder(fixtures.user,input,payments());
+ assert.equal(order.selling_unit,'kg');assert.equal(order.litres,'3.50');assert.equal(order.amount_kobo,'3150');
+ assert.match(fixtures.calls[0].title,/3\.5 kg CNG/);
+ const paid=await service.confirmFuelOrder(order.reference,'101',false,payments());
+ const fulfilled=await service.fulfillFuelOrder({partnerOrgId:fixtures.orgId,stationId:fixtures.stationId,code:paid.authorization_code});
+ assert.equal(fulfilled.selling_unit,'kg');assert.equal(fulfilled.litres,'3.50');
+ assert.equal((await pool.query('SELECT selling_unit FROM transactions')).rows[0].selling_unit,'kg');
+ assert.equal((await pool.query('SELECT selling_unit FROM fueling_logs')).rows[0].selling_unit,'kg');
+});
+
+integration('gas checkout rejects an absent or stale unit without creating a provider checkout',async()=>{
+ const input=await gasCheckout();
+ await assert.rejects(service.startFuelOrder(fixtures.user,{...input,sellingUnit:undefined},payments()),/selling unit/);
+ await assert.rejects(service.startFuelOrder(fixtures.user,{...input,sellingUnit:'scm'},payments()),/changed/);
+ assert.equal(fixtures.calls.length,0);assert.equal((await pool.query('SELECT count(*)::int AS n FROM fuel_orders')).rows[0].n,0);
+});
+
+integration('withdrawn gas-unit approval preserves paid debt for review instead of dispensing another unit',async()=>{
+ const input=await gasCheckout();const {order}=await service.startFuelOrder(fixtures.user,input,payments());
+ const paid=await service.confirmFuelOrder(order.reference,'101',false,payments());
+ await pool.query(`UPDATE stations SET approved_selling_units='{"CNG":"scm"}' WHERE id=$1`,[fixtures.stationId]);
+ await assert.rejects(service.fulfillFuelOrder({partnerOrgId:fixtures.orgId,stationId:fixtures.stationId,code:paid.authorization_code}),/Admin review|refund/);
+ const saved=(await pool.query('SELECT status,selling_unit,litres::text AS quantity FROM fuel_orders')).rows[0];
+ assert.deepEqual(saved,{status:'paid_review',selling_unit:'kg',quantity:'3.50'});
+ assert.equal((await pool.query('SELECT count(*)::int AS n FROM fueling_logs')).rows[0].n,0);
+ assert.equal((await pool.query('SELECT status FROM transactions')).rows[0].status,'pending');
+});
 integration('station checkout charges 9000 and splits 1000 platform fee and 8000 station earnings',async()=>{
  const result=await service.startFuelOrder(fixtures.user,fixtures.input,payments());
  assert.equal(result.order.amount_kobo,'9000');

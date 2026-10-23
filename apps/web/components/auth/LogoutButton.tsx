@@ -1,12 +1,17 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/components/shared/AuthContext";
 import { routes } from "@/components/site/routes";
 import { useToast } from "@/components/shared/Toast";
-import { LogOut, Loader2, ShieldCheck, AlertTriangle, X, Clock } from "lucide-react";
+import { LogOut, Loader2, ShieldCheck, AlertTriangle, X, Clock, KeyRound } from "lucide-react";
 import { ConfirmModal } from "@/components/shared/Dialogs";
+
+export function SignInOptionsLink({ className = "", onClick }: { className?: string; onClick?: () => void }) {
+  return <Link href={routes.signInOptions} onClick={onClick} className={`inline-flex min-h-11 items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold text-obligon-navy hover:bg-obligon-mist focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-obligon-green ${className}`}><KeyRound size={18} aria-hidden="true" />Sign-in options</Link>;
+}
 
 export function LogoutButton({ variant = "button", className = "" }: { variant?: "button" | "dropdown"; className?: string }) {
   const router = useRouter();

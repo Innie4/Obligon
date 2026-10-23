@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { readFile } from 'node:fs/promises';
 import pg from 'pg';
 import express from 'express';
 const url = process.env.OBLIGON_TEST_DATABASE_URL;
@@ -11,6 +12,7 @@ if (url) assert.ok(['localhost','127.0.0.1','[::1]'].includes(new URL(url).hostn
 const check = (name, fn) => test(name, { skip: !url }, fn);
 const schema = `company_dashboard_${process.pid}_${randomUUID().replaceAll('-', '')}`;
 const userId = randomUUID(), orgId = randomUUID(), otherOrgId = randomUUID(), vehicleId = randomUUID(), driverId = randomUUID(), cardId = randomUUID();
+const stationPartnerOrgId=randomUUID(),stationOwnerId=randomUUID();
 let admin, pool, server, base;
 let config;
 const actualFetch = globalThis.fetch;
@@ -34,7 +36,7 @@ before(async () => {
   };
   pool=(await import('../src/db.js')).getPool();
   config=(await import('../src/config/env.js')).env;
-  await pool.query(`CREATE TABLE users(id uuid PRIMARY KEY, full_name text,email text, phone text, notification_prefs jsonb DEFAULT '{"email":false,"sms":false,"push":false}'::jsonb);
+  await pool.query(`CREATE TABLE users(id uuid PRIMARY KEY, full_name text,email text, phone text,role text DEFAULT 'company',status text DEFAULT 'active', notification_prefs jsonb DEFAULT '{"email":false,"sms":false,"push":false}'::jsonb);
     CREATE TABLE organizations(id uuid PRIMARY KEY,owner_user_id uuid,name text,type text DEFAULT 'company',rc_number text,address text,city text,website text,description text,credit_limit_kobo bigint DEFAULT 0,plan_code text,fleet_id text,verification_status text DEFAULT 'verified',updated_at timestamptz DEFAULT now());
     CREATE TABLE memberships(id uuid DEFAULT gen_random_uuid(),organization_id uuid,user_id uuid,role text,status text DEFAULT 'active',permissions jsonb DEFAULT '[]');
     CREATE TABLE vehicles(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),organization_id uuid,plate text,model text,vehicle_type text DEFAULT 'truck',fuel_type text DEFAULT 'Diesel',tank_capacity_l numeric DEFAULT 100,driver_id uuid,status text DEFAULT 'active',created_at timestamptz DEFAULT now());
@@ -51,7 +53,14 @@ before(async () => {
     CREATE TABLE support_tickets(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),reference text,user_id uuid,organization_id uuid,subject text,category text,message text,priority text,status text,created_at timestamptz DEFAULT now());
     CREATE TABLE ticket_messages(ticket_id uuid,sender_user_id uuid,sender_role text,body text);
     CREATE TABLE invoices(id uuid DEFAULT gen_random_uuid(),organization_id uuid,number text,amount_kobo bigint,status text,description text,created_at timestamptz DEFAULT now());`);
+  await pool.query(`ALTER TABLE organizations ADD COLUMN partner_type text DEFAULT 'fuel_station';
+    ALTER TABLE stations ADD COLUMN partner_org_id uuid,ADD COLUMN selling_units jsonb DEFAULT '{}',ADD COLUMN approved_selling_units jsonb DEFAULT '{}';
+    ALTER TABLE fuel_prices ADD COLUMN selling_unit text DEFAULT 'litre',ADD COLUMN updated_at timestamptz DEFAULT now();
+    ALTER TABLE transactions ADD COLUMN selling_unit text DEFAULT 'litre';`);
+  await pool.query(await readFile(new URL('../src/migrations/036_company_card_issuances.sql',import.meta.url),'utf8'));
   await pool.query('INSERT INTO users(id,full_name,email) VALUES($1,$2,$3)',[userId,'Test Company Owner','owner@example.invalid']);
+  await pool.query("INSERT INTO users(id,full_name,email,role) VALUES($1,'Test station owner','station@example.invalid','partner')",[stationOwnerId]);
+  await pool.query("INSERT INTO organizations(id,owner_user_id,name,type,partner_type,verification_status) VALUES($1,$2,'Verified network partner','partner','fuel_station','verified')",[stationPartnerOrgId,stationOwnerId]);
   await pool.query('INSERT INTO organizations(id,owner_user_id,name) VALUES($1,$2,$3),($4,$2,$5)',[orgId,userId,'Test Fleet',otherOrgId,'Other Fleet']);
   await pool.query('INSERT INTO vehicles(id,organization_id,plate,model) VALUES($1,$2,$3,$4)',[vehicleId,orgId,'LAG-22','Test Truck']);
   await pool.query('INSERT INTO drivers(id,organization_id,name) VALUES($1,$2,$3)',[driverId,orgId,'Ada']);
@@ -70,7 +79,7 @@ before(async () => {
   await new Promise(resolve=>{server=app.listen(0,'127.0.0.1',resolve);}); base=`http://127.0.0.1:${server.address().port}/api/company`;
 });
 after(async()=>{globalThis.fetch=actualFetch;if(!url)return; await new Promise(resolve=>server.close(resolve));await pool.end();await admin.query(`DROP SCHEMA ${schema} CASCADE`);await admin.end();});
-const request=async(path,method='GET',body)=>{const response=await fetch(base+path,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});const data=response.headers.get('content-type')?.includes('json')?await response.json():await response.text();return {status:response.status,data};};
+const request=async(path,method='GET',body)=>{if(path==='/cards'&&method==='POST')body={idempotencyKey:randomUUID(),...body};const response=await fetch(base+path,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});const data=response.headers.get('content-type')?.includes('json')?await response.json():await response.text();return {status:response.status,data};};
 const firstHolder={firstName:'Fixture',lastName:'Holder',dob:'1990-01-01',bvn:'20000000000',phone:'+2348000000000',address:'Fixture address',city:'Lagos',state:'Lagos',postalCode:'100001'};
 check('first company card validates issuer identity before creating an issuer customer',async()=>{
   await pool.query('UPDATE cards SET sudo_customer_id=NULL');
@@ -81,8 +90,8 @@ check('first company card validates issuer identity before creating an issuer cu
 });
 check('first company card issuer failures never produce local success',async()=>{
   issuerFailure=true;const count=(await pool.query('SELECT COUNT(*)::int AS count FROM cards')).rows[0].count;
-  try { const result=await request('/cards','POST',{label:'First card',dailyLimit:75000,monthlyLimit:1500000,holder:firstHolder});assert.equal(result.status,503);assert.equal((await pool.query('SELECT COUNT(*)::int AS count FROM cards')).rows[0].count,count); }
-  finally {issuerFailure=false;}
+  try { const result=await request('/cards','POST',{label:'First card',dailyLimit:75000,monthlyLimit:1500000,holder:firstHolder});assert.equal(result.status,409);assert.match(result.data.message,/Support review/);assert.equal((await pool.query('SELECT COUNT(*)::int AS count FROM cards')).rows[0].count,count); }
+  finally {issuerFailure=false;await pool.query("DELETE FROM company_card_issuances WHERE state='review_required'");}
 });
 check('first company card creates the verified issuer customer and stores only provider references',async()=>{
   const result=await request('/cards','POST',{label:'First card',dailyLimit:'75,000',monthlyLimit:'1,500,000',vehicleId,driverId,holder:firstHolder});
@@ -129,7 +138,7 @@ check('transaction list and exports use the same period and exact vehicle/driver
 });
 check('vehicle scope exports current fleet records rather than transactions',async()=>{const csv=await request('/reports/export?scope=vehicles&range=7');assert.equal(csv.status,200);assert.match(csv.data,/LAG-22/);assert.doesNotMatch(csv.data,/OWN-RECENT|FOREIGN/);});
 check('PDF exports remain supported',async()=>{const response=await fetch(base+'/reports/export?format=pdf&scope=transactions&range=30');assert.equal(response.status,200);assert.equal(response.headers.get('content-type'),'application/pdf');assert.equal((await response.text()).slice(0,4),'%PDF');});
-check('station locator exposes actual per-fuel prices and no guessed coordinates',async()=>{const stationId=randomUUID();await pool.query("INSERT INTO stations(id,name,address,city,hours) VALUES($1,'Test station','Test road','Lagos','24 hours')",[stationId]);await pool.query("INSERT INTO fuel_prices VALUES($1,'Diesel',139000)",[stationId]);const data=(await request('/stations?search=Test')).data.details[0];assert.equal(data.lat,null);assert.equal(data.lng,null);assert.equal(data.prices[0].fuel,'Diesel');assert.match(data.prices[0].priceLabel,/1,390/);});
+check('station locator exposes actual approved per-fuel prices and no guessed coordinates',async()=>{const stationId=randomUUID();await pool.query(`INSERT INTO stations(id,partner_org_id,name,address,city,hours,fuels,selling_units,approved_selling_units) VALUES($1,$2,'Test station','Test road','Lagos','24 hours','{AGO}','{"AGO":"litre"}','{"AGO":"litre"}')`,[stationId,stationPartnerOrgId]);await pool.query("INSERT INTO fuel_prices(station_id,fuel_type,price_kobo) VALUES($1,'Diesel',139000)",[stationId]);const result=await request('/stations?search=Test');assert.equal(result.status,200,JSON.stringify(result.data));const data=result.data.details[0];assert.equal(data.lat,null);assert.equal(data.lng,null);assert.equal(data.prices[0].fuel,'AGO');assert.equal(data.prices[0].sellingUnit,'litre');assert.match(data.prices[0].priceLabel,/1,390/);});
 
 check('empty PDF exports fit portrait width and remain valid PDFs',async()=>{const response=await fetch(base+'/reports/export?format=pdf&scope=transactions&range=1&vehicle=MISSING');assert.equal(response.status,200);const pdf=await response.text();assert.equal(pdf.slice(0,4),'%PDF');assert.match(pdf,/\/MediaBox \[0 0 595\.28 841\.89\]/);});
 

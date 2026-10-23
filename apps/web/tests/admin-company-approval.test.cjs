@@ -9,18 +9,22 @@ const text = node => node == null ? '' : Array.isArray(node) ? node.map(text).jo
 
 function fixture({ verified = false, reject = false } = {}) {
   const slots = [], effects = [], requests = []; let cursor = 0;
+  let records;
   const React = {
-    createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
+    createElement: (type, props, ...children) => type === records?.AdminRecords ? type({ ...props, children }) : ({ type, props: { ...props, children } }),
     useState(initial) { const index = cursor++; if (!(index in slots)) slots[index] = { value: initial }; return [slots[index].value, value => { slots[index].value = typeof value === 'function' ? value(slots[index].value) : value; }]; },
     useRef(initial) { const index = cursor++; return slots[index] ??= { current: initial }; },
     useCallback(fn, deps) { const index = cursor++, old = slots[index]; if (!old || deps.some((value, i) => !Object.is(value, old.deps[i]))) slots[index] = { fn, deps }; return slots[index].fn; },
     useEffect(fn, deps) { const index = cursor++, old = slots[index]; if (!old || deps.some((value, i) => !Object.is(value, old.deps[i]))) { slots[index] = { deps }; effects.push(fn); } },
   };
+  records = {};
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync(require.resolve('../components/admin-dashboard/AdminRecords.tsx'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React } }).outputText, { exports: records, require: name => name === 'react' ? React : {} });
   const row = { id: 'synthetic-company', name: 'Pending Fleet', verificationStatus: verified ? 'verified' : 'pending', subscriptionStatus: verified ? 'active' : 'canceled', cells: ['Pending Fleet', 'FLT_TEST', 'growth', 'ONBOARDING', '₦0'], status: verified ? 'Active' : 'Pending', creditLimit: 0 };
   const exports = {};
   const code = ts.transpileModule(fs.readFileSync(require.resolve('../components/admin-dashboard/AdminScreen.tsx'), 'utf8'), { fileName: 'AdminScreen.tsx', compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React } }).outputText;
   vm.runInNewContext(code, { exports, Error, FormData: class FormData { constructor(form) { this.entries = Object.entries(form.values); } [Symbol.iterator]() { return this.entries[Symbol.iterator](); } }, require: name => {
     if (name === 'react') return React;
+    if (name === './AdminRecords') return records;
     if (name === '@/lib/services') return { authenticatedRequest: async (path, init) => { if (init) { requests.push({ path, init, body: JSON.parse(init.body) }); if (reject) throw new Error('Company approval could not be recorded'); return { ok: true, message: 'Fleet created pending contract approval.' }; } return { metrics: [], companies: [row], total: 1 }; } };
     if (name.includes('admin-data')) return { adminPageCopy: { companies: { title: 'Company Oversight' } } };
     return {};
@@ -30,7 +34,7 @@ function fixture({ verified = false, reject = false } = {}) {
 }
 async function review(options) {
   const ui = fixture(options); ui.render(); await flush(); ui.render();
-  ui.all().find(node => node.type === 'button' && text(node) === 'Review record').props.onClick(); ui.render(); return ui;
+  ui.all().find(node => node.type === 'button' && text(node).startsWith('Review record') && text(node).includes('Pending Fleet')).props.onClick(); ui.render(); return ui;
 }
 test('company review exposes labelled verification and contract approval controls', async () => {
   const ui = await review();

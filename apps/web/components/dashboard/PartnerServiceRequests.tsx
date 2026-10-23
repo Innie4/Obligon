@@ -17,11 +17,16 @@ export function PartnerServiceRequests() {
     [tickets, setTickets] = React.useState<Ticket[]>([]),
     [selected, setSelected] = React.useState<Ticket | null>(null),
     [messages, setMessages] = React.useState<Message[]>([]),
+    [loading, setLoading] = React.useState(true),
+    [loadingMessages, setLoadingMessages] = React.useState(false),
+    [loadError, setLoadError] = React.useState(""),
+    [messageError, setMessageError] = React.useState(""),
     [error, setError] = React.useState(""),
     [busy, setBusy] = React.useState(false),
     [notice, setNotice] = React.useState("");
   const openSequence = React.useRef(0);
   const load = React.useCallback(async () => {
+    setLoading(true);
     try {
       const result = await authenticatedRequest<{
         services: string[];
@@ -29,9 +34,11 @@ export function PartnerServiceRequests() {
       }>("/api/partner/settings/service-requests");
       setServices(result.services);
       setTickets(result.tickets);
-      setError("");
+      setLoadError("");
     } catch (e) {
-      setError((e as Error).message);
+      setLoadError((e as Error).message);
+    } finally {
+      setLoading(false);
     }
   }, []);
   React.useEffect(() => {
@@ -41,6 +48,8 @@ export function PartnerServiceRequests() {
     const sequence = ++openSequence.current;
     setSelected(ticket);
     setMessages([]);
+    setMessageError("");
+    setLoadingMessages(true);
     try {
       const result = (
         await authenticatedRequest<{ messages: Message[] }>(
@@ -49,23 +58,25 @@ export function PartnerServiceRequests() {
       ).messages;
       if (sequence === openSequence.current) setMessages(result);
     } catch (e) {
-      setError((e as Error).message);
+      if (sequence === openSequence.current) setMessageError((e as Error).message);
+    } finally {
+      if (sequence === openSequence.current) setLoadingMessages(false);
     }
   }
   return (
-    <section className="mt-6 rounded-xl border bg-white p-6">
-      <h2 className="text-2xl font-bold">Support and plan services</h2>
-      <p className="mt-2 text-sm">
+    <section className="mt-6 min-w-0 rounded-2xl border border-obligon-border bg-white p-5 sm:p-6">
+      <h2 className="font-display text-xl font-bold tracking-tight text-obligon-navy">Support and plan services</h2>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-obligon-text">
         Requests reach Obligon’s operations team. Service availability, timing
         and any quote are confirmed before booking.
       </p>
       {error && (
-        <p role="alert" className="mt-3 text-red-800">
+        <p role="alert" className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">
           {error}
         </p>
       )}
       {notice && (
-        <p role="status" className="mt-3 text-green-900">
+        <p role="status" className="mt-4 rounded-xl bg-obligon-mist p-4 text-sm text-obligon-green">
           {notice}
         </p>
       )}
@@ -75,6 +86,8 @@ export function PartnerServiceRequests() {
           e.preventDefault();
           const form = e.currentTarget;
           setBusy(true);
+          setError("");
+          setNotice("");
           try {
             const result = await authenticatedRequest<{ reference: string }>(
               "/api/partner/settings/service-requests",
@@ -95,12 +108,13 @@ export function PartnerServiceRequests() {
           }
         }}
       >
-        <label className="block">
+        <label className="block text-sm font-semibold text-obligon-navy">
           Request type
           <select
             required
             name="service"
-            className="mt-2 block min-h-12 w-full rounded border p-3"
+            disabled={busy}
+            className="mt-2 block min-h-12 w-full rounded-xl border border-obligon-border bg-white p-3 text-sm font-normal disabled:opacity-60"
           >
             <option>General support</option>
             {services.map((service) => (
@@ -108,29 +122,35 @@ export function PartnerServiceRequests() {
             ))}
           </select>
         </label>
-        <label className="block">
+        <label className="block text-sm font-semibold text-obligon-navy">
           Describe your requirements
           <textarea
             required
             name="message"
             maxLength={5000}
-            className="mt-2 block min-h-28 w-full rounded border p-3"
+            disabled={busy}
+            className="mt-2 block min-h-28 w-full rounded-xl border border-obligon-border bg-white p-3 text-sm font-normal disabled:opacity-60"
           />
         </label>
         <button
           disabled={busy}
-          className="min-h-12 rounded bg-obligon-green px-5 font-bold text-white"
+          className="min-h-12 rounded-xl bg-obligon-green px-5 text-sm font-semibold text-white transition-colors hover:bg-obligon-green/90 disabled:opacity-60"
         >
           {busy ? "Submitting…" : "Send request"}
         </button>
       </form>
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
-        <div>
+      <div className="mt-8 grid gap-6 border-t border-obligon-border pt-6 md:grid-cols-2">
+        <div className="min-w-0">
+          <h3 className="mb-3 text-sm font-semibold text-obligon-navy">Your requests</h3>
+          {loading ? <p role="status" className="py-4 text-sm text-obligon-text">Loading your requests…</p> : null}
+          {loadError ? <div role="alert" className="mb-3 rounded-xl bg-amber-50 p-4 text-sm text-amber-900"><p>{loadError}</p><button type="button" disabled={loading} onClick={() => void load()} className="mt-2 min-h-11 rounded-lg px-2 font-semibold underline disabled:opacity-60">Retry loading requests</button></div> : null}
+          {!loading && !loadError && tickets.length === 0 ? <p className="rounded-xl bg-obligon-mist/60 p-4 text-sm leading-6 text-obligon-text">No requests yet. Send a request above and follow its progress here.</p> : null}
           {tickets.map((ticket) => (
             <button
               type="button"
               key={ticket.id}
-              className="mb-2 block min-h-12 w-full rounded border p-3 text-left"
+              aria-pressed={selected?.id === ticket.id}
+              className={`mb-2 block min-h-12 w-full break-words rounded-xl border p-4 text-left text-sm transition-colors ${selected?.id === ticket.id ? "border-obligon-green bg-obligon-mist text-obligon-green" : "border-obligon-border text-obligon-navy hover:bg-obligon-mist/60"}`}
               onClick={() => void open(ticket)}
             >
               {ticket.reference} · {ticket.subject} · {ticket.status}
@@ -138,19 +158,23 @@ export function PartnerServiceRequests() {
           ))}
         </div>
         {selected && (
-          <div>
-            <h3 className="font-bold">{selected.subject}</h3>
+          <div className="min-w-0 rounded-xl bg-obligon-mist/50 p-4">
+            <h3 className="break-words text-sm font-semibold text-obligon-navy">{selected.subject}</h3>
             <button
               type="button"
-              className="min-h-12 underline"
+              disabled={loadingMessages}
+              className="min-h-12 rounded-lg text-sm font-semibold text-obligon-green underline disabled:opacity-60"
               onClick={() => void open(selected)}
             >
               Refresh replies
             </button>
+            {loadingMessages ? <p role="status" className="py-3 text-sm text-obligon-text">Loading replies…</p> : null}
+            {messageError ? <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">{messageError}</p> : null}
+            {!loadingMessages && !messageError && messages.length === 0 ? <p className="py-3 text-sm text-obligon-text">There are no replies to this request yet.</p> : null}
             {messages.map((message) => (
               <p
                 key={message.id}
-                className="mt-3 whitespace-pre-wrap border-t pt-3"
+                className="mt-3 break-words whitespace-pre-wrap border-t border-obligon-border pt-3 text-sm leading-6 text-obligon-navy"
               >
                 <strong>{message.sender_role}: </strong>
                 {message.body}
@@ -158,6 +182,7 @@ export function PartnerServiceRequests() {
             ))}
           </div>
         )}
+        {!selected ? <p className="rounded-xl bg-obligon-mist/50 p-4 text-sm leading-6 text-obligon-text">Select a request to read replies from the support team.</p> : null}
       </div>
     </section>
   );

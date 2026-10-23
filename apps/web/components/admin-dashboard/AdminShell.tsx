@@ -7,7 +7,7 @@ import { AdminHeader } from "./AdminHeader";
 import { AdminSidebar } from "./AdminSidebar";
 import { adminNav } from "@/lib/mock/admin-data";
 import { AuthGuard } from "@/components/auth/AuthGuard";
-import { LogoutButton } from "@/components/auth/LogoutButton";
+import { LogoutButton, SignInOptionsLink } from "@/components/auth/LogoutButton";
 import { useDialogFocus } from "@/components/shared/useDialogFocus";
 
 type AdminShellProps = {
@@ -27,25 +27,26 @@ export function AdminShell({ children }: AdminShellProps) {
 
   return (
     <AuthGuard allowedRoles={["admin"]}>
-      <main className="min-h-screen bg-[#f7f7fd] text-obligon-navy">
+      <main className="min-h-screen bg-[#f8fafc] text-obligon-navy">
         <AdminSidebar />
       {mobileMenuOpen ? (
         <div className="fixed inset-0 z-50 bg-[#050816]/75 lg:hidden" onMouseDown={() => setMobileMenuOpen(false)}>
-          <aside ref={menuRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Admin navigation" onMouseDown={(event) => event.stopPropagation()} className="flex h-full w-[min(280px,100%)] flex-col overflow-y-auto bg-[#061958] p-6 text-white shadow-hero outline-none">
+          <aside ref={menuRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Admin navigation" onMouseDown={(event) => event.stopPropagation()} className="flex h-full w-[min(300px,100%)] flex-col overflow-y-auto border-r border-obligon-border bg-white p-5 text-obligon-navy shadow-lg outline-none">
             <div className="flex shrink-0 items-center justify-between gap-3">
-              <p className="font-display text-2xl font-extrabold">Obligon LTD Admin</p>
-              <button type="button" onClick={() => setMobileMenuOpen(false)} className="grid size-11 shrink-0 place-items-center rounded-lg bg-white/10" aria-label="Close admin menu"><X size={20} /></button>
+              <p className="font-display text-xl font-bold">Admin workspace</p>
+              <button type="button" onClick={() => setMobileMenuOpen(false)} className="grid size-11 shrink-0 place-items-center rounded-lg bg-obligon-mist" aria-label="Close admin menu"><X size={20} /></button>
             </div>
             <nav aria-label="Admin sections" className="mt-8 space-y-2">
-              {adminNav.map((item) => <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)} className="flex min-h-11 items-center rounded-lg px-4 text-sm font-bold text-[#dce4ff] hover:bg-white/10 hover:text-obligon-lime">{item.label}</Link>)}
+              {adminNav.map((item) => <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)} className="flex min-h-11 items-center rounded-lg px-4 text-sm font-semibold text-obligon-text hover:bg-obligon-mist hover:text-obligon-navy">{item.label}</Link>)}
             </nav>
-            <div className="mt-auto border-t border-white/20 pt-4">
-              <LogoutButton className="min-h-11 w-full justify-start !text-white hover:!bg-white/10" />
+            <div className="mt-auto border-t border-obligon-border pt-4">
+              <SignInOptionsLink className="w-full justify-start" />
+              <LogoutButton className="min-h-11 w-full justify-start" />
             </div>
           </aside>
         </div>
       ) : null}
-      <div className="lg:pl-[280px]">
+      <div className="min-w-0 lg:pl-[280px]">
         <AdminHeader onOpenMenu={() => setMobileMenuOpen(true)} />
         {children}
       </div>

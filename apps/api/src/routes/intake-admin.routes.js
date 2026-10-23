@@ -9,6 +9,7 @@ import {
 import { audit, notify } from "../lib/notify.js";
 import { signedUrl } from "../lib/storage.js";
 import { queueEmail, flushEmailOutbox } from "../lib/email-outbox.js";
+import { stationFuelConfiguration } from "../lib/station-approval.js";
 const router = Router();
 const id = (value) => {
   if (
@@ -199,8 +200,8 @@ router.get(
   asyncHandler(async (_req, res) =>
     res.json({
       stations:
-        await q(`SELECT s.id,s.name,s.address,s.city,s.lat,s.lng,s.location_confirmed,s.fuels,s.status,s.review_note,o.name AS organization,o.verification_status
- FROM stations s JOIN organizations o ON o.id=s.partner_org_id ORDER BY s.created_at DESC`),
+        (await q(`SELECT s.id,s.name,s.address,s.city,s.lat,s.lng,s.location_confirmed,s.fuels,s.status,s.review_note,s.selling_units,s.approved_selling_units,o.partner_type,o.name AS organization,o.verification_status
+ FROM stations s JOIN organizations o ON o.id=s.partner_org_id ORDER BY s.created_at DESC`)).map(s=>({...s,sellingUnits:s.selling_units,approvedSellingUnits:s.approved_selling_units})),
     }),
   ),
 );
@@ -217,7 +218,7 @@ router.post(
       throw badRequest("Choose a review decision and provide a note");
     const station = await tx(async (t) => {
       const row = await t.one(
-        "SELECT s.*,o.verification_status FROM stations s JOIN organizations o ON o.id=s.partner_org_id WHERE s.id=$1 FOR UPDATE OF s",
+        "SELECT s.*,o.verification_status,o.partner_type,o.type AS org_type FROM stations s JOIN organizations o ON o.id=s.partner_org_id WHERE s.id=$1 FOR UPDATE OF s",
         [id(req.params.id)],
       );
       if (!row) throw notFound("Station not found");
@@ -231,9 +232,12 @@ router.post(
         throw forbidden(
           "Verify the partner and confirm station coordinates before publishing",
         );
+      const config=status==='active'?stationFuelConfiguration(row,row.fuels,req.body?.sellingUnits??row.selling_units):null;
       return t.one(
-        "UPDATE stations SET status=$2,review_note=$3,reviewed_by=$4,reviewed_at=now() WHERE id=$1 RETURNING *",
-        [row.id, status, note, req.user.id],
+        `UPDATE stations SET status=$2,review_note=$3,reviewed_by=$4,reviewed_at=now(),
+          fuels=COALESCE($5,fuels),selling_units=COALESCE($6::jsonb,selling_units),approved_selling_units=COALESCE($6::jsonb,approved_selling_units)
+          WHERE id=$1 RETURNING *`,
+        [row.id,status,note,req.user.id,config?.fuels??null,config?JSON.stringify(config.sellingUnits):null],
       );
     });
     await audit({

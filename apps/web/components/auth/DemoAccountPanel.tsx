@@ -89,7 +89,7 @@ function DemoAccountPanelBody() {
         if (!accounts.length) return null;
         return (
           <div key={group} className="mt-4">
-            <p className="text-[10px] font-extrabold uppercase tracking-[1px] text-obligon-text">
+            <p className="text-xs font-extrabold text-obligon-text">
               {group}
             </p>
             <ul className="mt-2 grid gap-2">
@@ -106,7 +106,7 @@ function DemoAccountPanelBody() {
                     >
                       <span
                         aria-hidden="true"
-                        className="grid size-9 shrink-0 place-items-center rounded-full bg-[#e8fbd7] text-[11px] font-extrabold text-obligon-green"
+                        className="grid size-9 shrink-0 place-items-center rounded-full bg-[#e8fbd7] text-xs font-extrabold text-obligon-green"
                       >
                         {account.initials}
                       </span>
@@ -136,7 +136,7 @@ function DemoAccountPanelBody() {
         Says what it is and what it costs. A demo panel that looks like a normal
         feature is how a seeded account ends up being treated as a real one.
       */}
-      <p className="mt-4 flex items-start gap-1.5 border-t border-obligon-border pt-3 text-[11px] font-medium text-obligon-text">
+      <p className="mt-4 flex items-start gap-1.5 border-t border-obligon-border pt-3 text-xs font-medium text-obligon-text">
         <AlertTriangle size={13} className="mt-0.5 shrink-0 text-[#986700]" />
         <span>
           Shared demo credentials with no two-factor. This panel is compiled in only

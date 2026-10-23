@@ -1,7 +1,8 @@
 "use client";
+import { sellingUnitLabel } from "../../../../packages/shared/partner-access.mjs";
 import * as React from "react";
 import Link from "next/link";
-import { Car, CreditCard, Download, Fuel, Loader2, Plus, Search } from "lucide-react";
+import { Download, Loader2, Plus, Search } from "lucide-react";
 import { pageCopy, type CompanyPageKey, type CompanyTone, type Metric } from "@/lib/mock/company-data";
 import { CompanyModals, companyTopupStorageKey, type CompanyModalContext, type CompanyOperationModalKey } from "./CompanyModals";
 import { companyApi, type CompanyRow } from "@/lib/services/company";
@@ -11,16 +12,17 @@ import { AsyncBoundary, EmptyState } from "@/components/shared/States";
 import { useToast } from "@/components/shared/Toast";
 import { useSession } from "@/components/shared/AuthContext";
 import { DateField } from "@/components/shared/Calendar/DateField";
+import { DashboardSearchQuery } from "@/components/shared/DashboardSearchQuery";
 type OpenModal = (modal: CompanyOperationModalKey, context?: CompanyModalContext) => void;
 type PageProps = {
   onModal: OpenModal;
 };
 const tone: Record<CompanyTone, string> = { green: "bg-[#e8fbd7] text-obligon-green", red: "bg-[#ffe8e8] text-[#c1121f]", amber: "bg-[#fff3d8] text-[#9a6300]", blue: "bg-[#e8efff] text-obligon-blue", dark: "bg-[#07162f] text-white", muted: "bg-[#edf1f5] text-obligon-text" };
-const buttonClass = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-obligon-green px-5 py-2 text-sm font-extrabold text-white";
-const controlClass = "min-h-11 min-w-0 rounded-xl border border-[#dfe5ec] bg-white px-3 text-sm";
+const buttonClass = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-obligon-green px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-obligon-green/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-obligon-green";
+const controlClass = "min-h-11 min-w-0 rounded-xl border border-obligon-border bg-white px-3 text-sm text-obligon-navy transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-obligon-green";
 function Canvas({ children }: {
   children: React.ReactNode;
-}) { return <section className="px-4 py-7 sm:px-8 lg:px-10">{children}</section>; }
+}) { return <section className="mx-auto w-full min-w-0 max-w-[1600px] break-words px-4 py-6 sm:px-6 sm:py-8 lg:px-8">{children}</section>; }
 function Header({ pageKey, action, onModal }: {
   pageKey: CompanyPageKey;
   action?: {
@@ -32,13 +34,13 @@ function Header({ pageKey, action, onModal }: {
 }) {
   const page = pageCopy[pageKey];
   const { user } = useSession();
-  return <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+  return <div className="flex flex-col gap-4 border-b border-obligon-border pb-6 lg:flex-row lg:items-end lg:justify-between">
 
     <div>
 
-      <p className="text-xs font-extrabold uppercase tracking-wide text-obligon-green">Company dashboard</p>
+      <p className="text-xs font-semibold tracking-wide text-obligon-green">Company workspace</p>
 
-      <h1 className="mt-2 break-words font-display text-3xl font-extrabold text-obligon-navy lg:text-4xl">{pageKey === "overview" ? user?.organization || "Company dashboard" : page.title}</h1>
+      <h1 className="mt-2 break-words font-display text-2xl font-bold tracking-tight text-obligon-navy sm:text-3xl">{pageKey === "overview" ? user?.organization || "Company dashboard" : page.title}</h1>
 
       {page.description ? <p className="mt-2 max-w-2xl text-sm leading-6 text-obligon-text">{page.description}</p> : null}
 
@@ -71,25 +73,19 @@ function Status({ status, statusTone = "muted" }: {
 function Metrics({ metrics }: {
   metrics: Metric[];
 }) {
-  return <div className="mt-6 grid gap-4 md:grid-cols-3">
+  return <dl aria-label="Company metrics" className={`mt-6 grid grid-cols-2 gap-3 sm:gap-4 ${metrics.length > 3 ? "sm:grid-cols-4" : metrics.length === 3 ? "sm:grid-cols-3" : ""}`}>
 
-    {metrics.map((metric, index) => <article key={metric.label} className="rounded-xl border border-[#dfe5ec] bg-white p-5">
+    {metrics.map((metric, index) => <div key={metric.label} className={`min-w-0 rounded-xl border border-obligon-border bg-white p-3 sm:p-4 xl:p-5 ${metrics.length === 3 && index === 2 ? "col-span-2 sm:col-span-1" : ""}`}>
 
-      <span className="text-obligon-green">
+      <dt className="text-xs font-medium leading-5 text-obligon-text sm:text-sm">{metric.label}</dt>
 
-        {index === 0 ? <Car size={20} /> : index === 1 ? <Fuel size={20} /> : <CreditCard size={20} />}
+      <dd className="mt-1 break-words text-2xl font-bold tracking-tight text-obligon-navy tabular-nums sm:mt-2 xl:text-3xl">{metric.value.split(/(\s+(?:standard m³|kg|L)(?=\s|$|·))/).map((part, partIndex) => partIndex % 2 ? <span key={partIndex} className="whitespace-nowrap text-sm font-medium tracking-normal text-obligon-text sm:text-base">{part}</span> : part)}</dd>
 
-      </span>
+      {metric.helper ? <dd className="mt-1 text-xs leading-5 text-obligon-text">{metric.helper}</dd> : null}
 
-      <p className="mt-4 text-xs font-bold text-obligon-text">{metric.label}</p>
+    </div>)}
 
-      <p className="mt-1 break-words text-3xl font-extrabold text-obligon-navy">{metric.value}</p>
-
-      {metric.helper ? <p className="mt-2 text-xs text-obligon-text">{metric.helper}</p> : null}
-
-    </article>)}
-
-  </div>;
+  </dl>;
 }
 function Table({ title, columns, rows, empty = "No records yet.", actionLabel, onAction, onRowAction, rowActionLabel = "Manage" }: {
   title: string;
@@ -102,11 +98,11 @@ function Table({ title, columns, rows, empty = "No records yet.", actionLabel, o
   rowActionLabel?: string;
 }) {
   const hasStatus = rows.some(row => row.status);
-  return <section className="mt-6 overflow-hidden rounded-xl border border-[#dfe5ec] bg-white">
+  return <section className="mt-6 min-w-0 overflow-hidden rounded-xl border border-obligon-border bg-white">
 
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#dfe5ec] p-5">
 
-      <h2 className="font-display text-xl font-extrabold text-obligon-navy">{title}</h2>
+      <h2 className="font-display text-lg font-bold text-obligon-navy">{title}</h2>
 
       {onAction && actionLabel ? <button type="button" onClick={onAction} className="min-h-11 rounded-lg px-3 text-sm font-bold text-obligon-green hover:underline">
 
@@ -116,19 +112,34 @@ function Table({ title, columns, rows, empty = "No records yet.", actionLabel, o
 
     </div>
 
-    {rows.length ? <div className="overflow-x-auto">
+    {rows.length ? <>
+      <ul aria-label={`${title} records`} className="divide-y divide-obligon-border md:hidden">
+        {rows.map((row, index) => <li key={row.id ?? `${row.cells[0]}-${index}`} className="p-4 sm:p-5">
+          <dl className="grid min-w-0 grid-cols-2 gap-x-4 gap-y-4">
+            {row.cells.map((cell, cellIndex) => <div key={cellIndex} className={cellIndex === 0 ? "col-span-2 min-w-0" : "min-w-0"}>
+              <dt className="text-xs font-medium text-obligon-text">{columns[cellIndex]}</dt>
+              <dd className={`mt-1 whitespace-pre-line break-words text-sm text-obligon-navy ${cellIndex === 0 ? "font-bold" : "font-medium"}`}>{cell}</dd>
+            </div>)}
+            {row.status ? <div className="col-span-2"><dt className="sr-only">Status</dt><dd><Status status={row.status} statusTone={row.tone} /></dd></div> : null}
+          </dl>
+          {onRowAction ? <button type="button" onClick={() => onRowAction(row)} className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-obligon-border px-4 text-sm font-bold text-obligon-green hover:bg-obligon-mist">{rowActionLabel}<span className="sr-only"> {row.cells[0]}</span></button> : null}
+        </li>)}
+      </ul>
+      <p className="hidden border-b border-obligon-border bg-obligon-mist/50 px-5 py-3 text-xs leading-5 text-obligon-text md:block">Scroll horizontally when needed to view all columns and actions.</p>
+      <div tabIndex={0} role="region" aria-label={`${title} table`} className="hidden overflow-x-auto md:block">
 
       <table className="w-full text-left text-sm">
+        <caption className="sr-only">{title}</caption>
 
         <thead className="bg-[#f2f6fa] text-xs text-[#566171]">
 
           <tr>
 
-            {columns.map(column => <th key={column} className="whitespace-nowrap px-5 py-4">{column}</th>)}
+            {columns.map(column => <th key={column} scope="col" className="whitespace-nowrap px-5 py-4 font-semibold">{column}</th>)}
 
-            {hasStatus ? <th className="px-5 py-4">Status</th> : null}
+            {hasStatus ? <th scope="col" className="px-5 py-4 font-semibold">Status</th> : null}
 
-            {onRowAction ? <th className="px-5 py-4">Action</th> : null}
+            {onRowAction ? <th scope="col" className="px-5 py-4 font-semibold">Action</th> : null}
 
           </tr>
 
@@ -136,11 +147,11 @@ function Table({ title, columns, rows, empty = "No records yet.", actionLabel, o
 
         <tbody className="divide-y divide-[#eef2f6]">
 
-          {rows.map((row, index) => <tr key={row.id ?? `${row.cells[0]}-${index}`}>
+          {rows.map((row, index) => <tr key={row.id ?? `${row.cells[0]}-${index}`} className="transition-colors hover:bg-obligon-mist/50">
 
-            {row.cells.map((cell, cellIndex) => <td key={cellIndex} className="min-w-[120px] px-5 py-4 align-top">
+            {row.cells.map((cell, cellIndex) => <td key={cellIndex} className="min-w-[120px] max-w-sm break-words px-5 py-4 align-top">
 
-              {cell.split("\n").map((part, partIndex) => <p key={partIndex} className={partIndex ? "mt-1 text-xs text-obligon-text" : "font-bold text-obligon-navy"}>{part}</p>)}
+              {cell.split("\n").map((part, partIndex) => <p key={partIndex} className={partIndex ? "mt-1 text-xs text-obligon-text" : "font-semibold text-obligon-navy"}>{part}</p>)}
 
             </td>)}
 
@@ -158,7 +169,8 @@ function Table({ title, columns, rows, empty = "No records yet.", actionLabel, o
 
       </table>
 
-    </div> : <EmptyState title={empty} />}
+      </div>
+    </> : <div className="px-4"><EmptyState title={empty} /></div>}
 
   </section>;
 }
@@ -186,7 +198,7 @@ const pageSize = 20;
 function CompanyPagination({ page, total, count, onPageChange }: { page: number; total: number; count: number; onPageChange: (page: number) => void }) {
   return <nav aria-label="Record pages" className="mt-4 flex flex-wrap items-center justify-between gap-3">
     <p role="status" className="text-sm text-obligon-text">{count ? `${page * pageSize + 1}–${page * pageSize + count}` : "0"} of {total} records · Page {page + 1} of {Math.max(1, Math.ceil(total / pageSize))}</p>
-    <div className="flex gap-2"><button type="button" className={`${controlClass} disabled:opacity-50`} disabled={page === 0} onClick={() => onPageChange(page - 1)}>Previous</button><button type="button" className={`${controlClass} disabled:opacity-50`} disabled={(page + 1) * pageSize >= total} onClick={() => onPageChange(page + 1)}>Next</button></div>
+    <div className="flex gap-2"><button type="button" className={`${controlClass} disabled:cursor-not-allowed disabled:bg-obligon-panel disabled:text-obligon-text/50`} disabled={page === 0} onClick={() => onPageChange(page - 1)}>Previous</button><button type="button" className={`${controlClass} disabled:cursor-not-allowed disabled:bg-obligon-panel disabled:text-obligon-text/50`} disabled={(page + 1) * pageSize >= total} onClick={() => onPageChange(page + 1)}>Next</button></div>
   </nav>;
 }
 function Vehicles({ onModal }: PageProps) {
@@ -194,6 +206,7 @@ function Vehicles({ onModal }: PageProps) {
   const [search, setSearch] = React.useState("");
   const result = useAsync(() => companyApi.vehicles(new URLSearchParams({ limit: String(pageSize), offset: String(page * pageSize), search }).toString()), [page, search]);
   return <Canvas>
+    <DashboardSearchQuery onSearch={value => { setSearch(value); setPage(0); }} />
 
     <Header pageKey="vehicles" action={{ label: "Add Vehicle", modal: "vehicle" }} onModal={onModal} />
 
@@ -206,7 +219,7 @@ function Vehicles({ onModal }: PageProps) {
       <button type="button" onClick={() => onModal("export", { scope: "vehicles" })} className={controlClass}>Export Fleet</button>
 
     </div>
-    <label className="mt-4 block max-w-lg text-sm font-bold">Search fleet vehicles<input type="search" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} className={`${controlClass} mt-1 w-full`} /></label>
+    <label className="mt-4 block max-w-lg text-sm font-bold">Search fleet vehicles<input type="search" maxLength={254} value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} className={`${controlClass} mt-1 w-full`} /></label>
 
     <DataBoundary result={result}>
 
@@ -221,7 +234,12 @@ function Cards({ onModal }: PageProps) {
   const [page, setPage] = React.useState(0);
   const [search, setSearch] = React.useState("");
   const result = useAsync(() => companyApi.cards(new URLSearchParams({ limit: String(pageSize), offset: String(page * pageSize), search }).toString()), [page, search]);
+  const cards = (result.data?.cards ?? []).map(row => {
+    const [driver, vehicle] = (row.cells[2] ?? "").split("\n");
+    return { ...row, cells: row.cells.map((cell, index) => index === 0 ? cell.split("\n")[0] : index === 2 ? `Driver: ${driver || "Not recorded"}\nVehicle: ${vehicle === "Pool Card" ? "Unassigned" : vehicle || "Not recorded"}` : cell) };
+  });
   return <Canvas>
+    <DashboardSearchQuery onSearch={value => { setSearch(value); setPage(0); }} />
 
     <Header pageKey="cards" action={{ label: "Issue New Card", modal: "newCard" }} onModal={onModal} />
 
@@ -233,13 +251,13 @@ function Cards({ onModal }: PageProps) {
       <button type="button" onClick={() => onModal("posCode")} className={controlClass}>Get single-use fuel code</button>
 
     </div>
-    <label className="mt-4 block max-w-lg text-sm font-bold">Search fuel cards<input type="search" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} className={`${controlClass} mt-1 w-full`} /></label>
+    <label className="mt-4 block max-w-lg text-sm font-bold">Search fuel cards<input type="search" maxLength={254} value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} className={`${controlClass} mt-1 w-full`} /></label>
 
     <DataBoundary result={result}>
 
       <Metrics metrics={result.data?.metrics ?? []} />
 
-      <Table title="All cards" columns={["Card", "Number", "Assignment", "Remaining monthly limit"]} rows={result.data?.cards ?? []} empty="No cards. Issue your first card above." onRowAction={row => onModal("cardConfirm", { cardId: row.cardId ?? row.id })} />
+      <Table title="All cards" columns={["Card", "Number", "Driver / vehicle", "Remaining monthly limit"]} rows={cards} empty="No cards. Issue your first card above." onRowAction={row => onModal("cardConfirm", { cardId: row.cardId ?? row.id })} />
       <CompanyPagination page={page} total={result.data?.total ?? 0} count={result.data?.cards.length ?? 0} onPageChange={setPage} />
 
     </DataBoundary>
@@ -248,6 +266,7 @@ function Cards({ onModal }: PageProps) {
 }
 function Transactions({ onModal }: PageProps) {
   const [page, setPage] = React.useState(0);
+  const [search, setSearch] = React.useState("");
   const [vehicle, setVehicle] = React.useState("");
   const [driver, setDriver] = React.useState("");
   const [range, setRange] = React.useState("30");
@@ -255,18 +274,26 @@ function Transactions({ onModal }: PageProps) {
   const choices = useAsync(companyApi.choices);
   const driverFilterReady = choices.data?.capabilities?.stableDriverFilters === true;
   const effectiveDriverId = driverFilterReady ? driver : "";
-  const query = new URLSearchParams({ range, limit: String(pageSize), offset: String(page * pageSize) });
+  const query = new URLSearchParams({ limit: String(pageSize), offset: String(page * pageSize) });
+  if (range) query.set("range", range);
+  if (search) query.set("search", search);
   if (vehicle)
     query.set("vehicle", vehicle);
   if (effectiveDriverId)
     query.set("driverId", effectiveDriverId);
   if (date)
     query.set("date", date);
-  const result = useAsync(() => companyApi.transactions(query.toString()), [vehicle, effectiveDriverId, range, date, page]);
+  const result = useAsync(() => companyApi.transactions(query.toString()), [search, vehicle, effectiveDriverId, range, date, page]);
   const context = { scope: "transactions", range, vehicle, driverId: effectiveDriverId, date };
   return <Canvas>
+    <DashboardSearchQuery onSearch={value => {
+      setSearch(value); setPage(0);
+      if (value) { setVehicle(""); setDriver(""); setDate(""); setRange(""); }
+    }} />
 
     <Header pageKey="transactions" action={{ label: "Export CSV", modal: "export", context }} onModal={onModal} />
+
+    <label className="mt-4 block max-w-lg text-sm font-bold">Search transactions<input type="search" value={search} maxLength={254} onChange={e => { setSearch(e.target.value); setPage(0); }} className={`${controlClass} mt-1 w-full`} placeholder="Reference, station, vehicle or driver" /></label>
 
     <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 
@@ -288,6 +315,8 @@ function Transactions({ onModal }: PageProps) {
 
       <label className="text-xs font-bold">Period<select className={`${controlClass} mt-1 w-full`} value={range} onChange={e => { setRange(e.target.value); setDate(""); setPage(0); }}>
 
+        <option value="">All time</option>
+
         {[7, 30, 90, 365].map(days => <option key={days} value={days}>Last {days} days</option>)}
 
       </select></label>
@@ -304,7 +333,7 @@ function Transactions({ onModal }: PageProps) {
       <Table title="Transactions" columns={["Date & time", "Vehicle / driver", "Station / fuel", "Card", "Amount"]} rows={result.data?.transactions ?? []} empty="No transactions match these filters." />
 
       <CompanyPagination page={page} total={result.data?.total ?? 0} count={result.data?.transactions.length ?? 0} onPageChange={setPage} />
-      <p className="mt-3 text-xs text-obligon-text">Export includes all matching records.</p>
+      <p className="mt-3 text-xs text-obligon-text">Text search filters this table. CSV export uses its selected period and fleet filters.</p>
 
     </DataBoundary>
 
@@ -322,7 +351,7 @@ function Reports({ onModal }: PageProps) {
 
       <Metrics metrics={result.data?.metrics ?? []} />
 
-      <Table title="Spend by vehicle and fuel" columns={["Report date", "Vehicle", "Fuel / litres", "Spend"]} rows={result.data?.spend ?? []} empty="No recorded spend in this period." />
+      <Table title="Spend by vehicle and fuel" columns={["Report date", "Vehicle", "Fuel / quantity", "Spend"]} rows={result.data?.spend ?? []} empty="No recorded spend in this period." />
 
       <section className="mt-6 rounded-xl border border-[#dfe5ec] bg-white p-5">
 
@@ -350,6 +379,7 @@ function Stations({ onModal }: PageProps) {
   const [search, setSearch] = React.useState("");
   const result = useAsync(() => companyApi.stations(search), [search]);
   return <Canvas>
+    <DashboardSearchQuery onSearch={setSearch} />
 
     <Header pageKey="stations" onModal={onModal} />
 
@@ -357,7 +387,7 @@ function Stations({ onModal }: PageProps) {
 
       <Search size={18} />
 
-      <input className="min-w-0 flex-1 bg-transparent py-3 text-sm" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search station, address or city" aria-label="Search stations" />
+      <input className="min-w-0 flex-1 bg-transparent py-3 text-sm" maxLength={254} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search station, address or city" aria-label="Search stations" />
 
     </label>
 
@@ -382,7 +412,7 @@ function Stations({ onModal }: PageProps) {
 
                 <dt>{price.fuel}</dt>
 
-                <dd className="font-bold">{price.priceLabel} /L</dd>
+                <dd className="font-bold">{price.priceLabel} / {sellingUnitLabel(price.sellingUnit)}</dd>
 
               </div>)}
 
@@ -532,8 +562,9 @@ function Billing({ onModal }: PageProps) {
 function Team({ onModal }: PageProps) {
   const [query, setQuery] = React.useState("");
   const result = useAsync(companyApi.team);
-  const rows = (result.data?.team ?? []).filter(row => row.cells.join(" ").toLowerCase().includes(query.toLowerCase()));
+  const rows = (result.data?.team ?? []).filter(row => row.cells.join(" ").toLowerCase().includes(query.trim().toLowerCase()));
   return <Canvas>
+    <DashboardSearchQuery onSearch={setQuery} />
 
     <Header pageKey="team" action={{ label: "Invite Team Member", modal: "teamMember" }} onModal={onModal} />
 
@@ -541,7 +572,7 @@ function Team({ onModal }: PageProps) {
 
       <span className="text-xs font-bold">Search team members</span>
 
-      <input value={query} onChange={e => setQuery(e.target.value)} className={`${controlClass} mt-1 w-full`} />
+      <input type="search" maxLength={254} value={query} onChange={e => setQuery(e.target.value)} className={`${controlClass} mt-1 w-full`} />
 
     </label>
 
@@ -591,7 +622,7 @@ function Notifications({ onModal }: PageProps) {
 
       <section className="mt-5 space-y-4">
 
-        {result.data?.detailed.map(notification => <article key={notification.id} className={`rounded-xl border border-[#dfe5ec] bg-white p-5 ${notification.read ? "opacity-75" : ""}`}>
+        {result.data?.detailed.map(notification => <article key={notification.id} className={`rounded-xl border border-obligon-border bg-white p-5 ${notification.read ? "" : "border-l-4 border-l-obligon-green"}`}>
 
           <div className="flex flex-wrap items-start justify-between gap-3">
 
@@ -677,7 +708,7 @@ function SettingsPage({ onModal }: PageProps) {
 
     <DataBoundary result={result}>
 
-      <section className="mt-6 grid gap-5 xl:grid-cols-[1fr_320px]">
+      <section className="mt-6 grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
 
         <article className="rounded-xl border border-[#dfe5ec] bg-white p-5">
 

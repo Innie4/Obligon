@@ -13,8 +13,7 @@ export function PageIntro({ eyebrow, title, body, align = "left", tone = "defaul
     <div className={align === "center" ? "mx-auto max-w-3xl text-center" : "max-w-3xl"}>
       {eyebrow ? (
         <div className={`mb-4 flex items-center gap-3 ${align === "center" ? "justify-center" : ""}`}>
-          <span className="h-px w-12 bg-gradient-to-r from-transparent via-obligon-green to-transparent" />
-          <p className={`text-[13px] uppercase tracking-[1.6px] ${inverse ? "text-obligon-lime" : "text-obligon-green"}`}>
+          <p className={`text-sm font-semibold ${inverse ? "text-obligon-lime" : "text-obligon-green"}`}>
             {eyebrow}
           </p>
         </div>

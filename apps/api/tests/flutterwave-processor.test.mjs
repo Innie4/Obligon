@@ -108,7 +108,8 @@ test("a transfer amount is converted to the major unit", () => {
   assert.match(flw, /amount: toProviderAmount\(amountKobo\)/);
   assert.match(flw, /export function toProviderAmount/);
   assert.match(flw, /Number\.isSafeInteger\(kobo\)/);
-  assert.match(flw, /return kobo \/ 100/);
+  assert.match(flw, /const major=kobo \/ 100/);
+  assert.match(flw, /toKobo\(major,"major"\)!==kobo/);
 });
 
 // ------------------------------------------------- queued is not settled

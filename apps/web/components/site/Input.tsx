@@ -9,7 +9,7 @@ type InputProps = {
 export function Input({ label, placeholder, type = "text", name, required = false }: InputProps) {
   return (
     <label className="block">
-      <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">{label}</span>
+      <span className="text-sm font-semibold text-obligon-text">{label}</span>
       <input
         name={name}
         type={type}

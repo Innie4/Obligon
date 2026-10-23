@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
+const partnerAccess = require('../../../packages/shared/partner-access.mjs');
 
 function compile(path) {
   return ts.transpileModule(fs.readFileSync(require.resolve(path), 'utf8'), {
@@ -118,6 +119,7 @@ function fixture(component, props) {
   };
   const exports = {};
   vm.runInNewContext(compile('../components/dashboard/StationProfileFields.tsx'), { exports, React, document, Node: Element, require(name) {
+      if (name.endsWith('/partner-access.mjs')) return partnerAccess;
     if (name === 'react') return React;
     if (name === '@/lib/station-profile-fields') return fields;
     if (name === 'lucide-react') return new Proxy({}, { get: (_, key) => String(key) });

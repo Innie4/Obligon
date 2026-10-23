@@ -1,5 +1,6 @@
 import { one } from '../db.js';
 import { forbidden } from './errors.js';
+import { partnerTypeFor } from '../../../../packages/shared/partner-access.mjs';
 
 export function subscriptionIsActive(sub, now = new Date()) {
   return Boolean(sub && sub.status === 'active' && new Date(sub.current_period_start) <= now && new Date(sub.current_period_end) > now);
@@ -39,6 +40,7 @@ export async function requireCustomerPlan(userId, feature = null, t = { one }) {
 }
 export async function enforcePartnerPlan(req, _res, next) {
   try {
+    if (req.path==='/workshop'||(req.path.startsWith('/overview')&&['mechanic','other'].includes(partnerTypeFor(req.user)))) return next();
     if (/^\/(billing|bank-accounts|settlements|settings|notifications|disputes)(\/|$)/.test(req.path)) return next();
     const state = await partnerSubscription(req.user.orgId);
     if (!state.active) throw forbidden('Choose and pay for a partner subscription before using the dashboard.');

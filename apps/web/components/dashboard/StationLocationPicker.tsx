@@ -247,7 +247,7 @@ export function StationLocationPicker({ value, onChange, disabled = false }: {
 
   const selected = validLocation(value) ? value : null;
   return <section className="min-w-0 space-y-3" aria-label="Station location picker">
-    <p className="text-xs font-extrabold uppercase text-obligon-text">Exact station location</p>
+    <p className="text-xs font-semibold uppercase text-obligon-text">Exact station location</p>
     <p className="text-sm text-obligon-text">Stand at your station and use GPS, or zoom in and place the pin on its exact position. Pan the map with touch or arrow keys.</p>
     <button type="button" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-obligon-green bg-obligon-green px-4 py-2 text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-obligon-green focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" disabled={disabled || gpsBusy} aria-busy={gpsBusy} onClick={locate}>
       {gpsBusy ? "Finding GPS location…" : "Use my GPS location"}

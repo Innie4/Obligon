@@ -22,21 +22,21 @@ const NIGERIAN_STATES = [
 function PlanBadge({ state }: { state: string }) {
   if (state === "unavailable") {
     return (
-      <span className="shrink-0 rounded-full bg-[#f0f4f0] px-2 py-0.5 text-[10px] font-extrabold uppercase text-obligon-text/60">
+      <span className="shrink-0 rounded-full bg-[#f0f4f0] px-2 py-0.5 text-xs font-semibold uppercase text-obligon-text/60">
         Not included
       </span>
     );
   }
   if (state === "included") {
     return (
-      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#e8fbd7] px-2 py-0.5 text-[10px] font-extrabold uppercase text-obligon-green">
+      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#e8fbd7] px-2 py-0.5 text-xs font-semibold uppercase text-obligon-green">
         <Check size={10} /> Included
       </span>
     );
   }
   // "Advanced", "Premium" and percentage benefits stay distinct from Included.
   return (
-    <span className="shrink-0 rounded-full bg-obligon-blue/10 px-2 py-0.5 text-[10px] font-extrabold uppercase text-obligon-blue">
+    <span className="shrink-0 rounded-full bg-obligon-blue/10 px-2 py-0.5 text-xs font-semibold uppercase text-obligon-blue">
       {state}
     </span>
   );
@@ -49,12 +49,16 @@ function PlanBadge({ state }: { state: string }) {
 export function CardPlanModal({
   plans,
   loading,
+  error = null,
+  onRetry,
   busyPlan,
   onSelect,
   onClose
 }: {
   plans: CardPlan[];
   loading: boolean;
+  error?: string | null;
+  onRetry?: () => void;
   busyPlan: string | null;
   onSelect: (plan: CardPlan) => void;
   onClose: () => void;
@@ -62,17 +66,20 @@ export function CardPlanModal({
   return (
     <ModalFrame title="Choose your card plan" onClose={onClose} size="wide">
       <div className="p-6">
-        <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Choose your plan</h2>
+        <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">Choose your plan</h2>
         <p className="mt-2 text-sm leading-6 text-obligon-text">
           Pick the subscription that matches how much you drive. You will be taken to our payment provider to
           complete the purchase, then we will verify your details before your card is issued.
         </p>
 
         {loading ? (
-          <div className="mt-8 flex items-center justify-center gap-2 py-8 text-sm font-bold text-obligon-text">
+          <div role="status" className="mt-8 flex items-center justify-center gap-2 py-8 text-sm font-medium text-obligon-text">
             <Loader2 size={18} className="animate-spin" /> Loading plans…
           </div>
-        ) : (
+        ) : error ? <div role="alert" className="mt-6 rounded-xl bg-red-50 p-4 text-sm text-red-800">
+          <p className="font-semibold">Plans could not be loaded.</p><p className="mt-1 leading-6">{error}</p>
+          {onRetry ? <button type="button" onClick={onRetry} className="mt-3 min-h-11 rounded-lg border border-current px-4 font-semibold">Retry loading plans</button> : null}
+        </div> : !plans.length ? <p className="mt-6 rounded-xl bg-obligon-mist/60 p-5 text-sm leading-6 text-obligon-text">No card plans are available right now. Please check again later or contact Support.</p> : (
           <div className="mt-6 grid items-stretch gap-4 md:grid-cols-3">
             {plans.map((plan) => {
               const busy = busyPlan === plan.code;
@@ -86,7 +93,7 @@ export function CardPlanModal({
                   }`}
                 >
                   <div className="min-w-0">
-                    <p className="text-xs font-extrabold uppercase tracking-[1.2px] text-obligon-green">
+                    <p className="text-xs font-semibold uppercase tracking-[1.2px] text-obligon-green">
                       {plan.name}
                     </p>
                     <p className="mt-1.5 text-2xl font-extrabold text-obligon-navy">
@@ -110,7 +117,7 @@ export function CardPlanModal({
                               <Check size={13} className="mt-0.5 shrink-0 text-obligon-green" />
                             )}
                             <span
-                              className={`text-[11px] leading-4 ${
+                              className={`text-xs leading-4 ${
                                 unavailable ? "text-obligon-text/50" : "font-bold text-obligon-navy"
                               }`}
                             >
@@ -198,7 +205,7 @@ export function CardDetailsModal({
   return (
     <ModalFrame title="Card verification details" onClose={onClose}>
       <form onSubmit={handleSubmit} className="p-6">
-        <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Verify your details</h2>
+        <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">Verify your details</h2>
         <p className="mt-2 text-sm leading-6 text-obligon-text">
           We are required to confirm your identity before a fuel card is issued. Your BVN is checked against
           your submitted details and stored securely. Authorized administrators can review it.
@@ -206,7 +213,7 @@ export function CardDetailsModal({
 
         <div className="mt-6 space-y-4">
           <label className="block">
-            <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Full legal name</span>
+            <span className="text-xs font-bold uppercase tracking-[1.1px] text-obligon-text">Full legal name</span>
             <input
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
@@ -217,10 +224,10 @@ export function CardDetailsModal({
             />
           </label>
 
-          <DateField label="Date of birth" labelClassName="text-[11px] uppercase tracking-[1.1px]" required value={dateOfBirth} onChange={setDateOfBirth} max={calendarDateValue(new Date())} autoComplete="bday" />
-          <label className="block"><span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Postal code</span><input className={field} required inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={postalCode} onChange={e=>setPostalCode(e.target.value.replace(/\D/g,""))}/></label>
+          <DateField label="Date of birth" labelClassName="text-xs uppercase tracking-[1.1px]" required value={dateOfBirth} onChange={setDateOfBirth} max={calendarDateValue(new Date())} autoComplete="bday" />
+          <label className="block"><span className="text-xs font-bold uppercase tracking-[1.1px] text-obligon-text">Postal code</span><input className={field} required inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={postalCode} onChange={e=>setPostalCode(e.target.value.replace(/\D/g,""))}/></label>
           <label className="block">
-            <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">BVN</span>
+            <span className="text-xs font-bold uppercase tracking-[1.1px] text-obligon-text">BVN</span>
             <input
               value={bvn}
               onChange={(e) => setBvn(e.target.value.replace(/\D/g, "").slice(0, 11))}
@@ -230,13 +237,13 @@ export function CardDetailsModal({
               placeholder="11 digits, starting with 2"
               required
             />
-            <span className="mt-1 block text-[11px] text-obligon-text">
+            <span className="mt-1 block text-xs text-obligon-text">
               You can find this on your Bank Verification Number slip or in your bank app.
             </span>
           </label>
 
           <label className="block">
-            <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Residential address</span>
+            <span className="text-xs font-bold uppercase tracking-[1.1px] text-obligon-text">Residential address</span>
             <input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
@@ -249,11 +256,11 @@ export function CardDetailsModal({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block">
-              <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">City</span>
+              <span className="text-xs font-bold uppercase tracking-[1.1px] text-obligon-text">City</span>
               <input value={city} onChange={(e) => setCity(e.target.value)} className={field} required />
             </label>
             <label className="block">
-              <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">State</span>
+              <span className="text-xs font-bold uppercase tracking-[1.1px] text-obligon-text">State</span>
               <select value={state} onChange={(e) => setState(e.target.value)} className={field} required>
                 <option value="">Select state</option>
                 {NIGERIAN_STATES.map((option) => (
@@ -266,7 +273,7 @@ export function CardDetailsModal({
           </div>
 
           <label className="block">
-            <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Phone number</span>
+            <span className="text-xs font-bold uppercase tracking-[1.1px] text-obligon-text">Phone number</span>
             <input
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
@@ -277,7 +284,7 @@ export function CardDetailsModal({
               className={field}
               placeholder="+234 801 000 0000"
             />
-            <span className="mt-1 block text-[11px] text-obligon-text">
+            <span className="mt-1 block text-xs text-obligon-text">
               Required by the issuer for card OTPs; use +234 followed by ten digits.
             </span>
           </label>
@@ -328,31 +335,31 @@ export function CardSubmittedModal({
           <ShieldCheck size={30} />
         </span>
 
-        <h2 className="mt-5 font-display text-2xl font-extrabold text-obligon-navy">Verification submitted</h2>
+        <h2 className="mt-5 font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">Verification submitted</h2>
         <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-obligon-text">
           {request?.planName ? `Your ${request.planName} payment is confirmed and ` : "Your payment is confirmed and "}
           we are now verifying your details.
         </p>
 
-        <div className="mx-auto mt-6 max-w-sm rounded-2xl border border-obligon-green/30 bg-[#f7fbf8] p-5 text-left">
-          <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[1.1px] text-obligon-green">
+        <div className="mx-auto mt-6 max-w-sm rounded-2xl border border-obligon-green/30 bg-obligon-mist/60 p-5 text-left">
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[1.1px] text-obligon-green">
             <CreditCard size={14} /> What happens next
           </p>
           <ol className="mt-3 space-y-2.5 text-sm leading-5 text-obligon-navy">
             <li className="flex gap-2.5">
-              <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-obligon-green text-[10px] font-extrabold text-white">
+              <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-obligon-green text-xs font-extrabold text-white">
                 1
               </span>
               An Obligon administrator reviews your submitted identity details.
             </li>
             <li className="flex gap-2.5">
-              <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-obligon-green text-[10px] font-extrabold text-white">
+              <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-obligon-green text-xs font-extrabold text-white">
                 2
               </span>
               After approval, your virtual fuel card is issued and your paid subscription period begins.
             </li>
             <li className="flex gap-2.5">
-              <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-obligon-green text-[10px] font-extrabold text-white">
+              <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-obligon-green text-xs font-extrabold text-white">
                 3
               </span>
               Your virtual card appears in this dashboard. Physical cards and delivery are coming soon.
@@ -428,7 +435,7 @@ export function CardVerificationProgressModal({
           )}
         </span>
 
-        <h2 className="mt-5 font-display text-2xl font-extrabold text-obligon-navy">
+        <h2 className="mt-5 font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">
           {loading ? "Loading status…" : (headline[outcome ?? "in_progress"] ?? "Verification status")}
         </h2>
         {progress?.planName ? (
@@ -440,7 +447,7 @@ export function CardVerificationProgressModal({
         {!loading && steps.length > 0 ? (
           <>
             <div className="mt-6">
-              <div className="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-[0.8px] text-obligon-text">
+              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.8px] text-obligon-text">
                 <span>Progress</span>
                 <span>
                   {progress?.completedSteps} of {progress?.totalSteps} complete
@@ -483,7 +490,7 @@ export function CardVerificationProgressModal({
                     </p>
                     <p className="mt-0.5 text-xs leading-5 text-obligon-text">{step.description}</p>
                     {step.eta ? (
-                      <p className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-obligon-lime/30 px-2.5 py-1 text-[11px] font-extrabold text-obligon-navy">
+                      <p className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-obligon-lime/30 px-2.5 py-1 text-xs font-extrabold text-obligon-navy">
                         <Clock size={12} />
                         {step.eta}
                       </p>
@@ -494,12 +501,12 @@ export function CardVerificationProgressModal({
             </ol>
 
             {progress?.nextAction ? (
-              <p className="mt-6 rounded-xl bg-[#f7fbf8] px-4 py-3 text-sm font-bold text-obligon-navy">{progress.nextAction}</p>
+              <p className="mt-6 rounded-xl bg-obligon-mist/60 px-4 py-3 text-sm font-bold text-obligon-navy">{progress.nextAction}</p>
             ) : null}
 
             {progress?.card ? (
               <div className="mt-5 rounded-2xl border border-obligon-navy/10 bg-[#f7f9f8] p-5 text-left">
-                <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[1.1px] text-obligon-green">
+                <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[1.1px] text-obligon-green">
                   <CreditCard size={14} /> Your card
                 </p>
                 <p className="mt-2 font-mono text-sm font-extrabold text-obligon-navy">{progress.card.maskedPan}</p>
@@ -592,7 +599,7 @@ export function PendingPaymentModal({
           <CreditCard size={28} />
         </span>
 
-        <h2 className="mt-5 font-display text-2xl font-extrabold text-obligon-navy">
+        <h2 className="mt-5 font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">
           You have a plan awaiting payment
         </h2>
         <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-obligon-text">

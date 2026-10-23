@@ -42,6 +42,7 @@ function fixture(path,componentName,{user=signedUser,status='authenticated',sear
       sessionStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value)},
       setTimeout:fn=>{timers.push(fn);return timers.length;},clearTimeout(id){if(timers[id-1])timers[id-1]=()=>{};},setInterval:()=>1,clearInterval(){},
       require:name=>{
+      if(name==='@/lib/partner-workshop') return {workshopServices:['Computer Diagnostics','Engine Overhaul','Brake & Suspension','Tyres & Wheel Alignment','Auto Electrical','Mobile Roadside Unit']};
         if(name==='react')return React;
         if(name.endsWith('/nigeria-locations.mjs'))return require('../../../packages/shared/nigeria-locations.mjs');
         if(name==='next/link')return {default:'Link',__esModule:true};
@@ -133,8 +134,8 @@ test('company shell prevents pending operations and explains admin contract appr
 test('company search offers only approved destinations for the current company',()=>{
  for(const approval of ['pending','verified']){
   const ui=fixture('../components/company-dashboard/CompanyShell.tsx','CompanyTopbar',{user:{...signedUser,organizationType:'company',organizationVerificationStatus:approval}});
-  ui.nodes().find(n=>n.type==='input').props.onFocus();ui.render();
-  const routes=ui.nodes().filter(n=>n.type==='Link').map(n=>n.props.href);
+  const search=ui.nodes().find(n=>n.type==='DashboardSearch');
+  const routes=search.props.entries.map(n=>n.href);
   assert.equal(routes.includes('/company/vehicles'),approval==='verified');assert.equal(routes.includes('/company/support'),true);
  }
 });

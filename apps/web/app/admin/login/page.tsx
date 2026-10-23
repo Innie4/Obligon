@@ -64,7 +64,7 @@ export default function AdminLoginPage() {
         <div className="rounded-2xl border border-obligon-border bg-white p-8 shadow-card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[1.2px] text-obligon-green">Admin Portal</p>
+              <p className="text-xs font-bold text-obligon-green">Admin Portal</p>
               <h2 className="mt-2 font-display text-2xl font-bold text-obligon-navy">Admin Access</h2>
             </div>
             <div className="grid size-11 place-items-center rounded-xl bg-obligon-lime/20 text-obligon-green">
@@ -85,7 +85,7 @@ export default function AdminLoginPage() {
 
           <form className="mt-6 space-y-4" onSubmit={handleLogin}>
             <div>
-              <label htmlFor="admin-email" className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-1">
+              <label htmlFor="admin-email" className="text-sm font-semibold text-obligon-text block mb-1">
                 Admin Email
               </label>
               <div className="relative">
@@ -108,7 +108,7 @@ export default function AdminLoginPage() {
             </div>
 
             <div>
-              <label htmlFor="admin-password" className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-1">
+              <label htmlFor="admin-password" className="text-sm font-semibold text-obligon-text block mb-1">
                 Password
               </label>
               <div className="relative">
@@ -138,7 +138,7 @@ export default function AdminLoginPage() {
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="size-4 rounded border-obligon-border text-obligon-green accent-obligon-green focus:ring-obligon-green"
                 />
-                <span className="text-xs text-obligon-text font-medium">Remember credentials</span>
+                <span className="text-xs text-obligon-text font-medium">Remember me</span>
               </label>
               <Link href={routes.forgotPassword} className="text-xs font-bold text-obligon-green hover:underline">
                 Forgot password?
@@ -163,7 +163,7 @@ export default function AdminLoginPage() {
 
           <div className="mt-6 border-t border-obligon-border pt-4 text-center">
             <Link href={routes.login} className="text-xs font-bold text-obligon-text hover:text-obligon-green transition">
-              ← Return to Standard Customer / Partner Login
+              Use Google or a passkey
             </Link>
           </div>
         </div>

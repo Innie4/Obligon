@@ -44,44 +44,24 @@ export default function SupportPage() {
   return (
     <main className="min-h-screen bg-obligon-mist text-obligon-navy">
       <SiteHeader />
-      <section className="mx-auto grid max-w-[1280px] gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[1fr_480px] lg:px-16 lg:py-24">
-        <div>
+      <section className="mx-auto grid max-w-[1280px] gap-x-10 gap-y-6 px-5 py-16 sm:px-8 lg:grid-cols-[1fr_480px] lg:grid-rows-[auto_1fr] lg:items-start lg:px-16 lg:py-24">
+        <div className="lg:col-start-1 lg:row-start-1">
           <PageIntro
             eyebrow="Direct Enterprise Support"
             title="Contact Obligon LTD"
             body="Reach our team for enterprise fleet onboarding, partner fuel station verification, API integration, or technical support."
           />
-          <div className="mt-10 grid gap-4 sm:grid-cols-3">
-            {[
-              { icon: Mail, label: "Official Email", value: "support@obligon.energy" },
-              { icon: Phone, label: "Contact", value: "Contact us using this form" },
-              { icon: MapPin, label: "Service enquiries", value: "Confirm coverage with our team" }
-            ].map((item) => (
-              <article key={item.label} className="rounded-2xl border border-obligon-border bg-white p-6 shadow-card">
-                <item.icon className="text-obligon-green" size={24} />
-                <p className="mt-4 text-xs font-extrabold uppercase tracking-[1.2px] text-obligon-text">{item.label}</p>
-                <p className="mt-1 text-sm font-extrabold text-obligon-navy">{item.value}</p>
-              </article>
-            ))}
-          </div>
 
-          <div className="mt-10 rounded-2xl bg-obligon-navy p-8 text-white shadow-hero">
-            <h3 className="font-display text-2xl font-extrabold">Account and transaction support</h3>
-            <p className="mt-2 text-sm text-[#b8c4ff] leading-6">
-              For fuel card declines or payment issues, include the transaction reference in your inquiry. Signed-in customers can follow replies in Support.
-            </p>
-            <p className="mt-4 font-mono font-extrabold text-2xl text-obligon-lime">Keep your request reference for follow-up</p>
-          </div>
         </div>
 
         {ticketRef ? (
-          <div className="rounded-2xl border border-obligon-border bg-white p-8 shadow-hero text-center flex flex-col justify-center">
+          <div className="rounded-2xl border border-obligon-border bg-white p-8 shadow-hero text-center flex flex-col justify-center lg:col-start-2 lg:row-start-1 lg:row-span-2">
             <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
               <Check size={32} />
             </span>
             <h2 className="mt-5 font-display text-3xl font-extrabold text-obligon-navy">Request Submitted</h2>
             <p className="mt-2 text-sm text-obligon-text">
-              Reference: <strong className="font-mono font-extrabold text-obligon-navy text-base">{ticketRef}</strong>
+              Reference: <strong className="tabular-nums font-extrabold text-obligon-navy text-base">{ticketRef}</strong>
             </p>
             <p className="mt-3 text-xs text-obligon-text leading-5">
               Thank you, <strong>{name}</strong>. An Obligon representative will review your inquiry and reach out at <strong>{email}</strong> by email.
@@ -96,18 +76,18 @@ export default function SupportPage() {
                 setMessage("");
                 setAttachmentName("");
               }}
-              className="mt-7 h-12 w-full rounded-xl bg-obligon-green font-extrabold text-white shadow-green"
+              className="mt-7 h-12 w-full rounded-xl bg-obligon-green font-extrabold text-white "
             >
               Send Another Request
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="rounded-2xl border border-obligon-border bg-white p-6 sm:p-8 shadow-card space-y-4">
+          <form onSubmit={handleSubmit} className="rounded-2xl border border-obligon-border bg-white p-6 sm:p-8 space-y-4 lg:col-start-2 lg:row-start-1 lg:row-span-2">
             <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Send an Inquiry</h2>
             <p className="text-xs text-obligon-text">Fill in the details below and we will get back to you promptly.</p>
 
             <div>
-              <label htmlFor="contact-name" className="text-[11px] font-extrabold uppercase tracking-[1.1px] text-obligon-text block mb-1">
+              <label htmlFor="contact-name" className="text-sm font-semibold text-obligon-text block mb-1">
 Full Name
 </label>
               <input
@@ -121,7 +101,7 @@ Full Name
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="contact-email" className="text-[11px] font-extrabold uppercase tracking-[1.1px] text-obligon-text block mb-1">
+                <label htmlFor="contact-email" className="text-sm font-semibold text-obligon-text block mb-1">
 Email Address
 </label>
                 <input
@@ -134,7 +114,7 @@ Email Address
                 />
               </div>
               <div>
-                <label htmlFor="contact-phone" className="text-[11px] font-extrabold uppercase tracking-[1.1px] text-obligon-text block mb-1">
+                <label htmlFor="contact-phone" className="text-sm font-semibold text-obligon-text block mb-1">
 Phone (Optional)
 </label>
                 <input
@@ -147,7 +127,7 @@ Phone (Optional)
             </div>
 
             <div>
-              <label htmlFor="contact-requestType" className="text-[11px] font-extrabold uppercase tracking-[1.1px] text-obligon-text block mb-1">
+              <label htmlFor="contact-requestType" className="text-sm font-semibold text-obligon-text block mb-1">
                 Inquiry Category
               </label>
               <select
@@ -164,7 +144,7 @@ Phone (Optional)
             </div>
 
             <div>
-              <label htmlFor="contact-message" className="text-[11px] font-extrabold uppercase tracking-[1.1px] text-obligon-text block mb-1">
+              <label htmlFor="contact-message" className="text-sm font-semibold text-obligon-text block mb-1">
 Message
 </label>
               <textarea
@@ -198,7 +178,7 @@ Message
             <button
               disabled={submitting}
               type="submit"
-              className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-obligon-green text-base font-extrabold text-white shadow-green hover:bg-obligon-green/90 transition disabled:opacity-60"
+              className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-obligon-green text-base font-extrabold text-white  hover:bg-obligon-green/90 transition disabled:opacity-60"
             >
               {submitting ? (
                 <>
@@ -214,6 +194,29 @@ Message
             </button>
           </form>
         )}
+        <div className="lg:col-start-1 lg:row-start-2">
+          <div className="grid gap-4 sm:grid-cols-3">
+            {[
+              { icon: Mail, label: "Official Email", value: "support@obligon.energy" },
+              { icon: Phone, label: "Contact", value: "Contact us using this form" },
+              { icon: MapPin, label: "Service enquiries", value: "Confirm coverage with our team" }
+            ].map((item) => (
+              <article key={item.label} className="rounded-2xl border border-obligon-border bg-white p-6 ">
+                <item.icon className="text-obligon-green" size={24} />
+                <p className="mt-4 text-sm font-semibold text-obligon-text">{item.label}</p>
+                <p className="mt-1 text-sm font-semibold text-obligon-navy">{item.value}</p>
+              </article>
+            ))}
+          </div>
+
+          <div className="mt-6 rounded-2xl bg-obligon-navy p-8 text-white shadow-hero">
+            <h3 className="font-display text-2xl font-extrabold">Account and transaction support</h3>
+            <p className="mt-2 text-sm text-[#b8c4ff] leading-6">
+              For fuel card declines or payment issues, include the transaction reference in your inquiry. Signed-in customers can follow replies in Support.
+            </p>
+            <p className="mt-4 tabular-nums font-extrabold text-2xl text-obligon-lime">Keep your request reference for follow-up</p>
+          </div>
+        </div>
       </section>
       <SiteFooter active="support" />
     </main>

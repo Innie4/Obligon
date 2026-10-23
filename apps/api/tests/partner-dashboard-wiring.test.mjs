@@ -141,7 +141,7 @@ test("the station column names the station", () => {
 test("money is formatted once, in one currency", () => {
   // `c.revenue.toLocaleString()` printed SUM(amount_kobo) straight through — kobo,
   // under a column headed "Spend (₦)". Live: 119990000 for ₦1,199,900.
-  assert.match(routes, /\$\{Math\.round\(c\.litres\)\.toLocaleString\(\)\} L`, naira\(c\.revenue\)/);
+  assert.match(routes, /quantityTotalsLabel\(c\), naira\(c\.revenue\)/);
   assert.doesNotMatch(routes, /c\.revenue\.toLocaleString\(\)/);
 });
 

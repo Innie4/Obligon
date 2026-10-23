@@ -1,0 +1,13 @@
+export type PartnerType = 'fuel_station' | 'gas_station' | 'mechanic' | 'other';
+export type FuelCode = 'PMS' | 'AGO' | 'DPK' | 'CNG' | 'LPG';
+export type SellingUnit = 'litre' | 'kg' | 'scm';
+export type PartnerIdentity = {role?: string | null; organizationType?: string | null; partnerType?: string | null};
+export function partnerFuelCode(value: unknown): FuelCode | null;
+export function partnerTypeFor(user?: PartnerIdentity | null): PartnerType;
+export function partnerTypeLabel(user?: PartnerIdentity | null): string;
+export function partnerAllowedFuels(user?: PartnerIdentity | null): FuelCode[];
+export function partnerPageAllowed(user: PartnerIdentity | null | undefined, key: string): boolean;
+export function partnerRouteAllowed(user: PartnerIdentity | null | undefined, path: string): boolean;
+export function partnerApiAllowed(user: PartnerIdentity | null | undefined, method: string, path: string): boolean;
+export function fuelSellingUnits(fuel: unknown): SellingUnit[];
+export function sellingUnitLabel(unit: string | null | undefined): string;

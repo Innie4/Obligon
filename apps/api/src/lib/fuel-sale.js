@@ -4,8 +4,10 @@ import { applyLedgerEntry } from './money.js';
 import { requireCustomerPlan } from './subscriptions.js';
 import { businessTimeZone } from './time.js';
 import { fuelAmountKobo } from './money-amounts.js';
+import { approvedStationPrice, canonicalStationPrices } from './station-approval.js';
+import { partnerFuelCode } from '../../../../packages/shared/partner-access.mjs';
 
-export async function authorizeWalletFuelSale(t,{partnerOrgId,stationId,code,litres,fuelType,reference}) {
+export async function authorizeWalletFuelSale(t,{partnerOrgId,stationId,code,litres,fuelType,sellingUnit,reference}) {
  const card=await t.one(`SELECT * FROM cards WHERE pos_code=$1 AND pos_code_expires_at>now() FOR UPDATE`,[code]);
  if(!card || card.status!=='active') throw badRequest('Invalid, expired, or inactive card authorization code');
  if(!card.organization_id) await requireCustomerPlan(card.owner_user_id,null,t);
@@ -13,12 +15,14 @@ export async function authorizeWalletFuelSale(t,{partnerOrgId,stationId,code,lit
   const company=await t.one("SELECT verification_status FROM organizations WHERE id=$1 AND type='company' FOR SHARE",[card.organization_id]);
   if(company?.verification_status!=='verified') throw badRequest('Company fuel purchases require contract approval by an admin');
  }
- const station=await t.one("SELECT * FROM stations WHERE id=$1 AND partner_org_id=$2 AND status='active' AND is_open=TRUE FOR SHARE",[stationId,partnerOrgId]);
+ const station=await t.one("SELECT s.*,o.partner_type,o.type AS org_type FROM stations s JOIN organizations o ON o.id=s.partner_org_id WHERE s.id=$1 AND s.partner_org_id=$2 AND s.status='active' AND s.is_open=TRUE FOR SHARE OF s,o",[stationId,partnerOrgId]);
  if(!station) throw notFound('Station not found');
  const bank=await t.one('SELECT id FROM bank_accounts WHERE organization_id=$1 AND verified=TRUE AND is_default=TRUE',[partnerOrgId]);
  if(!bank) throw badRequest('A verified default settlement bank account is required before accepting fuel payments');
- const price=await t.one('SELECT * FROM fuel_prices WHERE station_id=$1 AND fuel_type=$2 FOR SHARE',[stationId,fuelType]);
+ const price=canonicalStationPrices(await t.query('SELECT * FROM fuel_prices WHERE station_id=$1 FOR SHARE',[stationId])).find(p=>p.fuel_type===partnerFuelCode(fuelType));
  if(!price) throw badRequest('No published price for this station and fuel');
+ const approved=approvedStationPrice(station,price,sellingUnit,{requireExpected:true});
+ fuelType=approved.fuelType;
  const discount=await approvedDiscount(stationId,fuelType,t);
  const amounts=discountAmounts(fuelAmountKobo(price.price_kobo,litres,{maxHundredths:10_000_000}),discount?.rate_bp??0);
  const spent=await t.one(`SELECT COALESCE(SUM(amount_kobo) FILTER(WHERE created_at>=date_trunc('day',now() AT TIME ZONE $2) AT TIME ZONE $2),0) AS today,
@@ -36,10 +40,10 @@ export async function authorizeWalletFuelSale(t,{partnerOrgId,stationId,code,lit
  if(Number(wallet.budget_limit_kobo)>0 && Number(walletSpend.total)+amounts.chargedKobo>Number(wallet.budget_limit_kobo)) throw badRequest('Fuel purchase exceeds the wallet monthly budget');
  await applyLedgerEntry(t,{walletId:wallet.id,direction:'debit',amountKobo:amounts.chargedKobo,reference,idempotencyKey:`fuel:${reference}`,description:`Fuel purchase at ${station.name}`});
  const sale=await t.one(`INSERT INTO transactions(reference,customer_user_id,organization_id,station_id,vehicle_id,driver_id,card_id,fuel_type,litres,unit_price_kobo,
- amount_kobo,base_amount_kobo,platform_fee_kobo,partner_net_kobo,discount_request_id,settlement_method,status,meta)
- VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'wallet_transfer','success','POS single-use code') RETURNING *`,
- [reference,card.owner_user_id,card.organization_id,station.id,card.vehicle_id,card.driver_id,card.id,fuelType,litres,price.price_kobo,amounts.chargedKobo,amounts.baseKobo,amounts.platformFeeKobo,amounts.partnerNetKobo,discount?.id??null]);
- await t.query('INSERT INTO fueling_logs(station_id,transaction_id,fuel_type,litres) VALUES($1,$2,$3,$4)',[station.id,sale.id,fuelType,litres]);
+ amount_kobo,base_amount_kobo,platform_fee_kobo,partner_net_kobo,discount_request_id,settlement_method,status,meta,selling_unit)
+ VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'wallet_transfer','success','POS single-use code',$16) RETURNING *`,
+ [reference,card.owner_user_id,card.organization_id,station.id,card.vehicle_id,card.driver_id,card.id,fuelType,litres,price.price_kobo,amounts.chargedKobo,amounts.baseKobo,amounts.platformFeeKobo,amounts.partnerNetKobo,discount?.id??null,approved.sellingUnit]);
+ await t.query('INSERT INTO fueling_logs(station_id,transaction_id,fuel_type,litres,selling_unit) VALUES($1,$2,$3,$4,$5)',[station.id,sale.id,fuelType,litres,approved.sellingUnit]);
  await t.query(`UPDATE cards SET pos_code=NULL,pos_code_expires_at=NULL,spend_today_kobo=$2,spend_month_kobo=$3,updated_at=now() WHERE id=$1`,
  [card.id,Number(spent.today)+amounts.chargedKobo,Number(spent.month)+amounts.chargedKobo]);
  return {sale,card,amounts};

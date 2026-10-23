@@ -63,7 +63,8 @@ import {
 } from "@/lib/mock/admin-data";
 import type { Metric, Row } from "@/lib/mock/company-data";
 
-import { readPersistedSession, readTokens, writeTokens, writePersistedSession, type AuthTokens } from "@/lib/session-store";
+import { readPersistedSession, readTokens, writeTokens, writePersistedSession, writeRememberedEmail, type AuthTokens } from "@/lib/session-store";
+import type { AuthMethodsConfig, GoogleChallenge, SignInMethods, PasskeyAuthenticationOptions, PasskeyAuthenticationCredential, PasskeyRegistrationOptions, PasskeyRegistrationCredential } from "@/lib/auth-methods";
 import type {
   ApiResult,
   AppNotification,
@@ -360,6 +361,7 @@ async function boundedFetch(url: string, init: RequestInit = {}): Promise<Respon
     return await fetch(url, { ...init, signal });
   } catch (error) {
     if (timeout.aborted) throw new ApiError(0, "The server took too long to respond. Please try again.");
+    if (!signal.aborted && error instanceof TypeError) throw new ApiError(0, "Could not reach the server. Check your connection, then refresh to see the latest status.");
     throw error;
   }
 }
@@ -1012,12 +1014,110 @@ function pendingMfaChallenge(): string | null {
   return null;
 }
 
+const googleChallenges = new WeakMap<GoogleChallenge, { revision: number; session: string | null; scope: "login" | "link"; rememberMe: boolean; used: boolean }>();
+
+function beginAdditionalLogin(): number {
+  const previous = readTokens();
+  const revision = ++authRevision;
+  clearMfaChallenge();
+  writeTokens(null);
+  writePersistedSession(null);
+  if (previous?.accessToken) {
+    void http("/api/auth/logout", { method: "POST", headers: { Authorization: `Bearer ${previous.accessToken}` }, body: JSON.stringify({ refreshToken: previous.refreshToken }) }, false, false).catch(() => undefined);
+  }
+  return revision;
+}
+
+function acceptAdditionalLogin(data: LoginResponse, revision: number, rememberMe: boolean): LoginResponse {
+  assertCurrentAuth(revision, null);
+  if (data.mfaRequired) {
+    if (!data.challengeToken || !Number.isFinite(data.challengeExpiresInSeconds) || Number(data.challengeExpiresInSeconds) <= 0 || typeof window === "undefined") throw new ApiError(401, "Sign in again to start two-factor authentication.");
+    try {
+      window.sessionStorage.setItem(MFA_CHALLENGE_STORAGE_KEY, JSON.stringify({ token: data.challengeToken, expiresAt: Date.now() + Number(data.challengeExpiresInSeconds) * 1000, rememberMe }));
+    } catch { throw new ApiError(0, "Allow session storage in this browser to complete two-factor sign-in."); }
+  } else {
+    if (!data.accessToken || !data.refreshToken || !data.user?.id) throw new ApiError(401, "The server did not complete sign-in. Please try again.");
+    writeTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+    writePersistedSession(data.user);
+    writeRememberedEmail(data.user.email, rememberMe);
+  }
+  return rememberAuthResult(data, revision);
+}
+
+async function methodRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  if (!LIVE_MODE) throw new ApiError(0, "Sign-in options require the live backend.");
+  const revision = authRevision, identity = sessionKey(readTokens());
+  const result = await http<T>(`/api/auth/methods${path}`, init);
+  assertCurrentAuth(revision, identity);
+  return result;
+}
+
+function claimGoogleChallenge(challenge: GoogleChallenge, scope: "login" | "link") {
+  const saved = googleChallenges.get(challenge);
+  if (!saved || saved.used || saved.scope !== scope) throw new ApiError(401, "This Google sign-in request has expired. Start again.");
+  assertCurrentAuth(saved.revision, saved.session);
+  saved.used = true;
+  return saved;
+}
+
 export const authApi = {
   sessionRevision: () => authRevision,
+  assertGoogleChallengeCurrent(challenge: GoogleChallenge): void {
+    const saved = googleChallenges.get(challenge);
+    if (!saved || saved.used || saved.scope !== "login") throw new ApiError(401, "This Google sign-in request has expired. Start again.");
+    assertCurrentAuth(saved.revision, saved.session);
+  },
   isCurrentAuthResult(data: object): boolean {
     const saved = authResults.get(data);
     return Boolean(saved && saved.revision === authRevision && saved.session === sessionKey(readTokens()));
   },
+  async methodsConfig(): Promise<AuthMethodsConfig> {
+    if (!LIVE_MODE) return { google: { enabled: false }, passkeys: { enabled: false, rpName: "Obligon" } };
+    return http<AuthMethodsConfig>("/api/auth/methods/config", {}, false, false);
+  },
+  async signInMethods(): Promise<SignInMethods> { return methodRequest<SignInMethods>("/manage"); },
+  async googleStart(rememberMe: boolean): Promise<GoogleChallenge> {
+    if (!LIVE_MODE) throw new ApiError(0, "Google sign-in requires the live backend.");
+    const revision = authRevision, identity = sessionKey(readTokens());
+    const challenge = await http<GoogleChallenge>("/api/auth/methods/google/start", { method: "POST", body: JSON.stringify({ rememberMe }) }, false, false);
+    assertCurrentAuth(revision, identity);
+    googleChallenges.set(challenge, { revision, session: identity, scope: "login", rememberMe, used: false });
+    return challenge;
+  },
+  async loginWithGoogle(challenge: GoogleChallenge, credential: string): Promise<LoginResponse> {
+    const saved = claimGoogleChallenge(challenge, "login");
+    const revision = beginAdditionalLogin();
+    const result = await http<LoginResponse>("/api/auth/methods/google/finish", { method: "POST", body: JSON.stringify({ challengeId: challenge.challengeId, credential }) }, false, false);
+    return acceptAdditionalLogin(result, revision, saved.rememberMe);
+  },
+  async loginWithPasskey(rememberMe: boolean, authenticate: (options: PasskeyAuthenticationOptions) => Promise<PasskeyAuthenticationCredential>): Promise<LoginResponse> {
+    if (!LIVE_MODE) throw new ApiError(0, "Passkey sign-in requires the live backend.");
+    const revision = beginAdditionalLogin();
+    const challenge = await http<{ challengeId: string; options: PasskeyAuthenticationOptions }>("/api/auth/methods/passkeys/login/start", { method: "POST", body: JSON.stringify({ rememberMe }) }, false, false);
+    assertCurrentAuth(revision, null);
+    const credential = await authenticate(challenge.options);
+    assertCurrentAuth(revision, null);
+    const result = await http<LoginResponse>("/api/auth/methods/passkeys/login/finish", { method: "POST", body: JSON.stringify({ challengeId: challenge.challengeId, credential }) }, false, false);
+    return acceptAdditionalLogin(result, revision, rememberMe);
+  },
+  async googleLinkStart(currentPassword: string): Promise<GoogleChallenge> {
+    const challenge = await methodRequest<GoogleChallenge>("/google/link/start", { method: "POST", body: JSON.stringify({ currentPassword }) });
+    googleChallenges.set(challenge, { revision: authRevision, session: sessionKey(readTokens()), scope: "link", rememberMe: false, used: false });
+    return challenge;
+  },
+  async googleLinkFinish(challenge: GoogleChallenge, credential: string) {
+    claimGoogleChallenge(challenge, "link");
+    return methodRequest<{ ok: boolean }>("/google/link/finish", { method: "POST", body: JSON.stringify({ challengeId: challenge.challengeId, credential }) });
+  },
+  async unlinkGoogle(currentPassword: string) { return methodRequest<{ ok: boolean }>("/google", { method: "DELETE", body: JSON.stringify({ currentPassword }) }); },
+  async registerPasskey(currentPassword: string, label: string, register: (options: PasskeyRegistrationOptions) => Promise<PasskeyRegistrationCredential>) {
+    const revision = authRevision, identity = sessionKey(readTokens());
+    const challenge = await methodRequest<{ challengeId: string; options: PasskeyRegistrationOptions }>("/passkeys/register/start", { method: "POST", body: JSON.stringify({ currentPassword, label }) });
+    const credential = await register(challenge.options);
+    assertCurrentAuth(revision, identity);
+    return methodRequest<{ ok: boolean }>("/passkeys/register/finish", { method: "POST", body: JSON.stringify({ challengeId: challenge.challengeId, credential }) });
+  },
+  async removePasskey(id: string, currentPassword: string) { return methodRequest<{ ok: boolean }>(`/passkeys/${encodeURIComponent(id)}`, { method: "DELETE", body: JSON.stringify({ currentPassword }) }); },
   async login(payload: { email: string; password: string; rememberMe?: boolean; role?: string; totp?: string }): Promise<LoginResponse> {
     const revision = ++authRevision;
     const sessionIdentity = sessionKey(readTokens());
@@ -1181,6 +1281,8 @@ export const authApi = {
     if (!challengeToken) throw new ApiError(401, "Your sign-in challenge expired. Sign in with your password again.");
     const revision = authRevision;
     const sessionIdentity = sessionKey(readTokens());
+    let rememberMe: boolean | undefined;
+    try { const saved = JSON.parse(window.sessionStorage.getItem(MFA_CHALLENGE_STORAGE_KEY) ?? "null"); if (saved?.token === challengeToken && typeof saved.rememberMe === "boolean") rememberMe = saved.rememberMe; } catch { /* Optional preference is not authentication proof. */ }
     const data = await http<LoginResponse>("/api/auth/mfa/challenge", {
       method: "POST", body: JSON.stringify({ challengeToken, totp: payload.totp })
     }, false, false);
@@ -1189,6 +1291,7 @@ export const authApi = {
     if (data.accessToken && data.refreshToken) {
       writeTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
       writePersistedSession(data.user);
+      if (typeof rememberMe === "boolean") writeRememberedEmail(data.user.email, rememberMe);
       clearMfaChallenge();
     }
     return rememberAuthResult(data, revision);
@@ -1547,7 +1650,7 @@ export const mutationsApi = {
     if (!LIVE_MODE) { await simulate({}); return { ok: true }; }
     return http<{ ok: boolean }>("/api/partner/station/message-terminal", { method: "POST", body: JSON.stringify({ message, stationId }) });
   },
-  async requestResupply(payload: { fuelType: string; litres: number; stationId?: string }) {
+  async requestResupply(payload: { fuelType: string; litres: number; stationId?: string; sellingUnit?: "litre" | "kg" | "scm" }) {
     if (!LIVE_MODE) { await simulate({}); return { ok: true }; }
     return http<{ ok: boolean }>("/api/partner/station/resupply", { method: "POST", body: JSON.stringify(payload) });
   },
@@ -1584,7 +1687,7 @@ export const mutationsApi = {
     if (!LIVE_MODE) { await simulate({}, 800); return { ok: true, simulated: true }; }
     return http<{ ok: boolean }>(`/api/partner/payouts/${id}/retry`, { method: "POST" });
   },
-  async posAuthorize(payload: { stationId: string; code: string; litres: number; fuelType: string }): Promise<PartnerPOSReceipt> {
+  async posAuthorize(payload: { stationId: string; code: string; litres: number; fuelType: string; sellingUnit?: "litre" | "kg" | "scm" }): Promise<PartnerPOSReceipt> {
     if (!LIVE_MODE) {
       await simulate({}, 900);
       return {

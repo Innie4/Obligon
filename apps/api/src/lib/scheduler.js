@@ -7,10 +7,13 @@ import { initiateTransfer, fetchTransfer, activeProvider } from "./payments.js";
 import { accrueSettlements } from "./settlements.js";
 import { businessTimeZone } from "./time.js";
 import { recoverTransferByReference } from "./transfer-recovery.js";
+import { randomUUID } from "node:crypto";
+import { integerKobo } from "./money-amounts.js";
 
-async function markPayoutForReview(payoutId, reason, metadata={}) {
+async function markPayoutForReview(payoutId, reason, metadata={}, claimToken=null) {
   const marked=await q(`UPDATE payouts SET failure_reason=$2 WHERE id=$1 AND status='processing'
-    AND COALESCE(failure_reason,'') NOT LIKE 'Review required:%' RETURNING id`,[payoutId,`Review required: ${reason}`]);
+    AND ($3::uuid IS NULL OR (reconcile_claim_token=$3 AND reconcile_claim_until>clock_timestamp()))
+    AND COALESCE(failure_reason,'') NOT LIKE 'Review required:%' RETURNING id`,[payoutId,`Review required: ${reason}`,claimToken]);
   if(marked.length)await audit({actorRole:'system',action:'settlement.payout_review_required',entityId:payoutId,metadata:{...metadata,reason},severity:'warning'});
 }
 
@@ -52,8 +55,9 @@ export async function runAutoSettlements() {
             AND period_end<=date_trunc('month',now() AT TIME ZONE $2)::date`, [partner.id,businessTimeZone()]);
         const promised = await t.one(`SELECT COALESCE(SUM(amount_kobo),0)::bigint AS promised_total
           FROM payouts WHERE partner_org_id=$1 AND status IN ('pending', 'processing')`, [partner.id]);
-        const claimable = Number(pending.pending_total) - Number(promised.promised_total);
-        const threshold = Number(partner.settlement_limit_kobo || 0);
+        const claimable = integerKobo(pending.pending_total, { min:0, max:Number.MAX_SAFE_INTEGER, label:"Unpaid settlements" }) -
+          integerKobo(promised.promised_total, { min:0, max:Number.MAX_SAFE_INTEGER, label:"Reserved payouts" });
+        const threshold = integerKobo(partner.settlement_limit_kobo || 0, { min:0, max:Number.MAX_SAFE_INTEGER, label:"Settlement threshold" });
         if (threshold <= 0 || claimable < threshold || claimable <= 0) return null;
         const bank = await t.one(`SELECT * FROM bank_accounts WHERE organization_id=$1
           AND is_default=TRUE AND verified=TRUE LIMIT 1`, [partner.id]);
@@ -116,24 +120,31 @@ export async function runAutoSettlements() {
  *
  * @returns {{ settled: number, failed: number, stillPending: number }}
  */
-export async function reconcilePayouts() {
+export async function reconcilePayouts({payoutId=null}={}) {
   // Stale missing identifiers trigger review/reference recovery. Age alone can
   // never prove a transfer was not accepted by the bank.
   const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
 
-  const rows = await q(
-    `SELECT id, partner_org_id, amount_kobo, provider, transfer_provider, provider_reference, reference, failure_reason, created_at
-     FROM payouts
-     WHERE (status = 'processing' AND provider_reference IS NOT NULL)
-        OR (status = 'processing' AND provider_reference IS NULL
-            AND (failure_reason IS NOT NULL OR created_at < now() - ($1 || ' milliseconds')::interval))
-     ORDER BY created_at ASC LIMIT 100`,
-    [String(STALE_AFTER_MS)]
-  );
-
+  // Three bounded provider reads cover reference recovery and transfer lookup.
+  const claimMs = 3 * ((env.PROVIDER_RETRY_COUNT + 1) * env.PROVIDER_HTTP_TIMEOUT_MS + 1000) + 30000;
   const summary = { settled: 0, failed: 0, stillPending: 0, expired: 0 };
-
-  for (const payout of rows) {
+  const attempted = [];
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const claimToken = randomUUID();
+    const payout = await one(`WITH candidate AS (
+      SELECT id FROM payouts WHERE (status='processing' OR ($5::uuid IS NOT NULL AND status='pending'))
+        AND ($5::uuid IS NULL OR id=$5)
+        AND ($5::uuid IS NOT NULL OR provider_reference IS NOT NULL OR failure_reason IS NOT NULL
+          OR created_at<clock_timestamp()-($1::bigint*interval '1 millisecond'))
+        AND (reconcile_claim_until IS NULL OR reconcile_claim_until<=clock_timestamp())
+        AND NOT (id=ANY($2::uuid[]))
+      ORDER BY last_reconciled_at ASC NULLS FIRST, created_at, id
+      FOR UPDATE SKIP LOCKED LIMIT 1
+    ) UPDATE payouts p SET status='processing',last_reconciled_at=clock_timestamp(),reconcile_claim_token=$3,
+      reconcile_claim_until=clock_timestamp()+($4::bigint*interval '1 millisecond')
+      FROM candidate WHERE p.id=candidate.id RETURNING p.*`, [STALE_AFTER_MS,attempted,claimToken,claimMs,payoutId]);
+    if (!payout) break;
+    attempted.push(payout.id);
     // `activeProvider()` throws when PAYMENT_PROVIDER names an unconfigured
     // provider. Called outside the try below, one such row threw out of this
     // function, then out of `runScheduledTasks`, and every scheduled pass failed
@@ -144,12 +155,13 @@ export async function reconcilePayouts() {
       // Missing create responses are ambiguous. Correlate the immutable merchant
       // reference or retain the claim for operator review; never submit again.
       if (!payout.provider_reference) {
-        await markPayoutForReview(payout.id,'Transfer outcome is unknown; reservation retained pending reference reconciliation.',{reference:payout.reference,amountKobo:payout.amount_kobo,provider});
+        await markPayoutForReview(payout.id,'Transfer outcome is unknown; reservation retained pending reference reconciliation.',{reference:payout.reference,amountKobo:payout.amount_kobo,provider},claimToken);
         const recovered=await recoverTransferByReference({provider,reference:payout.reference,amountKobo:payout.amount_kobo});
         if(!recovered){summary.stillPending+=1;continue;}
         const attached = await q(`UPDATE payouts SET provider_reference=$2 WHERE id=$1 AND status='processing'
+          AND reconcile_claim_token=$5 AND reconcile_claim_until>clock_timestamp()
           AND provider_reference IS NULL AND amount_kobo=$3 AND reference IS NOT DISTINCT FROM $4 RETURNING id`,
-        [payout.id,recovered,payout.amount_kobo,payout.reference]);
+        [payout.id,recovered,payout.amount_kobo,payout.reference,claimToken]);
         if (!attached.length) continue;
         payout.provider_reference=recovered;
       }
@@ -157,7 +169,6 @@ export async function reconcilePayouts() {
       const state = await fetchTransfer(provider, payout.provider_reference);
 
       if (state.settled || state.failed) {
-        const { integerKobo } = await import("./money-amounts.js");
         if (state.currency !== "NGN" || String(state.transferCode) !== String(payout.provider_reference) ||
             (payout.reference && state.reference !== payout.reference) ||
             integerKobo(state.amountKobo, { max:Number.MAX_SAFE_INTEGER }) !== integerKobo(payout.amount_kobo, { max:Number.MAX_SAFE_INTEGER })) {
@@ -172,10 +183,11 @@ export async function reconcilePayouts() {
         // unclaimable. `net_kobo` is BIGINT, so it is cast, not compared as text.
         const applied = await tx(async (t) => {
           await t.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [payout.partner_org_id]);
-          const fresh = await t.one("SELECT status,amount_kobo,provider_reference,reference FROM payouts WHERE id=$1 FOR UPDATE", [payout.id]);
+          const fresh = await t.one(`SELECT status,amount_kobo,provider_reference,reference FROM payouts
+            WHERE id=$1 AND reconcile_claim_token=$2 AND reconcile_claim_until>clock_timestamp() FOR UPDATE`, [payout.id,claimToken]);
           if (fresh?.status !== "processing") return false;
           if (["amount_kobo","provider_reference","reference"].some(field => String(fresh[field] ?? "") !== String(payout[field] ?? ""))) throw new Error("The reserved payout changed during verification; review required");
-          let remaining = Number(payout.amount_kobo);
+          let remaining = integerKobo(payout.amount_kobo, { min:0, max:Number.MAX_SAFE_INTEGER, label:"Reserved payout" });
           const coverable = await t.query(`SELECT id, net_kobo, paid_kobo FROM settlements
             WHERE partner_org_id=$1 AND status='pending'
               AND reconciliation_required=FALSE
@@ -183,7 +195,9 @@ export async function reconcilePayouts() {
             ORDER BY period_start ASC, created_at ASC FOR UPDATE`, [payout.partner_org_id,businessTimeZone()]);
           for (const row of coverable) {
             if (remaining <= 0) break;
-            const unpaid = Number(row.net_kobo) - Number(row.paid_kobo);
+            const unpaid = integerKobo(row.net_kobo, { min:0, max:Number.MAX_SAFE_INTEGER, label:"Settlement net" }) -
+              integerKobo(row.paid_kobo, { min:0, max:Number.MAX_SAFE_INTEGER, label:"Settlement paid" });
+            if (unpaid < 0) throw new Error("Settlement paid amount exceeds its net amount; review required");
             const settledKobo = Math.min(unpaid, remaining);
             remaining -= settledKobo;
             await t.query(`UPDATE settlements SET paid_kobo = paid_kobo + $2,
@@ -214,8 +228,9 @@ export async function reconcilePayouts() {
         // bank declined it" and "we never sent it".
         const marked = await q(
           `UPDATE payouts SET status='failed',failure_reason=$2 WHERE id=$1 AND status='processing'
+            AND reconcile_claim_token=$6 AND reconcile_claim_until>clock_timestamp()
             AND amount_kobo=$3 AND provider_reference=$4 AND reference IS NOT DISTINCT FROM $5 RETURNING id`,
-          [payout.id, state.message ?? `Transfer ${state.status}`, payout.amount_kobo, payout.provider_reference, payout.reference]
+          [payout.id, state.message ?? `Transfer ${state.status}`, payout.amount_kobo, payout.provider_reference, payout.reference, claimToken]
         );
         if (!marked.length) continue;
         await audit({
@@ -236,8 +251,11 @@ export async function reconcilePayouts() {
       // the next pass tries again; counting it as failed would release a balance
       // the bank may well have taken.
       console.warn(`[scheduler:payouts] Could not read transfer ${payout.provider_reference}:`, err.message);
-      await markPayoutForReview(payout.id,err.message,{reference:payout.reference,providerReference:payout.provider_reference});
+      await markPayoutForReview(payout.id,err.message,{reference:payout.reference,providerReference:payout.provider_reference},claimToken);
       summary.stillPending += 1;
+    } finally {
+      await q(`UPDATE payouts SET reconcile_claim_token=NULL,reconcile_claim_until=NULL
+        WHERE id=$1 AND reconcile_claim_token=$2`, [payout.id,claimToken]);
     }
   }
 

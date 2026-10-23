@@ -62,11 +62,11 @@ export function DialogFrame({ children, onClose, ariaLabel = "Obligon LTD dialog
         aria-label={ariaLabel}
         tabIndex={-1}
         onMouseDown={(event) => event.stopPropagation()}
-        className="max-h-[94vh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-hero outline-none sm:max-w-[560px] sm:rounded-lg"
+        className="max-h-[94dvh] w-full overflow-y-auto overscroll-contain rounded-t-3xl bg-white pb-[env(safe-area-inset-bottom)] shadow-hero outline-none sm:max-w-[560px] sm:rounded-2xl"
       >
         <div className="flex items-center justify-between border-b border-[#e0e7de] px-6 py-5">
-          <p className="font-display text-xl font-extrabold">Obligon LTD</p>
-          <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-lg bg-[#f1f5f0] focus:outline-none focus:ring-2 focus:ring-obligon-green focus:ring-offset-2" aria-label="Close modal">
+          <p className="font-display text-lg font-bold tracking-tight">Obligon LTD</p>
+          <button type="button" onClick={onClose} className="grid size-11 place-items-center rounded-xl bg-obligon-mist transition-colors hover:bg-obligon-panel focus:outline-none focus:ring-2 focus:ring-obligon-green focus:ring-offset-2" aria-label="Close modal">
             <X size={20} />
           </button>
         </div>

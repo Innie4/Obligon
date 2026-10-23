@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
+const partnerAccess = require('../../../packages/shared/partner-access.mjs');
 
 function nodes(tree) {
   if (Array.isArray(tree)) return tree.flatMap(nodes);
@@ -22,7 +23,7 @@ const dashboardNav = dataExports.dashboardNav;
 
 // The real component and navigation data run together. Only React's hooks,
 // Next's current pathname and browser event/element boundaries are simulated.
-function fixture(component = 'MobilePartnerAccount', { role = 'partner', pathname = '/dashboard', desktop = false } = {}) {
+function fixture(component = 'MobilePartnerAccount', { role = 'partner', partnerType, pathname = '/dashboard', desktop = false } = {}) {
   const states = [], refs = [], effects = [], pending = [];
   const listeners = new Map();
   const mediaListeners = new Set();
@@ -78,11 +79,12 @@ function fixture(component = 'MobilePartnerAccount', { role = 'partner', pathnam
     exports, React, document, Node: Element,
     window: { matchMedia(query) { assert.equal(query, '(min-width: 1024px)'); return desktopMedia; } },
     require(name) {
+      if (name.endsWith('/partner-access.mjs')) return partnerAccess;
       if (name === 'react') return React;
       if (name === 'next/link') return { default: 'Link', __esModule: true };
       if (name === 'next/navigation') return { usePathname: () => pathname };
       if (name === '@/lib/mock/dashboard-data') return dataExports;
-      if (name === '@/components/shared/AuthContext') return { useSession: () => ({ user: { role } }) };
+      if (name === '@/components/shared/AuthContext') return { useSession: () => ({ user: { role, partnerType } }) };
       if (name === '@/components/auth/LogoutButton') return { LogoutButton: 'LogoutButton' };
       if (name === 'lucide-react') return new Proxy({}, { get: (_, key) => String(key) });
       throw new Error(`Unexpected navigation dependency: ${name}`);
@@ -142,19 +144,36 @@ test('partner bottom navigation and Account partition every real dashboard route
   assert.equal(account.links().length, 8);
   const combined = [...hrefs(primary), ...hrefs(account)];
   assert.equal(new Set(combined).size, combined.length);
-  assert.deepEqual([...combined].sort(), Array.from(dashboardNav, item => item.href).sort());
+  assert.deepEqual([...combined].sort(), Array.from(dashboardNav.filter(item => partnerAccess.partnerPageAllowed({role:'partner'},item.key)), item => item.href).sort());
   assert.equal(account.nodes().filter(node => node.type === 'LogoutButton').length, 1);
   account.unmount();
 });
 
-test('mechanic navigation exposes only approved routes with four primary and three Account items', () => {
+test('mechanic navigation exposes workshop and common account routes', () => {
   const primary = fixture('MobileDashboardNav', { role: 'mechanic' });
   const account = fixture('MobilePartnerAccount', { role: 'mechanic' });
   account.clickAccount();
-  assert.deepEqual(hrefs(primary), ['/dashboard', '/dashboard/transactions', '/dashboard/reports', '/dashboard/staff']);
-  assert.deepEqual(hrefs(account), ['/dashboard/disputes', '/dashboard/notifications', '/dashboard/settings']);
+  assert.deepEqual(hrefs(primary), ['/dashboard', '/dashboard/workshop', '/dashboard/staff', '/dashboard/notifications']);
+  assert.deepEqual(hrefs(account), ['/dashboard/billing', '/dashboard/verify', '/dashboard/settings']);
   assert.equal(new Set([...hrefs(primary), ...hrefs(account)]).size, 7);
   assert.equal(account.nodes().filter(node => node.type === 'LogoutButton').length, 1);
+  account.unmount();
+});
+
+test('a partner account with mechanic organization profile has the same workshop navigation as a legacy mechanic', () => {
+  const ui = fixture('MobileDashboardNav', { role: 'partner', partnerType: 'mechanic' });
+  assert.deepEqual(hrefs(ui), ['/dashboard', '/dashboard/workshop', '/dashboard/staff', '/dashboard/notifications']);
+  assert.equal(ui.links().some(node => /transactions|reports|settlements|fuel-pricing|card-verification/.test(node.props.href)), false);
+});
+
+test('gas stations retain their operational navigation and never receive a workshop link', () => {
+  const primary = fixture('MobileDashboardNav', { role: 'partner', partnerType: 'gas_station' });
+  const account = fixture('MobilePartnerAccount', { role: 'partner', partnerType: 'gas_station' });
+  account.clickAccount();
+  const combined = [...hrefs(primary), ...hrefs(account)];
+  assert.ok(combined.includes('/dashboard/station-profile'));
+  assert.ok(combined.includes('/dashboard/card-verification'));
+  assert.equal(combined.includes('/dashboard/workshop'), false);
   account.unmount();
 });
 

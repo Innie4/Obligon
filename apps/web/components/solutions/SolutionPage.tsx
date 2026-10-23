@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, BarChart3, CheckCircle2, Cpu, CreditCard, Gauge, LockKeyhole, MapPinned, RadioTower, Zap } from "lucide-react";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { assets } from "@/components/landing/assets";
 import { PageIntro } from "@/components/site/PageIntro";
 import { SiteFooter } from "@/components/site/SiteFooter";
@@ -24,24 +24,7 @@ type SolutionPageProps = {
   accent: "green" | "blue" | "lime";
 };
 
-const iconMap = {
-  card: CreditCard,
-  map: MapPinned,
-  lock: LockKeyhole,
-  chart: BarChart3,
-  gauge: Gauge,
-  tower: RadioTower,
-  cpu: Cpu,
-  zap: Zap
-};
-
-const accentClasses = {
-  green: "from-obligon-green/30",
-  blue: "from-[#011554]/35",
-  lime: "from-obligon-lime/30"
-};
-
-export function SolutionPage({ eyebrow, name, title, body, stats, features, modules, accent }: SolutionPageProps) {
+export function SolutionPage({ eyebrow, name, title, body, stats, features, modules }: SolutionPageProps) {
   return (
     <main className="min-h-screen bg-obligon-mist text-obligon-navy">
       <SiteHeader />
@@ -66,17 +49,20 @@ export function SolutionPage({ eyebrow, name, title, body, stats, features, modu
             </div>
           </div>
 
-          <div className="relative">
-            <div className={`absolute -inset-16 rounded-full bg-gradient-to-br ${accentClasses[accent]} to-transparent blur-3xl`} />
-            <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-white/5 p-5 shadow-hero">
-              <div className="rounded-3xl bg-white p-5">
-                <Image src={assets.fuelvistaCard} width={512} height={341} alt="FuelVista fuel card illustration" className="w-full rounded-2xl" priority />
-              </div>
-              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="relative min-w-0">
+            <div className="relative overflow-hidden">
+              {name === "FuelVista" ? <Image src={assets.fuelvistaCard} width={512} height={341} alt="FuelVista virtual fuel card" className="w-full rounded-2xl" priority /> : <div className="bg-obligon-blue p-7 sm:p-10">
+                <p className="text-lg font-semibold text-obligon-lime">{name}</p>
+                <h2 className="mt-5 font-display text-3xl font-bold leading-tight">What to include in your enquiry</h2>
+                <ul className="mt-6 space-y-4 text-base leading-7 text-white/85">
+                  {(name === "EnergyVista" ? ["Fuel type and quantity", "Delivery location and access", "Required dates and supply schedule"] : ["Facility location and access", "Generator model and capacity", "Fuel or maintenance requirements"]).map(detail => <li key={detail} className="flex items-start gap-3"><CheckCircle2 size={18} aria-hidden="true" className="mt-1 shrink-0 text-obligon-lime" />{detail}</li>)}
+                </ul>
+              </div>}
+              <div className="mt-7 grid grid-cols-1 gap-6 sm:grid-cols-3">
                 {stats.map((stat) => (
-                  <div key={stat.label} className="min-w-0 rounded-xl border border-white/10 bg-white/5 p-4">
+                  <div key={stat.label} className="min-w-0">
                     <p className="font-display text-2xl font-bold text-obligon-lime">{stat.value}</p>
-                    <p className="mt-1 text-[13px] leading-5 text-white/60">{stat.label}</p>
+                    <p className="mt-2 text-sm leading-6 text-white/80">{stat.label}</p>
                   </div>
                 ))}
               </div>
@@ -88,19 +74,16 @@ export function SolutionPage({ eyebrow, name, title, body, stats, features, modu
       <section className="mx-auto max-w-[1280px] px-5 py-20 sm:px-8 lg:px-16 lg:py-28">
         <div className="grid gap-8 lg:grid-cols-[360px_1fr]">
           <div>
-            <p className="text-[13px] font-bold uppercase tracking-[1.6px] text-obligon-green">What to Expect</p>
             <h2 className="mt-4 font-display text-4xl font-extrabold leading-[44px]">Designed for daily operators.</h2>
             <p className="mt-5 text-base leading-6 text-obligon-text">
               Review the available tools or discuss the service scope with our team before you proceed.
             </p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-x-10 gap-y-12 sm:grid-cols-2">
             {features.map((feature) => {
-              const Icon = iconMap[feature.icon];
               return (
-                <article key={feature.title} className="rounded-xl border border-obligon-border bg-white p-6">
-                  <Icon className="text-obligon-green" size={26} />
-                  <h3 className="mt-5 font-display text-xl font-bold">{feature.title}</h3>
+                <article key={feature.title}>
+                  <h3 className="font-display text-xl font-semibold">{feature.title}</h3>
                   <p className="mt-3 text-base leading-6 text-obligon-text">{feature.body}</p>
                 </article>
               );
@@ -109,23 +92,21 @@ export function SolutionPage({ eyebrow, name, title, body, stats, features, modu
         </div>
       </section>
 
-      <section className="border-y border-obligon-border bg-white">
+      <section className="bg-white">
         <div className="mx-auto grid max-w-[1280px] gap-8 px-5 py-16 sm:px-8 lg:grid-cols-[1fr_420px] lg:px-16 lg:py-24">
           <div>
             <h2 className="font-display text-4xl font-extrabold">Operational workflow</h2>
-            <div className="mt-10 grid gap-4">
-              {modules.map((module, index) => (
-                <div key={module} className="flex gap-4 rounded-xl border border-obligon-border bg-obligon-mist p-5">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-obligon-green text-base font-bold text-white">
-                    {index + 1}
-                  </span>
-                  <p className="self-center text-base font-semibold text-obligon-navy">{module}</p>
-                </div>
+            <ul className="mt-8 space-y-5">
+              {modules.map((module) => (
+                <li key={module} className="flex items-start gap-3">
+                  <CheckCircle2 size={20} aria-hidden="true" className="mt-0.5 shrink-0 text-obligon-green" />
+                  <p className="text-base leading-7 text-obligon-navy">{module}</p>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
           <aside className="rounded-[32px] bg-obligon-navy p-8 text-white">
-            <p className="text-[13px] uppercase tracking-[1.6px] text-obligon-lime">Company Enquiries</p>
+            <p className="text-sm font-semibold text-obligon-lime">Company enquiries</p>
             <h3 className="mt-4 font-display text-3xl font-extrabold leading-10">Plan your team requirements.</h3>
             <p className="mt-4 text-base leading-6 text-[#b8c4ff]">
               Discuss {name} with our team. We will confirm account setup, available services, partner requirements, and support.
@@ -144,7 +125,6 @@ export function SolutionPage({ eyebrow, name, title, body, stats, features, modu
 
       <section className="mx-auto max-w-[1152px] px-5 py-20 sm:px-8 lg:px-0">
         <div className="rounded-[40px] bg-obligon-panel px-6 py-14 text-center sm:px-12">
-          <p className="text-[13px] font-bold uppercase tracking-[1.6px] text-obligon-green">{name} Deployment</p>
           <h2 className="mt-4 font-display text-3xl font-extrabold leading-tight sm:text-4xl">Discuss your requirements</h2>
           <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
             <Link href={name==="FuelVista"?routes.signup:`/support?request=${name}` } className="inline-flex h-14 items-center justify-center rounded-lg bg-obligon-green px-8 text-base font-bold text-white shadow-green">

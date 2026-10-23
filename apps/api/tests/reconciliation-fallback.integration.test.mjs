@@ -30,6 +30,10 @@ before(async()=>{
  CREATE UNIQUE INDEX ON notifications(event_key) WHERE event_key IS NOT NULL;
  CREATE TABLE users(id uuid,email text,notification_prefs jsonb);
  CREATE TABLE audit_logs(actor_user_id uuid,actor_role text,action text,entity_type text,entity_id uuid,ip text,metadata jsonb);
+ CREATE TABLE organizations(id uuid PRIMARY KEY,type text DEFAULT 'partner',partner_type text DEFAULT 'fuel_station');
+ CREATE TABLE stations(id uuid PRIMARY KEY,partner_org_id uuid,status text DEFAULT 'active',fuels jsonb DEFAULT '["PMS"]',approved_selling_units jsonb DEFAULT '{"PMS":"litre"}');
+ ALTER TABLE fuel_orders ADD COLUMN selling_unit text DEFAULT 'litre';
+ ALTER TABLE transactions ADD COLUMN selling_unit text DEFAULT 'litre';
  `);
  globalThis.fetch=async(url)=>{
   assert.ok(String(url).startsWith('https://api.flutterwave.com/v3/'));
@@ -41,7 +45,7 @@ before(async()=>{
   return new Response(JSON.stringify({status:'success',data:{id:98765,tx_ref:reference,status:mode==='paid'?'successful':mode,amount:paidAmount,currency:'NGN'}}));
  };
 });
-beforeEach(async()=>{if(url){mode='paid';paidAmount=100;await pool.query('TRUNCATE payment_refunds, top_ups,wallets,wallet_ledger,payment_splits,subscription_payments,customer_subscriptions,card_requests,fuel_orders,cards,transactions,notifications,audit_logs');}});
+beforeEach(async()=>{if(url){mode='paid';paidAmount=100;await pool.query('TRUNCATE payment_refunds, top_ups,wallets,wallet_ledger,payment_splits,subscription_payments,customer_subscriptions,card_requests,fuel_orders,cards,transactions,notifications,audit_logs,stations,organizations');}});
 after(async()=>{globalThis.fetch=originalFetch;if(!url)return;await pool?.end();await admin.query(`DROP SCHEMA ${schema} CASCADE`);await admin.end();});
 async function subscription(){const {rows:[row]}=await pool.query("INSERT INTO subscription_payments(reference,user_id,plan_code,amount_kobo,provider)VALUES($1,$2,'gold',10000,'flutterwave')RETURNING *",[`SUB-${randomUUID()}`,randomUUID()]);return row;}
 integration('periodic reconciliation activates a paid subscription without redirect or webhook',async()=>{
@@ -73,7 +77,10 @@ integration('pending fuel orders are retried and remain pending on unknown provi
 
 async function fuelOrder(){
  const user=randomUUID();const {rows:[card]}=await pool.query('INSERT INTO cards(owner_user_id)VALUES($1)RETURNING id',[user]);
- const {rows:[order]}=await pool.query('INSERT INTO fuel_orders(reference,user_id,card_id,station_id)VALUES($1,$2,$3,$4)RETURNING *',[`FUEL-${randomUUID()}`,user,card.id,randomUUID()]);return order;
+ const organization=randomUUID(),station=randomUUID();
+ await pool.query('INSERT INTO organizations(id)VALUES($1)',[organization]);
+ await pool.query('INSERT INTO stations(id,partner_org_id)VALUES($1,$2)',[station,organization]);
+ const {rows:[order]}=await pool.query('INSERT INTO fuel_orders(reference,user_id,card_id,station_id)VALUES($1,$2,$3,$4)RETURNING *',[`FUEL-${randomUUID()}`,user,card.id,station]);return order;
 }
 integration('periodic reconciliation recovers a paid fuel authorization once without redirect or webhook',async()=>{
  const order=await fuelOrder();const summary=await reconcile();assert.equal(summary.fuelOrders.completed,1);

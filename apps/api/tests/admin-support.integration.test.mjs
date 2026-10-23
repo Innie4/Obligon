@@ -17,6 +17,7 @@ before(async()=>{
  env.FLW_SECRET_KEY='test-contract-key';env.FLW_PUBLIC_KEY='test-contract-public';env.OTP_DELIVERY_MODE='provider';env.EMAIL_PROVIDER='local';env.SMS_PROVIDER='local';env.LOCAL_OUTBOX_PATH='/tmp/obligon-final-integration-outbox.jsonl';
  for(const table of ['users','organizations','memberships','support_tickets','ticket_messages','audit_logs','notifications','payment_refunds','bank_accounts','settlement_accounts','transactions','contact_messages','email_outbox','job_postings','job_applications','stations','fuel_prices','fueling_logs','equipment','pricing_plans','subscriptions','card_plans','customer_subscriptions','leads','data_requests','cards','wallets','wallet_ledger','sessions','security_logs','verification_codes','partner_applications','top_ups','subscription_payments','card_requests','partner_api_keys','payouts','vehicles','invites','disputes'])await pool.query(`CREATE TABLE ${table}(LIKE public.${table} INCLUDING ALL)`);
  await pool.query(`CREATE TABLE fuel_orders(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),reference text UNIQUE,user_id uuid,station_id uuid,provider text DEFAULT 'flutterwave',provider_transaction_id text,amount_kobo bigint,transaction_id uuid,status text CHECK(status IN('awaiting_payment','paid','paid_review','fulfilled','refund_pending','refunded')),review_reason text,created_at timestamptz DEFAULT now(),paid_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());`);
+ for(const table of ['fuel_price_history','station_discount_requests','discount_review_states','resupply_orders'])await pool.query(`CREATE TABLE ${table}(LIKE public.${table} INCLUDING ALL)`);
  await pool.query(await readFile(new URL('../src/migrations/024_bank_settlement_binding.sql',import.meta.url),'utf8'));
  await pool.query('CREATE TRIGGER business_activity AFTER INSERT OR UPDATE OR DELETE ON stations FOR EACH ROW EXECUTE FUNCTION public.record_business_activity()');
  const app=express();app.set('trust proxy',1);app.use(express.json());app.use((req,_res,next)=>{const role=req.headers['x-test-role'];if(role)req.user={...(role==='admin'?fixtures?.admin:role==='partner'?fixtures?.partner:fixtures?.customer),role,orgType:role==='partner'?'partner':undefined,orgId:fixtures?.org?.id};next();});
@@ -406,4 +407,43 @@ integration('failed queued email is retained and stale ambiguous retries require
   await flushEmailOutbox();const failed=(await pool.query('SELECT status,attempts FROM email_outbox')).rows[0];assert.deepEqual(failed,{status:'failed',attempts:1});assert.ok(calls>0);
   await pool.query("UPDATE email_outbox SET next_attempt_at=now()-interval '1 minute',created_at=now()-interval '24 hours'");const before=calls;await flushEmailOutbox();assert.equal(calls,before);assert.equal((await pool.query('SELECT status FROM email_outbox')).rows[0].status,'review');
  }finally{env.EMAIL_PROVIDER='local';env.RESEND_API_KEY=prior;globalThis.fetch=originalFetch;}
+});
+
+integration('station fuel units require admin approval and repricing before gas sales can use a changed unit',async()=>{
+ await pool.query("UPDATE organizations SET partner_type='gas_station' WHERE id=$1",[fixtures.org.id]);
+ await pool.query('TRUNCATE fuel_price_history,resupply_orders');
+ const partner=async(path,body,method=body?'POST':'GET')=>{
+  const response=await originalFetch(`${base}/api/partner${path}`,{method,headers:{'Content-Type':'application/json','x-test-role':'partner'},...(body?{body:JSON.stringify(body)}:{})});
+  return {status:response.status,body:await response.json()};
+ };
+ const station={name:'Gas fixture',address:'Test road',city:'Lagos',lat:6.52,lng:3.37,fuels:['CNG'],sellingUnits:{CNG:'kg'}};
+ const disallowed=await partner('/stations',{...station,fuels:['Petrol'],sellingUnits:{PMS:'litre'}});
+ assert.equal(disallowed.status,400,JSON.stringify(disallowed.body));
+ const submitted=await partner('/stations',{...station,approvedSellingUnits:{CNG:'scm'}});
+ assert.equal(submitted.status,201,JSON.stringify(submitted.body));const stationId=submitted.body.station.id;
+ let saved=(await pool.query('SELECT status,selling_units,approved_selling_units FROM stations WHERE id=$1',[stationId])).rows[0];
+ assert.equal(saved.status,'pending');assert.deepEqual(saved.approved_selling_units,{});
+ assert.equal((await partner('/pricing',{stationId,updates:[{fuelType:'CNG',price:'1000',sellingUnit:'kg'}]})).status,400);
+ const approved=await request(`/stations/${stationId}/review`,{body:{status:'active',note:'Reviewed station fuels and selling units',sellingUnits:{CNG:'kg'}}});
+ assert.equal(approved.status,200,JSON.stringify(approved.body));
+ assert.equal((await partner('/pricing',{stationId,updates:[null]})).status,400);
+ assert.equal((await partner('/pricing',{stationId,updates:[{fuelType:'CNG',price:'1000',sellingUnit:'kg'}]})).status,200);
+ const updated=await partner('/station',{stationId,sellingUnits:{CNG:'scm'},approvedSellingUnits:{CNG:'scm'}},'PUT');
+ assert.equal(updated.status,200,JSON.stringify(updated.body));
+ saved=(await pool.query('SELECT status,selling_units,approved_selling_units FROM stations WHERE id=$1',[stationId])).rows[0];
+ assert.equal(saved.status,'pending');assert.deepEqual(saved.selling_units,{CNG:'scm'});assert.deepEqual(saved.approved_selling_units,{CNG:'kg'});
+ assert.equal((await partner('/pricing',{stationId,updates:[{fuelType:'CNG',price:'1000',sellingUnit:'scm'}]})).status,400);
+ assert.equal((await request(`/stations/${stationId}/review`,{body:{status:'active',note:'Approved revised selling unit',sellingUnits:{CNG:'scm'}}})).status,200);
+ assert.equal((await partner('/pricing',{stationId,updates:[{fuelType:'CNG',price:'1000',sellingUnit:'kg'}]})).status,400);
+ assert.equal((await partner('/pricing',{stationId,updates:[{fuelType:'CNG',price:'1000',sellingUnit:'scm'}]})).status,200);
+ const pricing=await partner('/pricing');assert.equal(pricing.status,200,JSON.stringify(pricing.body));
+ assert.equal(pricing.body.prices[0].sellingUnit,'scm');assert.deepEqual(pricing.body.stations[0].approvedSellingUnits,{CNG:'scm'});
+ const changed=pricing.body.history.find(row=>row.oldSellingUnit==='kg');assert.equal(changed.sellingUnit,'scm');assert.equal(changed.cells[4],'Unit changed');assert.match(changed.cells[2],/\/kg$/);
+ assert.equal((await partner('/station/resupply',{stationId,fuelType:'CNG',litres:25})).status,400);
+ assert.equal((await partner('/station/resupply',{stationId,fuelType:'CNG',sellingUnit:'kg',litres:25})).status,400);
+ assert.equal((await partner('/station/resupply',{stationId,fuelType:'CNG',sellingUnit:'scm',litres:25.5})).status,400);
+ const resupply=await partner('/station/resupply',{stationId,fuelType:'CNG',sellingUnit:'scm',litres:25});
+ assert.equal(resupply.status,200,JSON.stringify(resupply.body));assert.equal(resupply.body.sellingUnit,'scm');assert.equal(resupply.body.quantity,25);
+ assert.deepEqual((await pool.query('SELECT fuel_type,litres,selling_unit FROM resupply_orders')).rows,[{fuel_type:'CNG',litres:25,selling_unit:'scm'}]);
+ assert.equal((await pool.query('SELECT selling_unit FROM fuel_price_history ORDER BY created_at,id')).rows.length,2);
 });

@@ -37,7 +37,7 @@ export function CookieConsentBanner() {
   return (
     <aside
       aria-label="Cookie Consent"
-      className="fixed bottom-4 left-4 right-4 z-40 mx-auto max-w-3xl rounded-2xl border border-obligon-border bg-white/95 p-5 shadow-hero backdrop-blur-md animate-in fade-in slide-in-from-bottom-4 duration-300"
+      className="fixed bottom-4 left-4 right-4 z-40 mx-auto max-w-3xl rounded-2xl border border-obligon-border bg-white p-5 shadow-hero  animate-in fade-in slide-in-from-bottom-4 duration-300"
     >
       {error&&<p role="alert" className="mb-3 text-sm text-red-800">{error}</p>}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -59,14 +59,14 @@ export function CookieConsentBanner() {
           <button
             type="button"
             disabled={saving} onClick={handleEssentialOnly}
-            className="h-10 rounded-xl border border-obligon-border bg-white px-4 text-xs font-bold text-obligon-navy hover:bg-obligon-mist transition"
+            className="min-h-11 rounded-xl border border-obligon-border bg-white px-4 text-xs font-bold text-obligon-navy hover:bg-obligon-mist transition"
           >
             Essential Only
           </button>
           <button
             type="button"
             disabled={saving} onClick={handleAcceptAll}
-            className="h-10 rounded-xl bg-obligon-green px-5 text-xs font-bold text-white shadow-green hover:bg-obligon-green/90 transition"
+            className="min-h-11 rounded-xl bg-obligon-green px-5 text-xs font-bold text-white shadow-green hover:bg-obligon-green/90 transition"
           >
             Accept All
           </button>

@@ -159,7 +159,10 @@ test("a fuel filter cannot match a bank transfer", () => {
 test("the receipt does not invent a station for a top-up", () => {
   const source = read(webRoot, "lib", "customer-presentation.ts");
   const exports = {};
-  vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, { exports });
+  const shared = { fuelSellingUnits: fuel => ['CNG','LPG'].includes(fuel) ? ['kg','scm'] : ['litre'], sellingUnitLabel: unit => ({litre:'L',kg:'kg',scm:'standard m³'})[unit] ?? 'unit' };
+  const unitExports = {};
+  vm.runInNewContext(ts.transpileModule(read(webRoot,'lib','partner-selling-unit.ts'), {compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText, {exports:unitExports,require:()=>shared});
+  vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, { exports, require: id => id==='./partner-selling-unit' ? unitExports : shared });
   const event = { id: "movement:record-id", kind: "topup", reference: null, station: "", amount: "+₦100.00", status: "credited", subtitle: "Added to your fuel wallet" };
   const rows = exports.customerReceiptRows(event);
   assert.ok(!rows.some(([label]) => ["Merchant / Station", "Vehicle ID", "Fuel Type", "Card Number", "Volume", "Timestamp"].includes(label)), "absent metadata must stay absent");

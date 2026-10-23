@@ -11,8 +11,8 @@ type LandingButtonProps = {
 };
 
 const variantClasses = {
-  primary: "bg-obligon-green text-white shadow-green",
-  secondary: "border border-white/10 bg-white/[0.03] text-white backdrop-blur-md",
+  primary: "bg-obligon-green text-white hover:bg-[#315600]",
+  secondary: "border border-white/30 bg-transparent text-white hover:bg-white/10",
   darkOutline: "border border-obligon-navy bg-transparent text-obligon-navy",
   light: "bg-white text-obligon-navy"
 };
@@ -26,7 +26,7 @@ export function LandingButton({
 }: LandingButtonProps) {
   const iconSrc = icon === "arrow" ? assets.arrowUpRight : icon === "chevron" ? assets.checkSmall : null;
 
-  const classNames = `inline-flex h-[58px] max-w-full items-center justify-center gap-4 rounded-lg px-8 text-center text-xs font-semibold tracking-[0.6px] transition duration-200 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-obligon-lime focus:ring-offset-2 ${variantClasses[variant]} ${className}`;
+  const classNames = `inline-flex min-h-12 max-w-full items-center justify-center gap-3 rounded-lg px-7 py-3 text-center text-sm font-semibold transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-obligon-lime focus:ring-offset-2 ${variantClasses[variant]} ${className}`;
   const content = (
     <>
       <span>{children}</span>

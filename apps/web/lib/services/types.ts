@@ -31,6 +31,7 @@ export interface SessionUser {
   organization: string;
   organizationId?: string | null;
   organizationType?: "company" | "partner" | "mechanic" | null;
+  partnerType?: "fuel_station" | "gas_station" | "mechanic" | "other" | null;
   organizationVerificationStatus?: "unverified" | "pending" | "verified" | "rejected" | null;
   organizationRole?: "owner" | "admin" | "manager" | "dispatcher" | "viewer" | null;
   initials: string;
@@ -301,6 +302,8 @@ export interface CustomerMoneyEvent {
   fuel?: string;
   maskedPan?: string;
   litres?: number;
+  quantity?: number | string;
+  sellingUnit?: "litre" | "kg" | "scm";
   /** Signed and formatted, e.g. "+₦100.00" or "-₦4,500.00". */
   amount: string;
   signedKobo: number;
@@ -371,6 +374,7 @@ export interface Station {
   hours: string;
   lat: number | null;
   lng: number | null;
+  prices?: Array<{fuelType:string;priceLabel:string;sellingUnit:"litre"|"kg"|"scm"}>;
 }
 
 export interface Vehicle {
@@ -441,6 +445,8 @@ export interface PartnerPOSReceipt {
   reference: string;
   fuelType: string;
   litres: number;
+  quantity?: number | string;
+  sellingUnit?: "litre" | "kg" | "scm";
   amountLabel: string;
   card?: string;
   vehicle?: string;
@@ -486,13 +492,14 @@ export interface PartnerFuelPrice {
   stationName?: string;
   id: string;
   fuelType: string;
+  sellingUnit?: "litre" | "kg" | "scm";
   price: number;
   priceLabel: string;
   updatedAt: string;
 }
 
 export interface PartnerPricing {
-  stations?: Array<{id:string;name:string}>;
+  stations?: Array<{id:string;name:string;fuels?:string[];approvedSellingUnits?:Record<string,"litre"|"kg"|"scm">}>;
   discounts?: Array<{id:string;station_id:string;fuel_type:string;rate_bp:number;starts_at:string;ends_at:string;status:string}>;
   prices: PartnerFuelPrice[];
   history: PartnerRow[];
@@ -507,13 +514,15 @@ export interface PartnerStation {
     lat: number | null;
     lng: number | null;
     fuels: string[] | null;
+    sellingUnits?: Record<string, "litre" | "kg" | "scm">;
+    approvedSellingUnits?: Record<string, "litre" | "kg" | "scm">;
     hours: string | null;
     assets: string[];
     status: string;
     messagingTerminal: { message?: string; updatedAt?: string } | null;
   } | null;
   prices: PartnerFuelPrice[];
-  logs: Array<{ id: string; fuelType: string; litres: number; reference: string | null; time: string }>;
+  logs: Array<{ id: string; fuelType: string; litres: number; quantity?: number | string; sellingUnit?: "litre" | "kg" | "scm"; reference: string | null; time: string }>;
   equipment: Array<{ id: string; name: string; kind: string; status: string; lastService: string | null }>;
 }
 

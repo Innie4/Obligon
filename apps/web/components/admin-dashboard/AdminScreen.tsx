@@ -3,6 +3,8 @@ import * as React from "react";
 import Link from "next/link";
 import { api, authenticatedRequest, saveBlob } from "@/lib/services";
 import { CardApprovalQueue } from "./CardApprovalQueue";
+import { DashboardSearchQuery } from "@/components/shared/DashboardSearchQuery";
+import { AdminRecords } from "./AdminRecords";
 import {
   adminPageCopy,
   type AdminPageKey,
@@ -63,7 +65,7 @@ const columns: Record<AdminPageKey, string[]> = {
   reports: [
     "Station",
     "Location",
-    "Litres",
+    "Quantities",
     "Transactions",
     "Revenue share",
     "Status",
@@ -115,7 +117,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
     ] ??
     data?.stations ??
     [];
-  const field = "mt-2 block min-h-12 w-full rounded border p-3";
+  const field = "mt-2 block min-h-11 w-full min-w-0 rounded-xl border border-obligon-border bg-white p-3 text-sm text-obligon-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-obligon-green";
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const body = Object.fromEntries(new FormData(e.currentTarget));
@@ -162,11 +164,12 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
     }
   }
   return (
-    <section className="px-5 py-9 sm:px-8 xl:px-12">
-      <header className="flex flex-wrap items-end justify-between gap-4">
+    <section className="mx-auto w-full min-w-0 max-w-[1600px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <DashboardSearchQuery onSearch={value => { setSearch(value); setPage(0); }} />
+      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-obligon-border pb-6">
         <div>
-          <h1 className="text-3xl font-bold">{adminPageCopy[pageKey].title}</h1>
-          <p className="mt-2 text-sm">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{adminPageCopy[pageKey].title}</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-obligon-text">
             Live platform records. Changes are recorded in Requests &amp;
             Activity.
           </p>
@@ -229,15 +232,15 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
         </p>
       )}
       {!loading && !loadFailed && (
-        <div className="my-7 grid gap-4 md:grid-cols-3">
+        <dl aria-label="Platform metrics" className={`my-6 grid grid-cols-2 gap-3 sm:gap-4 ${(data?.metrics.length ?? 0) > 3 ? "xl:grid-cols-4" : "lg:grid-cols-3"}`}>
           {data?.metrics.map((metric) => (
-            <div key={metric.label} className="border-b pb-4">
-              <p className="text-xs font-bold">{metric.label}</p>
-              <p className="mt-2 text-3xl font-bold">{metric.value}</p>
-              {metric.helper && <p className="text-sm">{metric.helper}</p>}
+            <div key={metric.label} className="min-w-0 rounded-xl border border-obligon-border bg-white p-3 sm:p-5">
+              <dt className="text-xs font-medium leading-5 text-obligon-text sm:text-sm">{metric.label}</dt>
+              <dd className="mt-1 break-words text-2xl font-bold tracking-tight tabular-nums sm:mt-2 sm:text-3xl">{metric.value}</dd>
+              {metric.helper && <dd className="mt-1 text-xs leading-5 text-obligon-text">{metric.helper}</dd>}
             </div>
           ))}
-        </div>
+        </dl>
       )}
       {pageKey === "reports" ? (
         <label>
@@ -258,6 +261,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
           <input
             className={field}
             value={search}
+            maxLength={254}
             onChange={(e) => {
               setSearch(e.target.value);
               setPage(0);
@@ -271,53 +275,16 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
         </p>
       ) : !loadFailed ? (
         <>
-          <div className="mt-5 overflow-x-auto rounded border bg-white">
-            <table className="w-full min-w-[750px] text-left text-sm">
-              <thead>
-                <tr>
-                  {columns[pageKey].map((column) => (
-                    <th key={column} className="p-4">
-                      {column}
-                    </th>
-                  ))}
-                  {pageKey !== "reports" && <th className="p-4">Review</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, index) => (
-                  <tr className="border-t" key={row.id ?? index}>
-                    {row.cells.map((cell, i) => (
-                      <td className="whitespace-pre-line p-4" key={i}>
-                        {cell}
-                      </td>
-                    ))}
-                    <td className="p-4">{row.status}</td>
-                    {pageKey !== "reports" && (
-                      <td className="p-4">
-                        <button
-                          disabled={busy}
-                          className="min-h-12 underline"
-                          onClick={() => {
-                            setSelected(row);
-                            setCreating(false);
-                            setReviewVerification(row.verificationStatus ?? "pending");
-                          }}
-                        >
-                          Review record
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {!rows.length && <p className="p-6">No records match this view.</p>}
-          </div>
+          <AdminRecords title={adminPageCopy[pageKey].title} columns={columns[pageKey]} rows={rows} busy={busy} onReview={pageKey === "reports" ? undefined : row => {
+            setSelected(row);
+            setCreating(false);
+            setReviewVerification(row.verificationStatus ?? "pending");
+          }} />
           {data?.total !== undefined && (
-            <div className="mt-4 flex items-center gap-4">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
               <button
                 disabled={page === 0}
-                className="min-h-12 underline"
+                className="min-h-11 rounded-lg border border-obligon-border bg-white px-4 font-semibold disabled:cursor-not-allowed disabled:bg-obligon-panel disabled:text-obligon-text/50"
                 onClick={() => setPage(page - 1)}
               >
                 Previous
@@ -327,7 +294,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
               </span>
               <button
                 disabled={(page + 1) * 20 >= data.total}
-                className="min-h-12 underline"
+                className="min-h-11 rounded-lg border border-obligon-border bg-white px-4 font-semibold disabled:cursor-not-allowed disabled:bg-obligon-panel disabled:text-obligon-text/50"
                 onClick={() => setPage(page + 1)}
               >
                 Next
@@ -340,7 +307,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
         <form
           key={selected?.id ?? "new"}
           onSubmit={submit}
-          className="mt-7 max-w-2xl space-y-4 rounded border bg-white p-6"
+          className="mt-7 max-w-2xl space-y-5 rounded-xl border border-obligon-border bg-white p-5 sm:p-6"
         >
           <h2 className="text-2xl font-bold">
             {creating

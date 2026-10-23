@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DashboardLogo } from "@/components/shared/DashboardLogo";
 import {
   Bell,
@@ -18,11 +18,17 @@ import {
 import { customerNav, secondaryCustomerNav, pageTitles, type CustomerPageKey } from "@/lib/mock/customer-data";
 import { useSession } from "@/components/shared/AuthContext";
 import { AuthGuard } from "@/components/auth/AuthGuard";
-import { LogoutButton } from "@/components/auth/LogoutButton";
+import { LogoutButton, SignInOptionsLink } from "@/components/auth/LogoutButton";
 import { api } from "@/lib/services";
 import { useAsync } from "@/components/shared/useAsync";
 import { usePolling } from "@/components/shared/usePolling";
 import { customerAccountLabel, type CustomerEntitlementState } from "@/lib/customer-entitlements";
+import { DashboardSearch } from "@/components/shared/DashboardSearch";
+
+const customerSearchEntries = [
+  ...[...customerNav, ...secondaryCustomerNav].map(item => ({ ...item, keywords: item.key === "card" ? "buy fuel authorize subscription renew plan" : item.key === "transactions" ? "transactions receipts reference" : "" })),
+  { label: "Sign-in options", href: "/auth/sign-in-options", keywords: "Google passkey password security" }
+];
 
 type CustomerShellProps = {
   children: React.ReactNode;
@@ -68,42 +74,43 @@ function Sidebar() {
     <Link
       key={item.key}
       href={item.href}
-      className={`flex h-12 items-center gap-3 rounded-xl px-4 text-base font-semibold transition ${
-        active === item.key ? "bg-obligon-green text-white font-bold shadow-green" : "text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green"
+      aria-current={active === item.key ? "page" : undefined}
+      className={`flex h-12 items-center gap-3 rounded-xl px-4 text-sm font-semibold transition-colors ${
+        active === item.key ? "bg-obligon-mist text-obligon-green font-bold" : "text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green"
       }`}
     >
-      <span className={active === item.key ? "text-white" : "text-[#4f5663]"}>{iconMap[item.key]}</span>
+      <span className={active === item.key ? "text-obligon-green" : "text-[#4f5663]"}>{iconMap[item.key]}</span>
       {item.label}
     </Link>
   );
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-[#dfe5ec] bg-white px-6 py-8 lg:flex">
-      <Link href="/customer" className="block" aria-label="Obligon LTD customer dashboard">
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-obligon-border bg-white px-5 py-6 lg:flex">
+      <Link href="/customer" className="block shrink-0" aria-label="Obligon LTD customer dashboard">
         <DashboardLogo priority />
       </Link>
 
-      <div className="mt-10 flex items-center gap-3.5 rounded-xl bg-[#f7fbf8] p-3.5 border border-obligon-border">
+      <div className="mt-8 flex shrink-0 items-center gap-3 rounded-xl bg-obligon-mist/60 p-3">
         <span className="grid size-11 shrink-0 place-items-center rounded-full bg-obligon-lime/30 text-sm font-extrabold text-[#131f00]">{user?.initials ?? "FM"}</span>
         <div className="min-w-0 flex-1">
           <p className="font-extrabold text-obligon-navy truncate text-sm">{user?.name ?? "Customer"}</p>
           <p className="text-xs text-obligon-text truncate">Customer account</p>
-          <p className="text-[11px] font-bold text-obligon-green mt-0.5">{accountLabel}</p>
+          <p className="text-xs font-bold text-obligon-green mt-0.5">{accountLabel}</p>
         </div>
       </div>
 
-      <nav className="mt-8 space-y-2 flex-1 overflow-y-auto pr-1">
+      <nav className="mt-6 min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain pr-1">
         {customerNav.map(renderLink)}
 
         <button
           type="button"
           onClick={() => setAccountOpen((open) => !open)}
           aria-expanded={accountOpen}
-          className={`flex h-12 w-full items-center gap-3 rounded-xl px-4 text-base font-semibold transition ${
-            accountKeys.includes(active) ? "bg-obligon-green text-white font-bold shadow-green" : "text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green"
+          className={`flex h-12 w-full items-center gap-3 rounded-xl px-4 text-sm font-semibold transition-colors ${
+            accountKeys.includes(active) ? "bg-obligon-mist text-obligon-green font-bold" : "text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green"
           }`}
         >
-          <span className={accountKeys.includes(active) ? "text-white" : "text-[#4f5663]"}>
+          <span className={accountKeys.includes(active) ? "text-obligon-green" : "text-[#4f5663]"}>
             <Settings size={20} />
           </span>
           Account
@@ -116,32 +123,72 @@ function Sidebar() {
         {accountOpen ? <div className="space-y-2 pl-4 border-l-2 border-obligon-border/60 ml-2 mt-1">{secondaryCustomerNav.map(renderLink)}</div> : null}
       </nav>
 
-      <LogoutButton className="mt-auto w-full justify-start gap-3 px-4 py-3 rounded-xl text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green" />
+      <SignInOptionsLink className="mt-auto shrink-0 w-full justify-start gap-3 px-4 py-3 text-[#4f5663]" />
+      <LogoutButton className="shrink-0 w-full justify-start gap-3 px-4 py-3 rounded-xl text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green" />
     </aside>
   );
 }
 
-function MobileHeader() {
+function MobileCustomerAccount() {
+  const pathname = usePathname();
   const [accountOpen, setAccountOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => setAccountOpen(false), [pathname]);
+  useEffect(() => {
+    if (!accountOpen) return;
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const resize = () => { if (desktop.matches) setAccountOpen(false); };
+    const outside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !containerRef.current?.contains(event.target)) setAccountOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setAccountOpen(false);
+        buttonRef.current?.focus();
+      }
+    };
+    resize();
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    desktop.addEventListener("change", resize);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("keydown", escape);
+      desktop.removeEventListener("change", resize);
+    };
+  }, [accountOpen]);
+
+  return <div ref={containerRef} className="relative" onBlur={event => {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setAccountOpen(false);
+  }}>
+    <button ref={buttonRef} type="button" aria-expanded={accountOpen} aria-controls={accountOpen ? "customer-mobile-account" : undefined} onClick={() => setAccountOpen(open => !open)} className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-obligon-border bg-white px-2 text-sm font-bold text-obligon-green">
+      Account <ChevronDown size={16} aria-hidden="true" className={accountOpen ? "rotate-180" : ""} />
+    </button>
+    {accountOpen ? <nav id="customer-mobile-account" aria-label="Customer account" className="fixed right-4 top-[76px] z-50 max-h-[calc(100dvh-10rem-env(safe-area-inset-bottom))] w-[min(270px,calc(100vw-32px))] overflow-y-auto overscroll-contain rounded-xl border border-obligon-border bg-white p-2 shadow-xl">
+      {secondaryCustomerNav.map(item => <Link key={item.key} href={item.href} aria-current={pathname === item.href ? "page" : undefined} onClick={() => setAccountOpen(false)} className="flex min-h-12 items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-obligon-navy hover:bg-obligon-mist">
+        {iconMap[item.key]} {item.label}
+      </Link>)}
+      <SignInOptionsLink onClick={() => setAccountOpen(false)} className="min-h-12 w-full justify-start px-3" />
+      <LogoutButton className="min-h-12 w-full justify-start rounded-lg px-3 text-sm text-obligon-navy hover:bg-obligon-mist" />
+    </nav> : null}
+  </div>;
+}
+
+function MobileHeader() {
   return (
-    <header className="relative flex h-[84px] items-center justify-between border-b border-[#e0e7de] bg-[#f7fbf8] px-5 lg:hidden">
-      <Link href="/customer" className="block" aria-label="Obligon LTD customer dashboard">
-        <DashboardLogo width={112} priority />
+    <header className="sticky top-0 z-[45] flex min-h-[84px] items-center justify-between gap-2 border-b border-obligon-border bg-white px-3 sm:px-5 lg:hidden">
+      <Link href="/customer" className="block shrink-0" aria-label="Obligon LTD customer dashboard">
+        <DashboardLogo width={88} priority />
       </Link>
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 items-center gap-1">
+      <DashboardSearch scope="customer" entries={customerSearchEntries} compact />
       <Link href="/customer/notifications" className="grid size-11 place-items-center text-obligon-green" aria-label="Notifications">
         <Bell size={22} fill="currentColor" />
       </Link>
-      <button type="button" aria-expanded={accountOpen} aria-controls="customer-mobile-account" onClick={() => setAccountOpen(open => !open)} className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-obligon-border bg-white px-3 text-sm font-bold text-obligon-green">
-        Account <ChevronDown size={16} />
-      </button>
+      <MobileCustomerAccount />
       </div>
-      {accountOpen ? <nav id="customer-mobile-account" aria-label="Customer account" className="absolute right-5 top-[72px] z-50 w-[min(270px,calc(100vw-40px))] rounded-xl border border-obligon-border bg-white p-2 shadow-xl">
-        {secondaryCustomerNav.map(item => <Link key={item.key} href={item.href} onClick={() => setAccountOpen(false)} className="flex min-h-12 items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-obligon-navy hover:bg-obligon-mist">
-          {iconMap[item.key]} {item.label}
-        </Link>)}
-        <LogoutButton className="min-h-12 w-full justify-start rounded-lg px-3 text-sm text-obligon-navy hover:bg-obligon-mist" />
-      </nav> : null}
     </header>
   );
 }
@@ -152,13 +199,14 @@ function DesktopHeader() {
   const { user } = useSession();
 
   return (
-    <header className="sticky top-0 z-30 hidden h-[74px] items-center justify-between border-b border-[#cfd8cc] bg-[#f7fbf8] px-16 lg:flex">
-      <h1 className="font-display text-2xl font-extrabold tracking-normal text-[#20251f]">{pageTitles[page]}</h1>
-      <div className="flex items-center gap-5">
-        <Link href="/customer/notifications" className="text-[#3f463d]" aria-label="Notifications">
+    <header className="sticky top-0 z-30 hidden min-h-[74px] items-center justify-between gap-5 border-b border-obligon-border bg-white/95 px-8 backdrop-blur-sm lg:flex xl:px-12">
+      <h1 className="min-w-0 font-display text-lg font-bold tracking-tight sm:text-xl text-[#20251f] xl:text-2xl">{pageTitles[page]}</h1>
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-4">
+        <DashboardSearch scope="customer" entries={customerSearchEntries} />
+        <Link href="/customer/notifications" className="grid size-11 shrink-0 place-items-center rounded-xl text-obligon-text transition-colors hover:bg-obligon-mist" aria-label="Notifications">
           <Bell size={21} />
         </Link>
-        <Link href="/customer/profile" className="hidden rounded-full border border-[#dbe2d8] bg-white px-4 py-2 text-sm font-bold text-obligon-green xl:block">
+        <Link href="/customer/profile" className="hidden max-w-[180px] truncate rounded-full border border-obligon-border bg-white px-4 py-2 text-sm font-bold text-obligon-green xl:block">
           {user?.name ?? "Guest"}
         </Link>
       </div>
@@ -171,16 +219,17 @@ function MobileBottomNav() {
   const active = pageForPath(pathname);
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 grid h-[74px] grid-cols-5 border-t border-[#cfd8cc] bg-[#f7fbf8] lg:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 grid min-h-[74px] grid-cols-5 border-t border-obligon-border bg-white pb-[env(safe-area-inset-bottom)] lg:hidden">
       {customerNav.map((item) => (
         <Link
           key={item.key}
           href={item.href}
-          className={`flex flex-col items-center justify-center gap-1 text-[11px] font-extrabold ${
+          aria-current={active === item.key ? "page" : undefined}
+          className={`relative flex min-h-[74px] flex-col items-center justify-center gap-1 text-xs font-semibold ${
             active === item.key ? "text-obligon-green" : "text-[#3f463d]"
           }`}
         >
-          {active === item.key ? <span className="absolute top-1 h-0.5 w-16 bg-obligon-green" /> : null}
+          {active === item.key ? <span className="absolute top-1 h-1 w-8 rounded-full bg-obligon-green" /> : null}
           {iconMap[item.key]}
           {item.label}
         </Link>
@@ -192,7 +241,7 @@ function MobileBottomNav() {
 export function CustomerShell({ children }: CustomerShellProps) {
   return (
     <AuthGuard allowedRoles={["customer"]}>
-      <main className="min-h-screen bg-[#f7fbf8] text-[#20251f]">
+      <main className="min-h-screen bg-obligon-mist/50 text-obligon-navy">
         <Sidebar />
       <div className="lg:pl-64">
         <DesktopHeader />

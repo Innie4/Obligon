@@ -1,9 +1,13 @@
 "use client";
 import * as React from "react";
 import { authenticatedRequest } from "@/lib/services";
+import { partnerFuelCode, fuelSellingUnits, sellingUnitLabel, type SellingUnit } from "../../../../packages/shared/partner-access.mjs";
 type RecordRow = {
   id: string;
   name?: string;
+  fuels?: string[];
+  sellingUnits?: Record<string, SellingUnit>;
+  approvedSellingUnits?: Record<string, SellingUnit>;
   title?: string;
   contact_name?: string;
   email?: string;
@@ -75,6 +79,7 @@ const paths: Record<Queue, string> = {
   financial: "/financial-activity",
 };
 export function IntakeConsole() {
+  const [sellingUnits, setSellingUnits] = React.useState<Record<string, SellingUnit>>({});
   const [queue, setQueue] = React.useState<Queue>("stations"),
     [rows, setRows] = React.useState<RecordRow[]>([]),
     [statuses, setStatuses] = React.useState<string[]>([]),
@@ -159,12 +164,12 @@ export function IntakeConsole() {
     }
   }
   return (
-    <section className="p-5 sm:p-10">
+    <section className="mx-auto w-full min-w-0 max-w-[1600px] px-4 py-6 text-sm sm:px-6 sm:py-8 lg:px-8">
       <p className="text-xs font-bold uppercase text-obligon-green">
         Obligon operations
       </p>
-      <h1 className="mt-2 text-3xl font-bold">Requests and activity</h1>
-      <p className="mt-3 text-slate-600">
+      <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">Requests and activity</h1>
+      <p className="mt-3 max-w-3xl text-sm leading-6 text-obligon-text">
         Review publication and incoming requests. Decisions and business changes
         are recorded in the activity register.
       </p>
@@ -246,7 +251,7 @@ export function IntakeConsole() {
         <p role="status">Loading records…</p>
       ) : (
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-          <div className="min-w-0 rounded-lg border bg-white">
+          <div className="min-w-0 overflow-hidden rounded-xl border border-obligon-border bg-white">
             {rows.map((row) => (
               <article key={row.id} className="border-b p-5 last:border-0">
                 <div className="flex flex-wrap justify-between gap-3">
@@ -330,6 +335,7 @@ export function IntakeConsole() {
                       onClick={() => {
                         setSelected(row);
                         setDecision(row.status ?? statuses[0] ?? "");
+                        setSellingUnits(Object.fromEntries((row.fuels ?? []).flatMap(fuel => { const code = partnerFuelCode(fuel); const units = fuelSellingUnits(fuel); const unit = code ? row.sellingUnits?.[code] ?? (units.length === 1 ? units[0] : undefined) : undefined; return code && unit ? [[code, unit]] : []; })));
                         setNote("");
                         setVerified(false);
                       }}
@@ -344,7 +350,7 @@ export function IntakeConsole() {
           </div>
           {selected && (
             <form
-              className="self-start rounded-lg border bg-white p-5"
+              className="min-w-0 self-start rounded-xl border border-obligon-border bg-white p-5 sm:p-6"
               onSubmit={(e) => {
                 e.preventDefault();
                 void mutate(
@@ -353,7 +359,7 @@ export function IntakeConsole() {
                     : queue === "jobs"
                       ? `/jobs/${selected.id}`
                       : `/intake/${queue}/${selected.id}`,
-                  { status: decision, note, identityVerified: verified },
+                  { status: decision, note, identityVerified: verified, ...(queue === "stations" ? { sellingUnits } : {}) },
                   queue === "stations" ? "POST" : "PATCH",
                 );
               }}
@@ -380,6 +386,17 @@ export function IntakeConsole() {
                   Open protected resume
                 </button>
               )}
+              {queue === "stations" ? <fieldset className="mt-5 space-y-4 rounded-xl border border-obligon-border p-4">
+                <legend className="px-2 font-bold">Approved selling units</legend>
+                <p className="text-sm text-obligon-text">Confirm how every fuel is sold at this station. This approval determines price and quantity labels; it does not convert existing transactions.</p>
+                {(selected.fuels ?? []).map(fuel => { const code = partnerFuelCode(fuel); if (!code) return <p key={fuel} role="alert" className="text-sm text-red-800">Unsupported fuel: {fuel}. Ask the operator to correct its profile.</p>; const units = fuelSellingUnits(fuel); return <label key={fuel} className="block text-sm font-bold">{fuel}
+                  <select required={decision === "active"} aria-label={`${fuel} approved selling unit`} value={sellingUnits[code] ?? (units.length === 1 ? units[0] : "")} onChange={event => setSellingUnits(current => ({ ...current, [code]: event.target.value as SellingUnit }))} className="mt-2 block min-h-12 w-full rounded-lg border border-obligon-border bg-white p-3">
+                    {units.length > 1 ? <option value="">Choose selling unit</option> : null}
+                    {units.map(unit => <option key={unit} value={unit}>{sellingUnitLabel(unit)}</option>)}
+                  </select>
+                  <span className="mt-1 block font-normal text-obligon-text">Requested: {selected.sellingUnits?.[code] ? sellingUnitLabel(selected.sellingUnits[code]) : "Not selected"}; previously approved: {selected.approvedSellingUnits?.[code] ? sellingUnitLabel(selected.approvedSellingUnits[code]) : "None"}</span>
+                </label>; })}
+              </fieldset> : null}
               <label className="mt-5 block">
                 Decision
                 <select
@@ -440,7 +457,7 @@ export function IntakeConsole() {
         ["activity", "applications", "leads", "privacy", "financial"].includes(
           queue,
         ) && (
-          <div className="mt-5 flex items-center gap-4">
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
             <button
               disabled={!page}
               onClick={() => setPage(page - 1)}

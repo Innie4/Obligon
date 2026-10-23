@@ -3,20 +3,22 @@
 import * as React from "react";
 import { ChevronDown, Clock3, Fuel } from "lucide-react";
 import { stationFuelOptions, validateOpeningHours, type OpeningHoursValue } from "@/lib/station-profile-fields";
+import { partnerFuelCode, type FuelCode } from "../../../../packages/shared/partner-access.mjs";
 
 const controlFocus = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-obligon-green";
 
-export function FuelMultiSelect({ value, onChange, choices = [], disabled = false }: {
+export function FuelMultiSelect({ value, onChange, choices = [], disabled = false, allowedFuels }: {
   value: string[];
   onChange: (value: string[]) => void;
   choices?: string[];
   disabled?: boolean;
+  allowedFuels?: FuelCode[];
 }) {
   const id = React.useId();
   const [open, setOpen] = React.useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const buttonRef = React.useRef<HTMLButtonElement>(null);
-  const options = stationFuelOptions(value, choices);
+  const options = stationFuelOptions(value, choices).filter(fuel => !allowedFuels || allowedFuels.includes(partnerFuelCode(fuel) as FuelCode) || value.includes(fuel));
 
   React.useEffect(() => {
     if (disabled) setOpen(false);
@@ -45,7 +47,7 @@ export function FuelMultiSelect({ value, onChange, choices = [], disabled = fals
     <div ref={containerRef} className="relative min-w-0" onBlur={event => {
       if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
     }}>
-      <label id={`${id}-label`} className="mb-2 block text-xs font-extrabold uppercase tracking-wide text-obligon-text" htmlFor={`${id}-trigger`}>Fuels available</label>
+      <label id={`${id}-label`} className="mb-2 block text-sm font-semibold tracking-wide text-obligon-text" htmlFor={`${id}-trigger`}>Fuels available</label>
       <div className="relative">
       <button
         ref={buttonRef}
@@ -110,7 +112,7 @@ export function OpeningHoursField({ value, onChange, disabled = false }: {
 
   return (
     <fieldset className="min-w-0 rounded-xl border border-obligon-border bg-white p-4" aria-describedby={`${id}-summary`}>
-      <legend className="flex items-center gap-2 px-1 text-xs font-extrabold uppercase tracking-wide text-obligon-text"><Clock3 size={16} aria-hidden="true" />Opening hours</legend>
+      <legend className="flex items-center gap-2 px-1 text-xs font-semibold uppercase tracking-wide text-obligon-text"><Clock3 size={16} aria-hidden="true" />Opening hours</legend>
       {value.mode === "legacy" ? (
         <div className="mb-3 rounded-lg bg-obligon-mist p-3">
           <p className="text-xs font-semibold text-obligon-text">Current opening hours</p>

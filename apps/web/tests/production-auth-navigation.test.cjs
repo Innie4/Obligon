@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
+const partnerAccess = require('../../../packages/shared/partner-access.mjs');
 
 function nodes(tree) {
   if (Array.isArray(tree)) return tree.flatMap(nodes);
@@ -40,6 +41,7 @@ function fixture(path, { status = 'authenticated', role = 'customer', loginResul
       setTimeout: callback => { const id = ++timerIndex; timers.set(id, callback); return id; },
       clearTimeout: id => timers.delete(id), setInterval: () => ++timerIndex, clearInterval() {},
       require: name => {
+      if (name.endsWith('/partner-access.mjs')) return partnerAccess;
         if (name === 'react') return React;
         if (name === 'next/link') return { default: 'Link', __esModule: true };
         if (name === 'next/navigation') return { useRouter: () => router, usePathname: () => pathname, useSearchParams: () => new URLSearchParams(search) };
@@ -211,7 +213,7 @@ test('shared destination validator rejects navigation escapes and normalizes har
   assert.equal(dashboardDestination(null), '/auth/login');
   for (const [role, expected] of [['customer', '/customer'], ['company', '/company'], ['partner', '/dashboard'], ['mechanic', '/dashboard'], ['admin', '/admin']]) assert.equal(dashboardDestination(role), expected);
 });
-for (const pathname of ['/mechanic', '/dashboard', '/dashboard/transactions', '/dashboard/reports', '/dashboard/staff', '/dashboard/disputes', '/dashboard/notifications', '/dashboard/settings']) {
+for (const pathname of ['/mechanic', '/dashboard', '/dashboard/workshop', '/dashboard/staff', '/dashboard/notifications', '/dashboard/settings', '/dashboard/billing', '/dashboard/verify']) {
   test(`mechanic can mount the approved route ${pathname} with mobile navigation and existing plan gate`, () => {
     const ui = fixture('../components/dashboard/PartnershipShell.tsx', { role: 'mechanic', pathname });
     if (pathname === '/mechanic') ui.render({ children: 'Mechanic content', allowedRoles: ['mechanic'] });
@@ -222,7 +224,7 @@ for (const pathname of ['/mechanic', '/dashboard', '/dashboard/transactions', '/
     assert.ok(ui.nodes().some(node => node.type === 'PartnerSubscriptionGate'));
   });
 }
-for (const pathname of ['/dashboard/fuel-pricing', '/dashboard/station-profile', '/dashboard/settlements', '/dashboard/card-verification', '/dashboard/billing', '/dashboard/verify']) {
+for (const pathname of ['/dashboard/fuel-pricing', '/dashboard/station-profile', '/dashboard/settlements', '/dashboard/card-verification', '/dashboard/transactions', '/dashboard/reports', '/dashboard/disputes']) {
   test(`mechanic remains denied the partner-only page ${pathname}`, () => {
     const ui = fixture('../components/dashboard/PartnershipShell.tsx', { role: 'mechanic', pathname });
     assert.equal(ui.nodes().find(node => node.type === 'AuthGuard').props.allowedRoles.length, 0);

@@ -65,6 +65,20 @@ export async function verifyTransaction(reference) {
   return paystackFetch(`/transaction/verify/${encodeURIComponent(reference)}`);
 }
 
+/** https://paystack.com/docs/api/transfer/#fetch */
+export async function fetchTransfer(transferCode) {
+  if (!enabled()) throw misconfigured("Paystack is not configured");
+  if (!transferCode) throw misconfigured("A recorded transfer code is required");
+  return paystackFetch(`/transfer/${encodeURIComponent(transferCode)}`);
+}
+
+/** https://paystack.com/docs/api/transfer/#verify */
+export async function verifyTransfer(reference) {
+  if (!enabled()) throw misconfigured("Paystack is not configured");
+  if (!reference) throw misconfigured("A recorded transfer reference is required");
+  return paystackFetch(`/transfer/verify/${encodeURIComponent(reference)}`);
+}
+
 /**
  * Refund a legacy charge. Paystack's optional amount is in integer minor units.
  */

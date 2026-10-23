@@ -13,6 +13,12 @@ import { toProviderAmount, toKobo, paidAmountFrom, parseWebhookEvent } from "../
 
 const PLAN = { bronze: 250_000, gold: 350_000, platinum: 500_000 };
 
+test('numeric provider amounts reject kobo that would lose precision on the JSON wire',()=>{
+  assert.throws(()=>toProviderAmount(Number.MAX_SAFE_INTEGER),/represented exactly/);
+  const exact=9_007_199_254_740_900;
+  assert.equal(toKobo(JSON.parse(JSON.stringify(toProviderAmount(exact))),'major'),exact);
+});
+
 test("checkout sends the plan price in naira, not kobo", () => {
   assert.equal(toProviderAmount(PLAN.bronze), 2500);
   assert.equal(toProviderAmount(PLAN.gold), 3500);

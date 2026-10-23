@@ -31,8 +31,8 @@ async function post(operation, channel, body, bearer) {
     method: "POST", headers: { Authorization: bearer, "Content-Type": "application/json" },
     body: JSON.stringify(body), safeToRetry: false
   });
-  // providerFetch bounds the wait for headers. Bound and cancel the body too,
-  // because confirmation can hold an account lock while it waits for proof.
+  // The shared HTTP helper bounds the complete response. Keep the tighter
+  // verification-envelope size limit before accepting any contact proof.
   if (!response.body) throw new Error("Missing verification response body");
   const reader = response.body.getReader();
   let expired = false;

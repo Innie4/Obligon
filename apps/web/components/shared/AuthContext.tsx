@@ -4,6 +4,8 @@ import * as React from "react";
 import { api, authApi, mutationsApi } from "@/lib/services";
 import { readPersistedSession, writePersistedSession, readRememberedEmail, writeRememberedEmail, writeTokens } from "@/lib/session-store";
 import type { SessionUser, UserRole } from "@/lib/services/types";
+import { authenticateWithPasskey, type GoogleChallenge } from "@/lib/auth-methods";
+import type { LoginResponse } from "@/lib/services/client";
 
 export type SessionStatus = "loading" | "authenticated" | "unauthenticated";
 
@@ -12,6 +14,8 @@ interface AuthContextValue {
   user: SessionUser | null;
   /** Exchange credentials with the backend and store the session. */
   login: (payload: { email: string; password: string; role?: UserRole; rememberMe?: boolean; totp?: string }) => Promise<{ mfaRequired?: boolean }>;
+  loginWithGoogle: (challenge: GoogleChallenge, credential: string) => Promise<{ mfaRequired?: boolean }>;
+  loginWithPasskey: (rememberMe: boolean) => Promise<{ mfaRequired?: boolean }>;
   /** Invalidate the server session/token and clear local state. */
   logout: () => Promise<void>;
   /** Replace the current user (used by dashboards that resolve a role-specific profile). */
@@ -139,9 +143,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setStatus("unauthenticated");
   }, []);
 
+  const finishAdditionalSignIn = React.useCallback(async (signIn: () => Promise<LoginResponse>) => {
+    const generation = ++sessionGeneration.current;
+    setUserState(null);
+    setStatus("loading");
+    let result: LoginResponse;
+    try {
+      result = await signIn();
+    } catch (error) {
+      if (generation === sessionGeneration.current) { setUserState(null); setStatus("unauthenticated"); }
+      throw error;
+    }
+    if (generation !== sessionGeneration.current || !authApi.isCurrentAuthResult(result)) throw new Error("Sign-in changed while this request was in progress. Please try again.");
+    if (result.mfaRequired) return { mfaRequired: true };
+    setUserState(result.user);
+    writePersistedSession(result.user);
+    setRememberedEmail(readRememberedEmail());
+    setStatus("authenticated");
+    return { mfaRequired: false };
+  }, []);
+
+  const loginWithGoogle = React.useCallback(async (challenge: GoogleChallenge, credential: string) => {
+    // Reject an old popup before it can clear a newer account's React state.
+    authApi.assertGoogleChallengeCurrent(challenge);
+    return finishAdditionalSignIn(() => authApi.loginWithGoogle(challenge, credential));
+  }, [finishAdditionalSignIn]);
+
+  const loginWithPasskey = React.useCallback((rememberMe: boolean) => finishAdditionalSignIn(() => authApi.loginWithPasskey(rememberMe, authenticateWithPasskey)), [finishAdditionalSignIn]);
+
   const value = React.useMemo<AuthContextValue>(
-    () => ({ status, user, login, logout, setUser, updateProfile, refresh, rememberedEmail }),
-    [status, user, login, logout, setUser, updateProfile, refresh, rememberedEmail]
+    () => ({ status, user, login, loginWithGoogle, loginWithPasskey, logout, setUser, updateProfile, refresh, rememberedEmail }),
+    [status, user, login, loginWithGoogle, loginWithPasskey, logout, setUser, updateProfile, refresh, rememberedEmail]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

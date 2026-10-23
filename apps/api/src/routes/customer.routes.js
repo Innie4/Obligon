@@ -1,3 +1,7 @@
+import { publishedStationPrices } from '../lib/station-prices.js';
+import { canonicalFuelSql } from '../lib/station-approval.js';
+import { partnerFuelCode } from '../../../../packages/shared/partner-access.mjs';
+import { quantityLabel, quantityTotalsLabel } from '../lib/fuel-quantity.js';
 import { customerFuelCheckoutRouter } from "./fuel-checkout.routes.js";
 import { randomInt } from "node:crypto";
 import { Router } from "express";
@@ -108,7 +112,7 @@ router.get("/overview", asyncHandler(async (req, res) => {
   const monthStartDate = monthStart();
   const agg = await one(
     `SELECT COALESCE(SUM(amount_kobo),0) AS mtd, COUNT(*)::int AS count,
-            COALESCE(SUM(litres),0)::float AS litres
+            COALESCE(SUM(litres) FILTER (WHERE selling_unit='litre'),0) AS litres, COALESCE(SUM(litres) FILTER (WHERE selling_unit='kg'),0) AS kg, COALESCE(SUM(litres) FILTER (WHERE selling_unit='scm'),0) AS scm
      FROM transactions WHERE customer_user_id = $1 AND organization_id IS NULL AND status = 'success' AND created_at >= $2`,
     [userId, monthStartDate]
   );
@@ -143,7 +147,7 @@ router.get("/overview", asyncHandler(async (req, res) => {
     {
       label: "MTD Spend",
       value: naira(agg.mtd),
-      helper: `${Math.round(agg.litres).toLocaleString()} L · ${agg.count} transaction${agg.count === 1 ? "" : "s"} this month`,
+      helper: `${quantityTotalsLabel(agg)} · ${agg.count} transaction${agg.count === 1 ? "" : "s"} this month`,
       tone: "red"
     },
     {
@@ -159,7 +163,7 @@ router.get("/overview", asyncHandler(async (req, res) => {
       tone: usagePercent != null && usagePercent >= 100 ? "red" : "green"
     },
     { label: "Projected Spend", value: projection.projectedLabel ?? "Not set", helper: projection.projectedKobo == null ? "Tap to set this month" : "Tap to change", tone: "blue" },
-    { label: "Litres Consumed", value: `${Math.round(agg.litres).toLocaleString()} L`, tone: "green" },
+    { label: "Fuel quantities", value: quantityTotalsLabel(agg), tone: "green" },
     { label: "Transactions", value: String(agg.count), tone: "blue" },
     { label: "Security Status", value: `${alerts.count} Alerts`, helper: `${alerts.count} Blocked | 0 Suspicious`, tone: alerts.count > 0 ? "red" : "green" },
     { label: "Lifetime Savings", value: naira(lifetimeSavings.savedKobo), helper: savingsCoverage, tone: "green" }
@@ -173,7 +177,7 @@ router.get("/overview", asyncHandler(async (req, res) => {
   // several events.
   const [recent, events] = await Promise.all([
     q(
-      `SELECT t.id, t.reference, t.amount_kobo, t.litres, t.status, t.created_at,
+      `SELECT t.id, t.reference, t.amount_kobo, t.litres, t.selling_unit, t.status, t.created_at,
               s.name AS station_name, v.plate AS vehicle_plate
        FROM transactions t
        LEFT JOIN stations s ON s.id = t.station_id LEFT JOIN vehicles v ON v.id = t.vehicle_id
@@ -193,7 +197,7 @@ router.get("/overview", asyncHandler(async (req, res) => {
       id: t.id,
       kind: "transaction",
       title: t.station_name ?? "Obligon Network",
-      subtitle: `${t.vehicle_plate ?? "Wallet"} • ${Math.round(Number(t.litres))}L`,
+      subtitle: `${t.vehicle_plate ?? "Wallet"} • ${quantityLabel(t.litres,t.selling_unit)}`,
       amount: naira(t.amount_kobo),
       time: relativeTime(t.created_at),
       reference: t.reference,
@@ -244,7 +248,7 @@ router.get("/overview", asyncHandler(async (req, res) => {
 router.get("/transactions", asyncHandler(async (req, res) => {
   const { date, station, vehicle, fuel, status, limit = 50, offset = 0 } = req.query;
   const params = [req.user.id];
-  let where = `t.customer_user_id = $1`;
+  let where = `t.customer_user_id = $1 AND t.organization_id IS NULL`;
   if (date) { params.push(date); where += ` AND t.created_at::date = $${params.length}`; }
   if (station) { params.push(`%${station}%`); where += ` AND s.name ILIKE $${params.length}`; }
   if (vehicle) { params.push(`%${vehicle}%`); where += ` AND v.plate ILIKE $${params.length}`; }
@@ -264,7 +268,9 @@ router.get("/transactions", asyncHandler(async (req, res) => {
     meta: t.station_address ?? t.meta,
     vehicle: t.vehicle_plate ?? undefined,
     fuel: t.fuel_type,
-    litres: Math.round(Number(t.litres)),
+    litres: Number(t.litres),
+    quantity: String(t.litres),
+    sellingUnit: t.selling_unit,
     amount: naira(t.amount_kobo),
     time: fmtDateTime(t.created_at),
     status: t.status,
@@ -293,7 +299,7 @@ router.get("/transactions/all", asyncHandler(async (req, res) => {
 
   const [dispenses, movements] = await Promise.all([
     q(
-      `SELECT t.id, t.reference, t.amount_kobo, t.litres, t.fuel_type, t.status, t.created_at,
+      `SELECT t.id, t.reference, t.amount_kobo, t.litres, t.selling_unit, t.fuel_type, t.status, t.created_at,
               s.name AS station_name, v.plate AS vehicle_plate, c.masked_pan
        FROM transactions t
        LEFT JOIN stations s ON s.id = t.station_id
@@ -309,7 +315,7 @@ router.get("/transactions/all", asyncHandler(async (req, res) => {
               w.id AS wallet_id
        FROM wallet_ledger l
        JOIN wallets w ON w.id = l.wallet_id
-       WHERE w.user_id = $1
+       WHERE w.user_id = $1 AND w.kind = 'individual'
        ORDER BY l.created_at DESC LIMIT 100`,
       [req.user.id]
     )
@@ -327,6 +333,8 @@ router.get("/transactions/all", asyncHandler(async (req, res) => {
       fuel: t.fuel_type,
       maskedPan: t.masked_pan ?? undefined,
       litres: t.litres == null ? undefined : Number(t.litres),
+      quantity: t.litres == null ? undefined : String(t.litres),
+      sellingUnit: t.selling_unit,
       // A dispense is money leaving, so it is shown as a reduction. Signed here
       // rather than in the client so every consumer agrees on the direction.
       amount: `-${naira(t.amount_kobo)}`,
@@ -399,7 +407,9 @@ router.get("/transactions/:id/receipt", asyncHandler(async (req, res) => {
     createdAt: t.created_at,
     station: t.station_name ?? "Obligon Network",
     fuelType: t.fuel_type,
-    litres: Math.round(Number(t.litres)),
+    litres: Number(t.litres),
+    quantity: String(t.litres),
+    sellingUnit: t.selling_unit,
     amountLabel: naira(t.amount_kobo),
     status: t.status,
     holder: req.user.full_name
@@ -703,12 +713,13 @@ export async function completeTopUp(topup, { providerTransactionId = null, verif
 }
 
 export async function notifyCompletedTopUp(topup) {
+  const wallet = topup.wallet_id ? await one("SELECT organization_id FROM wallets WHERE id=$1", [topup.wallet_id]) : null;
   await notify({
     userId: topup.user_id,
     title: "Transaction Alert",
     body: `Success: ${naira(topup.amount_kobo)} added to your wallet.`,
     category: "transactions",
-    link: "/customer/wallet",
+    link: wallet?.organization_id ? "/company/billing" : "/customer/wallet",
     // Names the event, not the message. The webhook, the reconciliation pass and
     // the customer returning from checkout all confirm this same payment, and
     // each of them reaches this line. Without the key the feed showed one top-up
@@ -1622,7 +1633,7 @@ router.get("/stations", asyncHandler(async (req, res) => {
   const params = [];
   let where = `s.status = 'active' AND EXISTS(SELECT 1 FROM organizations o WHERE o.id=s.partner_org_id AND o.verification_status='verified')`;
   if (search) { params.push(`%${search}%`); where += ` AND (s.name ILIKE $${params.length} OR s.address ILIKE $${params.length} OR s.city ILIKE $${params.length})`; }
-  if (fuel) { params.push(String(fuel)); where += ` AND $${params.length} = ANY(s.fuels)`; }
+  if (fuel) { const code=partnerFuelCode(fuel); if(!code) throw badRequest('Choose a supported fuel'); params.push(code); where += ` AND EXISTS(SELECT 1 FROM unnest(s.fuels) AS f(fuel) WHERE ${canonicalFuelSql('f.fuel')}=$${params.length})`; }
   let distanceSql = "NULL::double precision";
   if (origin) {
     params.push(origin.lat, origin.lng);
@@ -1633,11 +1644,11 @@ router.get("/stations", asyncHandler(async (req, res) => {
         cos(radians(s.lng - $${params.length}::double precision))))) END`;
   }
   // Rank the full network before limiting: a nearby station may sort last by name.
-  const rows = await q(`SELECT s.*, ${distanceSql} AS distance_km,
-    COALESCE(AVG(fp.price_kobo) FILTER (WHERE fp.fuel_type ILIKE '%diesel%'), 0) AS diesel_kobo,
-    COALESCE(AVG(fp.price_kobo) FILTER (WHERE fp.fuel_type ILIKE '%petrol%' OR fp.fuel_type ILIKE '%PMS%'), 0) AS unleaded_kobo
-    FROM stations s LEFT JOIN fuel_prices fp ON fp.station_id = s.id WHERE ${where}
-    GROUP BY s.id ORDER BY distance_km ASC NULLS LAST, s.name, s.id LIMIT 50`, params);
+  const rows = await q(`SELECT s.*, o.partner_type, o.type AS org_type, ${distanceSql} AS distance_km
+    FROM stations s JOIN organizations o ON o.id=s.partner_org_id WHERE ${where}
+    ORDER BY distance_km ASC NULLS LAST, s.name, s.id LIMIT 50`, params);
+  const prices = rows.length ? await q('SELECT station_id,fuel_type,price_kobo,selling_unit,updated_at FROM fuel_prices WHERE station_id=ANY($1::uuid[])',[rows.map(s=>s.id)]) : [];
+  const offers = station => publishedStationPrices(station,prices.filter(p=>p.station_id===station.id));
   res.json({
     stations: rows.map((s) => ({
       id: s.id,
@@ -1645,8 +1656,9 @@ router.get("/stations", asyncHandler(async (req, res) => {
       distance: s.distance_km == null ? "Location unavailable" : `${Number(s.distance_km).toFixed(1)} km`,
       distanceKm: s.distance_km == null ? null : Number(s.distance_km),
       address: `${s.address}${s.city ? `, ${s.city}` : ""}`,
-      diesel: Number(s.diesel_kobo) > 0 ? naira(s.diesel_kobo, { sign: false }) : "Price unavailable",
-      unleaded: Number(s.unleaded_kobo) > 0 ? naira(s.unleaded_kobo) : "Price unavailable",
+      diesel: offers(s).find(p=>p.fuelType==='AGO') ? naira(offers(s).find(p=>p.fuelType==='AGO').price_kobo) : "Price unavailable",
+      unleaded: offers(s).find(p=>p.fuelType==='PMS') ? naira(offers(s).find(p=>p.fuelType==='PMS').price_kobo) : "Price unavailable",
+      prices: offers(s).map(p=>({fuelType:p.fuelType,priceLabel:naira(p.price_kobo),sellingUnit:p.sellingUnit})),
       fuels: s.fuels,
       hours: s.hours,
       lat: s.location_confirmed ? s.lat : null,
@@ -1657,15 +1669,15 @@ router.get("/stations", asyncHandler(async (req, res) => {
 }));
 
 router.get("/stations/:id", asyncHandler(async (req, res) => {
-  const s = await one("SELECT * FROM stations WHERE id = $1", [req.params.id]);
+  const s = await one("SELECT s.*,o.partner_type,o.type AS org_type FROM stations s JOIN organizations o ON o.id=s.partner_org_id WHERE s.id=$1 AND s.status='active' AND o.verification_status='verified'", [req.params.id]);
   if (!s) throw notFound("Station not found");
-  const prices = await q("SELECT fuel_type, price_kobo FROM fuel_prices WHERE station_id = $1", [s.id]);
+  const prices = publishedStationPrices(s,await q("SELECT fuel_type,price_kobo,selling_unit,updated_at FROM fuel_prices WHERE station_id=$1",[s.id]));
   res.json({
     station: {
-      id: s.id, name: s.name, address: `${s.address}, ${s.city}`, lat: s.lat, lng: s.lng,
+      id: s.id, name: s.name, address: [s.address,s.city].filter(Boolean).join(', '), lat: s.location_confirmed ? s.lat : null, lng: s.location_confirmed ? s.lng : null,
       fuels: s.fuels, hours: s.hours, rating: Number(s.rating), assets: s.assets
     },
-    prices: prices.map((p) => ({ fuelType: p.fuel_type, priceLabel: naira(p.price_kobo), pricePerLitre: (p.price_kobo / 100).toFixed(2) }))
+    prices: prices.map((p) => ({ fuelType: p.fuelType, priceLabel: naira(p.price_kobo), sellingUnit:p.sellingUnit, pricePerUnit:(p.price_kobo / 100).toFixed(2), ...(p.sellingUnit==='litre' ? {pricePerLitre:(p.price_kobo / 100).toFixed(2)} : {}) }))
   });
 }));
 

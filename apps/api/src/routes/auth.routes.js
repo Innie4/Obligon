@@ -14,10 +14,13 @@ import { initials } from "../lib/format.js";
 import { supabaseAuthEnabled, supabaseSignUp, supabaseSignIn, supabaseUpdatePassword, LOCAL_AUTH_PLACEHOLDER } from "../lib/supabaseAuth.js";
 import { createWalletForAccount, isCompanyRole, walletKindForRole } from "../lib/wallets.js";
 import { nigeriaLocationLabel } from "../../../../packages/shared/nigeria-locations.mjs";
+import { partnerAllowedFuels, partnerFuelCode } from "../../../../packages/shared/partner-access.mjs";
 import { accountAccessExpired } from "../lib/accountAccess.js";
 import { TEMPORARY_PARTNER_ACCOUNT } from "../lib/temporaryPartnerAccount.js";
 import { env } from "../config/env.js";
 import { normalizeDescopeRecipient, startDescopeVerification, verifyDescopeVerification } from "../lib/descope-verification.js";
+import { authMethodIsCurrent } from "../lib/auth-method-proof.js";
+import { createAuthMethodsRouter } from "./auth-methods.routes.js";
 
 const router = Router();
 
@@ -247,7 +250,7 @@ async function loadOrgForUser(user, executor = { one }, selectedOrgId = null) {
   return executor.one(
     `SELECT o.*, m.role AS member_role FROM organizations o
      LEFT JOIN memberships m ON m.organization_id=o.id AND m.user_id=$1
-     WHERE (o.type=$2 OR ($2='mechanic' AND o.type='partner')) AND ((o.owner_user_id=$1 AND (m.status IS NULL OR m.status='active')) OR m.status='active')
+     WHERE (o.type=$2 OR ($2='mechanic' AND o.type='partner') OR ($2='partner' AND o.type='mechanic')) AND ((o.owner_user_id=$1 AND (m.status IS NULL OR m.status='active')) OR m.status='active')
      ORDER BY (o.owner_user_id=$1) DESC, o.created_at, o.id LIMIT 1`, [user.id, user.role]);
 }
 
@@ -268,7 +271,8 @@ function sessionPayload(user, org) {
     organizationId: org?.id ?? null,
     organizationType: org?.type ?? null,
     organizationVerificationStatus: org?.verification_status ?? null,
-    organizationRole: org ? (org.owner_user_id === user.id ? "owner" : org.member_role) : null
+    organizationRole: org ? (org.owner_user_id === user.id ? "owner" : org.member_role) : null,
+    partnerType: org && ['partner','mechanic'].includes(org.type) ? org.partner_type : null
   };
 }
 
@@ -291,10 +295,13 @@ async function issueSession(req, user, remember, executor = { query: q, one }) {
 // The proof is issued only after password verification. The database stores its
 // hash and the account/portal/remember choice; the browser never supplies those
 // choices when completing MFA. This uses the existing two_factor code purpose.
-async function issueMfaChallenge(user, rememberMe) {
+function methodOrgFingerprint(org) {
+  return sha256(JSON.stringify(org && [org.id,org.type,org.verification_status,org.member_role]));
+}
+async function issueMfaChallenge(user, rememberMe, method = null, executor = null) {
   const id = crypto.randomUUID();
   const challengeToken = `${id}.${randomToken()}`;
-  await tx(async t => {
+  const create = async t => {
     const current = await t.one("SELECT * FROM users WHERE id=$1 FOR UPDATE", [user.id]);
     if (!current || current.status !== "active" || accountAccessExpired(current) || current.role !== user.role ||
         !current.two_factor_enabled || current.two_factor_secret !== user.two_factor_secret ||
@@ -302,14 +309,18 @@ async function issueMfaChallenge(user, rememberMe) {
         current.password_hash.startsWith(pendingPasswordPrefix)) {
       throw unauthorized("Account changed. Please sign in again.");
     }
+    if (method && !await authMethodIsCurrent(t,current.id,method)) throw unauthorized("Your sign-in method changed. Please sign in again.");
+    const org = await loadOrgForUser(current,t);
     await t.query("UPDATE verification_codes SET consumed_at=now() WHERE user_id=$1 AND purpose='two_factor' AND consumed_at IS NULL", [user.id]);
     await t.query(
       `INSERT INTO verification_codes(id,user_id,purpose,code_hash,channel,expires_at)
        VALUES($1,$2,'two_factor',$3,'authenticator',now()+($4 || ' seconds')::interval)`,
       [id, user.id, JSON.stringify({ hash: hashToken(challengeToken), role: user.role,
-        rememberMe: Boolean(rememberMe), secretHash: sha256(current.two_factor_secret), credentialHash: sha256(current.password_hash) }), String(MFA_CHALLENGE_TTL_SECONDS)]
+        rememberMe: Boolean(rememberMe), secretHash: sha256(current.two_factor_secret), credentialHash: sha256(current.password_hash),
+        ...(method ? { method, orgFingerprint: methodOrgFingerprint(org) } : {}) }), String(MFA_CHALLENGE_TTL_SECONDS)]
     );
-  });
+  };
+  await (executor ? create(executor) : tx(create));
   return { mfaRequired: true, challengeToken, challengeExpiresInSeconds: MFA_CHALLENGE_TTL_SECONDS };
 }
 
@@ -346,6 +357,11 @@ async function completeMfaChallenge(req, challengeToken, token) {
       await t.query("UPDATE verification_codes SET consumed_at=now() WHERE id=$1", [record.id]);
       return null;
     }
+    if (context.method && (!await authMethodIsCurrent(t,user.id,context.method) ||
+        context.orgFingerprint !== methodOrgFingerprint(await loadOrgForUser(user,t)))) {
+      await t.query("UPDATE verification_codes SET consumed_at=now() WHERE id=$1", [record.id]);
+      return null;
+    }
     if (!await consumeMfaCode(t, user, token)) {
       await t.query(`UPDATE verification_codes SET attempts=attempts+1,
         consumed_at=CASE WHEN attempts+1 >= $2 THEN now() ELSE NULL END WHERE id=$1`, [record.id, MAX_CODE_ATTEMPTS]);
@@ -355,13 +371,16 @@ async function completeMfaChallenge(req, challengeToken, token) {
     await t.query("UPDATE users SET failed_login_attempts=0,locked_until=NULL,last_login_at=now() WHERE id=$1", [user.id]);
     const org = await loadOrgForUser(user, t);
     const tokens = await issueSession(req, user, context.rememberMe === true, t);
+    if (context.method) await t.query("INSERT INTO audit_logs(actor_user_id,actor_role,action,entity_type,entity_id) VALUES($1,$2,$3,'signin_method',$4)",
+      [user.id,user.role,`auth.${context.method.kind}_login`,context.method.id]);
     return { user, org, tokens };
   });
 }
 
 async function verifyCurrentPassword(user, password) {
   if (supabaseAuthEnabled() && user.supabase_auth_uid) {
-    return Boolean(await supabaseSignIn({ email: user.email, password }));
+    const verified = await supabaseSignIn({ email: user.email, password });
+    return verified?.authUserId === user.supabase_auth_uid;
   }
   return verifyPassword(password, user.password_hash);
 }
@@ -370,7 +389,7 @@ async function verifyCurrentPassword(user, password) {
 // lock. Middleware may have read them before a reset or logout committed.
 async function currentAuthenticatedUser(req, t) {
   const user = await t.one("SELECT * FROM users WHERE id=$1 FOR UPDATE", [req.user.id]);
-  if (!user || user.status !== "active" || accountAccessExpired(user) || user.password_hash !== req.user.password_hash ||
+  if (!user || user.status !== "active" || accountAccessExpired(user) || user.role !== req.user.role || user.password_hash !== req.user.password_hash ||
       user.supabase_auth_uid !== req.user.supabase_auth_uid || user.password_hash.startsWith(pendingPasswordPrefix)) {
     throw unauthorized("Account changed. Please sign in again.");
   }
@@ -380,6 +399,20 @@ async function currentAuthenticatedUser(req, t) {
   if (!session) throw unauthorized("Your session has expired. Please sign in again.");
   return user;
 }
+
+async function completeMethodLogin(req,user,method,remember,t) {
+  if(user.status!=="active"||accountAccessExpired(user)||user.password_hash.startsWith(pendingPasswordPrefix)||
+    (user.locked_until&&new Date(user.locked_until)>new Date())||!await authMethodIsCurrent(t,user.id,method)) {
+    throw unauthorized("Account access is unavailable. Please sign in again or contact Support.");
+  }
+  if(user.two_factor_enabled)return issueMfaChallenge(user,remember,method,t);
+  await t.query("UPDATE users SET failed_login_attempts=0,locked_until=NULL,last_login_at=clock_timestamp() WHERE id=$1",[user.id]);
+  const org=await loadOrgForUser(user,t),tokens=await issueSession(req,user,remember,t);
+  await t.query("INSERT INTO audit_logs(actor_user_id,actor_role,action,entity_type,entity_id) VALUES($1,$2,$3,'signin_method',$4)",
+    [user.id,user.role,`auth.${method.kind}_login`,method.id]);
+  return {user:sessionPayload(user,org),...tokens,mfaRequired:false};
+}
+router.use('/methods',createAuthMethodsRouter({currentAuthenticatedUser,verifyCurrentPassword,loadOrgForUser,completeMethodLogin}));
 
 function splitRefreshToken(refreshToken) {
   const separator = refreshToken.lastIndexOf(".");
@@ -411,7 +444,8 @@ router.post("/login", authLimiter, asyncHandler(async (req, res) => {
   // identity here would leave credentials behind after the testing deadline.
   if (supabaseAuthEnabled() && !temporaryLease) {
     if (user.supabase_auth_uid) {
-      ok = Boolean(await supabaseSignIn({ email: user.email, password }));
+      const verified = await supabaseSignIn({ email: user.email, password });
+      ok = verified?.authUserId === user.supabase_auth_uid;
     } else {
       // Account predates Supabase Auth (or was seeded offline): fall back to
       // the stored bcrypt hash, then migrate the credential into Supabase.
@@ -489,7 +523,7 @@ router.post("/login", authLimiter, asyncHandler(async (req, res) => {
 router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
   const {
     email, password, fullName, role = "customer", partnerType, organizationName,
-    phone, address, city, state, localGovernmentArea, fuelTypes, planCode, rcNumber, licenseReference
+    phone, address, city, state, localGovernmentArea, fuelTypes, planCode, rcNumber, licenseReference, services
   } = req.body ?? {};
   if (!email || !password) throw badRequest("Email and password are required");
   if (password.length < 8) throw badRequest("Password must be at least 8 characters");
@@ -505,7 +539,13 @@ router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
   if (!phone) throw badRequest("A phone number is required so we can verify your account");
   if(typeof email!=='string'||! /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)||email.length>254)throw badRequest('Enter a valid email address');
   if(fuelTypes!=null&&(!Array.isArray(fuelTypes)||fuelTypes.length>20||fuelTypes.some(f=>typeof f!=='string'||!f.trim()||f.length>80)))throw badRequest('Choose valid fuel capabilities');
-  if(partnerType!=null&&!['fuel_station','mechanic','other'].includes(partnerType))throw badRequest('Choose a valid partner specialization');
+  if(partnerType!=null&&!['fuel_station','gas_station','mechanic','other'].includes(partnerType))throw badRequest('Choose a valid partner specialization');
+  if(role==='mechanic' && partnerType!=null && partnerType!=='mechanic')throw badRequest('Mechanic accounts require the workshop specialization');
+  const specialization=role==='mechanic'?'mechanic':partnerType??'fuel_station';
+  if(services!=null&&(!Array.isArray(services)||services.length>20||services.some(s=>typeof s!=='string'||!s.trim()||s.length>80)))throw badRequest('Choose valid workshop services');
+  const allowedFuels=partnerAllowedFuels({role,partnerType:specialization});
+  const canonicalFuels=[...new Set((fuelTypes??[]).map(partnerFuelCode))];
+  if(canonicalFuels.some(f=>!f||!allowedFuels.includes(f)))throw badRequest('Fuel capabilities must match the partner specialization');
   if(planCode!=null&&!await one('SELECT code FROM pricing_plans WHERE code=$1 AND active',[planCode]))throw badRequest('Choose an available plan');
   for(const value of [rcNumber,licenseReference])if(value!=null&&(typeof value!=='string'||value.length>200))throw badRequest('Registration reference is too long');
   const existing = await one("SELECT id FROM users WHERE lower(email) = lower($1)", [email]);
@@ -527,7 +567,7 @@ router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
       `INSERT INTO users (email, password_hash, full_name, role, organization_name, phone, address, city, account_tier, partner_type, supabase_auth_uid)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
       [email.trim(), passwordHash, fullName || email.split("@")[0], role, orgName, phone ?? null, customerLocation ?? address ?? null, customerLocation ?? city ?? null,
-        role === "customer" ? "Standard Account" : role === "company" ? "Business Account" : "Partner Review Pending", partnerType ?? null, supabaseUid]
+        role === "customer" ? "Standard Account" : role === "company" ? "Business Account" : "Partner Review Pending", ['partner','mechanic'].includes(role)?specialization:null, supabaseUid]
     );
 
     let org = null;
@@ -540,21 +580,21 @@ router.post("/signup", authLimiter, asyncHandler(async (req, res) => {
     }
     if (role === "partner" || role === "mechanic") {
       org = await t.one(
-        `INSERT INTO organizations (owner_user_id, name, type, verification_status) VALUES ($1,$2,$3,'pending') RETURNING *`,
-        [user.id, orgName, role === "mechanic" ? "mechanic" : "partner"]
+        `INSERT INTO organizations (owner_user_id, name, type, verification_status,partner_type,partner_services) VALUES ($1,$2,$3,'pending',$4,$5) RETURNING *`,
+        [user.id, orgName, role === "mechanic" ? "mechanic" : "partner",specialization,specialization==='mechanic'?[...new Set((services??[]).map(s=>s.trim()))]:[]]
       );
       // Partner applications queue for admin review
       await t.one(
         `INSERT INTO partner_applications (reference, user_id, business_name, partner_type, contact_email, contact_phone, status)
          VALUES ($1,$2,$3,$4,$5,$6,'submitted')`,
-        [`APP-${Date.now().toString(36).toUpperCase()}`, user.id, orgName, partnerType ?? "other", email, phone ?? null]
+        [`APP-${Date.now().toString(36).toUpperCase()}`, user.id, orgName, specialization, email, phone ?? null]
       );
-      if (role === "partner" && fuelTypes?.length) {
+      if (role === "partner" && canonicalFuels.length) {
         const station = await t.one(
           `INSERT INTO stations (partner_org_id, name, address, city, fuels, status) VALUES ($1,$2,$3,$4,$5,'pending') RETURNING *`,
-          [org.id, orgName, address ?? "", city ?? "", fuelTypes]
+          [org.id, orgName, address ?? "", city ?? "", canonicalFuels]
         );
-        for (const fuel of fuelTypes) {
+        for (const fuel of canonicalFuels) {
           await t.query(`INSERT INTO fuel_prices (station_id, fuel_type, price_kobo) VALUES ($1,$2,0)`, [station.id, fuel]);
         }
       }

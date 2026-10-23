@@ -2,12 +2,18 @@ import { env } from '../config/env.js';
 import { providerFetch } from './http.js';
 import { toKobo } from './flutterwave.js';
 import { integerKobo } from './money-amounts.js';
+import { verifyTransfer } from './paystack.js';
 
 /** Recover a transfer after its create response was lost, without sending again.
  * Flutterwave's official reference lookup:
  * https://developer.flutterwave.com/reference/get-all-transfers
  */
 export async function recoverTransferByReference({provider,reference,amountKobo}) {
+ if(provider==='paystack'&&reference) {
+  const found=await verifyTransfer(reference);
+  if(found?.reference!==reference||found.currency!=='NGN'||integerKobo(found.amount,{max:Number.MAX_SAFE_INTEGER})!==integerKobo(amountKobo,{max:Number.MAX_SAFE_INTEGER})||typeof found.transfer_code!=='string'||!found.transfer_code) return null;
+  return found.transfer_code;
+ }
  if(provider!=='flutterwave'||!reference||!env.FLW_SECRET_KEY)return null;
  for(const status of ['successful','failed']) {
   const params=new URLSearchParams({reference:String(reference),status,page:'1',page_size:'10'});

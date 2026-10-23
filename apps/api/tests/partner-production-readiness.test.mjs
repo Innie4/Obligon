@@ -167,7 +167,7 @@ test("auto-settlement cannot pay the same balance twice", () => {
   const body = scheduler.slice(scheduler.indexOf('export async function runAutoSettlements'), scheduler.indexOf('export async function reconcilePayouts'));
   assert.match(body, /status IN \('pending', 'processing'\)/);
   assert.match(body, /SUM\(net_kobo - paid_kobo\)/);
-  assert.match(body, /Number\(pending\.pending_total\) - Number\(promised\.promised_total\)/);
+  assert.match(body, /integerKobo\(pending\.pending_total,[\s\S]*?\) -\s*integerKobo\(promised\.promised_total,/);
   assert.match(body, /pg_advisory_xact_lock/);
 });
 
@@ -187,13 +187,14 @@ test("a settled transfer only marks the settlements it covered", () => {
 test("a dispense is priced by the station, not a hard-coded rate", () => {
   assert.doesNotMatch(code(screen), /1085/);
   const fuel = read(apiRoot, 'src','lib','fuel-sale.js');
-  assert.match(fuel, /fuel_prices WHERE station_id=\$1 AND fuel_type=\$2/);
-  assert.match(screen, /Litres to Dispense/);
+  assert.match(fuel, /fuel_prices WHERE station_id=\$1 FOR SHARE/);
+  assert.match(fuel, /approvedStationPrice\(station,price,sellingUnit,\{requireExpected:true\}\)/);
+  assert.match(screen, /Quantity to dispense/);
 });
 
 test("a dispense cannot be recorded for a negative or infinite amount", () => {
   const body = handler(code(partnerRoutes), 'router.post("/pos/authorize"');
-  assert.match(body, /requirePositiveNumber\(litres, ?"Litres"/);
+  assert.match(body, /requirePositiveNumber\(litres, ?"Fuel quantity"/);
   assert.doesNotMatch(body, /Number\(litres\) \|\| 0/);
 });
 
@@ -356,8 +357,8 @@ test("the search says what it searches", () => {
 test("a mechanic cannot render a page the API refuses", () => {
   // The shell widened every page to include mechanics, so /dashboard/fuel-pricing
   // showed a full editable price form whose submissions always 403.
-  assert.match(shell, /MECHANIC_ROUTES = new Set/);
-  assert.match(shell, /isMechanic \? MECHANIC_ROUTES\.has\(pathname\) : true/);
+  assert.match(shell, /partnerRouteAllowed/);
+  assert.match(shell, /partnerRouteAllowed\(user, pathname\)/);
   assert.doesNotMatch(shell, /allowedRoles\[0\] === "partner" \? \["partner", "mechanic"\]/);
 });
 
@@ -392,7 +393,7 @@ test("it has a 6-digit input, a resend countdown and validation states", () => {
   assert.match(verification, /RESEND_COOLDOWN_SECONDS/);
   assert.match(verification, /role="alert"/);
   assert.match(verification, /aria-invalid=\{stage === "failed"\}/);
-  assert.match(verification, /Contact details verified/);
+  assert.match(verification, /Account verification complete/);
 });
 
 test("the countdown is one cleared interval", () => {
@@ -402,7 +403,7 @@ test("the countdown is one cleared interval", () => {
 
 test("it connects to the real verification endpoints", () => {
   assert.match(verification, /authApi\.verifySendBoth\(\)/);
-  assert.match(verification, /authApi\.verifyConfirmEither\(code\)/);
+  assert.match(verification, /authApi\.verifyConfirmEither\(code, selectedChannel\)/);
   // Contact details come from the session, not the URL.
   assert.match(verification, /user\?\.email/);
   assert.doesNotMatch(verification, /searchParams|contact=\$/);
@@ -414,7 +415,7 @@ test("it returns to the partner console, not the customer dashboard", () => {
 });
 
 test("a partly-verified account is not a dead end", () => {
-  assert.match(verification, /result\.allVerified/);
+  assert.match(verification, /result\.accountVerified/);
   assert.match(verification, /still unverified/);
 });
 

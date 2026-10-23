@@ -76,13 +76,13 @@ export function ModalFrame({
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className={`max-h-[94vh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-hero sm:rounded-2xl ${
+        className={`max-h-[94vh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-lg sm:rounded-2xl ${
           size === "wide" ? "sm:max-w-[1040px]" : "sm:max-w-[560px]"
         }`}
       >
         <div className="flex items-center justify-between border-b border-[#e0e7de] px-6 py-5">
-          <p className="font-display text-xl font-extrabold text-obligon-navy">Obligon LTD</p>
-          <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-lg bg-[#f1f5f0] text-obligon-navy hover:bg-[#e2eae0] transition" aria-label="Close modal">
+          <p className="font-display text-lg font-bold tracking-tight sm:text-xl text-obligon-navy">Obligon LTD</p>
+          <button type="button" onClick={onClose} className="grid size-11 place-items-center rounded-xl bg-[#f1f5f0] text-obligon-navy hover:bg-[#e2eae0] transition" aria-label="Close modal">
             <X size={20} />
           </button>
         </div>
@@ -161,7 +161,7 @@ function PinInput({
 }) {
   return (
     <label className="mt-5 block">
-      <span className="text-xs font-extrabold uppercase text-obligon-text">{label}</span>
+      <span className="text-xs font-semibold uppercase text-obligon-text">{label}</span>
       <input
         type="password"
         inputMode="numeric"
@@ -172,7 +172,7 @@ function PinInput({
         value={value}
         onChange={(event) => onChange(event.target.value.replace(/\D/g, "").slice(0, 4))}
         placeholder={placeholder}
-        className="mt-2 h-14 w-full rounded-lg border border-[#cfd8cc] bg-[#f7fbf8] text-center font-mono text-2xl tracking-[10px] outline-none focus:border-obligon-green"
+        className="mt-2 h-14 w-full rounded-lg border border-obligon-border bg-obligon-mist/60 text-center font-mono text-2xl tracking-[10px] outline-none focus:border-obligon-green"
       />
     </label>
   );
@@ -251,7 +251,7 @@ function SpendProjectionModal({
   return (
     <ModalFrame title="Projected fuel spend" onClose={onClose}>
       <form onSubmit={submit} className="p-6">
-        <h2 className="font-display text-2xl font-extrabold text-obligon-navy">
+        <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">
           {isRevision ? "Change your projected spend" : "Set your projected spend"}
         </h2>
         <p className="mt-2 text-sm leading-6 text-obligon-text">
@@ -261,7 +261,7 @@ function SpendProjectionModal({
         </p>
 
         <label className="mt-6 block">
-          <span className="text-xs font-extrabold uppercase text-obligon-text">Expected spend (₦)</span>
+          <span className="text-xs font-semibold uppercase text-obligon-text">Expected spend (₦)</span>
           <input
             type="text"
             inputMode="decimal"
@@ -270,7 +270,7 @@ function SpendProjectionModal({
             value={amount}
             onChange={(event) => onAmountChange(event.target.value)}
             placeholder="50000"
-            className="mt-2 h-14 w-full rounded-lg border border-[#cfd8cc] bg-[#f7fbf8] px-4 font-display text-2xl font-extrabold text-obligon-navy outline-none focus:border-obligon-green"
+            className="mt-2 h-14 w-full rounded-lg border border-obligon-border bg-obligon-mist/60 px-4 font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy outline-none focus:border-obligon-green"
           />
         </label>
 
@@ -297,7 +297,7 @@ function SpendProjectionModal({
         </div>
 
         {spendSoFar > 0 ? (
-          <div className="mt-5 rounded-xl border border-obligon-border bg-[#f7fbf8] p-4 text-sm">
+          <div className="mt-5 rounded-xl border border-obligon-border bg-obligon-mist/60 p-4 text-sm">
             <div className="flex justify-between">
               <span className="font-bold text-obligon-text">Spent so far this month</span>
               <span className="font-extrabold text-obligon-navy">{formatNaira(spendSoFar / 100)}</span>
@@ -418,7 +418,7 @@ function ChangePinModal({ onClose }: { onClose: () => void }) {
           <span className="grid size-12 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
             <LockKeyhole size={22} />
           </span>
-          <h2 className="mt-4 font-display text-3xl font-extrabold text-obligon-navy">{card?.pinSet === false ? "Set Transaction PIN" : "Change Transaction PIN"}</h2>
+          <h2 className="mt-4 font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">{card?.pinSet === false ? "Set Transaction PIN" : "Change Transaction PIN"}</h2>
           <p className="mt-2 text-sm text-obligon-text">
             {card?.pinSet === false ? "Create the 4-digit PIN used to approve your station payments." : "Update the 4-digit authorization PIN used to approve station payments."}
           </p>
@@ -445,7 +445,7 @@ function ChangePinModal({ onClose }: { onClose: () => void }) {
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
             <Check size={30} />
           </span>
-          <h2 className="mt-5 font-display text-2xl font-extrabold text-obligon-navy">PIN Updated Successfully</h2>
+          <h2 className="mt-5 font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">PIN Updated Successfully</h2>
           <p className="mt-2 text-sm text-obligon-text">
             Your transaction access code has been securely updated. Use your new PIN for future station payments.
           </p>
@@ -519,7 +519,7 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
             <Check size={30} />
           </span>
-          <h2 className="mt-5 font-display text-2xl font-extrabold text-obligon-navy">Password Updated</h2>
+          <h2 className="mt-5 font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">Password Updated</h2>
           <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-obligon-text">
             Your password has been changed and a confirmation email has been sent to your registered address.
           </p>
@@ -533,14 +533,14 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="p-6">
-          <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Change Password</h2>
+          <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">Change Password</h2>
           <p className="mt-2 text-sm leading-6 text-obligon-text">
             Choose a strong password you do not use anywhere else. You may need to sign in again after changing it.
           </p>
 
           <div className="mt-6 space-y-4">
             <label className="block">
-              <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">
+              <span className="text-xs font-bold uppercase tracking-[1.1px] text-obligon-text">
                 Current Password
               </span>
               <input
@@ -553,7 +553,7 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
               />
             </label>
             <label className="block">
-              <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">New Password</span>
+              <span className="text-xs font-bold uppercase tracking-[1.1px] text-obligon-text">New Password</span>
               <input
                 type="password"
                 autoComplete="new-password"
@@ -562,10 +562,10 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
                 className={field}
                 required
               />
-              <span className="mt-1 block text-[11px] text-obligon-text">Minimum 8 characters.</span>
+              <span className="mt-1 block text-xs text-obligon-text">Minimum 8 characters.</span>
             </label>
             <label className="block">
-              <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">
+              <span className="text-xs font-bold uppercase tracking-[1.1px] text-obligon-text">
                 Confirm New Password
               </span>
               <input
@@ -678,7 +678,7 @@ function TwoFactorModal({
     <ModalFrame title="Two-factor authentication" onClose={onClose}>
       {step === "choose" ? (
         <div className="p-6">
-          <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Two-Factor Authentication</h2>
+          <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">Two-Factor Authentication</h2>
           <p className="mt-2 text-sm leading-6 text-obligon-text">
             Add a time-based code from an authenticator app. Even if your password is compromised, an attacker
             cannot sign in without your device.
@@ -713,7 +713,7 @@ function TwoFactorModal({
 
       {step === "enroll" ? (
         <form onSubmit={confirmEnroll} className="p-6">
-          <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Scan this code</h2>
+          <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">Scan this code</h2>
           <p className="mt-2 text-sm leading-6 text-obligon-text">
             Open your authenticator app, add a new account and scan the QR code, then enter the 6-digit code it
             shows.
@@ -729,7 +729,7 @@ function TwoFactorModal({
               />
             ) : null}
             {secret ? (
-              <p className="text-center text-[11px] text-obligon-text">
+              <p className="text-center text-xs text-obligon-text">
                 Cannot scan? Enter this key manually:{" "}
                 <span className="font-mono font-bold text-obligon-navy">{secret}</span>
               </p>
@@ -737,7 +737,7 @@ function TwoFactorModal({
           </div>
 
           <label className="mt-6 block">
-            <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">6-digit code</span>
+            <span className="text-xs font-bold uppercase tracking-[1.1px] text-obligon-text">6-digit code</span>
             <input
               inputMode="numeric"
               autoComplete="one-time-code"
@@ -771,14 +771,14 @@ function TwoFactorModal({
 
       {step === "disable" ? (
         <form onSubmit={confirmDisable} className="p-6">
-          <h2 className="font-display text-2xl font-extrabold text-obligon-navy">
+          <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">
             Disable two-factor authentication?
           </h2>
           <p className="mt-2 text-sm leading-6 text-obligon-text">
             Your account will rely on your password alone. Confirm with your password to continue.
           </p>
           <label className="mt-6 block">
-            <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Password</span>
+            <span className="text-xs font-bold uppercase tracking-[1.1px] text-obligon-text">Password</span>
             <input
               type="password"
               autoComplete="current-password"
@@ -820,7 +820,7 @@ function TwoFactorModal({
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
             <ShieldCheck size={30} />
           </span>
-          <h2 className="mt-5 font-display text-2xl font-extrabold text-obligon-navy">
+          <h2 className="mt-5 font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">
             Two-Factor Authentication On
           </h2>
           <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-obligon-text">
@@ -828,9 +828,9 @@ function TwoFactorModal({
           </p>
 
           {backupCodes.length ? (
-            <div className="mt-6 rounded-xl border border-obligon-border bg-[#f7fbf8] p-4 text-left">
+            <div className="mt-6 rounded-xl border border-obligon-border bg-obligon-mist/60 p-4 text-left">
               <p className="text-xs font-extrabold text-obligon-navy">Save your backup codes</p>
-              <p className="mt-1 text-[11px] leading-4 text-obligon-text">
+              <p className="mt-1 text-xs leading-4 text-obligon-text">
                 Each code works once if you lose access to your authenticator. Store them somewhere safe.
               </p>
               <ul className="mt-3 grid grid-cols-2 gap-2 font-mono text-xs font-bold text-obligon-navy">
@@ -972,7 +972,7 @@ function TopUpModal({
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
             <Check size={32} />
           </span>
-          <h2 className="mt-5 font-display text-3xl font-extrabold text-obligon-navy">Top-Up Successful</h2>
+          <h2 className="mt-5 font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Top-Up Successful</h2>
           <p className="mt-2 text-sm text-obligon-text">
             Your wallet balance has been credited with{" "}
             <strong className="text-obligon-green font-extrabold text-base">
@@ -982,7 +982,7 @@ function TopUpModal({
             {successData.balanceLabel ? `. New balance ${successData.balanceLabel}.` : "."}
           </p>
 
-          <div className="mt-6 divide-y divide-[#eef3ee] rounded-xl border border-[#dbe2d8] bg-[#f7fbf8] p-4 text-left text-sm">
+          <div className="mt-6 divide-y divide-[#eef3ee] rounded-xl border border-obligon-border bg-obligon-mist/60 p-4 text-left text-sm">
             <div className="flex justify-between py-2">
               <span className="text-obligon-text font-medium">Reference Code</span>
               <span className="font-mono font-bold text-obligon-navy">{successData.reference}</span>
@@ -1000,7 +1000,7 @@ function TopUpModal({
           <button
             type="button"
             onClick={onClose}
-            className="mt-8 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white shadow-green"
+            className="mt-8 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white shadow-none"
           >
             Done
           </button>
@@ -1008,7 +1008,7 @@ function TopUpModal({
       ) : pending ? (
         <div className="p-8 text-center">
           <Loader2 size={32} className="mx-auto animate-spin text-obligon-green" />
-          <h2 className="mt-5 font-display text-2xl font-extrabold text-obligon-navy">Redirecting to secure checkout</h2>
+          <h2 className="mt-5 font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">Redirecting to secure checkout</h2>
           <p className="mt-2 text-sm text-obligon-text">
             Taking you to {pending.provider === "paystack" ? "Paystack" : "Flutterwave"} to complete your{" "}
             {"\u20a6"}
@@ -1020,29 +1020,29 @@ function TopUpModal({
         </div>
       ) : (
         <form onSubmit={submit} className="p-6 sm:p-8">
-          <span className="rounded-full bg-[#e8fbd7] px-3 py-1 text-[10px] font-extrabold uppercase text-obligon-green">
+          <span className="rounded-full bg-[#e8fbd7] px-3 py-1 text-xs font-semibold uppercase text-obligon-green">
             Secure Wallet Funding
           </span>
-          <h2 className="mt-3 font-display text-3xl font-extrabold text-obligon-navy">Top Up Your Wallet</h2>
+          <h2 className="mt-3 font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Top Up Your Wallet</h2>
           <p className="mt-1 text-sm text-obligon-text">Select an amount and payment method. Your wallet is credited after the provider confirms payment.</p>
 
           <div className="mt-6">
             <div className="mb-2 flex items-baseline justify-between gap-2">
-              <label htmlFor="topup-amount" className="text-xs font-extrabold uppercase text-obligon-text">
+              <label htmlFor="topup-amount" className="text-xs font-semibold uppercase text-obligon-text">
                 Select or Enter Amount (₦)
               </label>
               {/* Stated up front so a customer is not left guessing why the
                   button is disabled. */}
-              <span className="text-[11px] font-bold text-obligon-text">
+              <span className="text-xs font-bold text-obligon-text">
                 {minimumNaira === null ? (configLoading ? "Minimum loading…" : "Minimum unavailable") : `Minimum ₦${minimumNaira.toLocaleString("en-NG")}`}
               </span>
             </div>
             <div
-              className={`flex h-14 rounded-xl border bg-[#f7fbf8] focus-within:border-obligon-green focus-within:ring-2 focus-within:ring-obligon-green/20 ${
-                amount.length > 0 && amountError ? "border-[#e0a3a3]" : "border-[#cfd8cc]"
+              className={`flex h-14 rounded-xl border bg-obligon-mist/60 focus-within:border-obligon-green focus-within:ring-2 focus-within:ring-obligon-green/20 ${
+                amount.length > 0 && amountError ? "border-[#e0a3a3]" : "border-obligon-border"
               }`}
             >
-              <span className="grid w-14 place-items-center font-display text-2xl font-extrabold text-obligon-navy">₦</span>
+              <span className="grid w-14 place-items-center font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">₦</span>
               <input
                 id="topup-amount"
                 type="text"
@@ -1054,7 +1054,7 @@ function TopUpModal({
                 placeholder="25,000"
                 aria-describedby="topup-minimum-hint"
                 aria-invalid={Boolean(amount.length > 0 && amountError)}
-                className="w-full bg-transparent pr-4 font-display text-2xl font-extrabold text-obligon-navy outline-none"
+                className="w-full bg-transparent pr-4 font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy outline-none"
               />
             </div>
             <p id="topup-minimum-hint" aria-live="polite" className={`mt-2 text-xs font-bold ${amount.length > 0 && amountError ? "text-[#c1121f]" : "text-obligon-text"}`}>
@@ -1070,7 +1070,7 @@ function TopUpModal({
                   className={`rounded-lg border px-3 py-1.5 text-xs font-bold transition ${
                     numericAmount === amt
                       ? "border-obligon-green bg-[#e8fbd7] text-obligon-green"
-                      : "border-[#cfd8cc] bg-white text-obligon-navy hover:bg-[#f7fbf8]"
+                      : "border-obligon-border bg-white text-obligon-navy hover:bg-obligon-mist/60"
                   }`}
                 >
                   +₦{amt.toLocaleString()}
@@ -1080,7 +1080,7 @@ function TopUpModal({
           </div>
 
           <div className="mt-6">
-            <p className="text-xs font-extrabold uppercase text-obligon-text mb-2">Funding Method</p>
+            <p className="text-xs font-semibold uppercase text-obligon-text mb-2">Funding Method</p>
             <div className="space-y-2.5">
               {paymentMethods.map(({ title, body, Icon }) => {
                 const selected = method === title;
@@ -1092,7 +1092,7 @@ function TopUpModal({
                     aria-pressed={selected}
                     onClick={() => setMethod(title)}
                     className={`flex w-full items-center gap-3.5 rounded-xl border p-3.5 text-left transition ${
-                      selected ? "border-obligon-green bg-[#f3ffe8] ring-2 ring-obligon-green/20" : "border-[#cfd8cc] bg-white hover:bg-[#f7fbf8]"
+                      selected ? "border-obligon-green bg-[#f3ffe8] ring-2 ring-obligon-green/20" : "border-obligon-border bg-white hover:bg-obligon-mist/60"
                     }`}
                   >
                     <span className="grid size-10 place-items-center rounded-lg bg-[#eef3ff] text-obligon-blue shrink-0">
@@ -1114,7 +1114,7 @@ function TopUpModal({
             <p>{configError} Your fee and total are unavailable.</p>
             <button type="button" onClick={() => setConfigRevision((revision) => revision + 1)} className="mt-3 min-h-11 rounded-lg border border-current px-4 font-bold">Retry payment settings</button>
           </div> : null}
-          {quote ? <div className="mt-6 overflow-hidden rounded-xl bg-[#f7fbf8] text-sm">
+          {quote ? <div className="mt-6 overflow-hidden rounded-xl bg-obligon-mist/60 text-sm">
             <div className="flex items-center justify-between px-4 py-3">
               <span className="font-bold text-obligon-text">Top-up amount</span>
               <span className="font-extrabold text-obligon-navy">{fundingMoney(quote.baseKobo)}</span>
@@ -1144,7 +1144,7 @@ function TopUpModal({
             <button
               disabled={submitting || configLoading || !quote}
               type="submit"
-              className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white shadow-green flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white shadow-none flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {submitting ? (
                 <>
@@ -1210,7 +1210,7 @@ function ReportProblemModal({ onClose }: { onClose: () => void }) {
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
             <Check size={32} />
           </span>
-          <h2 className="mt-5 font-display text-3xl font-extrabold text-obligon-navy">Ticket Submitted</h2>
+          <h2 className="mt-5 font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Ticket Submitted</h2>
           <p className="mt-2 text-sm text-obligon-text">
             Your support request has been logged under reference{" "}
             <strong className="text-obligon-navy font-mono font-extrabold text-base">{ticketResult.ticketId}</strong>.
@@ -1221,21 +1221,21 @@ function ReportProblemModal({ onClose }: { onClose: () => void }) {
           <button
             type="button"
             onClick={onClose}
-            className="mt-7 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white shadow-green"
+            className="mt-7 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white shadow-none"
           >
             Close
           </button>
         </div>
       ) : (
         <form onSubmit={submit} className="p-6 sm:p-8">
-          <span className="rounded-full bg-[#e8fbd7] px-3 py-1 text-[10px] font-extrabold uppercase text-obligon-green">
+          <span className="rounded-full bg-[#e8fbd7] px-3 py-1 text-xs font-semibold uppercase text-obligon-green">
             Disputes &amp; Support
           </span>
-          <h2 className="mt-3 font-display text-3xl font-extrabold text-obligon-navy">Report an Issue</h2>
+          <h2 className="mt-3 font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Report an Issue</h2>
           <p className="mt-1 text-sm text-obligon-text">Submit transaction disputes or station issues for review.</p>
 
           <div className="mt-6">
-            <p className="text-xs font-extrabold uppercase text-obligon-text mb-2">Category of Issue</p>
+            <p className="text-xs font-semibold uppercase text-obligon-text mb-2">Category of Issue</p>
             <div className="grid gap-2 sm:grid-cols-2">
               {issueTypes.map((item) => (
                 <button
@@ -1245,7 +1245,7 @@ function ReportProblemModal({ onClose }: { onClose: () => void }) {
                   className={`rounded-xl border px-3.5 py-2.5 text-left text-xs font-bold transition ${
                     issue === item
                       ? "border-obligon-green bg-[#f3ffe8] text-obligon-green ring-2 ring-obligon-green/20"
-                      : "border-[#cfd8cc] bg-white text-obligon-navy hover:bg-[#f7fbf8]"
+                      : "border-obligon-border bg-white text-obligon-navy hover:bg-obligon-mist/60"
                   }`}
                 >
                   {item === "Lost / Stolen Fleet Card" ? "Lost / Stolen Fuel Card" : item}
@@ -1255,22 +1255,22 @@ function ReportProblemModal({ onClose }: { onClose: () => void }) {
           </div>
 
           <label className="mt-5 block">
-            <span className="text-xs font-extrabold uppercase text-obligon-text">Transaction ID / Reference (Optional)</span>
+            <span className="text-xs font-semibold uppercase text-obligon-text">Transaction ID / Reference (Optional)</span>
             <input
               value={txnId}
               onChange={(e) => setTxnId(e.target.value)}
-              className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 text-sm font-medium outline-none focus:border-obligon-green"
+              className="mt-1.5 h-12 w-full rounded-xl border border-obligon-border px-4 text-sm font-medium outline-none focus:border-obligon-green"
               placeholder="e.g. TXN-84729"
             />
           </label>
 
           <label className="mt-4 block">
-            <span className="text-xs font-extrabold uppercase text-obligon-text">Detailed Description</span>
+            <span className="text-xs font-semibold uppercase text-obligon-text">Detailed Description</span>
             <textarea
               value={details}
               onChange={(e) => setDetails(e.target.value)}
               rows={3}
-              className="mt-1.5 w-full rounded-xl border border-[#cfd8cc] p-3.5 text-sm outline-none focus:border-obligon-green"
+              className="mt-1.5 w-full rounded-xl border border-obligon-border p-3.5 text-sm outline-none focus:border-obligon-green"
               placeholder="Describe the problem, including the pump number, amount discrepancy, or station location..."
               required
             />
@@ -1287,7 +1287,7 @@ function ReportProblemModal({ onClose }: { onClose: () => void }) {
             <button
               type="button"
               onClick={() => fileInput.current?.click()}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#cfd8cc] bg-[#f7fbf8] p-4 text-xs font-bold text-obligon-text hover:border-obligon-green hover:text-obligon-green transition"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-obligon-border bg-obligon-mist/60 p-4 text-xs font-bold text-obligon-text hover:border-obligon-green hover:text-obligon-green transition"
             >
               <Upload size={16} />
               {attachmentName ? `Attached: ${attachmentName}` : "Attach Receipt / Station Photo (PNG, JPG, PDF up to 10MB)"}
@@ -1296,7 +1296,7 @@ function ReportProblemModal({ onClose }: { onClose: () => void }) {
               <button
                 type="button"
                 onClick={() => {setAttachmentName("");if(fileInput.current)fileInput.current.value="";}}
-                className="mt-1 text-[11px] font-bold text-[#c1121f] hover:underline"
+                className="mt-1 text-xs font-bold text-[#c1121f] hover:underline"
               >
                 Remove attachment
               </button>
@@ -1310,7 +1310,7 @@ function ReportProblemModal({ onClose }: { onClose: () => void }) {
             <button
               disabled={submitting || details.trim().length < 10}
               type="submit"
-              className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white shadow-green flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white shadow-none flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {submitting ? (
                 <>
@@ -1362,12 +1362,12 @@ function ReplaceCardModal({ onClose, blocked }: { onClose: () => void; blocked: 
           <span className="grid size-12 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
             <CreditCard size={22} />
           </span>
-          <h2 className="mt-4 font-display text-3xl font-extrabold text-obligon-navy">Replace Virtual Card</h2>
+          <h2 className="mt-4 font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Replace Virtual Card</h2>
           <p className="mt-2 text-sm text-obligon-text">
             {blocked ? "Your previous card is blocked. " : ""}Replace your virtual fuel card after withdrawing its balance. Physical cards and delivery are coming soon.
           </p>
 
-          <p className="mt-6 text-xs font-extrabold uppercase text-obligon-text mb-2">Reason for Replacement</p>
+          <p className="mt-6 text-xs font-semibold uppercase text-obligon-text mb-2">Reason for Replacement</p>
           <div className="grid gap-2 sm:grid-cols-2">
             {reasons.map((item) => (
               <button
@@ -1377,7 +1377,7 @@ function ReplaceCardModal({ onClose, blocked }: { onClose: () => void; blocked: 
                 className={`rounded-xl border px-3.5 py-2.5 text-left text-xs font-bold transition ${
                   reason === item
                     ? "border-obligon-green bg-[#f3ffe8] text-obligon-green ring-2 ring-obligon-green/20"
-                    : "border-[#cfd8cc] bg-white text-obligon-navy"
+                    : "border-obligon-border bg-white text-obligon-navy"
                 }`}
               >
                 {item}
@@ -1392,7 +1392,7 @@ function ReplaceCardModal({ onClose, blocked }: { onClose: () => void; blocked: 
             <button
               disabled={submitting}
               type="submit"
-              className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white shadow-green flex items-center justify-center gap-2"
+              className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white shadow-none flex items-center justify-center gap-2"
             >
               {submitting ? <Loader2 size={18} className="animate-spin" /> : "Replace card"}
             </button>
@@ -1403,11 +1403,11 @@ function ReplaceCardModal({ onClose, blocked }: { onClose: () => void; blocked: 
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
             <Check size={32} />
           </span>
-          <h2 className="mt-5 font-display text-2xl font-extrabold text-obligon-navy">Virtual Card Replaced</h2>
+          <h2 className="mt-5 font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">Virtual Card Replaced</h2>
           <p className="mx-auto mt-2 max-w-sm text-sm text-obligon-text">
             Your virtual replacement is recorded. Refresh your Card page to view it. Card ID: <span className="font-mono font-extrabold text-obligon-navy">{reference}</span>.
           </p>
-          <button type="button" onClick={onClose} className="mt-7 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white shadow-green">
+          <button type="button" onClick={onClose} className="mt-7 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white shadow-none">
             Done
           </button>
         </div>
@@ -1456,13 +1456,13 @@ function LostCardModal({
           <span className="grid size-12 place-items-center rounded-full bg-[#ffe8e8] text-[#c1121f]">
             <FileWarning size={22} />
           </span>
-          <h2 className="mt-4 font-display text-3xl font-extrabold text-[#c1121f]">Block Card Permanently</h2>
+          <h2 className="mt-4 font-display text-2xl font-bold tracking-tight sm:text-3xl text-[#c1121f]">Block Card Permanently</h2>
           <p className="mt-2 text-sm leading-6 text-obligon-text">
             This action will immediately stop all authorizations and permanently deactivate this card across all network stations.
           </p>
 
           <div className="mt-5">
-            <p className="text-xs font-extrabold uppercase text-obligon-text mb-2">Report Reason</p>
+            <p className="text-xs font-semibold uppercase text-obligon-text mb-2">Report Reason</p>
             <div className="grid gap-2">
               {["Physical theft / stolen card", "Lost card in transit", "Suspicious / fraudulent transaction"].map((opt) => (
                 <button
@@ -1470,7 +1470,7 @@ function LostCardModal({
                   type="button"
                   onClick={() => setReason(opt)}
                   className={`rounded-xl border p-3 text-left text-xs font-bold transition ${
-                    reason === opt ? "border-[#c1121f] bg-[#ffecef] text-[#c1121f]" : "border-[#cfd8cc] bg-white text-obligon-navy"
+                    reason === opt ? "border-[#c1121f] bg-[#ffecef] text-[#c1121f]" : "border-obligon-border bg-white text-obligon-navy"
                   }`}
                 >
                   {opt}
@@ -1502,11 +1502,11 @@ function LostCardModal({
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#ffe8e8] text-[#c1121f]">
             <Check size={32} />
           </span>
-          <h2 className="mt-5 font-display text-2xl font-extrabold text-[#c1121f]">Card Blocked</h2>
+          <h2 className="mt-5 font-display text-xl font-bold tracking-tight sm:text-2xl text-[#c1121f]">Card Blocked</h2>
           <p className="mx-auto mt-2 max-w-sm text-sm text-obligon-text">
             The card has been blocked permanently. Card ID: <span className="font-mono font-extrabold text-obligon-navy">{reference}</span>.
           </p>
-          <button type="button" onClick={onClose} className="mt-7 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white shadow-green">
+          <button type="button" onClick={onClose} className="mt-7 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white shadow-none">
             Done
           </button>
         </div>
@@ -1551,7 +1551,7 @@ function FreezeCardModal({
         <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#eef3ff] text-obligon-blue">
           <Snowflake size={32} />
         </span>
-        <h2 className="mt-5 font-display text-3xl font-extrabold text-obligon-navy">
+        <h2 className="mt-5 font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">
           {frozen ? "Unfreeze Fuelvista Card" : "Freeze Fuelvista Card"}
         </h2>
         <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-obligon-text">
@@ -1569,7 +1569,7 @@ function FreezeCardModal({
             onClick={handleToggle}
             disabled={working}
             className={`h-12 flex-1 rounded-lg font-extrabold text-white disabled:opacity-60 ${
-              frozen ? "bg-obligon-green shadow-green" : "bg-[#bc5b00]"
+              frozen ? "bg-obligon-green shadow-none" : "bg-[#bc5b00]"
             }`}
           >
             {working ? "Working..." : frozen ? "Unfreeze Card" : "Freeze Card"}

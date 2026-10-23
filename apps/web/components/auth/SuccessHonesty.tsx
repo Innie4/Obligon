@@ -1,7 +1,9 @@
 "use client";
 
 import { CheckCircle2, ShieldCheck, Mail, Phone } from "lucide-react";
+import Link from "next/link";
 import { useSession } from "@/components/shared/AuthContext";
+import { routes } from "@/components/site/routes";
 
 /**
  * States what has actually been verified, from the session's own flags.
@@ -18,9 +20,17 @@ export function SuccessHonesty() {
   if (status === "loading") {
     return (
       <div className="w-full max-w-[480px] mx-auto rounded-3xl border border-obligon-border bg-white p-8 shadow-card text-center">
-        <p className="text-sm text-obligon-text">Checking your account…</p>
+        <p role="status" className="text-sm text-obligon-text">Checking your account…</p>
       </div>
     );
+  }
+
+  if (status !== "authenticated" || !user) {
+    return <div className="mx-auto w-full max-w-[480px] rounded-3xl border border-obligon-border bg-white p-8 text-center shadow-card">
+      <h1 className="font-display text-2xl font-bold tracking-tight text-obligon-navy">Sign in to continue</h1>
+      <p className="mt-3 text-base leading-6 text-obligon-text">Sign in to view your account and verification status.</p>
+      <Link href={routes.login} className="mt-6 inline-flex min-h-12 items-center justify-center rounded-xl bg-obligon-green px-6 text-sm font-semibold text-white transition-colors hover:bg-obligon-green/90">Log in</Link>
+    </div>;
   }
 
   const emailVerified = Boolean(user?.emailVerified);
@@ -31,7 +41,7 @@ export function SuccessHonesty() {
   return (
     <div className="w-full max-w-[480px] mx-auto rounded-3xl border border-obligon-border bg-white p-8 shadow-card text-center">
       <span
-        className={`inline-flex rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-[1px] ${
+        className={`inline-flex rounded-full px-3 py-1 text-xs font-extrabold ${
           accountVerified ? "bg-obligon-lime/20 text-[#131f00]" : "bg-[#fff3d8] text-[#9a6300]"
         }`}
       >

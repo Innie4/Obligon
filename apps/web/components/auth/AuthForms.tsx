@@ -28,11 +28,14 @@ import { useToast } from "@/components/shared/Toast";
 import { DialogFrame } from "@/components/shared/Dialogs";
 import { useSession } from "@/components/shared/AuthContext";
 import { DemoAccountPanel } from "@/components/auth/DemoAccountPanel";
+import { AdditionalSignInMethods } from "@/components/auth/AdditionalSignInMethods";
 import { readPersistedSession, readRememberedEmail, writeRememberedEmail } from "@/lib/session-store";
 import { authApi, LIVE_MODE } from "@/lib/services";
 import type { UserRole } from "@/lib/services/types";
 
 import { authReturnPath, withAuthReturn } from "@/lib/company-invitation-routing";
+import { workshopServices } from "@/lib/partner-workshop";
+import { dashboardDestination } from "@/lib/auth-routing";
 import { NIGERIA_LOCATIONS, NIGERIA_STATES, isNigeriaLocation, nigeriaLocationLabel } from "../../../../packages/shared/nigeria-locations.mjs";
 
 export type AuthFormMode = "login" | "signup";
@@ -40,6 +43,7 @@ type TopRole = "customer" | "company" | "partner";
 
 export type PartnerType =
   | "fuelStation"
+  | "gasStation"
   | "mechanic"
   | "evCharging"
   | "cngConversion"
@@ -55,28 +59,37 @@ interface PartnerTypeMeta {
   fields: Array<{ label: string; name: string; placeholder: string; type?: string; required?: boolean }>;
 }
 
-const partnerTypeConfigs: Record<PartnerType, PartnerTypeMeta> = {
-  fuelStation: {
-    id: "fuelStation",
-    title: "Fuel Station / Energy Retailer",
-    subtitle: "DPR licensed filling stations and fuel dispensers",
-    icon: Fuel,
-    capabilities: ["PMS Petrol", "AGO Diesel", "DPK Kerosene", "CNG Compressed Gas", "LPG Autogas", "Car Wash Bay"],
-    fields: [
+const stationFields: PartnerTypeMeta["fields"] = [
       { label: "Station Brand / Name", name: "stationName", placeholder: "Mainland Energy Station", required: true },
       { label: "Station Location / Address", name: "location", placeholder: "Plot 14 Commercial Ave, Ikeja, Lagos", required: true },
       { label: "Station Manager Full Name", name: "contactName", placeholder: "Tunde Bakare", required: true },
       { label: "Manager Phone Number", name: "phone", placeholder: "+234 803 456 7890", required: true },
       { label: "Official Station Email", name: "email", placeholder: "ops@mainlandenergy.ng", type: "email", required: true },
       { label: "DPR / NMDPRA License Number", name: "license", placeholder: "DPR-NG-2024-884", required: true },
-    ]
+    ];
+const partnerTypeConfigs: Record<PartnerType, PartnerTypeMeta> = {
+  fuelStation: {
+    id: "fuelStation",
+    title: "Fuel Station / Energy Retailer",
+    subtitle: "DPR licensed filling stations and fuel dispensers",
+    icon: Fuel,
+    capabilities: ["PMS Petrol", "AGO Diesel", "DPK Kerosene", "CNG Compressed Gas", "LPG Autogas"],
+    fields: stationFields
+  },
+  gasStation: {
+    id: "gasStation",
+    title: "Gas Station / Autogas Retailer",
+    subtitle: "CNG and LPG stations with approved selling units",
+    icon: Gauge,
+    capabilities: ["CNG Compressed Gas", "LPG Autogas"],
+    fields: stationFields
   },
   mechanic: {
     id: "mechanic",
     title: "Auto Mechanic / Repair Center",
     subtitle: "Fleet diagnostics, servicing, and repair workshops",
     icon: Wrench,
-    capabilities: ["Computer Diagnostics", "Engine Overhaul", "Brake & Suspension", "Tyres & Wheel Alignment", "Auto Electrical", "Mobile Roadside Unit"],
+    capabilities: [...workshopServices],
     fields: [
       { label: "Workshop / Garage Name", name: "workshopName", placeholder: "Ade Auto Diagnostic Hub", required: true },
       { label: "Service Area / Workshop Address", name: "location", placeholder: "Lekki-Epe Expressway, Lagos", required: true },
@@ -227,6 +240,8 @@ function LoginForm() {
   });
   const [loginErrors, setLoginErrors] = React.useState<Record<string, string>>({});
   const [loginSubmitting, setLoginSubmitting] = React.useState(false);
+  const [additionalBusy, setAdditionalBusy] = React.useState(false);
+  const loginInFlight = React.useRef(false);
   const [loginServerError, setLoginServerError] = React.useState<string | null>(null);
   const [loginDialogError, setLoginDialogError] = React.useState<string | null>(null);
   const [showPassword, setShowPassword] = React.useState(false);
@@ -256,8 +271,10 @@ function LoginForm() {
 
   const handleLoginSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (loginInFlight.current || additionalBusy) return;
     if (!validateLogin()) return;
 
+    loginInFlight.current = true;
     setLoginSubmitting(true);
     setLoginServerError(null);
 
@@ -318,16 +335,23 @@ function LoginForm() {
       setLoginDialogError(message);
       toastError(message);
     } finally {
+      loginInFlight.current = false;
       setLoginSubmitting(false);
     }
   };
 
-  const isLoginDisabled = loginSubmitting || !loginForm.email || !loginForm.password;
+  const signInPending = loginSubmitting || additionalBusy;
+  const isLoginDisabled = signInPending || !loginForm.email || !loginForm.password;
+  const handleAdditionalComplete = React.useCallback((result: { mfaRequired?: boolean }) => {
+    if (result.mfaRequired) { router.push(withAuthReturn(routes.mfaChallenge, returnPath)); return; }
+    toastSuccess("Signed in successfully.");
+    router.push(returnPath ?? dashboardDestination(readPersistedSession()?.role));
+  }, [router, returnPath, toastSuccess]);
 
   return (
     <>
       <AuthErrorDialog message={loginDialogError} onClose={() => setLoginDialogError(null)} />
-      <form onSubmit={handleLoginSubmit} className="mx-auto w-full max-w-[480px] rounded-2xl border border-obligon-border bg-white p-6 sm:p-8 shadow-card" noValidate>
+      <form onSubmit={handleLoginSubmit} className="mx-auto min-w-0 w-full max-w-[480px] rounded-2xl border border-obligon-border bg-white p-6 sm:p-8 shadow-card" noValidate>
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-display text-2xl font-bold text-obligon-navy">Welcome back</h2>
@@ -365,7 +389,7 @@ function LoginForm() {
 
       <div className="mt-6 space-y-4">
         <div className="relative">
-          <label htmlFor="login-email" className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-1">
+          <label htmlFor="login-email" className="text-sm font-semibold text-obligon-text block mb-1.5">
             Email Address
           </label>
           <div className="relative">
@@ -380,7 +404,7 @@ function LoginForm() {
               className={`${fieldClass(!!loginErrors.email)} pl-10 pr-4`}
               required
               autoComplete="email"
-              disabled={loginSubmitting}
+              disabled={signInPending}
               aria-invalid={!!loginErrors.email}
               aria-describedby={loginErrors.email ? "login-email-error" : undefined}
             />
@@ -394,7 +418,7 @@ function LoginForm() {
         </div>
 
         <div className="relative">
-          <label htmlFor="login-password" className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-1">
+          <label htmlFor="login-password" className="text-sm font-semibold text-obligon-text block mb-1.5">
             Password
           </label>
           <div className="relative">
@@ -409,7 +433,7 @@ function LoginForm() {
               className={`${fieldClass(!!loginErrors.password)} pl-10 pr-12`}
               required
               autoComplete="current-password"
-              disabled={loginSubmitting}
+              disabled={signInPending}
               aria-invalid={!!loginErrors.password}
               aria-describedby={loginErrors.password ? "login-password-error" : undefined}
             />
@@ -418,7 +442,7 @@ function LoginForm() {
               onClick={() => setShowPassword((v) => !v)}
               className="absolute right-3 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-obligon-text transition hover:bg-obligon-mist hover:text-obligon-navy"
               aria-label={showPassword ? "Hide password" : "Show password"}
-              disabled={loginSubmitting}
+              disabled={signInPending}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -436,7 +460,7 @@ function LoginForm() {
               checked={loginForm.rememberMe}
               onChange={(e) => setLoginForm((prev) => ({ ...prev, rememberMe: e.target.checked }))}
               className="size-4 accent-obligon-green"
-              disabled={loginSubmitting}
+              disabled={signInPending}
             />
             <span className="text-xs font-medium">Remember me</span>
           </label>
@@ -461,6 +485,8 @@ function LoginForm() {
             "Sign In"
           )}
         </button>
+
+        <AdditionalSignInMethods rememberMe={loginForm.rememberMe} disabled={loginSubmitting} onComplete={handleAdditionalComplete} onBusyChange={setAdditionalBusy} />
 
         <div className="pt-3 text-center space-y-2">
           <p className="text-sm text-obligon-text">
@@ -607,7 +633,7 @@ function SignupForm() {
 
       if (LIVE_MODE) {
         const partnerTypeMap: Record<string, string> = {
-          fuelStation: "fuel_station", mechanic: "mechanic", other: "other"
+          fuelStation: "fuel_station", gasStation: "gas_station", mechanic: "mechanic", other: "other"
         };
         const signupResult = await authApi.signup({
           email,
@@ -624,7 +650,8 @@ function SignupForm() {
           rcNumber: topRole === "company" ? signupForm.license : signupForm.rcNumber ?? signupForm.rc,
           licenseReference: signupForm.license,
           planCode: topRole === "company" ? (sessionStorage.getItem("obligon_selected_plan") ?? undefined) : undefined,
-          fuelTypes: topRole === "partner" && partnerType === "fuelStation" ? selectedCapabilities : undefined
+          fuelTypes: topRole === "partner" && ["fuelStation", "gasStation"].includes(partnerType) ? selectedCapabilities.map(value => value.split(" ")[0]) : undefined,
+          services: topRole === "partner" && partnerType === "mechanic" ? selectedCapabilities : undefined
         });
         if (signupResult.user) setUser(signupResult.user);
       } else {
@@ -674,7 +701,7 @@ function SignupForm() {
       <form id="signup" onSubmit={handleSignupSubmit} className="mx-auto w-full max-w-[680px] rounded-2xl border border-obligon-border bg-white p-4 shadow-card sm:p-8" noValidate>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[1.2px] text-obligon-green">Onboard to Obligon</p>
+          <p className="text-xs font-bold text-obligon-green">Onboard to Obligon</p>
           <h2 className="mt-2 font-display text-xl font-bold text-obligon-navy sm:text-2xl">Create your account</h2>
         </div>
         <ShieldCheck className="text-obligon-green" size={28} />
@@ -689,7 +716,7 @@ function SignupForm() {
 
       {/* Top Level Role Selector */}
       <div className="mt-6">
-        <label className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-2">
+        <label className="text-xs font-bold text-obligon-text block mb-2">
           Select Account Category
         </label>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -717,7 +744,7 @@ function SignupForm() {
                 </div>
                 <div className="mt-2.5">
                   <p className="font-extrabold text-xs leading-4">{item.title}</p>
-                  <p className="text-[11px] font-medium text-obligon-text mt-0.5 leading-tight line-clamp-2">{item.desc}</p>
+                  <p className="text-xs font-medium text-obligon-text mt-0.5 leading-tight line-clamp-2">{item.desc}</p>
                 </div>
               </button>
             );
@@ -729,10 +756,10 @@ function SignupForm() {
       {topRole === "partner" && (
         <div className="mt-6 rounded-2xl border border-obligon-border bg-[#f8fafc] p-4 sm:p-5">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-extrabold uppercase tracking-[1px] text-obligon-navy">
+            <span className="text-xs font-extrabold text-obligon-navy">
               Select Specific Partner Specialization
             </span>
-            <span className="text-[10px] font-bold uppercase bg-obligon-green text-white px-2.5 py-0.5 rounded-full">
+            <span className="text-xs font-bold uppercase bg-obligon-green text-white px-2.5 py-0.5 rounded-full">
               6 Options Available
             </span>
           </div>
@@ -760,7 +787,7 @@ function SignupForm() {
                     <p className={`font-bold text-xs leading-4 ${active ? "text-obligon-green" : "text-obligon-navy"}`}>
                       {meta.title}
                     </p>
-                    <p className="text-[10px] font-medium text-obligon-text mt-0.5 leading-tight line-clamp-1">
+                    <p className="text-xs font-medium text-obligon-text mt-0.5 leading-tight line-clamp-1">
                       {meta.subtitle}
                     </p>
                   </div>
@@ -776,7 +803,7 @@ function SignupForm() {
         <div className="grid gap-4 sm:grid-cols-2">
           {currentFields.map((field) => (
             <div key={field.name} className="relative">
-              <label htmlFor={`signup-${field.name}`} className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-1">
+              <label htmlFor={`signup-${field.name}`} className="text-sm font-semibold text-obligon-text block mb-1.5">
                 {field.label}
               </label>
               <input
@@ -799,7 +826,7 @@ function SignupForm() {
           ))}
           {topRole === "customer" && <>
             <div>
-              <label htmlFor="signup-state" className="mb-1 block text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">State / FCT</label>
+              <label htmlFor="signup-state" className="mb-1 block text-xs font-bold text-obligon-text">State / FCT</label>
               <select
                 id="signup-state"
                 name="state"
@@ -818,7 +845,7 @@ function SignupForm() {
               {signupErrors.state && <p id="signup-state-error" className="mt-1 text-xs font-medium text-[#93000a]" role="alert">{signupErrors.state}</p>}
             </div>
             <div>
-              <label htmlFor="signup-localGovernmentArea" className="mb-1 block text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text">Local Government Area / Area Council</label>
+              <label htmlFor="signup-localGovernmentArea" className="mb-1 block text-xs font-bold text-obligon-text">Local Government Area / Area Council</label>
               <select
                 id="signup-localGovernmentArea"
                 name="localGovernmentArea"
@@ -843,7 +870,7 @@ function SignupForm() {
         {/* Partner Capabilities & Specialties */}
         {topRole === "partner" && (
           <div className="mt-4 pt-2">
-            <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-2">
+            <span className="text-xs font-bold text-obligon-text block mb-2">
               Capabilities, Products &amp; Amenities Offered
             </span>
             <div className="flex flex-wrap gap-2">
@@ -878,7 +905,7 @@ function SignupForm() {
 
         {/* Password */}
         <div className="relative pt-2">
-          <label htmlFor="signup-password" className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-1">
+          <label htmlFor="signup-password" className="text-sm font-semibold text-obligon-text block mb-1.5">
             Create Password
           </label>
           <div className="relative">

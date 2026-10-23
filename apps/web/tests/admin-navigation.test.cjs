@@ -25,35 +25,26 @@ function navigationFixture() {
       if (name === 'next/navigation') return { usePathname: () => '/admin/partner-applications' };
       if (name === '@/components/shared/AuthContext') return { useSession: () => ({ user: { name: 'Fixture Administrator' } }) };
       if (name === '@/lib/mock/admin-data') return data;
+      if (name === '@/components/shared/DashboardSearch') return { DashboardSearch: 'DashboardSearch' };
       return {};
     },
   });
   return {
     nav: Array.from(data.adminNav),
     render() { cursor = 0; tree = exports.AdminHeader({ onOpenMenu() {} }); return tree; },
-    input() { return walk(tree).find(node => node.type === 'input'); },
-    options() { return walk(tree).filter(node => node.props?.role === 'option'); },
-    links() { return walk(walk(tree).find(node => node.props?.role === 'listbox')).filter(node => node.type === 'a'); },
+    search() { return walk(tree).find(node => node.type === 'DashboardSearch'); },
   };
 }
 
-test('admin section search keeps unique route keys when destinations share a category', () => {
-  const ui = navigationFixture(); ui.render(); ui.input().props.onFocus(); ui.render();
-  assert.equal(ui.options().length, ui.nav.length);
-  assert.equal(new Set(ui.options().map(node => node.props.key)).size, ui.nav.length);
-  for (const query of ['partner', 'support', 'requests', '', 'missing section', 'discount']) {
-    ui.input().props.onChange({ target: { value: query } }); ui.render();
-    const expected = ui.nav.filter(item => item.label.toLowerCase().includes(query));
-    assert.deepEqual(ui.options().map(node => node.props.key), expected.map(item => item.href));
-    assert.deepEqual(ui.links().map(link => ({ href: link.props.href, label: text(link) })), expected.map(item => ({ href: item.href, label: item.label })));
-  }
+test('admin shared search receives unique destinations when pages share a category', () => {
+  const ui = navigationFixture(); ui.render();
+  const entries = ui.search().props.entries;
+  assert.equal(new Set(entries.map(item => item.href)).size, entries.length);
+  for (const item of ui.nav) assert.ok(entries.some(entry => entry.href === item.href && entry.label === item.label));
 });
 
-test('selecting an admin search destination resets the query and closes results', () => {
-  const ui = navigationFixture(); ui.render(); ui.input().props.onFocus(); ui.input().props.onChange({ target: { value: 'partner' } }); ui.render();
-  assert.equal(ui.links()[0].props.href, '/admin/partner-applications');
-  ui.links()[0].props.onClick(); ui.render();
-  assert.equal(ui.input().props.value, '');
-  assert.equal(ui.input().props['aria-expanded'], false);
-  assert.equal(ui.options().length, 0);
+test('admin header selects the admin data scope and includes shared security navigation', () => {
+  const ui = navigationFixture(); ui.render();
+  assert.equal(ui.search().props.scope, 'admin');
+  assert.ok(ui.search().props.entries.some(item => item.href === '/auth/sign-in-options'));
 });

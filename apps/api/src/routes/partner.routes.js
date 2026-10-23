@@ -1,4 +1,5 @@
 import { randomBytes, createHash } from "node:crypto";
+import { partnerApiAllowed, partnerTypeFor, partnerAllowedFuels, sellingUnitLabel, partnerFuelCode } from "../../../../packages/shared/partner-access.mjs";
 import { fulfillFuelOrder } from "../lib/fuel-checkout.js";
 import { createCollectionSubaccount, listBanks } from "../lib/flutterwave.js";
 import { authorizeWalletFuelSale } from "../lib/fuel-sale.js";
@@ -23,6 +24,8 @@ import { approvedDiscount, validateDiscount } from "../lib/discounts.js";
 import { enforcePartnerPlan, partnerSubscription } from "../lib/subscriptions.js";
 import { nairaToKobo } from "../lib/money-amounts.js";
 import { subscriptionRouter } from "./subscription.routes.js";
+import { stationFuelConfiguration, approvedStationUnit, approvedStationPrice, canonicalStationPrices, canonicalFuelAliases } from "../lib/station-approval.js";
+import { quantityTotalsLabel } from "../lib/fuel-quantity.js";
 
 const router = Router();
 for(const name of ['id','orgId','memberId'])router.param(name,(req,_res,next,value)=>{
@@ -108,25 +111,46 @@ router.use(requireAuth, (req, _res, next) => {
 // takes effect immediately instead of at access-token expiry. See
 // requireOrgMembership for why the JWT's `org` claim alone was not enough.
 router.use(requireOrgMembership);
-router.use("/billing", subscriptionRouter("partner"));
-router.use(enforcePartnerPlan);
-
-const mechanicAllowedPaths = new Set([
-  "/overview", "/overview/range", "/transactions", "/transactions/export",
-  "/reports", "/reports/export", "/staff", "/disputes", "/notifications", "/settings"
-]);
-
 router.use((req, _res, next) => {
-  if (req.user.role === "mechanic" && !mechanicAllowedPaths.has(req.path)) {
-    return next(forbidden("This partner feature is not available for mechanic accounts"));
+  if (!partnerApiAllowed({role:req.user.role,partnerType:req.org.partner_type,organizationType:req.org.org_type},req.method,req.path)) {
+    return next(forbidden("This feature is not available for your partner specialization."));
   }
   next();
 });
+router.use("/billing", subscriptionRouter("partner"));
+router.use(enforcePartnerPlan);
 
 const partnerOrgId = (req) => req.user.orgId;
 
+async function workshopProfile(req) {
+  const orgId=partnerOrgId(req);
+  const org=await one('SELECT name,address,city,website,description,partner_services FROM organizations WHERE id=$1',[orgId]);
+  const stats=await one(`SELECT
+    (SELECT count(*)::int FROM memberships WHERE organization_id=$1 AND status='active') AS staff,
+    (SELECT count(*)::int FROM support_tickets WHERE organization_id=$1 AND status<>'closed') AS "supportTickets"`,[orgId]);
+  return {profile:{name:org.name,address:org.address??'',city:org.city??'',website:org.website??'',description:org.description??'',services:org.partner_services??[]},stats};
+}
+
+router.get('/workshop',asyncHandler(async(req,res)=>res.json(await workshopProfile(req))));
+router.put('/workshop',requireOrgRole('admin'),asyncHandler(async(req,res)=>{
+  const {name,address,city,website,description,services}=req.body??{};
+  for(const [label,value,max] of [['name',name,200],['address',address,500],['city',city,200],['website',website,500],['description',description,2000]]) {
+    if(typeof value!=='string'||value.length>max||(label==='name'&&!value.trim()))throw badRequest(`Enter a valid workshop ${label}`);
+  }
+  if(website && !/^https?:\/\//i.test(website))throw badRequest('Workshop website must start with https:// or http://');
+  if(!Array.isArray(services)||services.length>20||services.some(s=>typeof s!=='string'||!s.trim()||s.length>80))throw badRequest('Choose valid workshop services');
+  await tx(async t=>{
+    const actor=await t.one("SELECT role,status FROM memberships WHERE organization_id=$1 AND user_id=$2 FOR SHARE",[partnerOrgId(req),req.user.id]);
+    if(!actor||actor.status!=='active'||!['owner','admin'].includes(actor.role))throw forbidden('Workshop management access is not active');
+    await t.query('UPDATE organizations SET name=$2,address=$3,city=$4,website=$5,description=$6,partner_services=$7,updated_at=now() WHERE id=$1',[partnerOrgId(req),name.trim(),address.trim(),city.trim(),website.trim(),description.trim(),[...new Set(services.map(s=>s.trim()))]]);
+    await t.query("INSERT INTO audit_logs(actor_user_id,actor_role,action,entity_type,entity_id) VALUES($1,$2,'workshop.updated','organization',$3)",[req.user.id,req.user.role,partnerOrgId(req)]);
+  });
+  res.json({ok:true,...await workshopProfile(req)});
+}));
+
 // ============ OVERVIEW ============
 router.get("/overview", asyncHandler(async (req, res) => {
+  if(!partnerAllowedFuels(req.user).length)return res.json(await workshopProfile(req));
   const orgId = partnerOrgId(req);
   // The day window is computed by Postgres from the same clock that stamps
   // `created_at`, in the configured business timezone, and is closed at both ends.
@@ -186,7 +210,7 @@ router.get("/overview", asyncHandler(async (req, res) => {
       ["Verified Partners", String(quick.verified_partners)]
     ],
     recentTransactions: recent.map((t) => ({
-      id: t.id, reference: t.reference,
+      id: t.id, reference: t.reference, quantity:Number(t.litres), sellingUnit:t.selling_unit,
       // The station name, which the join already provides. This cell used to be
       // the requester's own organisation name truncated to 12 characters, under a
       // "Station Hub" heading — the same string on every row, and not a station.
@@ -198,6 +222,7 @@ router.get("/overview", asyncHandler(async (req, res) => {
 
 // Range-filtered overview (Today / Weekly / Monthly)
 router.get("/overview/range", asyncHandler(async (req, res) => {
+  if(!partnerAllowedFuels(req.user).length)return res.json(await workshopProfile(req));
   const { range = "today" } = req.query;
   const orgId = partnerOrgId(req);
   const days = range === "weekly" ? 7 : range === "monthly" ? 30 : 1;
@@ -253,7 +278,7 @@ router.get("/transactions", asyncHandler(async (req, res) => {
   );
   res.json({
     transactions: rows.map((t) => ({
-      id: t.id, reference: t.reference,
+      id: t.id, reference: t.reference, quantity:Number(t.litres),sellingUnit:t.selling_unit,
       cells: [
         fmtDateTime(t.created_at),
         `${t.org_name ?? "Walk-in"}\n${t.fleet_id ? `Fleet ID #${t.fleet_id}` : "Direct"}`,
@@ -283,7 +308,7 @@ router.get("/transactions/export", asyncHandler(async (req, res) => {
      WHERE ${where} ORDER BY t.created_at DESC, t.id DESC LIMIT 5000`,
     params
   );
-  const csv = toCsv(rows.map((r) => ({ reference: r.reference, date: fmtDateTime(r.created_at), company: r.org_name ?? "", fuel: r.fuel_type, litres: r.litres, amount: (r.amount_kobo / 100).toFixed(2), status: r.status })));
+  const csv = toCsv(rows.map((r) => ({ reference: r.reference, date: fmtDateTime(r.created_at), company: r.org_name ?? "", fuel: r.fuel_type, quantity: r.litres, selling_unit:r.selling_unit, amount: (r.amount_kobo / 100).toFixed(2), status: r.status })));
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
   res.setHeader("Content-Disposition", `attachment; filename="partner-transactions-${Date.now()}.csv"`);
   res.send(csv);
@@ -652,17 +677,18 @@ router.get("/payouts/export", asyncHandler(async (req, res) => {
 
 // ============ STATION PROFILE ============
 router.get("/stations", asyncHandler(async(req,res)=>{
- res.json({stations:await q("SELECT id,name,address,city,status,review_note FROM stations WHERE partner_org_id=$1 ORDER BY created_at,id",[partnerOrgId(req)])});
+ res.json({stations:(await q("SELECT id,name,address,city,status,review_note,fuels,selling_units,approved_selling_units FROM stations WHERE partner_org_id=$1 ORDER BY created_at,id",[partnerOrgId(req)])).map(s=>({...s,sellingUnits:s.selling_units,approvedSellingUnits:s.approved_selling_units}))});
 }));
 router.post("/stations",requireOrgRole("admin"),asyncHandler(async(req,res)=>{
- const {name,address,city,lat,lng,fuels,hours}=req.body??{};
+ const {name,address,city,lat,lng,fuels,hours,sellingUnits}=req.body??{};
  if(!String(name??'').trim()||!String(address??'').trim()||!String(city??'').trim())throw badRequest("Station name, address and city are required");
  if(String(name).length>200||String(address).length>500||String(city).length>100)throw badRequest("Station details are too long");
  const latitude=boundedCoordinate(lat,"Latitude",90),longitude=boundedCoordinate(lng,"Longitude",180);
  if(latitude===null||longitude===null)throw badRequest("Provide the station's exact coordinates");
  if(!Array.isArray(fuels)||!fuels.length||fuels.length>20||fuels.some(f=>typeof f!=='string'||!f.trim()||f.length>80))throw badRequest("Select at least one valid fuel");
- const station=await one(`INSERT INTO stations(partner_org_id,name,address,city,lat,lng,fuels,hours,status,location_confirmed,rating)
- VALUES($1,$2,$3,$4,$5,$6,$7,$8,'pending',TRUE,0) RETURNING id,name,status`,[partnerOrgId(req),name.trim(),address.trim(),city.trim(),latitude,longitude,[...new Set(fuels.map(f=>f.trim()))],String(hours??'Opening hours not provided').slice(0,120)]);
+ const config=stationFuelConfiguration(req.user,fuels,sellingUnits);
+ const station=await one(`INSERT INTO stations(partner_org_id,name,address,city,lat,lng,fuels,hours,status,location_confirmed,rating,selling_units)
+ VALUES($1,$2,$3,$4,$5,$6,$7,$8,'pending',TRUE,0,$9::jsonb) RETURNING id,name,status`,[partnerOrgId(req),name.trim(),address.trim(),city.trim(),latitude,longitude,config.fuels,String(hours??'Opening hours not provided').slice(0,120),JSON.stringify(config.sellingUnits)]);
  await audit({actorUserId:req.user.id,actorRole:req.user.role,action:'station.submitted',entityType:'station',entityId:station.id});
  emitToRole('admin','station.submitted',station);res.status(201).json({ok:true,station});
 }));
@@ -688,28 +714,30 @@ router.get("/station", asyncHandler(async (req, res) => {
     station: {
       id: station.id, name: station.name, address: station.address, city: station.city,
       lat: station.location_confirmed ? station.lat : null, lng: station.location_confirmed ? station.lng : null, fuels: station.fuels, hours: station.hours,
+      sellingUnits:station.selling_units,approvedSellingUnits:station.approved_selling_units,
       assets: station.assets, status: station.status,
       messagingTerminal: station.messaging_terminal
     },
-    prices: prices.map((p) => ({ id: p.id, stationId:p.station_id, stationName:p.station_name, fuelType: p.fuel_type, price: p.price_kobo / 100, priceLabel: naira(p.price_kobo), updatedAt: fmtDateTime(p.updated_at) })),
-    logs: logs.map((l) => ({ id: l.id, fuelType: l.fuel_type, litres: Number(l.litres), reference: l.tx_reference, time: fmtDateTime(l.created_at) })),
+    prices: canonicalStationPrices(prices).map((p) => ({ id: p.id, stationId:p.station_id, stationName:p.station_name, fuelType: p.fuel_type, sellingUnit:p.selling_unit, price: p.price_kobo / 100, priceLabel: naira(p.price_kobo), updatedAt: fmtDateTime(p.updated_at) })),
+    logs: logs.map((l) => ({ id: l.id, fuelType: l.fuel_type, litres: Number(l.litres), quantity:Number(l.litres), sellingUnit:l.selling_unit, reference: l.tx_reference, time: fmtDateTime(l.created_at) })),
     equipment: equipment.map((e) => ({ id: e.id, name: e.name, kind: e.kind, status: e.status, lastService: e.last_service_at ? fmtDate(e.last_service_at) : null }))
   });
 }));
 
 router.put("/station", requireOrgRole("admin"), asyncHandler(async (req, res) => {
-  const { name, address, city, lat, lng, hours, fuels, stationId } = req.valid ?? req.body ?? {};
+  const { name, address, city, lat, lng, hours, fuels, stationId, sellingUnits } = req.valid ?? req.body ?? {};
   if(stationId) requireUuid(stationId,"stationId");
   for(const [value,label,max] of [[name,'Name',200],[address,'Address',500],[city,'City',100]])if(value!=null&&(typeof value!=='string'||!value.trim()||value.length>max))throw badRequest(`${label} is required and must be at most ${max} characters`);
   if ((lat == null || lat === "") !== (lng == null || lng === "")) throw badRequest("Provide latitude and longitude together");
   if (fuels != null && (!Array.isArray(fuels) || !fuels.length || fuels.length>20 || fuels.some(fuel => typeof fuel !== "string" || !fuel.trim()))) throw badRequest("Fuels must be a list of names");
   const station = await one("SELECT * FROM stations WHERE partner_org_id = $1 AND ($2::uuid IS NULL OR id=$2) ORDER BY created_at LIMIT 1", [partnerOrgId(req),stationId??null]);
   if (!station) throw notFound("No station registered for this partner");
+  const config=stationFuelConfiguration(req.user,fuels??station.fuels,sellingUnits??station.selling_units);
   const updated = await one(
     `UPDATE stations SET name = COALESCE($2, name), address = COALESCE($3, address), city = COALESCE($4, city),
-       lat = COALESCE($5, lat), lng = COALESCE($6, lng), location_confirmed = CASE WHEN $5::double precision IS NOT NULL AND $6::double precision IS NOT NULL THEN TRUE ELSE location_confirmed END, hours = COALESCE($7, hours), fuels = COALESCE($8, fuels), status=CASE WHEN name IS DISTINCT FROM COALESCE($2,name) OR address IS DISTINCT FROM COALESCE($3,address) OR city IS DISTINCT FROM COALESCE($4,city) OR lat IS DISTINCT FROM COALESCE($5,lat) OR lng IS DISTINCT FROM COALESCE($6,lng) OR fuels IS DISTINCT FROM COALESCE($8,fuels) THEN 'pending' ELSE status END
+       lat = COALESCE($5, lat), lng = COALESCE($6, lng), location_confirmed = CASE WHEN $5::double precision IS NOT NULL AND $6::double precision IS NOT NULL THEN TRUE ELSE location_confirmed END, hours = COALESCE($7, hours), fuels = $8, selling_units=$9::jsonb, status=CASE WHEN name IS DISTINCT FROM COALESCE($2,name) OR address IS DISTINCT FROM COALESCE($3,address) OR city IS DISTINCT FROM COALESCE($4,city) OR lat IS DISTINCT FROM COALESCE($5,lat) OR lng IS DISTINCT FROM COALESCE($6,lng) OR fuels IS DISTINCT FROM $8 OR selling_units IS DISTINCT FROM $9::jsonb THEN 'pending' ELSE status END
      WHERE id = $1 RETURNING *`,
-    [station.id, name ?? null, address ?? null, city ?? null, boundedCoordinate(lat, "Latitude", 90), boundedCoordinate(lng, "Longitude", 180), hours ?? null, fuels ?? null]
+    [station.id, name ?? null, address ?? null, city ?? null, boundedCoordinate(lat, "Latitude", 90), boundedCoordinate(lng, "Longitude", 180), hours ?? null, config.fuels, JSON.stringify(config.sellingUnits)]
   );
   audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "station.updated", entityId: station.id });
   res.json({ ok: true });
@@ -747,18 +775,18 @@ router.post("/station/message-terminal", requireOrgRole("manager"), asyncHandler
 }));
 
 router.post("/station/resupply", requireOrgRole("dispatcher"), asyncHandler(async (req, res) => {
-  const { fuelType, litres } = req.valid ?? req.body ?? {};
+  const { fuelType, litres, sellingUnit } = req.valid ?? req.body ?? {};
   if (!fuelType) throw badRequest("Fuel type is required");
   // `!litres` rejected 0 while letting "abc" through to an `INT NOT NULL` column as
   // "NaN" — a 500. A negative resupply order was accepted outright.
-  const resupplyLitres = requirePositiveNumber(litres, "Litres", { max: 10_000_000, integer: true });
-  const station = await one("SELECT id FROM stations WHERE partner_org_id = $1 AND ($2::uuid IS NULL OR id=$2) ORDER BY created_at LIMIT 1", [partnerOrgId(req),req.body?.stationId ? requireUuid(req.body.stationId,"station") : null]);
-  if (!station) throw notFound("No station registered");
-  const order = await one(
-    "INSERT INTO resupply_orders (station_id, fuel_type, litres) VALUES ($1,$2,$3) RETURNING *",
-    [station.id, fuelType, resupplyLitres]
-  );
-  res.json({ ok: true, orderId: order.id });
+  const resupplyLitres = requirePositiveNumber(litres, "Whole fuel quantity", { max: 10_000_000, integer: true });
+  const order = await tx(async t=>{
+    const station = await t.one("SELECT s.*,o.partner_type,o.type AS org_type FROM stations s JOIN organizations o ON o.id=s.partner_org_id WHERE s.partner_org_id=$1 AND s.status='active' AND ($2::uuid IS NULL OR s.id=$2) ORDER BY s.created_at LIMIT 1 FOR SHARE OF s,o", [partnerOrgId(req),req.body?.stationId ? requireUuid(req.body.stationId,"station") : null]);
+    if (!station) throw notFound("No station registered");
+    const approved=approvedStationUnit(station,fuelType,sellingUnit,{requireExpected:true});
+    return t.one("INSERT INTO resupply_orders (station_id,fuel_type,litres,selling_unit) VALUES($1,$2,$3,$4) RETURNING *",[station.id,approved.fuelType,resupplyLitres,approved.sellingUnit]);
+  });
+  res.json({ ok: true, orderId: order.id,quantity:Number(order.litres),sellingUnit:order.selling_unit });
 }));
 
 // ============ FUEL PRICING ============
@@ -772,16 +800,17 @@ router.get("/pricing", asyncHandler(async (req, res) => {
     `SELECT h.* FROM fuel_price_history h JOIN stations s ON s.id = h.station_id WHERE s.partner_org_id = $1 ORDER BY h.created_at DESC LIMIT 20`,
     [orgId]
   );
-  const stations=await q("SELECT id,name FROM stations WHERE partner_org_id=$1 ORDER BY name",[orgId]);
+  const stations=(await q("SELECT id,name,fuels,approved_selling_units FROM stations WHERE partner_org_id=$1 ORDER BY name",[orgId])).map(s=>({id:s.id,name:s.name,fuels:s.fuels,approvedSellingUnits:s.approved_selling_units}));
   const discounts=await q(`SELECT d.*,r.code AS status FROM station_discount_requests d JOIN discount_review_states r ON r.id=d.review_state_id
     JOIN stations s ON s.id=d.station_id WHERE s.partner_org_id=$1 ORDER BY d.created_at DESC LIMIT 100`,[orgId]);
   res.json({stations,discounts,
-    prices: prices.map((p) => ({ id: p.id, stationId:p.station_id, stationName:p.station_name, fuelType: p.fuel_type, price: p.price_kobo / 100, priceLabel: naira(p.price_kobo), updatedAt: fmtDateTime(p.updated_at) })),
+    prices: canonicalStationPrices(prices).map((p) => ({ id: p.id, stationId:p.station_id, stationName:p.station_name, fuelType: p.fuel_type, sellingUnit:p.selling_unit, price: p.price_kobo / 100, priceLabel: naira(p.price_kobo), updatedAt: fmtDateTime(p.updated_at) })),
     history: history.map((h) => {
-      const change = h.old_price_kobo ? ((h.new_price_kobo - h.old_price_kobo) / h.old_price_kobo * 100) : 0;
+      const comparable = h.old_price_kobo && h.old_selling_unit===h.selling_unit;
+      const change = comparable ? ((h.new_price_kobo - h.old_price_kobo) / h.old_price_kobo * 100) : 0;
       return {
-        id: h.id,
-        cells: [fmtDateTime(h.created_at), h.fuel_type.split(" ")[0], h.old_price_kobo ? naira(h.old_price_kobo) : "Not available", naira(h.new_price_kobo), `${change >= 0 ? "+" : ""}${change.toFixed(2)}`],
+        id: h.id, sellingUnit:h.selling_unit,oldSellingUnit:h.old_selling_unit,
+        cells: [fmtDateTime(h.created_at), h.fuel_type.split(" ")[0], h.old_price_kobo ? `${naira(h.old_price_kobo)}/${sellingUnitLabel(h.old_selling_unit)}` : "Not available", `${naira(h.new_price_kobo)}/${sellingUnitLabel(h.selling_unit)}`, comparable?`${change >= 0 ? "+" : ""}${change.toFixed(2)}`:h.old_price_kobo?'Unit changed':'New price'],
         status: "APPLIED", tone: "success"
       };
     })
@@ -790,30 +819,26 @@ router.get("/pricing", asyncHandler(async (req, res) => {
 
 router.post("/pricing", requireOrgRole("manager"), asyncHandler(async (req, res) => {
   const updates = req.body?.updates ?? [];
-  if (!Array.isArray(updates) || !updates.length) throw badRequest("Provide price updates");
+  if (!Array.isArray(updates) || !updates.length || updates.length>5 || updates.some(u=>!u||typeof u!=='object'||Array.isArray(u))) throw badRequest("Provide one valid update for each selected fuel");
   const orgId = partnerOrgId(req);
-  const station = await one("SELECT id FROM stations WHERE partner_org_id = $1 AND id=$2", [orgId, requireUuid(req.body?.stationId,"station")]);
-  if (!station) throw notFound("No station registered");
-  const applied = [];
-  for (const u of updates) {
-    if (!u.fuelType || u.price == null) continue;
-    const priceKobo = nairaToKobo(u.price, { min:1,max:10000000,label:`${u.fuelType} price` });
-    if (!Number.isSafeInteger(priceKobo) || priceKobo <= 0) throw badRequest(`${u.fuelType} price must be greater than zero`);
-    if (priceKobo > 10000000) throw badRequest(`${u.fuelType} price looks too high (max ₦100,000/L)`);
-    const current = await one("SELECT * FROM fuel_prices WHERE station_id = $1 AND fuel_type = $2", [station.id, u.fuelType]);
-    await tx(async (t) => {
-      if (current) {
-        await t.query("UPDATE fuel_prices SET price_kobo = $2, updated_at = now() WHERE id = $1", [current.id, priceKobo]);
-      } else {
-        await t.query("INSERT INTO fuel_prices (station_id, fuel_type, price_kobo) VALUES ($1,$2,$3)", [station.id, u.fuelType, priceKobo]);
-      }
-      await t.query(
-        `INSERT INTO fuel_price_history (station_id, fuel_type, old_price_kobo, new_price_kobo, changed_by) VALUES ($1,$2,$3,$4,$5)`,
-        [station.id, u.fuelType, current?.price_kobo ?? null, priceKobo, req.user.id]
-      );
-    });
-    applied.push({ fuelType: u.fuelType, price: u.price });
-  }
+  const applied = await tx(async t=>{
+    const station = await t.one("SELECT s.*,o.partner_type,o.type AS org_type FROM stations s JOIN organizations o ON o.id=s.partner_org_id WHERE s.partner_org_id=$1 AND s.id=$2 FOR SHARE OF s,o",[orgId,requireUuid(req.body?.stationId,"station")]);
+    if(!station)throw notFound("No station registered");
+    const existing=canonicalStationPrices(await t.query("SELECT * FROM fuel_prices WHERE station_id=$1 FOR UPDATE",[station.id]));
+    const result=[];
+    for(const u of [...updates].sort((a,b)=>(partnerFuelCode(a.fuelType)??'').localeCompare(partnerFuelCode(b.fuelType)??''))){
+      const approved=approvedStationUnit(station,u.fuelType,u.sellingUnit,{requireExpected:true});
+      if(result.some(row=>row.fuelType===approved.fuelType))throw badRequest("Provide one price for each fuel");
+      const priceKobo=nairaToKobo(u.price,{min:1,max:10000000,label:`${approved.fuelType} unit price`});
+      const current=existing.find(row=>row.fuel_type===approved.fuelType);
+      await t.query(`INSERT INTO fuel_prices(station_id,fuel_type,price_kobo,selling_unit) VALUES($1,$2,$3,$4)
+        ON CONFLICT(station_id,fuel_type) DO UPDATE SET price_kobo=EXCLUDED.price_kobo,selling_unit=EXCLUDED.selling_unit,updated_at=now()`,[station.id,approved.fuelType,priceKobo,approved.sellingUnit]);
+      await t.query(`INSERT INTO fuel_price_history(station_id,fuel_type,old_price_kobo,new_price_kobo,changed_by,selling_unit,old_selling_unit)
+        VALUES($1,$2,$3,$4,$5,$6,$7)`,[station.id,approved.fuelType,current?.price_kobo??null,priceKobo,req.user.id,approved.sellingUnit,current?.selling_unit??null]);
+      result.push({...approved,price:u.price});
+    }
+    return result;
+  });
   audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "pricing.updated", metadata: { applied } });
   emitToOrg(orgId, "pricing.updated", { applied });
   emitToRole("admin", "pricing.updated", { station: req.user.organization_name, applied });
@@ -835,7 +860,8 @@ router.get("/reports", asyncHandler(async (req, res) => {
   const window = dayWindowSql(2, days - 1);
   const bounds = [orgId, timeZone, days - 1];
   const companyBreakdown = await q(
-    `SELECT o.name, o.fleet_id, SUM(t.litres)::float AS litres, SUM(t.amount_kobo) AS revenue
+    `SELECT o.name, o.fleet_id, COALESCE(SUM(t.litres) FILTER(WHERE t.selling_unit='litre'),0) AS litres,
+       COALESCE(SUM(t.litres) FILTER(WHERE t.selling_unit='kg'),0) AS kg,COALESCE(SUM(t.litres) FILTER(WHERE t.selling_unit='scm'),0) AS scm, SUM(t.amount_kobo) AS revenue
      FROM transactions t LEFT JOIN organizations o ON o.id = t.organization_id
      WHERE t.station_id IN (SELECT id FROM stations WHERE partner_org_id = $1)
        AND t.status = 'success'
@@ -844,7 +870,9 @@ router.get("/reports", asyncHandler(async (req, res) => {
     bounds
   );
   const totals = await one(
-    `SELECT COUNT(*)::int AS count, COALESCE(SUM(amount_kobo),0) AS revenue, COALESCE(SUM(litres),0)::float AS litres FROM transactions
+    `SELECT COUNT(*)::int AS count, COALESCE(SUM(amount_kobo),0) AS revenue,
+       COALESCE(SUM(litres) FILTER(WHERE selling_unit='litre'),0) AS litres,
+       COALESCE(SUM(litres) FILTER(WHERE selling_unit='kg'),0) AS kg,COALESCE(SUM(litres) FILTER(WHERE selling_unit='scm'),0) AS scm FROM transactions
      WHERE station_id IN (SELECT id FROM stations WHERE partner_org_id = $1)
        AND status = 'success'
        AND created_at >= ${window.from} AND created_at < ${window.to}`,
@@ -853,7 +881,7 @@ router.get("/reports", asyncHandler(async (req, res) => {
   res.json({
     metrics: [
       { label: `Revenue (${days}d)`, value: naira(totals.revenue), tone: "success" },
-      { label: "Litres Sold", value: `${Math.round(totals.litres).toLocaleString()} L`, tone: "info" },
+      { label: "Fuel quantities", value: quantityTotalsLabel(totals), tone: "info" },
       { label: "Transactions", value: String(totals.count), tone: "info" }
     ],
     companies: companyBreakdown.map((c) => ({
@@ -862,7 +890,7 @@ router.get("/reports", asyncHandler(async (req, res) => {
       // `SUM(amount_kobo)` straight through — kobo, with no ₦ and no decimals,
       // under a column headed "Spend (₦)". That overstated every fleet's spend
       // by a factor of 100.
-      cells: [`${c.name ?? "Direct"}${c.fleet_id ? `\n#${c.fleet_id}` : ""}`, `${Math.round(c.litres).toLocaleString()} L`, naira(c.revenue)],
+      cells: [`${c.name ?? "Direct"}${c.fleet_id ? `\n#${c.fleet_id}` : ""}`, quantityTotalsLabel(c), naira(c.revenue)],
       tone: "success"
     }))
   });
@@ -885,7 +913,7 @@ router.get("/reports/export", asyncHandler(async (req, res) => {
      ORDER BY t.created_at DESC LIMIT 5000`,
     bounds
   );
-  const csv = toCsv(rows.map((r) => ({ date: fmtDateTime(r.created_at), company: r.org_name ?? "", fuel: r.fuel_type, litres: r.litres, amount: (r.amount_kobo / 100).toFixed(2) })));
+  const csv = toCsv(rows.map((r) => ({ date: fmtDateTime(r.created_at), company: r.org_name ?? "", fuel: r.fuel_type, quantity: r.litres, selling_unit:r.selling_unit, amount: (r.amount_kobo / 100).toFixed(2) })));
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
   res.setHeader("Content-Disposition", `attachment; filename="partner-report-${days}d-${Date.now()}.csv"`);
   res.send(csv);
@@ -913,48 +941,59 @@ router.get("/staff", asyncHandler(async (req, res) => {
         s.status === "active" ? "Enabled" : s.status === "suspended" ? "Disabled" : "Pending"
       ],
       status: s.status === "active" ? "ACTIVE" : s.status === "suspended" ? "SUSPENDED" : "PENDING", tone: s.status === "active" ? "success" : s.status === "suspended" ? "danger" : "pending",
-      memberId: s.id, cardAccess: s.role === "owner" || (Array.isArray(s.permissions) && s.permissions.includes("pos.operate"))
+      memberId: s.id, cardAccess: partnerAllowedFuels(req.user).length>0 && (s.role === "owner" || (Array.isArray(s.permissions) && s.permissions.includes("pos.operate")))
     })),
     stats: { total: staff.length, active: staff.filter((s) => s.status === "active").length }
   });
 }));
 
+async function lockStaffManagement(t,req) {
+  const organization=await t.one('SELECT type,partner_type FROM organizations WHERE id=$1 FOR UPDATE',[partnerOrgId(req)]);
+  const user=await t.one("SELECT role FROM users WHERE id=$1 AND status='active' AND (access_expires_at IS NULL OR access_expires_at>clock_timestamp()) FOR SHARE",[req.user.id]);
+  const actor=await t.one('SELECT role,status FROM memberships WHERE organization_id=$1 AND user_id=$2 FOR UPDATE',[partnerOrgId(req),req.user.id]);
+  if(!organization||!user||user.role!==req.user.role||!actor||actor.status!=='active'||!['owner','admin'].includes(actor.role))throw forbidden('Your staff management access is not active.');
+  return {...req.user,partnerType:organization.partner_type,organizationType:organization.type};
+}
+
 router.post("/staff", requireOrgRole("admin"), asyncHandler(async (req, res) => {
   const { fullName, email, phone, role = "viewer", cardAccess } = req.valid ?? req.body ?? {};
-  if (!fullName || !email) throw badRequest("Name and email are required");
+  if (typeof fullName!=='string'||!fullName.trim()||fullName.length>200||typeof email!=='string'||email.length>254||!/^[^@\s<>]+@[^@\s<>]+\.[^@\s<>]+$/.test(email)) throw badRequest("Enter a valid name and email");
+  if(phone!=null&&(typeof phone!=='string'||phone.length>30))throw badRequest('Enter a valid staff phone number');
   if (!["admin", "manager", "dispatcher", "viewer"].includes(role)) throw badRequest("Choose a valid role");
   if (cardAccess !== undefined && typeof cardAccess !== "boolean") throw badRequest("Card access must be true or false");
   const { randomToken, hashPassword } = await import("../lib/security.js");
   const tempPassword = randomToken(6);
-  let user = await one("SELECT id, role FROM users WHERE lower(email) = lower($1)", [email]);
-  if (user && user.role !== "partner") throw badRequest("This email belongs to another account type. Use a partner account email for station staff.");
-  if (!user) {
-    user = await one(
-      `INSERT INTO users (email, password_hash, full_name, role, organization_name, phone, status)
-       VALUES ($1,$2,$3,'partner',$4,$5,'active') RETURNING id`,
-      [email, await hashPassword(tempPassword), fullName, req.user.organization_name, phone ?? null]
-    );
+  const result=await tx(async t=>{
+    const current=await lockStaffManagement(t,req);
+    if(cardAccess&&!partnerAllowedFuels(current).length)throw forbidden('This partner specialization cannot receive fuel POS access');
+    if(await t.one('SELECT id FROM memberships WHERE organization_id=$1 AND lower(email)=lower($2)',[partnerOrgId(req),email]))throw badRequest('This person is already staff at this account');
+    let user=await t.one('SELECT id,role FROM users WHERE lower(email)=lower($1)',[email]);
+    if(user&&!['partner','mechanic'].includes(user.role))throw badRequest('This email belongs to another account type. Use a partner account email for staff.');
+    if(user?.role==='mechanic'&&cardAccess)throw badRequest('Workshop accounts cannot receive fuel POS access');
+    const created=!user;
+    if(!user)user=await t.one(`INSERT INTO users(email,password_hash,full_name,role,organization_name,phone,status)
+      VALUES($1,$2,$3,'partner',$4,$5,'active') RETURNING id`,[email.trim(),await hashPassword(tempPassword),fullName.trim(),req.user.organization_name,phone??null]);
+    const member=await t.one(`INSERT INTO memberships(organization_id,user_id,email,role,permissions,status) VALUES($1,$2,$3,$4,$5,'active') RETURNING id`,[partnerOrgId(req),user.id,email.trim(),role,JSON.stringify(cardAccess?['pos.operate']:[])]);
+    await t.query("INSERT INTO audit_logs(actor_user_id,actor_role,action,entity_type,entity_id,metadata) VALUES($1,$2,'staff.created','membership',$3,$4)",[req.user.id,req.user.role,member.id,JSON.stringify({role,cardAccess:cardAccess===true})]);
+    return {member,user,created};
+  });
+  let emailDelivered=false;
+  if (result.created) {
     const { sendEmail } = await import("../lib/notify.js");
     const { env } = await import("../config/env.js");
-    void sendEmail({
+    try { emailDelivered=(await sendEmail({
       to: email,
       subject: "Your Obligon staff account",
       text: `Your Obligon staff account was created. Sign in at ${env.APP_URL}/auth/login with ${email} / temporary password: ${tempPassword}`,
       html: `<div style="font-family:sans-serif"><h2>Staff account created</h2><p>Sign in at <a href="${env.APP_URL}/auth/login">${env.APP_URL}/auth/login</a></p><p>Email: ${email}<br/>Temporary password: <b>${tempPassword}</b> (change it after first sign-in)</p></div>`
-    });
+    })).delivered===true; } catch { /* The membership committed; delivery failure must not create another account. */ }
   }
-  const existing = await one("SELECT id FROM memberships WHERE organization_id = $1 AND lower(email) = lower($2)", [partnerOrgId(req), email]);
-  if (existing) throw badRequest("This person is already staff at your station");
-  const member = await one(
-    `INSERT INTO memberships (organization_id, user_id, email, role, permissions, status) VALUES ($1,$2,$3,$4,$5,'active') RETURNING *`,
-    [partnerOrgId(req), user.id, email, role, JSON.stringify(cardAccess ? ["pos.operate"] : [])]
-  );
-  audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "staff.created", metadata: { email, role } });
-  res.json({ ok: true, memberId: member.id });
+  res.json({ ok: true, memberId: result.member.id, emailDelivered });
 }));
 
 router.put("/staff/:memberId", requireOrgRole("admin"), asyncHandler(async (req, res) => {
   const { role, cardAccess, enabled } = req.body ?? {};
+  if(cardAccess && !partnerAllowedFuels(req.user).length)throw forbidden('This partner specialization cannot receive fuel POS access');
   const ROLES = ["admin", "manager", "dispatcher", "viewer"];
   if (role !== undefined && !ROLES.includes(role)) throw badRequest(`Role must be one of: ${ROLES.join(", ")}`);
   if (cardAccess !== undefined && typeof cardAccess !== "boolean") throw badRequest("Card access must be true or false");
@@ -977,20 +1016,26 @@ router.put("/staff/:memberId", requireOrgRole("admin"), asyncHandler(async (req,
 }));
 
 router.delete("/staff/:memberId", requireOrgRole("admin"), asyncHandler(async (req, res) => {
-  const member = await one("SELECT * FROM memberships WHERE id = $1 AND organization_id = $2", [requireUuid(req.params.memberId, "staff member"), partnerOrgId(req)]);
-  if (!member) throw notFound("Staff member not found");
-  if (member.role === "owner") throw forbidden("The owner cannot be removed");
-  await q("DELETE FROM memberships WHERE id = $1", [member.id]);
+  const memberId=requireUuid(req.params.memberId,'staff member');
+  await tx(async t=>{
+    await lockStaffManagement(t,req);
+    const member=await t.one('SELECT * FROM memberships WHERE id=$1 AND organization_id=$2 FOR UPDATE',[memberId,partnerOrgId(req)]);
+    if(!member)throw notFound('Staff member not found');
+    if(member.role==='owner')throw forbidden('The owner cannot be removed');
+    await t.query('DELETE FROM memberships WHERE id=$1',[member.id]);
+    await t.query("INSERT INTO audit_logs(actor_user_id,actor_role,action,entity_type,entity_id) VALUES($1,$2,'staff.deleted','membership',$3)",[req.user.id,req.user.role,member.id]);
+  });
   res.json({ ok: true });
 }));
 
 router.post("/discounts",requireOrgRole("manager"),asyncHandler(async(req,res)=>{
  const stationId=requireUuid(req.body?.stationId,"station");
- const station=await one("SELECT id FROM stations WHERE id=$1 AND partner_org_id=$2",[stationId,partnerOrgId(req)]);
+ const station=await one("SELECT s.*,o.partner_type,o.type AS org_type FROM stations s JOIN organizations o ON o.id=s.partner_org_id WHERE s.id=$1 AND s.partner_org_id=$2",[stationId,partnerOrgId(req)]);
  if(!station) throw notFound("Station not found");
- const fuelType=String(req.body?.fuelType??"").trim();
- const price=await one("SELECT id FROM fuel_prices WHERE station_id=$1 AND fuel_type=$2",[stationId,fuelType]);
+ const prices=canonicalStationPrices(await q("SELECT * FROM fuel_prices WHERE station_id=$1",[stationId]));
+ const price=prices.find(p=>canonicalFuelAliases(p.fuel_type).includes(String(req.body?.fuelType??'').trim().toUpperCase()));
  if(!price) throw badRequest("Choose a published station fuel price");
+ const {fuelType}=approvedStationPrice(station,price,req.body?.sellingUnit,{requireExpected:true});
  const d=validateDiscount(req.body);
  const request=await one(`INSERT INTO station_discount_requests(station_id,fuel_type,rate_bp,starts_at,ends_at,review_state_id,requested_by)
  VALUES($1,$2,$3,$4,$5,(SELECT id FROM discount_review_states WHERE code='pending'),$6) RETURNING *`,[stationId,fuelType,d.rateBp,d.startsAt,d.endsAt,req.user.id]);
@@ -1007,19 +1052,19 @@ router.post("/pos/fulfill",requireCapability("pos.operate"),sensitiveLimiter,asy
  const stationId=requireUuid(req.body?.stationId,"station");
  const order=await fulfillFuelOrder({partnerOrgId:partnerOrgId(req),stationId,code:String(req.body?.code??"")});
  await audit({actorUserId:req.user.id,actorRole:req.user.role,action:"fuel_order.fulfilled",entityType:"fuel_order",entityId:order.id});
- res.json({ok:true,reference:order.reference,fuelType:order.fuel_type,litres:Number(order.litres),amountLabel:naira(order.amount_kobo),partnerNetLabel:naira(order.partner_net_kobo)});
+ res.json({ok:true,reference:order.reference,fuelType:order.fuel_type,litres:Number(order.litres),quantity:Number(order.litres),sellingUnit:order.selling_unit,amountLabel:naira(order.amount_kobo),partnerNetLabel:naira(order.partner_net_kobo)});
 }));
 
 router.post("/pos/authorize",requireCapability("pos.operate"),sensitiveLimiter,asyncHandler(async(req,res)=>{
- const {code,fuelType,litres,stationId}=req.body??{};
+ const {code,fuelType,litres,stationId,sellingUnit}=req.body??{};
  if(!/^\d{6}$/.test(String(code??""))) throw badRequest("Enter the 6-digit single-use authorization code");
- const litresNum=requirePositiveNumber(litres,"Litres",{max:100000});
+ requirePositiveNumber(litres,"Fuel quantity",{max:100000});
  const id=requireUuid(stationId,"station");
  const txRef=reference("TXN");
- const result=await tx(t=>authorizeWalletFuelSale(t,{partnerOrgId:partnerOrgId(req),stationId:id,code:String(code),litres,fuelType:String(fuelType??"").trim(),reference:txRef}));
+ const result=await tx(t=>authorizeWalletFuelSale(t,{partnerOrgId:partnerOrgId(req),stationId:id,code:String(code),litres,fuelType:String(fuelType??"").trim(),sellingUnit,reference:txRef}));
  emitToOrg(partnerOrgId(req),"pos.approved",{reference:txRef,amountLabel:naira(result.amounts.chargedKobo),card:result.card.masked_pan,time:fmtDateTime(new Date())});
  await audit({actorUserId:req.user.id,actorRole:req.user.role,action:"pos.approved",entityType:"transaction",entityId:result.sale.id,metadata:result.amounts});
- res.json({ok:true,approved:true,reference:txRef,card:result.card.masked_pan,fuelType:result.sale.fuel_type,litres:Number(result.sale.litres),amountLabel:naira(result.amounts.chargedKobo),partnerNetLabel:naira(result.amounts.partnerNetKobo),time:fmtDateTime(new Date())});
+ res.json({ok:true,approved:true,reference:txRef,card:result.card.masked_pan,fuelType:result.sale.fuel_type,litres:Number(result.sale.litres),quantity:Number(result.sale.litres),sellingUnit:result.sale.selling_unit,amountLabel:naira(result.amounts.chargedKobo),partnerNetLabel:naira(result.amounts.partnerNetKobo),time:fmtDateTime(new Date())});
 }));
 
 // ============ DISPUTES ============
@@ -1138,8 +1183,8 @@ router.get("/disputes/:id/evidence/:index", asyncHandler(async (req, res) => {
 // ============ NOTIFICATIONS ============
 router.get("/notifications", asyncHandler(async (req, res) => {
   const rows = await q(
-    "SELECT * FROM notifications WHERE in_app_visible=TRUE AND (organization_id = $1 OR user_id = $2) ORDER BY created_at DESC LIMIT 60",
-    [partnerOrgId(req), req.user.id]
+    "SELECT * FROM notifications WHERE in_app_visible=TRUE AND (organization_id = $1 OR user_id = $2) AND ($3::boolean OR category IN ('general','security','support')) ORDER BY created_at DESC LIMIT 60",
+    [partnerOrgId(req), req.user.id,partnerAllowedFuels(req.user).length>0]
   );
   const seen = new Set();
   const items = rows.filter((n) => { if (seen.has(n.id)) return false; seen.add(n.id); return true; });

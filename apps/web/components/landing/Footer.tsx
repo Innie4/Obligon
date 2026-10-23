@@ -55,7 +55,7 @@ export function Footer() {
 
           {footerColumns.map((column) => (
             <div key={column.title}>
-              <h3 className="text-[13px] font-normal uppercase tracking-[1.2px] text-obligon-lime">{column.title}</h3>
+              <h3 className="text-[13px] font-normal text-obligon-lime">{column.title}</h3>
               <ul className="mt-6 space-y-4">
                 {column.links.map((link) => (
                   <li key={link.label}>
@@ -69,7 +69,7 @@ export function Footer() {
           ))}
         </div>
 
-        <div className="mt-16 border-t border-white/[0.05] pt-8 text-center text-[13px] leading-4 text-white/40">
+        <div className="mt-16 pt-8 text-center text-[13px] leading-4 text-white/40">
           &copy; {new Date().getFullYear()} Obligon LTD. Registered in the Federal Republic of Nigeria. All rights reserved.
         </div>
       </div>

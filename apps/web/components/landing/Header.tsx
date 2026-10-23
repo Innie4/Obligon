@@ -18,13 +18,13 @@ export function Header() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header
-      className="absolute left-0 top-0 z-20 h-[104px] w-full border-b border-obligon-border bg-white/90 backdrop-blur-md"
+    <header onKeyDown={event => { if (event.key === "Escape" && open) { setOpen(false); event.currentTarget.querySelector<HTMLButtonElement>('[aria-controls="landing-mobile-navigation"]')?.focus(); } }}
+      className="absolute left-0 top-0 z-20 h-[104px] w-full bg-white"
       data-node-id="2:325"
     >
       <nav className="mx-auto flex h-full max-w-[1280px] items-center justify-between px-5 sm:px-8 lg:px-16">
         <div className="flex h-[95px] items-center gap-12">
-          <Link className="flex h-[95px] w-[190px] shrink-0 items-center justify-center" href="/" aria-label="Obligon LTD home">
+          <Link className="flex min-h-11 shrink-0 items-center" href="/" aria-label="Obligon LTD home">
             <DashboardLogo width={112} priority />
           </Link>
 
@@ -32,7 +32,7 @@ export function Header() {
             {navItems.map((item) => (
               <Link
                 key={item.label}
-                className="text-[13px] font-semibold tracking-[0.6px] text-obligon-text transition hover:text-obligon-green"
+                className="inline-flex min-h-11 items-center text-sm font-medium text-obligon-text transition-colors hover:text-obligon-green"
                 href={item.href}
               >
                 {item.label}
@@ -43,7 +43,7 @@ export function Header() {
 
         <div className="hidden items-center gap-4 lg:flex">
           <Link
-            className="inline-flex h-8 items-center justify-center px-4 text-[13px] font-semibold tracking-[0.6px] text-obligon-text"
+            className="inline-flex min-h-11 items-center justify-center px-4 text-sm font-semibold text-obligon-text"
             href="/auth/login"
           >
             Login
@@ -66,12 +66,12 @@ export function Header() {
       </nav>
 
       {open ? (
-        <div id="landing-mobile-navigation" className="absolute inset-x-0 top-[104px] border-b border-obligon-border bg-white px-5 py-6 shadow-card lg:hidden">
+        <div id="landing-mobile-navigation" className="absolute inset-x-0 top-[104px] max-h-[calc(100dvh-104px)] overflow-y-auto bg-white px-5 py-4 shadow-hero lg:hidden">
           <div className="flex flex-col gap-4">
             {navItems.map((item) => (
               <Link
                 key={item.label}
-                className="text-sm font-semibold text-obligon-navy"
+                className="flex min-h-11 items-center text-base font-medium text-obligon-navy"
                 href={item.href}
                 onClick={() => setOpen(false)}
               >

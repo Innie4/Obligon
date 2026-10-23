@@ -6,15 +6,15 @@ import type { AsyncStatus } from "@/lib/services/types";
 
 export function LoadingState({ label = "Loading…", className = "" }: { label?: string; className?: string }) {
   return (
-    <div role="status" className={`flex flex-col items-center justify-center gap-3 py-12 text-obligon-text ${className}`}>
-      <Loader2 size={26} className="animate-spin text-obligon-green" />
-      <p className="text-sm font-bold">{label}</p>
+    <div role="status" aria-live="polite" className={`flex min-h-48 flex-col items-center justify-center gap-4 px-5 py-12 text-obligon-text ${className}`}>
+      <Loader2 size={24} aria-hidden="true" className="animate-spin text-obligon-green" />
+      <p className="text-sm font-medium leading-6">{label}</p>
     </div>
   );
 }
 
 export function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded-lg bg-obligon-panel ${className}`} />;
+  return <div aria-hidden="true" className={`animate-pulse rounded-lg bg-obligon-panel ${className}`} />;
 }
 
 export function EmptyState({
@@ -29,12 +29,12 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-      <span className="grid size-12 place-items-center rounded-full bg-obligon-panel text-obligon-text">
-        <Icon size={22} />
+    <div className="flex min-h-52 flex-col items-center justify-center gap-3 px-5 py-12 text-center">
+      <span className="mb-1 text-obligon-green">
+        <Icon size={28} strokeWidth={1.5} aria-hidden="true" />
       </span>
-      <p className="font-display text-lg font-extrabold text-obligon-navy">{title}</p>
-      {message ? <p className="max-w-sm text-sm text-obligon-text">{message}</p> : null}
+      <p className="font-display text-lg font-bold tracking-tight text-obligon-navy">{title}</p>
+      {message ? <p className="max-w-sm text-sm leading-6 text-obligon-text">{message}</p> : null}
       {action ? <div className="mt-2">{action}</div> : null}
     </div>
   );
@@ -50,17 +50,17 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <div role="alert" className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-      <span className="grid size-12 place-items-center rounded-full bg-[#ffe8e8] text-[#c1121f]">
-        <TriangleAlert size={22} />
+    <div role="alert" className="flex min-h-52 flex-col items-center justify-center gap-3 px-5 py-12 text-center">
+      <span className="mb-1 text-[#b42318]">
+        <TriangleAlert size={28} strokeWidth={1.5} aria-hidden="true" />
       </span>
-      <p className="font-display text-lg font-extrabold text-obligon-navy">{title}</p>
-      {message ? <p className="max-w-sm text-sm text-obligon-text">{message}</p> : null}
+      <p className="font-display text-lg font-bold tracking-tight text-obligon-navy">{title}</p>
+      {message ? <p className="max-w-sm text-sm leading-6 text-obligon-text">{message}</p> : null}
       {onRetry ? (
         <button
           type="button"
           onClick={onRetry}
-          className="mt-2 h-11 rounded-lg bg-obligon-green px-5 font-extrabold text-white"
+          className="mt-2 min-h-11 rounded-lg bg-obligon-green px-5 text-sm font-semibold text-white transition-colors hover:bg-[#315600]"
         >
           Try again
         </button>

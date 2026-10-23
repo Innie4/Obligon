@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
+const partnerAccess = require('../../../packages/shared/partner-access.mjs');
 const cities = require('../../../packages/shared/nigeria-cities.mjs');
 const locations = require('../../../packages/shared/nigeria-locations.mjs');
 
@@ -18,6 +19,7 @@ function load(path, dependencies = {}, expose = '') {
   vm.runInNewContext(code, {
     exports, Error, React: dependencies.react, URLSearchParams, setTimeout, clearTimeout,
     require(name) {
+      if (name.endsWith('/partner-access.mjs')) return partnerAccess;
       if (name === 'next/dynamic') return { default: () => 'StationProfileForm', __esModule: true };
       if (name === 'lucide-react') return new Proxy({}, { get: (_, key) => String(key) });
       return dependencies[name] ?? {};
@@ -56,13 +58,14 @@ function hooks() {
 const station = overrides => ({ id: 'synthetic-station-a', name: 'Synthetic Station', address: 'Synthetic road', city: 'Lagos, Lagos', hours: 'Open 24/7', fuels: ['PMS Petrol'], lat: 6.5244, lng: 3.3792, ...overrides });
 const validDraft = () => helpers.stationProfileDraft(station());
 
-function formFixture({ saved = null, saving = false, reject } = {}) {
+function formFixture({ saved = null, saving = false, reject, partnerType = 'fuel_station' } = {}) {
   const runtime = hooks(), calls = [];
   const { StationProfileForm } = load('../components/dashboard/StationProfileForm.tsx', {
     react: runtime.React,
     '../../../../packages/shared/nigeria-cities.mjs': cities,
     '../../../../packages/shared/nigeria-locations.mjs': locations,
     '@/lib/station-profile': helpers,
+    '@/components/shared/AuthContext': { useSession: () => ({user:{role:'partner', partnerType}}) },
     './StationProfileFields': { FuelMultiSelect: 'FuelMultiSelect', OpeningHoursField: 'OpeningHoursField' },
     './StationLocationPicker': { StationLocationPicker: 'StationLocationPicker' },
   });
@@ -74,6 +77,7 @@ function formFixture({ saved = null, saving = false, reject } = {}) {
     render, calls, nodes: () => nodes(tree), text: () => text(tree),
     control(id) { return nodes(tree).find(node => node.props?.id === id); },
     change(id, value) { nodes(tree).find(node => node.props?.id === id).props.onChange({ target: { value } }); render(); },
+    unit(fuel, value) { nodes(tree).find(node => node.props?.['aria-label'] === `${fuel} selling unit`).props.onChange({target:{value}}); render(); },
     leaf(type, value) { nodes(tree).find(node => node.type === type).props.onChange(value); render(); },
     async submit() { await nodes(tree).find(node => node.type === 'form').props.onSubmit({ preventDefault() {} }); render(); },
     setSaving(value) { props.saving = value; render(); },
@@ -92,7 +96,27 @@ test('a new valid station submits selected State/city, fuels and exact GPS coord
   const ui = formFixture();
   fillNew(ui);
   await ui.submit();
-  assert.deepEqual(ui.calls, [{ name: 'Synthetic New Station', address: 'Synthetic new road', city: 'Uyo, Akwa Ibom', hours: '', fuels: ['AGO Diesel'], lat: 5.038, lng: 7.908 }]);
+  assert.deepEqual(ui.calls, [{ name: 'Synthetic New Station', address: 'Synthetic new road', city: 'Uyo, Akwa Ibom', hours: '', fuels: ['AGO Diesel'], sellingUnits: {AGO:'litre'}, lat: 5.038, lng: 7.908 }]);
+});
+
+test('gas profile requires an explicit requested unit and keeps requested approval separate', async () => {
+  const ui = formFixture({partnerType:'gas_station'});
+  fillNew(ui);
+  ui.leaf('FuelMultiSelect',['CNG Compressed Gas']);
+  await ui.submit();
+  assert.equal(ui.calls.length,0);
+  assert.match(ui.text(),/Choose a valid selling unit/);
+  ui.unit('CNG Compressed Gas','scm');
+  await ui.submit();
+  assert.deepEqual(ui.calls[0].sellingUnits,{CNG:'scm'});
+  assert.equal('approvedSellingUnits' in ui.calls[0],false);
+});
+
+test('gas profile cannot submit a petroleum fuel retained from an old draft', async () => {
+  const ui = formFixture({saved:station(),partnerType:'gas_station'});
+  await ui.submit();
+  assert.equal(ui.calls.length,0);
+  assert.match(ui.text(),/supported by your approved partner type/);
 });
 
 test('zero latitude and longitude are valid real coordinates and are preserved', () => {
@@ -128,7 +152,7 @@ for (const [name, invalidate, field] of [
   });
 }
 
-test('an unrelated edit retains raw legacy fuel, hours and ambiguous city without guessing its State', async () => {
+test('unsupported legacy fuel needs explicit correction while legacy city and hours stay intact', async () => {
   const saved = station({ city: 'Kano', hours: '  Closed Fridays except special bookings  ', fuels: ['PMS', 'Legacy Synthetic Fuel'] });
   const draft = helpers.stationProfileDraft(saved);
   assert.equal(draft.state, ''); assert.equal(draft.city, '');
@@ -136,10 +160,13 @@ test('an unrelated edit retains raw legacy fuel, hours and ambiguous city withou
   assert.match(ui.text(), /Recorded location:.*Kano/);
   ui.change('station-name', 'Renamed Synthetic Station');
   await ui.submit();
+  assert.equal(ui.calls.length, 0);
+  ui.leaf('FuelMultiSelect', ['PMS']);
+  await ui.submit();
   assert.equal(ui.calls.length, 1);
   assert.equal(ui.calls[0].city, saved.city);
   assert.equal(ui.calls[0].hours, saved.hours);
-  assert.deepEqual(ui.calls[0].fuels, saved.fuels);
+  assert.deepEqual(ui.calls[0].fuels, ['PMS']);
 });
 
 test('changing State clears the old city and search filter before displaying the new places', () => {

@@ -3,13 +3,14 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
+const partnerAccess = require('../../../packages/shared/partner-access.mjs');
 const element = (type, props, ...children) => ({ type, props: { ...props, children } });
 const nodes = tree => !tree || typeof tree !== 'object' ? [] : Array.isArray(tree) ? tree.flatMap(nodes) : [tree, ...nodes(tree.props?.children)];
 const text = tree => nodes(tree).flatMap(node => node.props?.children ?? []).filter(value => typeof value === 'string' || typeof value === 'number').join(' ');
 function load(path, { dependencies = {}, globals = {}, expose = '' } = {}) {
  const exports = {};
  const code = ts.transpileModule(fs.readFileSync(require.resolve(path), 'utf8') + expose, { fileName: require.resolve(path), compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }).outputText;
- vm.runInNewContext(code, { exports, Error, URLSearchParams, setTimeout, clearTimeout, require: name => dependencies[name] ?? {}, ...globals });
+ vm.runInNewContext(code, { exports, Error, URLSearchParams, setTimeout, clearTimeout, require: name => name.endsWith('/partner-access.mjs') ? partnerAccess : ['@/lib/partner-selling-unit','./partner-selling-unit'].includes(name) ? load('../lib/partner-selling-unit.ts',{dependencies:{'../../../packages/shared/partner-access.mjs':partnerAccess}}) : dependencies[name] ?? {}, ...globals });
  return exports;
 }
 function hooks() {
@@ -72,7 +73,7 @@ test('funding submits the disclosed total and refuses fractions without rewritin
 function screenFixture(name, dependencies = {}, globals = {}) {
  const runtime = hooks(), errors = [];
  const { [name]: component } = load('../components/customer-dashboard/CustomerScreen.tsx', { expose: `\nexport { ${name} };`, globals: { window: browser(), sessionStorage: { getItem: () => null, removeItem() {} }, ...globals }, dependencies: {
-  react: runtime.React, 'next/navigation': { useRouter: () => ({ push() {} }) }, '@/lib/customer-presentation': load('../lib/customer-presentation.ts'), '@/lib/services': { api: {}, mutationsApi: {} },
+  react: runtime.React, 'next/link': { __esModule: true, default: 'Link' }, '../site/routes': load('../components/site/routes.ts'), 'next/navigation': { useRouter: () => ({ push() {} }) }, '@/lib/customer-presentation': load('../lib/customer-presentation.ts'), '@/lib/services': { api: {}, mutationsApi: {} },
   '@/components/shared/AuthContext': { useSession: () => ({ user: { name: 'Driver' }, updateProfile() {} }) }, '@/components/shared/useAsync': { useAsync: () => ({ status: 'success', data: [], refresh() {}, reload() {} }) }, '@/components/shared/usePolling': { usePolling() {} }, '@/components/shared/Toast': { useToast: () => ({ error: message => errors.push(message), success() {} }) }, ...dependencies,
  } }); return { ...runtime, component, errors };
 }

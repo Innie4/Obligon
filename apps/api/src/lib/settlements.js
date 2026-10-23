@@ -1,5 +1,6 @@
 import { q, tx } from "../db.js";
 import { businessTimeZone } from "./time.js";
+import { integerKobo } from "./money-amounts.js";
 
 /** Close completed business months once, preserving every period's earnings. */
 export async function accrueSettlements() {
@@ -11,7 +12,8 @@ export async function accrueSettlements() {
   const partners = await q(`SELECT partner_org_id FROM settlement_periods sp
     JOIN organizations o ON o.id = sp.partner_org_id
     WHERE o.type IN ('partner', 'mechanic')`);
-  const summary = { partnersAccrued: 0, periodsCreated: 0, grossKobo: 0 };
+  const summary = { partnersAccrued: 0, periodsCreated: 0, grossKobo: 0, errors: 0 };
+  let totalGross = 0n;
 
   for (const partner of partners) {
     try {
@@ -38,7 +40,7 @@ export async function accrueSettlements() {
             (gs + interval '1 month') AT TIME ZONE $3 AS through_ts
           FROM generate_series($1::timestamp, $2::timestamp - interval '1 month', interval '1 month') gs`,
           [bounds.from_month, bounds.closed_through, timezone]);
-        let periods = 0, grossKobo = 0;
+        let periods = 0, grossKobo = 0n;
         for (const month of months) {
           const earnings = await t.one(`SELECT COALESCE(SUM(tr.amount_kobo), 0)::bigint AS gross_kobo,
               COALESCE(SUM(COALESCE(tr.platform_fee_kobo, ROUND(tr.amount_kobo * $4::numeric / 10000))), 0)::bigint AS fees_kobo,
@@ -48,10 +50,11 @@ export async function accrueSettlements() {
               AND tr.created_at >= $2 AND tr.created_at < $3
               AND tr.settlement_method <> 'processor_split'`,
             [partner.partner_org_id, month.from_ts, month.through_ts, locked.fee_basis_points]);
-          const gross = Number(earnings.gross_kobo);
+          const bounds = { min: 0, max: Number.MAX_SAFE_INTEGER, label: "Settlement aggregate" };
+          const gross = integerKobo(earnings.gross_kobo,bounds);
           if (gross <= 0) continue;
-          const fees = Number(earnings.fees_kobo);
-          const net = Number(earnings.net_kobo);
+          const fees = integerKobo(earnings.fees_kobo,bounds);
+          const net = integerKobo(earnings.net_kobo,bounds);
           const periodEnd = month.period_end instanceof Date
             ? month.period_end.toISOString().slice(0, 10) : String(month.period_end);
           const inserted = await t.one(`INSERT INTO settlements
@@ -65,7 +68,7 @@ export async function accrueSettlements() {
             RETURNING id`,
             [partner.partner_org_id, month.period_start, periodEnd, gross, fees,
              Math.max(0, net), `STL-${periodEnd.slice(0,7).replace('-', '')}-${partner.partner_org_id.slice(0,8)}`]);
-          if (inserted) { periods += 1; grossKobo += gross; }
+          if (inserted) { periods += 1; grossKobo += BigInt(gross); }
         }
         await t.query(`UPDATE settlement_periods
           SET last_settled_through = $2::timestamp AT TIME ZONE $3, updated_at = now()
@@ -75,9 +78,11 @@ export async function accrueSettlements() {
       if (result?.periods) {
         summary.partnersAccrued += 1;
         summary.periodsCreated += result.periods;
-        summary.grossKobo += result.grossKobo;
+        totalGross += result.grossKobo;
+        summary.grossKobo = totalGross <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(totalGross) : totalGross.toString();
       }
     } catch (err) {
+      summary.errors += 1;
       console.error(`[settlements] accrual failed for ${partner.partner_org_id}:`, err?.message ?? err);
     }
   }

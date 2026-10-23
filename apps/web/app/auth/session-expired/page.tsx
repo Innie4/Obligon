@@ -63,7 +63,7 @@ export default function SessionExpiredPage() {
 
         <form onSubmit={handleLogin} className="mt-8 space-y-5">
           <div className="relative">
-            <label htmlFor="reauth-email" className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-1">
+            <label htmlFor="reauth-email" className="text-sm font-semibold text-obligon-text block mb-1">
               Email address
             </label>
             <input
@@ -80,7 +80,7 @@ export default function SessionExpiredPage() {
             />
           </div>
           <div className="relative">
-            <label htmlFor="reauth-password" className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-1">
+            <label htmlFor="reauth-password" className="text-sm font-semibold text-obligon-text block mb-1">
               Password
             </label>
             <input
@@ -113,13 +113,15 @@ export default function SessionExpiredPage() {
           </button>
         </form>
 
-        <Link href={routes.forgotPassword} className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-obligon-green hover:underline">
-          Forgot password?
-        </Link>
-        <Link href={routes.login} className="mt-4 inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[1.2px] text-obligon-green">
-          <ArrowLeft size={16} />
-          Back to Login
-        </Link>
+        <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2">
+          <Link href={routes.forgotPassword} className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-obligon-green hover:underline">
+            Forgot password?
+          </Link>
+          <Link href={routes.login} className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-obligon-green">
+            <ArrowLeft size={16} />
+            Back to Login
+          </Link>
+        </div>
       </section>
     </AuthShell>
   );

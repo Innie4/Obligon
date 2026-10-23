@@ -61,9 +61,9 @@ export function AuthStatus({ status, message, serverError, redirect, onRetry }: 
 
   return (
     <div className="grid w-full min-w-0 max-w-[960px] items-center gap-10 lg:grid-cols-[480px_1fr]">
-      <section className="min-w-0 rounded-3xl border border-obligon-border bg-white p-5 text-center shadow-card sm:p-8">
+      <section className="min-w-0 rounded-2xl bg-white p-5 text-center sm:p-8">
         {item.eyebrow ? (
-          <span className="inline-flex rounded-full bg-obligon-lime/20 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[1px] text-[#131f00]">
+          <span className="inline-flex rounded-full bg-obligon-lime/20 px-3 py-1 text-xs font-extrabold text-[#131f00]">
             {item.eyebrow}
           </span>
         ) : null}
@@ -78,7 +78,7 @@ export function AuthStatus({ status, message, serverError, redirect, onRetry }: 
             <div className="h-2 overflow-hidden rounded-full bg-[#e6eeff]">
               <div className="h-full w-1/4 rounded-full bg-obligon-green animate-pulse" />
             </div>
-            <p className="mt-3 text-xs font-bold uppercase tracking-[1.2px] text-obligon-green">Processing...</p>
+            <p className="mt-3 text-xs font-bold text-obligon-green">Processing...</p>
           </div>
         ) : (
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
@@ -124,17 +124,17 @@ export function AuthStatus({ status, message, serverError, redirect, onRetry }: 
           </div>
         )}
 
-        <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-obligon-border px-4 py-2 text-[10px] font-bold uppercase tracking-[1px] text-obligon-text">
+        <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-obligon-border px-4 py-2 text-xs font-bold text-obligon-text">
           {status === "failure" ? <AlertTriangle size={14} /> : <ShieldCheck size={14} />}
           {item.footer}
         </div>
       </section>
 
       <aside className="hidden rounded-[32px] bg-obligon-navy p-10 text-white lg:block">
-        <div className="flex h-[420px] flex-col justify-end rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(170,248,87,0.25),transparent_45%)] p-8">
-          <p className="text-xs uppercase tracking-[1.6px] text-obligon-lime">Powering Logistics</p>
+        <div className="flex h-[420px] flex-col justify-end rounded-3xl border border-white/10 bg-obligon-blue p-8">
+          <p className="text-xs text-obligon-lime">Obligon LTD</p>
           <h2 className="mt-4 font-display text-4xl font-extrabold leading-[44px]">
-            Nigeria&apos;s most trusted energy fintech infrastructure.
+            Manage fuel spending and station operations.
           </h2>
           <Link href={routes.login} className="mt-8 text-sm font-bold text-white/80 hover:text-white">
             Cancel and return to login

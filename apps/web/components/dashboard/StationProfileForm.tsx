@@ -8,6 +8,8 @@ import { NIGERIA_STATES } from "../../../../packages/shared/nigeria-locations.mj
 import { stationProfileDraft, stationProfileErrors, stationProfileSubmission, type StationProfileDraft, type StationProfileErrors, type StationProfileSubmission } from "@/lib/station-profile";
 import { FuelMultiSelect, OpeningHoursField } from "./StationProfileFields";
 import { StationLocationPicker } from "./StationLocationPicker";
+import { useSession } from "@/components/shared/AuthContext";
+import { partnerAllowedFuels, partnerFuelCode, fuelSellingUnits, sellingUnitLabel, type SellingUnit } from "../../../../packages/shared/partner-access.mjs";
 
 type Props = {
   station: PartnerStation["station"];
@@ -22,6 +24,8 @@ const labelClass = "block text-sm font-bold text-obligon-navy";
 
 /** A keyed draft: changing stations unmounts this editor and any pending GPS request. */
 export function StationProfileForm({ station, creating, saving, fuelChoices, onSubmit, onCancel }: Props) {
+  const { user } = useSession();
+  const allowedFuels = partnerAllowedFuels(user);
   const [draft, setDraft] = React.useState<StationProfileDraft>(() => stationProfileDraft(station));
   const [errors, setErrors] = React.useState<StationProfileErrors>({});
   const [serverError, setServerError] = React.useState<string | null>(null);
@@ -44,6 +48,7 @@ export function StationProfileForm({ station, creating, saving, fuelChoices, onS
     event.preventDefault();
     if (saving) return;
     const issues = stationProfileErrors(draft, station);
+    if (draft.fuels.some(fuel => !allowedFuels.includes(partnerFuelCode(fuel)!))) issues.fuels = "Choose fuels supported by your approved partner type.";
     setErrors(issues);
     if (Object.keys(issues).length) return;
     try {
@@ -59,7 +64,7 @@ export function StationProfileForm({ station, creating, saving, fuelChoices, onS
     <form onSubmit={submit} noValidate className="min-w-0 rounded-xl border border-obligon-border bg-white p-5 sm:p-7">
       <div className="mb-6 flex items-center gap-3">
         <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-obligon-mist text-obligon-green"><MapPin size={22} aria-hidden="true" /></span>
-        <div><h2 className="font-display text-xl font-extrabold text-obligon-navy">{creating ? "Add a fuel station" : "Location details"}</h2><p className="mt-1 text-sm text-obligon-text">Keep your station’s customer-facing details accurate.</p></div>
+        <div><h2 className="font-display text-lg font-bold tracking-tight sm:text-xl text-obligon-navy">{creating ? "Add a fuel station" : "Location details"}</h2><p className="mt-1 text-sm text-obligon-text">Keep your station’s customer-facing details accurate.</p></div>
       </div>
       {serverError ? <p role="alert" className="mb-5 rounded-xl bg-[#ffecef] p-4 text-sm text-[#9f1027]">{serverError}</p> : null}
       <fieldset disabled={saving} className="min-w-0 space-y-6">
@@ -99,7 +104,18 @@ export function StationProfileForm({ station, creating, saving, fuelChoices, onS
           <p id="station-city-hint" className="mt-2 text-xs text-obligon-text">{matchingCities.length ? `${matchingCities.length.toLocaleString("en-NG")} matching place names in ${draft.state}.` : "No matching place names. Try another spelling or clear the search."} Select a location from the dropdown above.</p>
         </div> : <p id="station-city-hint" className="text-sm text-obligon-text">Choose a State / FCT to see its cities and towns.</p>}
         <p className="text-xs text-obligon-text">Place names: <a href="https://www.geonames.org/" target="_blank" rel="noreferrer" className="underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-obligon-green">GeoNames</a> · Cities, towns and populated localities, under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer" className="underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-obligon-green">CC BY 4.0</a>.</p>
-        <div><FuelMultiSelect value={draft.fuels} onChange={value => change("fuels", value)} choices={[...(station?.fuels ?? []), ...(fuelChoices ?? [])]} disabled={saving} />{errorMessage("fuels")}</div>
+        <div><FuelMultiSelect value={draft.fuels} onChange={value => change("fuels", value)} choices={[...(station?.fuels ?? []), ...(fuelChoices ?? [])]} allowedFuels={allowedFuels} disabled={saving} />{errorMessage("fuels")}</div>
+        <fieldset className="space-y-4"><legend className={labelClass}>Selling units</legend>
+          <p className="text-sm text-obligon-text">Choose the unit used at this station. New fuels or unit changes need admin approval before prices or sales can use them. Quantities are not converted between units.</p>
+          {draft.fuels.map(fuel => { const code = partnerFuelCode(fuel); const units = fuelSellingUnits(fuel); if (!code) return <p key={fuel} role="alert" className="text-sm text-red-800">Remove the unsupported fuel “{fuel}” before saving.</p>; return <label key={fuel} className="block text-sm font-bold text-obligon-navy">{fuel}
+            <select aria-label={`${fuel} selling unit`} value={draft.sellingUnits[code] ?? (units.length === 1 ? units[0] : "")} onChange={event => change("sellingUnits", { ...draft.sellingUnits, [code]: event.target.value as SellingUnit })} className={fieldClass} required>
+              {units.length > 1 ? <option value="">Choose selling unit</option> : null}
+              {units.map(unit => <option key={unit} value={unit}>{sellingUnitLabel(unit)}</option>)}
+            </select>
+            <span className="mt-1 block text-xs font-normal text-obligon-text">Approved unit: {station?.approvedSellingUnits?.[code] ? sellingUnitLabel(station.approvedSellingUnits[code]) : "Awaiting admin approval"}</span>
+          </label>; })}
+          {errorMessage("sellingUnits")}
+        </fieldset>
         <div><OpeningHoursField value={draft.hours} onChange={value => change("hours", value)} disabled={saving} />{errorMessage("hours")}</div>
         <div><StationLocationPicker value={draft.location} onChange={value => change("location", value)} disabled={saving} />{errorMessage("location")}</div>
       </fieldset>

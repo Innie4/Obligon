@@ -9,12 +9,12 @@ export function Hero() {
       data-node-id="2:3"
     >
 
-      <div className="relative mx-auto grid min-h-[764px] w-full max-w-[1280px] min-w-0 items-center gap-16 px-5 py-20 sm:px-8 lg:grid-cols-2 lg:px-16 lg:py-0">
+      <div className="relative mx-auto grid min-h-[660px] w-full max-w-[1280px] min-w-0 items-center gap-12 px-5 py-16 sm:px-8 lg:grid-cols-2 lg:px-16 lg:py-20">
         <div className="min-w-0 max-w-[544px]">
-          <h1 className="font-display text-[44px] font-extrabold leading-[1.07] text-white sm:text-[56px] lg:text-[64px] lg:leading-[72px]">
+          <h1 className="font-display text-[44px] font-bold leading-[1.07] tracking-tight text-white sm:text-[56px] lg:text-[64px]">
             Your fuel.
             <br />
-            <span className="text-obligon-lime">Your control.</span>
+            Your control.
           </h1>
 
           <p className="mt-6 max-w-[536px] text-base leading-6 text-white/70 lg:mt-8">
@@ -33,7 +33,7 @@ export function Hero() {
         </div>
 
         <div className="relative mx-auto w-full max-w-[calc(100vw-40px)] min-w-0 sm:max-w-[544px] lg:mt-[14px]">
-          <div className="relative mx-auto w-full max-w-[512px] overflow-hidden rounded-3xl border border-obligon-lime/20 shadow-hero">
+          <div className="relative mx-auto w-full max-w-[512px] overflow-hidden rounded-2xl">
             <Image
               src={assets.fuelvistaCard}
               width={512}

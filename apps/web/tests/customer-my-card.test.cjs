@@ -3,13 +3,14 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
+const partnerAccess = require('../../../packages/shared/partner-access.mjs');
 
 function load(path, { globals = {}, dependencies = {}, expose = '' } = {}) {
   const exports = {};
   const code = ts.transpileModule(fs.readFileSync(require.resolve(path), 'utf8') + expose, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true },
   }).outputText;
-  vm.runInNewContext(code, { exports, URLSearchParams, require: name => dependencies[name] ?? (name === '@/lib/customer-presentation' ? load('../lib/customer-presentation.ts') : {}), ...globals });
+  vm.runInNewContext(code, { exports, URLSearchParams, require: name => name.endsWith('/partner-access.mjs') ? partnerAccess : ['@/lib/partner-selling-unit','./partner-selling-unit'].includes(name) ? load('../lib/partner-selling-unit.ts',{dependencies:{'../../../packages/shared/partner-access.mjs':partnerAccess}}) : dependencies[name] ?? (name === '@/lib/customer-presentation' ? load('../lib/customer-presentation.ts') : {}), ...globals });
   return exports;
 }
 
@@ -325,4 +326,28 @@ test('My Card status changes refresh fuel controls without repeating payment con
     assert.equal(nodes.some(node => node.type === 'input' && node.props.id === 'wallet-card-pin'), status === 'active');
   }
   assert.equal(requests.filter(path => path.endsWith('/confirm')).length, 1);
+});
+
+for(const sellingUnit of ['kg','scm']) {
+ test(`customer gas checkout sends ${sellingUnit} and keeps its recorded quantity`,async()=>{
+  const runtime=hooks(),calls=[],navigations=[];const window=browser('');window.location.assign=url=>navigations.push(url);
+  const {CustomerFuelCheckout}=load('../components/customer-dashboard/CustomerFuelCheckout.tsx',{
+   globals:{window,crypto:{randomUUID:()=> 'isolated-gas-request'}},dependencies:{react:runtime.React,'@/lib/customer-card-routes':load('../lib/customer-card-routes.ts'),'@/lib/services':{authenticatedRequest:async(path,options)=>{
+    if(path.endsWith('/stations'))return {stations:[{stationId:'gas',name:'Gas station',city:'Uyo',fuelType:'CNG',unitPriceKobo:20000,discountPercent:0,sellingUnit}]};
+    if(path.endsWith('/card'))return {card:{id:'card',status:'active'}};
+    if(path.endsWith('/checkout')){calls.push(JSON.parse(options.body));return {authorization_url:'https://checkout.example.invalid/gas',reference:'GAS',simulated:false};}
+    return {orders:[{reference:'OLD-GAS',stationName:'Gas station',fuelType:'CNG',litres:7.5,quantity:7.5,sellingUnit,amountKobo:150000,status:'fulfilled',createdAt:'2026-10-23'}]};
+   }}},
+  });
+  runtime.render(CustomerFuelCheckout,{subscriptionActive:true});await flush();let tree=runtime.render(CustomerFuelCheckout,{subscriptionActive:true});
+  const label=allNodes(tree).find(n=>n.type==='label'&&n.props.htmlFor==='fuel-litres');assert.ok(JSON.stringify(label).includes(sellingUnit==='kg'?'kg':'standard m³'));
+  allNodes(tree).find(n=>n.type==='form').props.onSubmit({preventDefault(){}});await flush();assert.equal(calls.length,1);assert.equal(calls[0].sellingUnit,sellingUnit);assert.equal(calls[0].litres,10);assert.deepEqual(navigations,['https://checkout.example.invalid/gas']);
+ });
+}
+
+test('customer gas checkout cannot charge with an unknown approved selling unit',async()=>{
+ const runtime=hooks(),writes=[];const {CustomerFuelCheckout}=load('../components/customer-dashboard/CustomerFuelCheckout.tsx',{globals:{window:browser('')},dependencies:{react:runtime.React,'@/lib/customer-card-routes':load('../lib/customer-card-routes.ts'),'@/lib/services':{authenticatedRequest:async(path,options)=>{
+ if(options){writes.push(path);return {};}
+ return path.endsWith('/stations')?{stations:[{stationId:'gas',name:'Gas station',city:'Uyo',fuelType:'CNG',unitPriceKobo:20000,discountPercent:0}]}:path.endsWith('/card')?{card:{id:'card',status:'active'}}:{orders:[]};
+ }}}});runtime.render(CustomerFuelCheckout,{subscriptionActive:true});await flush();const tree=runtime.render(CustomerFuelCheckout,{subscriptionActive:true});assert.equal(allNodes(tree).find(n=>n.type==='button'&&n.props.children.includes('Continue to payment')).props.disabled,true);allNodes(tree).find(n=>n.type==='form').props.onSubmit({preventDefault(){}});await flush();assert.equal(writes.length,0);
 });

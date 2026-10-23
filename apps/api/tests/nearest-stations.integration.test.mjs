@@ -23,6 +23,9 @@ before(async () => {
     INSERT INTO organizations VALUES('00000000-0000-4000-8000-000000000001','verified');
     CREATE TABLE stations(partner_org_id uuid DEFAULT '00000000-0000-4000-8000-000000000001',id uuid PRIMARY KEY DEFAULT gen_random_uuid(),name text,address text DEFAULT '',city text DEFAULT '',lat double precision NOT NULL DEFAULT 6.5244,lng double precision NOT NULL DEFAULT 3.3792,status text DEFAULT 'active',fuels text[] DEFAULT '{Petrol}',hours text DEFAULT '24 hours',rating numeric DEFAULT 0);
     CREATE TABLE fuel_prices(station_id uuid,fuel_type text,price_kobo bigint);`);
+  await pool.query(`ALTER TABLE organizations ADD COLUMN partner_type text DEFAULT 'fuel_station',ADD COLUMN type text DEFAULT 'partner';
+    ALTER TABLE stations ADD COLUMN selling_units jsonb DEFAULT '{}',ADD COLUMN approved_selling_units jsonb DEFAULT '{}';
+    ALTER TABLE fuel_prices ADD COLUMN selling_unit text DEFAULT 'litre',ADD COLUMN updated_at timestamptz DEFAULT now();`);
   await pool.query("INSERT INTO stations(name) VALUES('Legacy placeholder')");
   await pool.query(await readFile(new URL('../src/migrations/025_station_coordinates.sql', import.meta.url), 'utf8'));
   const legacy = (await pool.query("SELECT lat,lng,location_confirmed FROM stations WHERE name='Legacy placeholder'")).rows[0];
@@ -80,6 +83,17 @@ check('no location never invents a Lagos distance', async () => {
   assert.equal(rows[0].distance, 'Location unavailable');
   assert.equal(rows[0].diesel, 'Price unavailable');
   assert.equal(rows[0].unleaded, 'Price unavailable');
+});
+
+check('station cards expose approved gas prices in their own unit and hide withdrawn offers',async()=>{
+  const station=(await add('Approved gas',0,0)).rows[0];
+  await pool.query(`UPDATE stations SET fuels='{CNG}',selling_units='{"CNG":"kg"}',approved_selling_units='{"CNG":"kg"}' WHERE id=$1`,[station.id]);
+  await pool.query("INSERT INTO fuel_prices(station_id,fuel_type,price_kobo,selling_unit) VALUES($1,'CNG Compressed Gas',150000,'kg')",[station.id]);
+  let row=(await list())[0];
+  assert.deepEqual(row.prices,[{fuelType:'CNG',priceLabel:'₦1,500',sellingUnit:'kg'}]);
+  assert.equal(row.diesel,'Price unavailable');assert.equal(row.unleaded,'Price unavailable');
+  await pool.query("UPDATE stations SET approved_selling_units='{}' WHERE id=$1",[station.id]);
+  row=(await list())[0];assert.deepEqual(row.prices,[]);
 });
 check('invalid, incomplete and repeated coordinates are rejected', async () => {
   for (const query of ['?lat=1', '?lng=1', '?lat=&lng=0', '?lat=NaN&lng=0', '?lat=91&lng=0', '?lat=0&lng=181', '?lat=0&lat=1&lng=0']) {

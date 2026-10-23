@@ -1,4 +1,6 @@
 import type { CustomerMoneyEvent } from "@/lib/services/types";
+import { priceSellingUnit } from "./partner-selling-unit";
+import { sellingUnitLabel } from "../../../packages/shared/partner-access.mjs";
 
 /** A receipt describes the recorded event; missing metadata stays missing. */
 export function customerReceiptRows(event: CustomerMoneyEvent): Array<[string, string]> {
@@ -14,7 +16,7 @@ export function customerReceiptRows(event: CustomerMoneyEvent): Array<[string, s
     if (event.vehicle) rows.push(["Vehicle ID", event.vehicle]);
     if (event.fuel) rows.push(["Fuel Type", event.fuel]);
     if (event.maskedPan) rows.push(["Card Number", event.maskedPan]);
-    if (event.litres != null) rows.push(["Volume", `${event.litres} L`]);
+  if (event.quantity != null || event.litres != null) rows.push(["Quantity", `${event.quantity ?? event.litres} ${sellingUnitLabel(priceSellingUnit(event.fuel ?? "", event.sellingUnit))}`]);
   } else if (event.subtitle) rows.push(["Description", event.subtitle]);
   if (event.time) rows.push(["Timestamp", event.time]);
   if (event.balanceAfterLabel) rows.push(["Balance After", event.balanceAfterLabel]);

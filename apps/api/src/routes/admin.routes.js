@@ -1,5 +1,7 @@
+import { quantityTotalsLabel } from '../lib/fuel-quantity.js';
 import intakeAdminRouter from "./intake-admin.routes.js";
 import supportAdminRouter from "./support-admin.routes.js";
+import companyCardIssuancesAdminRouter from "./company-card-issuances-admin.routes.js";
 import discountRouter from "./discount.routes.js";
 import { Router } from "express";
 import { q, one, tx } from "../db.js";
@@ -30,6 +32,7 @@ router.use(requireAuth, (req, _res, next) => {
 router.use("/discount-requests", discountRouter);
 router.use(supportAdminRouter);
 router.use(intakeAdminRouter);
+router.use(companyCardIssuancesAdminRouter);
 
 // Card identity review is explicitly restricted by the admin middleware above.
 router.get("/card-requests", asyncHandler(async (_req,res) => {
@@ -507,8 +510,8 @@ router.post("/applications/:id/review", asyncHandler(async (req, res) => {
     );
     if (decision === "approve" && app.user_id) {
       const org = await t.one(
-        `UPDATE organizations SET verification_status = 'verified' WHERE owner_user_id = $1 RETURNING *`,
-        [app.user_id]
+        `UPDATE organizations SET verification_status = 'verified',partner_type=$2 WHERE owner_user_id = $1 AND type IN ('partner','mechanic') RETURNING *`,
+        [app.user_id, app.partner_type]
       );
       await t.query("UPDATE users SET status = 'active' WHERE id = $1", [app.user_id]);
       if (org) {
@@ -537,13 +540,13 @@ router.get("/reports", asyncHandler(async (req, res) => {
   const { range = "30" } = req.query;
   const days = Math.min(Number(range) || 30, 365);
   const totals = await one(
-    `SELECT COALESCE(SUM(litres),0)::float AS litres, COALESCE(SUM(amount_kobo),0) AS revenue, COUNT(*)::int AS tx_count
+    `SELECT COALESCE(SUM(litres) FILTER (WHERE selling_unit='litre'),0) AS litres, COALESCE(SUM(litres) FILTER (WHERE selling_unit='kg'),0) AS kg, COALESCE(SUM(litres) FILTER (WHERE selling_unit='scm'),0) AS scm, COALESCE(SUM(amount_kobo),0) AS revenue, COUNT(*)::int AS tx_count
      FROM transactions WHERE status = 'success' AND created_at >= now() - ($1 || ' days')::interval`,
     [String(days)]
   );
   const stationCount = await one(`SELECT COUNT(*)::int AS count FROM stations WHERE status = 'active'`, []);
   const stations = await q(
-    `SELECT s.name, s.city, COUNT(t.id)::int AS tx_count, COALESCE(SUM(t.litres),0)::float AS litres,
+    `SELECT s.name, s.city, COUNT(t.id)::int AS tx_count, COALESCE(SUM(t.litres) FILTER (WHERE t.selling_unit='litre'),0) AS litres, COALESCE(SUM(t.litres) FILTER (WHERE t.selling_unit='kg'),0) AS kg, COALESCE(SUM(t.litres) FILTER (WHERE t.selling_unit='scm'),0) AS scm,
             COALESCE(SUM(t.amount_kobo),0) AS revenue
      FROM stations s LEFT JOIN transactions t ON t.station_id = s.id AND t.status = 'success' AND t.created_at >= now() - ($1 || ' days')::interval
      WHERE s.status = 'active' GROUP BY s.id ORDER BY revenue DESC LIMIT 20`,
@@ -552,17 +555,17 @@ router.get("/reports", asyncHandler(async (req, res) => {
   const maxRevenue = Math.max(stations.reduce((sum,s)=>sum+Number(s.revenue),0),1);
   res.json({
     metrics: [
-      { label: "TOTAL NETWORK VOLUME", value: `${Number(totals.litres).toLocaleString()} Ltrs`, helper: `last ${days} days`, tone: "green" },
+      { label: "TOTAL NETWORK VOLUME", value: quantityTotalsLabel(totals), helper: `last ${days} days`, tone: "green" },
       { label: "TOTAL REVENUE", value: totals.revenue >= 1e11 ? `₦${(totals.revenue / 1e11).toFixed(1)}B` : naira(totals.revenue), helper: "platform-wide", tone: "green" },
       { label: "ACTIVE PARTNER STATIONS", value: String(stationCount.count), helper: `${totals.tx_count.toLocaleString()} transactions`, tone: "green" }
     ],
     stations: stations.map((s) => ({
       id: s.name,
       avatar: initialsOf(s.name),
-      cells: [`${s.name.split(" ")[0]}\n- ${s.city ?? "NG"}`, `${s.city ?? "NG"},\nNG`, Math.round(s.litres).toLocaleString(), s.tx_count.toLocaleString(), `${Math.round(Number(s.revenue) / maxRevenue * 100)}%`],
+      cells: [`${s.name.split(" ")[0]}\n- ${s.city ?? "NG"}`, `${s.city ?? "NG"},\nNG`, quantityTotalsLabel(s), s.tx_count.toLocaleString(), `${Math.round(Number(s.revenue) / maxRevenue * 100)}%`],
       status: Number(s.revenue) / maxRevenue > 0.75 ? "PRIME" : "ACTIVE", tone: "green"
     })),
-    raw: stations.map((s) => ({ station: s.name, city: s.city, litres: Math.round(s.litres), transactions: s.tx_count, revenueLabel: naira(s.revenue) }))
+    raw: stations.map((s) => ({ station: s.name, city: s.city, quantities: quantityTotalsLabel(s), transactions: s.tx_count, revenueLabel: naira(s.revenue) }))
   });
 }));
 
@@ -570,7 +573,7 @@ router.get("/reports/export", asyncHandler(async (req, res) => {
   const { format = "csv", range = "30" } = req.query;
   const days = Math.min(Number(range) || 30, 365);
   const stations = await q(
-    `SELECT s.name, s.city, COALESCE(SUM(t.litres),0)::float AS litres, COALESCE(SUM(t.amount_kobo),0) AS revenue, COUNT(t.id)::int AS tx_count
+    `SELECT s.name, s.city, COALESCE(SUM(t.litres) FILTER (WHERE t.selling_unit='litre'),0) AS litres, COALESCE(SUM(t.litres) FILTER (WHERE t.selling_unit='kg'),0) AS kg, COALESCE(SUM(t.litres) FILTER (WHERE t.selling_unit='scm'),0) AS scm, COALESCE(SUM(t.amount_kobo),0) AS revenue, COUNT(t.id)::int AS tx_count
      FROM stations s LEFT JOIN transactions t ON t.station_id = s.id AND t.status = 'success' AND t.created_at >= now() - ($1 || ' days')::interval
      GROUP BY s.id ORDER BY revenue DESC`,
     [String(days)]
@@ -583,17 +586,17 @@ router.get("/reports/export", asyncHandler(async (req, res) => {
       columns: [
         { key: "station", label: "Station", width: 180 },
         { key: "city", label: "City", width: 100 },
-        { key: "litres", label: "Litres", width: 100 },
+        { key: "quantities", label: "Quantities", width: 120 },
         { key: "tx", label: "Transactions", width: 110 },
         { key: "revenue", label: "Revenue", width: 130 }
       ],
-      rows: stations.map((s) => ({ station: s.name, city: s.city ?? "", litres: Math.round(s.litres), tx: s.tx_count, revenue: naira(s.revenue) }))
+      rows: stations.map((s) => ({ station: s.name, city: s.city ?? "", quantities: quantityTotalsLabel(s), tx: s.tx_count, revenue: naira(s.revenue) }))
     });
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="platform-report-${Date.now()}.pdf"`);
     return res.send(pdf);
   }
-  const csv = toCsv(stations.map((s) => ({ station: s.name, city: s.city ?? "", litres: Math.round(s.litres), transactions: s.tx_count, revenue: (s.revenue / 100).toFixed(2) })));
+  const csv = toCsv(stations.map((s) => ({ station: s.name, city: s.city ?? "", quantities: quantityTotalsLabel(s), transactions: s.tx_count, revenue: (s.revenue / 100).toFixed(2) })));
   res.setHeader("Content-Type", "text/csv");
   res.setHeader("Content-Disposition", `attachment; filename="platform-report-${Date.now()}.csv"`);
   res.send(csv);

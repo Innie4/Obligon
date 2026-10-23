@@ -33,11 +33,11 @@ before(async () => {
   env.FLW_PAYMENT_OPTIONS = "";
   await pool.query(`
     CREATE TABLE notifications(id uuid PRIMARY KEY,user_id uuid,organization_id uuid,title text,body text,created_at timestamptz DEFAULT now(),read_at timestamptz,dismissed_at timestamptz,in_app_visible boolean DEFAULT TRUE,action_required boolean DEFAULT FALSE,link text);
-    CREATE TABLE transactions(id uuid PRIMARY KEY,reference text,customer_user_id uuid,organization_id uuid,station_id uuid,vehicle_id uuid,card_id uuid,amount_kobo bigint,litres numeric,fuel_type text,status text,created_at timestamptz DEFAULT now());
+    CREATE TABLE transactions(id uuid PRIMARY KEY,reference text,customer_user_id uuid,organization_id uuid,station_id uuid,vehicle_id uuid,card_id uuid,amount_kobo bigint,litres numeric,selling_unit text DEFAULT 'litre',fuel_type text,status text,created_at timestamptz DEFAULT now());
     CREATE TABLE stations(id uuid PRIMARY KEY,name text);
     CREATE TABLE vehicles(id uuid PRIMARY KEY,plate text);
     CREATE TABLE cards(id uuid PRIMARY KEY,masked_pan text);
-    CREATE TABLE wallets(id uuid PRIMARY KEY,user_id uuid,organization_id uuid,balance_kobo bigint DEFAULT 0);
+    CREATE TABLE wallets(id uuid PRIMARY KEY,user_id uuid,organization_id uuid,kind text DEFAULT 'individual',balance_kobo bigint DEFAULT 0);
     CREATE TABLE wallet_ledger(id uuid, wallet_id uuid,direction text,amount_kobo bigint,balance_after_kobo bigint,description text,reference text,idempotency_key text,created_at timestamptz DEFAULT now());
     CREATE TABLE top_ups(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid,reference text,amount_kobo bigint,fee_kobo bigint,charged_kobo bigint,method text,status text,provider text,wallet_id uuid,provider_reference text,provider_transaction_id text,created_at timestamptz DEFAULT now());
     CREATE TABLE audit_logs(actor_user_id uuid,actor_role text,action text,entity_type text,entity_id uuid,ip text,metadata jsonb);

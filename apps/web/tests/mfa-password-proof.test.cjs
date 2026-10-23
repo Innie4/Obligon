@@ -59,8 +59,18 @@ test("failed live authenticator setup displays its real error and cannot show or
   assert.ok(textOf(tree).includes("Two-factor authentication is already enabled."));
   assert.equal(nodes(tree).filter(node => node.type === "img").length, 0);
   assert.equal(textOf(tree).includes("MOCK"), false);
+  assert.equal(textOf(tree).includes("Setup Instructions"), false);
+  assert.equal(textOf(tree).includes("Scan the QR code above"), false);
   const button = nodes(tree).find(node => node.type === "button" && textOf(node) === "Setup unavailable");
   assert.equal(button.props.disabled, true);
+});
+test("authenticator instructions appear when a real setup QR is available", async () => {
+  const ui = loadUi({ stage: "setup" });
+  await flush();
+  const tree = ui.render();
+  assert.ok(textOf(tree).includes("Setup Instructions"));
+  assert.equal(nodes(tree).filter(node => node.type === "img").length, 1);
+  assert.equal(nodes(tree).find(node => node.type === "button" && textOf(node) === "Continue").props.disabled, false);
 });
 test("a challenge opened without password proof explains recovery and disables code submission", () => {
   const ui = loadUi({ pending: false });

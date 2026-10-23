@@ -10,7 +10,7 @@ function loadClient(fetch, initialTokens = null, timeoutDuration = () => 10) {
   const exports = {};
   const code = ts.transpileModule(fs.readFileSync(require.resolve('../lib/services/client.ts'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
   vm.runInNewContext(code, { exports, process: { env: { NEXT_PUBLIC_API_URL: 'https://api.example.test' } }, fetch,
-    Headers, FormData, Response, URLSearchParams, Blob,
+    Headers, FormData, Response, URLSearchParams, Blob, TypeError,
     AbortSignal: { timeout(ms) { timeouts.push(ms); return AbortSignal.timeout(timeoutDuration(ms)); }, any: signals => AbortSignal.any(signals) },
     require: name => name.includes('session-store') ? { readTokens: () => tokens, writeTokens: next => { tokens = next; }, writePersistedSession: value => sessions.push(value), readPersistedSession: () => sessions.at(-1) } : {},
   });
@@ -29,6 +29,19 @@ test('caller cancellation is preserved', async () => {
   const request = client.authenticatedRequest('/api/customer/profile', { signal: controller.signal });
   controller.abort(new Error('navigation canceled'));
   await assert.rejects(request, /navigation canceled/);
+});
+
+for (const method of ['GET', 'POST']) test(`network failure for ${method} explains recovery without retrying the request`, async () => {
+  let calls = 0;
+  const tokens = { accessToken: 'fixture-access', refreshToken: 'fixture-refresh' };
+  const fixture = loadClient(async () => { calls++; throw new TypeError('Failed to fetch'); }, tokens);
+  await assert.rejects(fixture.client.authenticatedRequest('/api/fixture', { method }), error => {
+    assert.equal(error.status, 0);
+    assert.match(error.message, /Check your connection, then refresh to see the latest status/);
+    return true;
+  });
+  assert.equal(calls, 1);
+  assert.equal(fixture.tokens(), tokens);
 });
 test('logout without an existing session makes no remote request', async () => {
   let calls = 0;

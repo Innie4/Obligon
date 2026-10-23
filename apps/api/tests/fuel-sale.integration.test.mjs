@@ -37,13 +37,19 @@ before(async () => {
  CREATE TABLE transactions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),reference text UNIQUE,customer_user_id uuid,organization_id uuid,station_id uuid,vehicle_id uuid,driver_id uuid,card_id uuid,fuel_type text,litres numeric,unit_price_kobo bigint,amount_kobo bigint,base_amount_kobo bigint,platform_fee_kobo bigint,partner_net_kobo bigint,discount_request_id uuid,settlement_method text,status text,meta text,created_at timestamptz DEFAULT now());
  CREATE TABLE fuel_orders(card_id uuid,amount_kobo bigint,created_at timestamptz DEFAULT now(),status text,reservation_expires_at timestamptz);
  CREATE TABLE fueling_logs(station_id uuid,transaction_id uuid,fuel_type text,litres numeric);
+ ALTER TABLE organizations ADD COLUMN partner_type text DEFAULT 'fuel_station';
+ ALTER TABLE stations ADD COLUMN fuels text[] DEFAULT '{}',ADD COLUMN selling_units jsonb DEFAULT '{}',ADD COLUMN approved_selling_units jsonb DEFAULT '{}';
+ ALTER TABLE fuel_prices ADD COLUMN selling_unit text DEFAULT 'litre';
+ ALTER TABLE transactions ADD COLUMN selling_unit text DEFAULT 'litre';
+ ALTER TABLE fueling_logs ADD COLUMN selling_unit text DEFAULT 'litre';
  `);
 });
 beforeEach(async () => { if(url) await pool.query('TRUNCATE cards,stations,bank_accounts,fuel_prices,station_discount_requests,customer_subscriptions,wallets,wallet_ledger,transactions,fueling_logs,fuel_orders,organizations'); });
 after(async () => { if(!url) return; await pool?.end(); await admin.query(`DROP SCHEMA ${schema} CASCADE`); await admin.end(); });
 async function setup() {
  const user = randomUUID(), org = randomUUID();
- const { rows:[station] }=await pool.query('INSERT INTO stations(partner_org_id) VALUES($1) RETURNING id',[org]);
+ await pool.query("INSERT INTO organizations(id,type) VALUES($1,'partner')",[org]);
+ const { rows:[station] }=await pool.query(`INSERT INTO stations(partner_org_id,fuels,selling_units,approved_selling_units) VALUES($1,'{PMS}','{"PMS":"litre"}','{"PMS":"litre"}') RETURNING id`,[org]);
  const { rows:[card] }=await pool.query("INSERT INTO cards(owner_user_id,pos_code,pos_code_expires_at) VALUES($1,'123456',now()+interval '10 minutes') RETURNING id",[user]);
  const { rows:[wallet] }=await pool.query('INSERT INTO wallets(user_id,balance_kobo) VALUES($1,100000) RETURNING id',[user]);
  await pool.query('INSERT INTO bank_accounts(organization_id) VALUES($1)',[org]);
@@ -52,6 +58,32 @@ async function setup() {
  return { user, org, station: station.id, card: card.id, wallet: wallet.id };
 }
 const buy = (f, overrides={}) => tx(t => authorize(t,{ partnerOrgId:f.org, stationId:f.station,code:'123456',litres:10,fuelType:'Petrol',reference:`TXN-${randomUUID()}`,...overrides }));
+
+async function gasStation(f) {
+ await pool.query("UPDATE organizations SET partner_type='gas_station' WHERE id=$1",[f.org]);
+ await pool.query(`UPDATE stations SET fuels='{CNG}',selling_units='{"CNG":"kg"}',approved_selling_units='{"CNG":"kg"}' WHERE id=$1`,[f.station]);
+ await pool.query("UPDATE fuel_prices SET fuel_type='CNG',selling_unit='kg' WHERE station_id=$1",[f.station]);
+}
+
+integration('gas POS preserves the approved unit and exact quantity in transaction and dispensing log',async()=>{
+ const f=await setup();await gasStation(f);
+ const result=await buy(f,{fuelType:'CNG',sellingUnit:'kg',litres:'3.5'});
+ assert.equal(result.sale.selling_unit,'kg');assert.equal(result.sale.litres,'3.5');assert.equal(result.sale.amount_kobo,'3500');
+ assert.deepEqual((await pool.query('SELECT selling_unit,litres::text AS quantity FROM fueling_logs')).rows,[{selling_unit:'kg',quantity:'3.5'}]);
+ assert.equal((await pool.query('SELECT balance_kobo FROM wallets WHERE id=$1',[f.wallet])).rows[0].balance_kobo,'96500');
+});
+
+integration('gas POS rejects missing units, stale unit forms, unapproved fuels and old-unit prices without spending',async()=>{
+ const f=await setup();await gasStation(f);
+ await assert.rejects(buy(f,{fuelType:'CNG'}),/selling unit/);
+ await assert.rejects(buy(f,{fuelType:'CNG',sellingUnit:'scm'}),/changed/);
+ await pool.query("UPDATE fuel_prices SET selling_unit='litre' WHERE station_id=$1",[f.station]);
+ await assert.rejects(buy(f,{fuelType:'CNG',sellingUnit:'kg'}),/published price/);
+ await pool.query("UPDATE fuel_prices SET selling_unit='kg' WHERE station_id=$1",[f.station]);
+ await pool.query("UPDATE stations SET approved_selling_units='{}' WHERE id=$1",[f.station]);
+ await assert.rejects(buy(f,{fuelType:'CNG',sellingUnit:'kg'}),/approval|selling unit/);
+ await unchanged(f);
+});
 async function unchanged(f,ledgerCount=0) {
  const { rows:[state] }=await pool.query('SELECT balance_kobo FROM wallets WHERE id=$1',[f.wallet]); assert.equal(Number(state.balance_kobo),100000);
  const { rows:[n] }=await pool.query('SELECT count(*)::int AS n FROM transactions'); assert.equal(n.n,0);
@@ -61,8 +93,8 @@ async function unchanged(f,ledgerCount=0) {
  const { rows:[logs] }=await pool.query('SELECT count(*)::int AS n FROM fueling_logs');assert.equal(logs.n,0);
 }
 integration('POS debits wallet and records exactly the selected station price',async()=>{
- const f=await setup(); const { rows:[other] }=await pool.query('INSERT INTO stations(partner_org_id) VALUES($1) RETURNING id',[f.org]);
- await pool.query("INSERT INTO fuel_prices VALUES($1,'Petrol',5000)",[other.id]);
+ const f=await setup(); const { rows:[other] }=await pool.query(`INSERT INTO stations(partner_org_id,fuels,approved_selling_units) VALUES($1,'{PMS}','{"PMS":"litre"}') RETURNING id`,[f.org]);
+ await pool.query("INSERT INTO fuel_prices(station_id,fuel_type,price_kobo) VALUES($1,'Petrol',5000)",[other.id]);
  const result=await buy(f); assert.equal(Number(result.sale.amount_kobo),10000); assert.equal(result.sale.station_id,f.station);
  const {rows:[wallet]}=await pool.query('SELECT balance_kobo FROM wallets WHERE id=$1',[f.wallet]); assert.equal(Number(wallet.balance_kobo),90000);
 });

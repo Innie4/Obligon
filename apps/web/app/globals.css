@@ -3,12 +3,20 @@
 @tailwind utilities;
 
 :root {
-  --background: #f9f9ff;
+  --background: #f6f8fa;
   --foreground: #00010c;
+  --surface: #ffffff;
+  --line: #dde3e8;
+  --selection: #edf4e7;
 }
 
 * {
   box-sizing: border-box;
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
 }
 
 html {
@@ -33,6 +41,35 @@ body {
   background: var(--background);
   color: var(--foreground);
   overflow-x: hidden;
+}
+
+:where(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid #3d6a00;
+  outline-offset: 3px;
+}
+
+:where(button, input, select, textarea) {
+  font: inherit;
+}
+
+:where(button):disabled {
+  cursor: not-allowed;
+}
+
+::selection {
+  color: #00010c;
+  background: #d9edc5;
+}
+
+@media (max-width: 767px) {
+  input.text-sm,
+  input.text-xs,
+  select.text-sm,
+  select.text-xs,
+  textarea.text-sm,
+  textarea.text-xs {
+    font-size: 1rem;
+  }
 }
 
 body:has([aria-modal="true"]) [aria-label="Cookie Consent"] {

@@ -104,6 +104,25 @@ function verificationFixture({ user, status = 'authenticated', send, confirm }) 
 
 const partner = { id: 'partner-test', email: 'partner.test@obligon.com', phone: '', emailVerified: true, phoneVerified: false };
 
+for (const [partnerType, label] of [['other', 'partner'], ['fuel_station', 'station'], ['gas_station', 'station']]) {
+  test(`${partnerType} verification describes the correct account type`, async () => {
+    const fixture = verificationFixture({ user: { ...partner, partnerType }, send: async () => { throw new Error('No optional send expected'); } });
+    fixture.render(); await fixture.flush();
+    assert.match(fixture.text(), new RegExp(`Your ${label} account is verified`));
+    if (partnerType === 'other') assert.doesNotMatch(fixture.text(), /station account|workshop account/);
+    assert.equal(fixture.requests.length, 0);
+  });
+}
+
+test('a missing phone never displays a Verified contact badge even when a stale flag is true', async () => {
+  const fixture = verificationFixture({ user: { ...partner, partnerType: 'mechanic', phoneVerified: true }, send: async () => { throw new Error('No optional send expected'); } });
+  fixture.render(); await fixture.flush();
+  const phone = fixture.nodes().find(node => node.type === 'div' && node.props.key === 'Phone');
+  assert.match(fixture.text(phone), /No phone number added/); assert.match(fixture.text(phone), /Not added/); assert.doesNotMatch(fixture.text(phone), /Verified/);
+  assert.match(fixture.text(), /workshop account/); assert.doesNotMatch(fixture.text(), /station account|station operator|where to fuel/);
+  assert.equal(fixture.requests.length, 0);
+});
+
 test('verified email completes the partner account without a phone or an automatic SMS request', async () => {
   const fixture = verificationFixture({ user: partner, send: async () => { throw new Error('No optional send expected'); } });
   fixture.render(); await fixture.flush();

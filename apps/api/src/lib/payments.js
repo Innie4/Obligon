@@ -529,19 +529,13 @@ export async function fetchTransfer(provider, transferCode) {
     const result = await flutterwave.fetchTransfer(transferCode);
     return { provider: "flutterwave", ...result };
   }
-  // Paystack exposes no read endpoint for a transfer's current state through this
-  // integration, so this reports what the create call recorded rather than
-  // inventing a confirmation. Returning `settled: false` is the honest answer:
-  // it is unknown, and unknown is not success.
-  return {
-    provider: "paystack",
-    transferCode: transferCode ?? null,
-    status: "unknown",
-    settled: false,
-    failed: false,
-    message: "This processor does not report transfer state",
-    amountKobo: 0
-  };
+  const data=await paystack.fetchTransfer(transferCode);
+  if (String(data?.transfer_code??'')!==String(transferCode)) throw serviceUnavailable("Transfer identity did not match the recorded payout");
+  const status=String(data?.status??'').toLowerCase();
+  return {provider:"paystack",transferCode:String(data.transfer_code),status,settled:status==='success',
+    failed:['failed','reversed'].includes(status),message:data?.failures??data?.reason??null,
+    amountKobo:integerKobo(data?.amount,{min:0,max:Number.MAX_SAFE_INTEGER,label:'Provider transfer amount'}),
+    currency:data?.currency??null,reference:data?.reference??null};
 }
 
 /** Webhook authenticity per provider. Fails closed when unconfigured. */

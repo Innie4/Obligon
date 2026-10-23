@@ -1,3 +1,5 @@
+import { publishedStationPrices } from '../lib/station-prices.js';
+import { quantityLabel, quantityTotalsLabel } from '../lib/fuel-quantity.js';
 import { Router } from "express";
 import { randomInt } from "node:crypto";
 import { q, one, tx } from "../db.js";
@@ -5,11 +7,11 @@ import { asyncHandler, badRequest, notFound, forbidden, misconfigured, serviceUn
 import { requireAuth, requireOrg, requirePermission, requireCompanyMembership, companyContext } from "../middleware/auth.js";
 import { naira, fmtDate, fmtDateTime, relativeTime, reference } from "../lib/format.js";
 import { notify, audit } from "../lib/notify.js";
-import { issueSudoCard, createSudoCustomer, setSudoCardStatus, sudoEnabled } from "../lib/sudo.js";
+import { setSudoCardStatus, sudoEnabled } from "../lib/sudo.js";
 import { uploadFile, signedUrl } from "../lib/storage.js";
 import { toCsv } from "../lib/format.js";
-import { providerCardDetails } from "../lib/card-approval.js";
-import { cardLimits, companyIssuerIdentity, companyReportOptions } from "../lib/company-input.js";
+import { issueCompanyCard } from "../lib/company-card-issuance.js";
+import { cardLimits, companyReportOptions } from "../lib/company-input.js";
 import { emitToOrg } from "../lib/sse.js";
 import { reportPdf } from "../lib/pdf.js";
 import { env } from "../config/env.js";
@@ -302,37 +304,10 @@ router.get("/cards", requireOrg, asyncHandler(async (req, res) => {
 
 router.post("/cards", requireOrg, requirePermission("cards.manage"), asyncHandler(async (req, res) => {
   if (!companyIssuerReady()) throw misconfigured("Card issuing is currently unavailable. Contact Support to confirm when issuer setup is complete.");
-  const { label, vehicleId, driverId, dailyLimit, monthlyLimit, holder } = req.valid ?? req.body ?? {};
-  if (typeof label !== "string" || !label.trim() || label.length > 120) throw badRequest("Card label is required");
-  const { dailyKobo, monthlyKobo } = cardLimits(dailyLimit, monthlyLimit);
-  if (vehicleId && !(await one("SELECT id FROM vehicles WHERE id = $1 AND organization_id = $2", [vehicleId, req.user.orgId]))) throw badRequest("Selected vehicle is not part of this fleet");
-  if (driverId && !(await one("SELECT id FROM drivers WHERE id = $1 AND organization_id = $2 AND status = 'active'", [driverId, req.user.orgId]))) throw badRequest("Selected driver is not active in this fleet");
-  const existingCustomer = await one("SELECT sudo_customer_id, holder_name FROM cards WHERE organization_id = $1 AND sudo_customer_id IS NOT NULL ORDER BY created_at DESC LIMIT 1", [req.user.orgId]);
-  let issuerCustomerId = existingCustomer?.sudo_customer_id;
-  let verifiedHolderName = existingCustomer?.holder_name;
-  if (!issuerCustomerId) {
-    const identity = companyIssuerIdentity(holder, req.user);
-    issuerCustomerId = (await createSudoCustomer(identity)).id;
-    verifiedHolderName = `${identity.firstName} ${identity.lastName}`;
-  }
-  const sudoCard = await issueSudoCard({ customerId: issuerCustomerId, currency: "NGN", amount: 0 });
-  const details = providerCardDetails(sudoCard);
-  const card = await tx(async (t) => {
-    await t.query("SELECT id FROM organizations WHERE id = $1 FOR UPDATE", [req.user.orgId]);
-    if (vehicleId) {
-      await t.query("SELECT id FROM vehicles WHERE id = $1 AND organization_id = $2 FOR UPDATE", [vehicleId, req.user.orgId]);
-      await t.query("UPDATE cards SET vehicle_id = NULL, updated_at = now() WHERE vehicle_id = $1 AND organization_id = $2", [vehicleId, req.user.orgId]);
-    }
-    return t.one(
-    `INSERT INTO cards (organization_id, owner_user_id, vehicle_id, driver_id, label, holder_name, masked_pan, status, daily_limit_kobo, monthly_limit_kobo, sudo_card_id, sudo_customer_id, expiry, brand)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,'active',$8,$9,$10,$11,$12,$13) RETURNING *`,
-    [req.user.orgId, req.user.id, vehicleId ?? null, driverId ?? null, label.trim(), verifiedHolderName ?? req.user.full_name ?? "Company card holder",
-      details.maskedPan,
-      dailyKobo, monthlyKobo, details.providerId, issuerCustomerId, details.expiry, details.brand ?? "Unknown"]
-  );
-  });
-  audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "card.issued", entityType: "card", entityId: card.id });
-  res.json({ ok: true, cardId: card.id, maskedPan: card.masked_pan });
+  const payload=req.valid ?? req.body ?? {};
+  const headerKey=req.get('Idempotency-Key');
+  if (headerKey && payload.idempotencyKey && headerKey!==payload.idempotencyKey) throw badRequest('The card request keys must match');
+  res.json({ok:true,...await issueCompanyCard({organizationId:req.user.orgId,actor:req.user,payload,idempotencyKey:payload.idempotencyKey??headerKey})});
 }));
 
 router.post("/cards/:id/freeze", requireOrg, requirePermission("cards.manage"), asyncHandler(async (req, res) => {
@@ -397,7 +372,7 @@ router.get("/transactions", requireOrg, asyncHandler(async (req, res) => {
       cells: [
         fmtDateTime(t.created_at),
         `${t.vehicle_plate ?? "Not available"}\n${t.driver_name ?? "Unassigned"}`,
-        `${t.station_name ?? "Obligon Network"}\n${t.fuel_type} • ${Math.round(Number(t.litres))}L`,
+        `${t.station_name ?? "Obligon Network"}\n${t.fuel_type} • ${quantityLabel(t.litres,t.selling_unit)}`,
         t.masked_pan ?? "Not available",
         naira(t.amount_kobo)
       ],
@@ -410,14 +385,14 @@ router.get("/transactions", requireOrg, asyncHandler(async (req, res) => {
 
 router.get("/transactions/export", requireOrg, asyncHandler(async (req, res) => {
   const rows = await q(
-    `SELECT t.reference, t.created_at, s.name AS station, v.plate AS vehicle, d.name AS driver, t.fuel_type, t.litres, t.amount_kobo, t.status
+    `SELECT t.reference, t.created_at, s.name AS station, v.plate AS vehicle, d.name AS driver, t.fuel_type, t.litres, t.selling_unit, t.amount_kobo, t.status
      FROM transactions t LEFT JOIN stations s ON s.id = t.station_id LEFT JOIN vehicles v ON v.id = t.vehicle_id LEFT JOIN drivers d ON d.id = t.driver_id
      WHERE t.organization_id = $1 ORDER BY t.created_at DESC LIMIT 5000`,
     [req.user.orgId]
   );
   const csv = toCsv(rows.map((r) => ({
     reference: r.reference, date: fmtDateTime(r.created_at), station: r.station ?? "", vehicle: r.vehicle ?? "",
-    driver: r.driver ?? "", fuel: r.fuel_type, litres: r.litres, amount: naira(r.amount_kobo), status: r.status
+    driver: r.driver ?? "", fuel: r.fuel_type, quantity: r.litres, selling_unit: r.selling_unit, amount: naira(r.amount_kobo), status: r.status
   })));
   audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "transactions.exported" });
   res.setHeader("Content-Type", "text/csv");
@@ -430,10 +405,10 @@ router.get("/reports", requireOrg, asyncHandler(async (req, res) => {
   const { range = "30" } = req.query;
   const days = Math.min(Number(range) || 30, 365);
   const spend = await q(
-    `SELECT v.plate, t.fuel_type, SUM(t.amount_kobo) AS total, SUM(t.litres)::float AS litres
+    `SELECT v.plate, t.fuel_type, SUM(t.amount_kobo) AS total, SUM(t.litres) AS litres, t.selling_unit
      FROM transactions t LEFT JOIN vehicles v ON v.id = t.vehicle_id
      WHERE t.organization_id = $1 AND t.status = 'success' AND t.created_at >= now() - ($2 || ' days')::interval
-     GROUP BY v.plate, t.fuel_type ORDER BY total DESC LIMIT 20`,
+     GROUP BY v.plate, t.fuel_type, t.selling_unit ORDER BY total DESC LIMIT 20`,
     [req.user.orgId, String(days)]
   );
   const stationUsage = await q(
@@ -444,17 +419,17 @@ router.get("/reports", requireOrg, asyncHandler(async (req, res) => {
     [req.user.orgId, String(days)]
   );
   const totalRow = await one(
-    `SELECT COALESCE(SUM(amount_kobo),0) AS total, COALESCE(SUM(litres),0)::float AS litres, COUNT(*)::int AS count FROM transactions
+    `SELECT COALESCE(SUM(amount_kobo),0) AS total, COALESCE(SUM(litres) FILTER (WHERE selling_unit='litre'),0) AS litres, COALESCE(SUM(litres) FILTER (WHERE selling_unit='kg'),0) AS kg, COALESCE(SUM(litres) FILTER (WHERE selling_unit='scm'),0) AS scm, COUNT(*)::int AS count FROM transactions
      WHERE organization_id = $1 AND status = 'success' AND created_at >= now() - ($2 || ' days')::interval`,
     [req.user.orgId, String(days)]
   );
   res.json({
     metrics: [
       { label: `Spend (${days}d)`, value: naira(totalRow.total), tone: "red" },
-      { label: "Litres", value: `${Math.round(totalRow.litres).toLocaleString()} L`, tone: "blue" },
+      { label: "Fuel quantities", value: quantityTotalsLabel(totalRow), tone: "blue" },
       { label: "Transactions", value: String(totalRow.count), tone: "green" }
     ],
-    spend: spend.map((r) => ({ cells: [fmtDate(new Date()), r.plate ?? "Unassigned", `${r.fuel_type} • ${Math.round(r.litres)}L`, naira(r.total)] })),
+    spend: spend.map((r) => ({ cells: [fmtDate(new Date()), r.plate ?? "Unassigned", `${r.fuel_type} • ${quantityLabel(r.litres,r.selling_unit)}`, naira(r.total)] })),
     stationUsage: stationUsage.map((r) => ({ station: r.station ?? "Not available", total: naira(r.total), visits: r.visits }))
   });
 }));
@@ -479,10 +454,10 @@ router.get("/reports/export", requireOrg, asyncHandler(async (req, res) => {
     if (options.vehicle) { params.push(options.vehicle); where += ` AND v.plate = $${params.length}`; }
     if (options.driverId) { params.push(options.driverId); where += ` AND t.driver_id = $${params.length}::uuid`; }
     else if (options.driver) { params.push(options.driver); where += ` AND d.name = $${params.length}`; }
-    const rows = await q(`SELECT t.reference, t.created_at, s.name AS station, v.plate AS vehicle, d.name AS driver, t.fuel_type, t.litres, t.amount_kobo, t.status
+    const rows = await q(`SELECT t.reference, t.created_at, s.name AS station, v.plate AS vehicle, d.name AS driver, t.fuel_type, t.litres, t.selling_unit, t.amount_kobo, t.status
       FROM transactions t LEFT JOIN stations s ON s.id = t.station_id LEFT JOIN vehicles v ON v.id = t.vehicle_id LEFT JOIN drivers d ON d.id = t.driver_id
       WHERE ${where} ORDER BY t.created_at DESC`, params);
-    records = rows.map(r => ({ reference: r.reference, date: fmtDateTime(r.created_at), station: r.station ?? '', vehicle: r.vehicle ?? '', driver: r.driver ?? '', fuel: r.fuel_type, litres: r.litres, amount: naira(r.amount_kobo), status: r.status }));
+    records = rows.map(r => ({ reference: r.reference, date: fmtDateTime(r.created_at), station: r.station ?? '', vehicle: r.vehicle ?? '', driver: r.driver ?? '', fuel: r.fuel_type, quantity: r.litres, selling_unit: r.selling_unit, amount: naira(r.amount_kobo), status: r.status }));
   }
   await audit({ actorUserId: req.user.id, actorRole: req.user.role, action: 'report.exported', metadata: options });
   if (options.format === 'pdf') {
@@ -503,14 +478,14 @@ router.get("/reports/export", requireOrg, asyncHandler(async (req, res) => {
 router.get("/stations", requireOrg, asyncHandler(async (req, res) => {
   const { search } = req.query;
   const params = [];
-  let where = "s.status = 'active'";
+  let where = "s.status = 'active' AND o.verification_status='verified'";
   if (typeof search === 'string' && search.trim()) { params.push(`%${search.trim()}%`); where += ` AND (s.name ILIKE $1 OR s.address ILIKE $1 OR s.city ILIKE $1)`; }
-  const rows = await q(`SELECT s.*, COALESCE(jsonb_agg(jsonb_build_object('fuel',fp.fuel_type,'priceKobo',fp.price_kobo)) FILTER (WHERE fp.fuel_type IS NOT NULL), '[]'::jsonb) AS prices
-    FROM stations s LEFT JOIN fuel_prices fp ON fp.station_id = s.id WHERE ${where} GROUP BY s.id ORDER BY s.name LIMIT 50`, params);
+  const rows = await q(`SELECT s.*,o.partner_type,o.type AS org_type FROM stations s JOIN organizations o ON o.id=s.partner_org_id WHERE ${where} ORDER BY s.name LIMIT 50`,params);
+  const prices = rows.length ? await q('SELECT station_id,fuel_type,price_kobo,selling_unit,updated_at FROM fuel_prices WHERE station_id=ANY($1::uuid[])',[rows.map(s=>s.id)]) : [];
   res.json({ details: rows.map(s => ({ id: s.id, name: s.name, address: [s.address, s.city].filter(Boolean).join(', '), city: s.city,
     lat: s.location_confirmed ? s.lat : null, lng: s.location_confirmed ? s.lng : null, hours: s.hours, fuels: s.fuels,
-    prices: s.prices.map(p => ({ fuel: p.fuel, priceLabel: naira(p.priceKobo) })) })),
-    stations: rows.map(s => [s.name, 'Choose directions for location', [s.address,s.city].filter(Boolean).join(', '), s.prices.length ? 'See published fuel prices' : 'Price unavailable', 'NETWORK']) });
+    prices: publishedStationPrices(s,prices.filter(p=>p.station_id===s.id)).map(p => ({ fuel:p.fuelType,priceLabel:naira(p.price_kobo),sellingUnit:p.sellingUnit })) })),
+    stations: rows.map(s => [s.name, 'Choose directions for location', [s.address,s.city].filter(Boolean).join(', '), publishedStationPrices(s,prices.filter(p=>p.station_id===s.id)).length ? 'See published fuel prices' : 'Price unavailable', 'NETWORK']) });
 }));
 
 // ============ ROADSIDE ============

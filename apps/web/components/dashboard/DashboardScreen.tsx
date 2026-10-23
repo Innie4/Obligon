@@ -27,6 +27,7 @@ import {
 import { api, mutationsApi, saveBlob, authenticatedRequest } from "@/lib/services";
 import { AsyncBoundary, EmptyState } from "@/components/shared/States";
 import { useAsync } from "@/components/shared/useAsync";
+import { DashboardSearchQuery } from "@/components/shared/DashboardSearchQuery";
 import { useToast } from "@/components/shared/Toast";
 import { useDialogFocus } from "@/components/shared/useDialogFocus";
 import type {
@@ -36,10 +37,15 @@ import type {
   PartnerNotifications,
   PartnerRow,
   PartnerStaffMember,
+  PartnerStation,
   PartnerTone
 } from "@/lib/services/types";
 import type { DashboardPageKey } from "@/lib/mock/dashboard-data";
 import { usePartnerNotifications } from "./PartnerNotificationsProvider";
+import { useSession } from "@/components/shared/AuthContext";
+import { partnerTypeFor, partnerPageAllowed, partnerAllowedFuels, partnerFuelCode, sellingUnitLabel } from "../../../../packages/shared/partner-access.mjs";
+import { priceSellingUnit } from "@/lib/partner-selling-unit";
+import { WorkshopDashboard, PartnerAccountOverview } from "./WorkshopDashboard";
 
 const StationProfileForm = dynamic(() => import("./StationProfileForm").then(module => module.StationProfileForm), {
   loading: () => <p className="p-5 text-sm text-obligon-text" role="status">Loading station editor…</p>
@@ -90,27 +96,23 @@ function nairaLabel(kobo: number | null): string {
  * not here — rendering it in both places put two copies on screen below `lg`.
  */
 function DashboardCanvas({ children }: { children: React.ReactNode }) {
-  return <section className="px-5 py-8 sm:px-8 lg:px-12 lg:py-12">{children}</section>;
+  return <section className="mx-auto w-full max-w-[1440px] min-w-0 px-4 py-6 sm:px-8 sm:py-8 lg:px-12 lg:py-10">{children}</section>;
 }
 
 function StatusPill({ status, tone = "neutral" }: { status: string; tone?: PartnerTone }) {
-  return <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.5px] ${toneStyles[tone]}`}>{status}</span>;
+  return <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${toneStyles[tone]}`}>{status}</span>;
 }
 
-function SmallMetric({ metric, icon }: { metric: PartnerMetric; icon: React.ReactNode }) {
+function SmallMetric({ metric, icon, className = "" }: { metric: PartnerMetric; icon: React.ReactNode; className?: string }) {
   return (
-    <article className="rounded-xl border border-[#d7d8e4] bg-white p-6 shadow-sm">
-      <div className="flex items-start justify-between">
-        <span className={`grid size-11 place-items-center rounded-xl ${iconTile[metric.tone ?? "neutral"]}`}>{icon}</span>
-        {metric.delta ? <StatusPill status={metric.delta} tone={metric.tone} /> : null}
+    <article className={`min-w-0 rounded-xl border border-obligon-border bg-white p-3 sm:p-4 xl:p-5 ${className}`}>
+      <p className="text-xs font-medium leading-5 text-obligon-text sm:text-sm">{metric.label}</p>
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <p className="min-w-0 break-words font-display text-xl font-bold leading-tight tracking-tight text-obligon-navy tabular-nums sm:text-2xl">{metric.value.split(/(\s+(?:standard m³|kg|L)(?=\s|$|·))/).map((part, index) => index % 2 ? <span key={index} className="whitespace-nowrap text-sm font-medium tracking-normal text-obligon-text sm:text-base">{part}</span> : part)}</p>
+        <span className={`hidden size-9 shrink-0 place-items-center rounded-lg lg:grid ${iconTile[metric.tone ?? "neutral"]}`}>{icon}</span>
       </div>
-      <p className="mt-5 text-[11px] font-extrabold uppercase tracking-[0.8px] text-obligon-text">{metric.label}</p>
-      <p className="mt-2 font-display text-[28px] font-extrabold leading-tight text-obligon-navy">{metric.value}</p>
-      {metric.helper ? (
-        <p className="mt-3 text-xs font-bold uppercase text-[#737582]">{metric.helper}</p>
-      ) : (
-        <div className="mt-4 h-1 rounded-full bg-[#ecfbd7]" />
-      )}
+      {metric.delta ? <div className="mt-2"><StatusPill status={metric.delta} tone={metric.tone} /></div> : null}
+      {metric.helper ? <p className="mt-2 text-xs leading-5 text-obligon-text">{metric.helper}</p> : null}
     </article>
   );
 }
@@ -138,30 +140,32 @@ function DataTable<T extends PartnerRow = PartnerRow>({
   onAction?: (row?: T) => void;
   rowKey?: (row: T, index: number) => string;
 }) {
+  const hasStatus = rows.some(row => Boolean(row.status));
   return (
-    <section className="overflow-hidden rounded-xl border border-[#d7d8e4] bg-white shadow-sm">
-      <div className="flex flex-col gap-4 border-b border-[#e3e4ef] px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+    <section className="min-w-0 overflow-hidden rounded-2xl border border-obligon-border bg-white">
+      <div className="flex flex-col gap-4 border-b border-obligon-border px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="font-display text-xl font-extrabold text-obligon-navy">{title}</h2>
+          <h2 className="font-display text-lg font-bold tracking-tight sm:text-xl text-obligon-navy">{title}</h2>
           {subtitle ? <p className="mt-1 text-xs font-medium text-obligon-text">{subtitle}</p> : null}
         </div>
         {actionLabel ? (
           <button
             type="button"
             onClick={() => onAction?.()}
-            className="inline-flex h-9 items-center gap-2 rounded-lg bg-[#f0f4e8] px-3 text-xs font-extrabold text-obligon-green hover:bg-[#e2edd4] transition"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-obligon-mist px-4 text-sm font-semibold text-obligon-green hover:bg-[#e2edd4] transition"
           >
             {actionLabel}
             <ArrowRight size={14} />
           </button>
         ) : null}
       </div>
-      <div className="overflow-x-auto">
+      <p className="border-b border-obligon-border bg-obligon-mist/50 px-6 py-3 text-xs leading-5 text-obligon-text">Scroll horizontally when needed to view all columns and actions.</p>
+      <div tabIndex={0} role="region" aria-label={`${title} table, scroll horizontally to see all columns`} className="overflow-x-auto overscroll-x-contain focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-obligon-green">
         <table className="w-full min-w-[820px] border-collapse text-left">
-          <thead className="bg-[#fbfbff]">
-            <tr className="border-b border-[#e3e4ef] text-[11px] font-extrabold uppercase tracking-[0.8px] text-[#737582]">
+          <thead className="bg-obligon-mist/50">
+            <tr className="border-b border-obligon-border text-xs font-semibold text-obligon-text">
               {columns.map((column) => (
-                <th key={column} className="px-6 py-4">{column}</th>
+                <th key={column} scope="col" className="px-6 py-4">{column}</th>
               ))}
               {/* A header per body column. This previously emitted `columns.length + 1`
                   while rows emitted `cells.length + 2`, so every table in the
@@ -170,25 +174,25 @@ function DataTable<T extends PartnerRow = PartnerRow>({
                   rendered under a heading that did not exist, and on /dashboard/staff
                   the "Role" heading sat over "Enabled". The status column gets a
                   heading only when a row actually carries a status. */}
-              <th className="px-6 py-4">Status</th>
-              <th className="px-6 py-4 text-right">Action</th>
+              {hasStatus ? <th scope="col" className="px-6 py-4">Status</th> : null}
+              {onAction ? <th scope="col" className="px-6 py-4 text-right">Action</th> : null}
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#ececf5]">
+          <tbody className="divide-y divide-obligon-border/70">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={columns.length + 2} className="px-6 py-10 text-center font-bold text-obligon-text">
+                <td colSpan={columns.length + (hasStatus ? 1 : 0) + (onAction ? 1 : 0)} className="px-6 py-10 text-center text-sm text-obligon-text">
                   Nothing to show yet.
                 </td>
               </tr>
             ) : null}
             {rows.map((row, rowIndex) => (
-              <tr key={rowKey(row, rowIndex)} className="hover:bg-[#fbfbff] transition">
+              <tr key={rowKey(row, rowIndex)} className="hover:bg-obligon-mist/50 transition">
                 {row.cells.map((cell, cellIndex) => {
                   const parts = cell.split("\n");
                   return (
                     <td key={`${cell}-${cellIndex}`} className="px-6 py-4 align-middle text-sm">
-                      <p className="font-bold text-obligon-navy">{parts[0]}</p>
+                      <p className={`font-bold text-obligon-navy ${parts[0].includes("₦") ? "whitespace-nowrap tabular-nums" : ""}`}>{parts[0]}</p>
                       {parts.slice(1).map((part, partIndex) => (
                         // Keyed by position, not by content: a cell built as
                         // `${subject}\n${claimant}` renders two identical strings when
@@ -200,24 +204,20 @@ function DataTable<T extends PartnerRow = PartnerRow>({
                     </td>
                   );
                 })}
-                <td className="px-6 py-4">{row.status ? <StatusPill status={row.status} tone={row.tone} /> : null}</td>
+                {hasStatus ? <td className="px-6 py-4">{row.status ? <StatusPill status={row.status} tone={row.tone} /> : null}</td> : null}
                 {/* No action button unless the caller supplies a handler. It used to
                     render a clickable "Details" — and, for a failed payout, "RETRY" —
                     that did nothing, while `mutationsApi.retryPayout` sat unused. An
                     operator could believe they had retried a failed transfer. */}
-                <td className="px-6 py-4 text-right">
-                  {onAction ? (
+                {onAction ? <td className="px-6 py-4 text-right">
                     <button
                       type="button"
                       onClick={() => onAction(row)}
-                      className="text-xs font-extrabold text-obligon-green hover:underline"
+                      className="inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold text-obligon-green hover:bg-obligon-mist hover:underline"
                     >
                       {row.action ?? "Details"}
                     </button>
-                  ) : (
-                  <span className="text-xs font-bold text-obligon-text">N/A</span>
-                  )}
-                </td>
+                </td> : null}
               </tr>
             ))}
           </tbody>
@@ -249,7 +249,7 @@ function OverviewPage() {
   return (
     <DashboardCanvas>
             <div className="mb-8">
-              <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Station overview</h1>
+              <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Station overview</h1>
               <p className="mt-2 text-sm text-obligon-text">Review station sales, settlement totals, and recent authorizations.</p>
             </div>
       <AsyncBoundary
@@ -272,9 +272,9 @@ function OverviewPage() {
               ))}
             </div>
 
-            <section className="mt-8 grid rounded-xl border border-[#d7d8e4] bg-white sm:grid-cols-2 xl:grid-cols-4 shadow-sm">
+            <section className="mt-8 grid rounded-xl border border-obligon-border bg-white sm:grid-cols-2 xl:grid-cols-4 shadow-sm">
               {data.quickStats.map(([label, value], index) => (
-                <article key={label} className={`p-6 ${index < 3 ? "xl:border-r xl:border-[#e3e4ef]" : ""}`}>
+                <article key={label} className={`p-6 ${index < 3 ? "xl:border-r xl:border-obligon-border" : ""}`}>
                   <p className="text-xs font-semibold text-obligon-text">{label}</p>
                   <div className="mt-2 flex items-center gap-2">
                     <p className="font-display text-[26px] font-extrabold text-obligon-navy">{value}</p>
@@ -303,18 +303,23 @@ function OverviewPage() {
 type PriceDraft = { fuelType: string; price: string };
 
 function FuelPricingPage() {
+  const { user } = useSession();
   const { success: toastSuccess, error: toastError } = useToast();
   const { status, data, error, reload } = useAsync(() => api.getPartnerPricing());
   const [drafts, setDrafts] = React.useState<PriceDraft[] | null>(null);
   const [stationId,setStationId]=React.useState("");
   const activeStation=stationId||data?.stations?.[0]?.id||"";
+  const approvedUnits = data?.stations?.find(station => station.id === activeStation)?.approvedSellingUnits ?? {};
+  const allowedFuels = partnerAllowedFuels(user);
+  const approvedFuels = Object.keys(approvedUnits).filter(fuel => allowedFuels.includes(partnerFuelCode(fuel)!));
+  const rowUnit = (fuel: string) => priceSellingUnit(fuel, approvedUnits[partnerFuelCode(fuel) ?? ""] ?? data?.prices.find(price => price.stationId === activeStation && price.fuelType === fuel)?.sellingUnit);
   const [syncing, setSyncing] = React.useState(false);
 
   // The rows come from the prices the station actually has, rather than three
   // fixed fuel types with made-up starting values. Drafts stay null until the
   // fetch lands so a re-render never briefly shows the previous station's rates.
   const rows: PriceDraft[] =
-    drafts ?? (data?.prices ?? []).filter(p=>p.stationId===activeStation).map((price) => ({ fuelType: price.fuelType, price: String(price.price) }));
+    drafts ?? (data?.prices ?? []).filter(p=>p.stationId===activeStation && approvedFuels.includes(partnerFuelCode(p.fuelType)!)).map((price) => ({ fuelType: price.fuelType, price: priceSellingUnit(price.fuelType, price.sellingUnit) === approvedUnits[partnerFuelCode(price.fuelType)!] ? String(price.price) : "" }));
 
   const setRow = (index: number, patch: Partial<PriceDraft>) =>
     setDrafts(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
@@ -322,8 +327,8 @@ function FuelPricingPage() {
   async function handleSync(event: React.FormEvent) {
     event.preventDefault();
     const updates = rows
-      .filter((row) => row.fuelType.trim() && Number(row.price) > 0)
-      .map((row) => ({ fuelType: row.fuelType.trim(), price: Number(row.price) }));
+      .filter((row) => row.fuelType.trim() && Number(row.price) > 0 && approvedFuels.includes(partnerFuelCode(row.fuelType)!))
+      .map((row) => ({ fuelType: row.fuelType.trim(), price: Number(row.price), sellingUnit: rowUnit(row.fuelType) }));
     if (!updates.length) {
       toastError("Enter a fuel type and a price above zero.");
       return;
@@ -344,9 +349,9 @@ function FuelPricingPage() {
   return (
     <DashboardCanvas>
       <div className="mb-8">
-        <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Station Fuel Pricing</h1>
+        <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Station Fuel Pricing</h1>
         <p className="mt-1 text-sm text-obligon-text">
-          Set the price per litre used to authorise a dispense at this station.
+          Set prices in each fuel’s approved selling unit. Request unit changes in Station Profile before publishing prices.
         </p>
         {/* The header used to promise "sync prices directly with smart dispenser
             meters" and the button read "Broadcast & Sync to Dispensers". Nothing in
@@ -357,6 +362,7 @@ function FuelPricingPage() {
       </div>
 
       <label className="mb-5 block">Station<select value={activeStation} onChange={e=>{setStationId(e.target.value);setDrafts(null);}} className="ml-3 rounded border p-2">{data?.stations?.map(st=><option key={st.id} value={st.id}>{st.name}</option>)}</select></label>
+      {data && !approvedFuels.length ? <p role="status" className="mb-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-900">No selling units have been approved for this station. Ask an admin to review its profile before publishing prices.</p> : null}
       <AsyncBoundary
         status={status}
         error={error?.message ?? null}
@@ -364,7 +370,7 @@ function FuelPricingPage() {
         loadingLabel="Loading current prices…"
       >
         {data ? (
-          <form onSubmit={handleSync} className="grid gap-6 lg:grid-cols-3">
+          <form onSubmit={handleSync} className="grid w-full min-w-0 grid-cols-1 gap-6 lg:grid-cols-3">
             {rows.length ? (
               rows.map((row, index) => (
                 <article
@@ -374,32 +380,29 @@ function FuelPricingPage() {
                   // correcting one character of "PMS Petrol" meant clicking back
                   // into the field for every character after it.
                   key={index}
-                  className="rounded-xl border border-[#d7d8e4] bg-white p-6 shadow-sm"
+                  className="min-w-0 min-w-0 rounded-2xl border border-obligon-border bg-white p-5 sm:p-6"
                 >
                   <div className="flex items-center gap-3">
-                    <Fuel className="text-obligon-green" size={24} />
-                    <input
-                      value={row.fuelType}
-                      onChange={(e) => setRow(index, { fuelType: e.target.value })}
-                      aria-label="Fuel type"
-                      className="w-full rounded-lg border border-transparent bg-transparent font-display text-xl font-extrabold text-obligon-navy outline-none focus:border-obligon-green"
-                      required
-                    />
+                    <Fuel className="shrink-0 text-obligon-green" size={24} />
+                    <select value={partnerFuelCode(row.fuelType) ?? ""} onChange={event => setRow(index, { fuelType: event.target.value })} aria-label="Fuel type" required className="min-h-11 min-w-0 flex-1 rounded-lg border border-obligon-border bg-white px-3 text-sm font-bold text-obligon-navy">
+                    <option value="">Choose an approved fuel</option>
+                    {approvedFuels.map(fuel => <option key={fuel} value={fuel}>{fuel}</option>)}
+                  </select>
                   </div>
                   <p className="mt-1 text-xs text-obligon-text">
                     Last published {data.prices[index]?.updatedAt ?? "N/A"}
                   </p>
-                  <div className="mt-6 flex items-center rounded-xl border border-[#cfd8cc] bg-[#f7fbf8] px-4">
+                  <div className="mt-6 flex items-center rounded-xl border border-obligon-border bg-obligon-mist/60 px-4">
                     <span className="font-extrabold text-xl text-obligon-navy">₦</span>
                     <input
                       value={row.price}
                       onChange={(e) => setRow(index, { price: e.target.value.replace(/[^\d.]/g, "") })}
                       inputMode="decimal"
-                      aria-label={`${row.fuelType} price per litre`}
-                      className="h-12 w-full bg-transparent px-2 font-display text-2xl font-extrabold text-obligon-navy outline-none"
+                      aria-label={`${row.fuelType} price per ${rowUnit(row.fuelType) ? sellingUnitLabel(rowUnit(row.fuelType)) : "approved unit"}`}
+                      className="h-12 min-w-0 flex-1 bg-transparent px-2 font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy outline-none"
                       required
                     />
-                    <span className="text-xs font-bold text-obligon-text">/ Litre</span>
+                    <span className="shrink-0 whitespace-nowrap text-xs font-bold text-obligon-text">/ {rowUnit(row.fuelType) ? sellingUnitLabel(rowUnit(row.fuelType)) : "unit awaiting approval"}</span>
                   </div>
                 </article>
               ))
@@ -416,14 +419,15 @@ function FuelPricingPage() {
               <button
                 type="button"
                 onClick={() => setDrafts([...rows, { fuelType: "", price: "" }])}
-                className="h-11 rounded-xl border border-[#d7d8e4] bg-white px-5 text-sm font-extrabold text-obligon-navy hover:bg-[#f7f7fd] transition"
+                disabled={!approvedFuels.length}
+                className="h-11 rounded-xl border border-obligon-border bg-white px-5 text-sm font-extrabold text-obligon-navy hover:bg-obligon-mist transition"
               >
                 <span className="inline-flex items-center gap-2"><Plus size={16} /> Add fuel type</span>
               </button>
               <button
-                disabled={syncing || !rows.length}
+                disabled={syncing || !rows.length || rows.some(row => !approvedFuels.includes(partnerFuelCode(row.fuelType)!))}
                 type="submit"
-                className="h-12 rounded-xl bg-obligon-green px-8 font-extrabold text-white shadow-green hover:bg-obligon-green/90 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="h-12 rounded-xl bg-obligon-green px-8 font-extrabold text-white shadow-none hover:bg-obligon-green/90 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {syncing ? <Loader2 size={18} className="animate-spin" /> : "Publish Prices"}
               </button>
@@ -454,6 +458,7 @@ function FuelPricingPage() {
  * never happened.
  */
 function POSTerminalPage() {
+  const { user } = useSession();
   const { success: toastSuccess, error: toastError } = useToast();
   const [mode,setMode]=React.useState<"wallet" | "checkout">("wallet");
   const [stationId,setStationId]=React.useState("");
@@ -462,7 +467,7 @@ function POSTerminalPage() {
   const [litres, setLitres] = React.useState("");
   const [verifying, setVerifying] = React.useState(false);
   const [authReceipt, setAuthReceipt] = React.useState<{
-    reference: string; vehicle?: string; amount: string; driver?: string; card?: string; litres: string; fuelType: string; mode: "wallet" | "checkout";
+    reference: string; vehicle?: string; amount: string; driver?: string; card?: string; litres: string; fuelType: string; sellingUnit?: "litre" | "kg" | "scm"; mode: "wallet" | "checkout";
   } | null>(null);
 
 // The fuel types this station has actually published a price for. Hard-coded
@@ -477,12 +482,14 @@ function POSTerminalPage() {
     api.getPartnerPricing()
   );
   const activeStation=stationId||pricing?.stations?.[0]?.id||"";
-  const stationPrices=(pricing?.prices??[]).filter(p=>p.stationId===activeStation);
+  const stationPrices=(pricing?.prices??[]).filter(p=>p.stationId===activeStation && partnerAllowedFuels(user).includes(partnerFuelCode(p.fuelType)!));
   const pricesLoading = pricingStatus === "loading";
   const pricesFailed = pricingStatus === "error";
   const fuelTypes = stationPrices.map((p) => p.fuelType).filter(Boolean);
   const activeFuelType = fuelTypes.includes(fuelType) ? fuelType : (fuelTypes[0] ?? fuelType);
-  const unitPrice = stationPrices.find((p) => p.fuelType === activeFuelType)?.price ?? null;
+  const selectedPrice = stationPrices.find((p) => p.fuelType === activeFuelType);
+  const unitPrice = selectedPrice?.price ?? null;
+  const sellingUnit = priceSellingUnit(activeFuelType, selectedPrice?.sellingUnit);
   const litresNum = Number(litres);
   const litresValid = Number.isFinite(litresNum) && litresNum > 0;
   // What the server will charge, from the price it will use. Shown so the operator
@@ -501,16 +508,16 @@ function POSTerminalPage() {
       return;
     }
     if (mode==="wallet" && !litresValid) {
-      toastError("Enter the litres to dispense.");
+      toastError("Enter the quantity to dispense.");
       return;
     }
-    if (mode === "wallet" && (pricesLoading || pricesFailed || !fuelTypes.length)) {
+    if (mode === "wallet" && (pricesLoading || pricesFailed || !fuelTypes.length || !sellingUnit)) {
       toastError("Load this station's published fuel prices before authorizing a wallet purchase.");
       return;
     }
     setVerifying(true);
     try {
-      const result = mode==="wallet" ? await mutationsApi.posAuthorize({ stationId:activeStation,code, litres: litresNum, fuelType: activeFuelType }) :
+      const result = mode==="wallet" ? await mutationsApi.posAuthorize({ stationId:activeStation,code, litres: litresNum, fuelType: activeFuelType, sellingUnit }) :
         await mutationsApi.fulfillFuelCheckout({stationId:activeStation,code});
       // Every field comes from the authorization response. The previous version
       // fell back to "Fleet vehicle", "Fleet driver" and a reference invented with
@@ -522,7 +529,8 @@ function POSTerminalPage() {
         amount: String(result?.amountLabel ?? "N/A"),
         driver: result?.driver ? String(result.driver) : undefined,
         card: result?.card ? String(result.card) : undefined,
-        litres: result?.litres == null ? "N/A" : String(result.litres),
+        litres: result?.quantity == null && result?.litres == null ? "N/A" : String(result.quantity ?? result.litres),
+      sellingUnit: priceSellingUnit(result?.fuelType, result?.sellingUnit),
         fuelType: result?.fuelType ? String(result.fuelType) : "N/A",
         mode
       });
@@ -592,18 +600,18 @@ function POSTerminalPage() {
           </p>
         ) : null}
         <div className="mb-8 text-center">
-          <h1 className="font-display text-3xl font-extrabold text-obligon-navy">POS Authorization Terminal</h1>
+          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">POS Authorization Terminal</h1>
           <p className="mt-1 text-sm text-obligon-text">
-            {mode === "checkout" ? "Enter the customer's paid fuel code. The paid order supplies the fuel, litres and amount." : "Enter a driver's 6-digit authorization code and the litres to record a wallet purchase."}
+            {mode === "checkout" ? "Enter the customer's paid fuel code. The paid order supplies the fuel, quantity, selling unit and amount." : "Enter a driver's 6-digit authorization code and the quantity to record a wallet purchase."}
           </p>
         </div>
 
         {authReceipt ? (
-          <div className="rounded-2xl border border-obligon-border bg-white p-8 shadow-hero text-center">
+          <div className="rounded-2xl border border-obligon-border bg-white p-8 shadow-lg text-center">
             <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
               <Check size={32} />
             </span>
-            <h2 className="mt-5 font-display text-3xl font-extrabold text-obligon-navy">{authReceipt.mode === "checkout" ? "Paid Fuel Order Fulfilled" : "Authorization Recorded"}</h2>
+            <h2 className="mt-5 font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">{authReceipt.mode === "checkout" ? "Paid Fuel Order Fulfilled" : "Authorization Recorded"}</h2>
             <p className="mt-1 text-sm text-obligon-text">
               Reference: <strong className="font-mono font-extrabold text-obligon-navy">{authReceipt.reference}</strong>
             </p>
@@ -611,13 +619,13 @@ function POSTerminalPage() {
               {authReceipt.mode === "checkout" ? "This records fulfillment of the existing paid order. No additional wallet charge is made. Dispensing at the pump is still done at the dispenser." : "This records the authorization for your accounts. Dispensing at the pump is still done at the dispenser."}
             </p>
 
-            <div className="mt-6 rounded-xl bg-[#f7fbf8] p-5 border border-obligon-border space-y-2 text-left text-sm">
+            <div className="mt-6 rounded-xl bg-obligon-mist/60 p-5 border border-obligon-border space-y-2 text-left text-sm">
               {[
                 ["Card", authReceipt.card],
                 ["Fleet Vehicle", authReceipt.vehicle],
                 ["Driver", authReceipt.driver],
                 ["Fuel Type", authReceipt.fuelType],
-                ["Litres", authReceipt.litres],
+                ["Quantity", `${authReceipt.litres} ${authReceipt.sellingUnit ? sellingUnitLabel(authReceipt.sellingUnit) : "(unit unavailable)"}`],
                 [authReceipt.mode === "checkout" ? "Amount Already Paid" : "Amount Charged", authReceipt.amount]
               ].filter(([, value]) => value !== undefined).map(([label, value]) => (
                 <div key={label} className="flex justify-between gap-4">
@@ -647,16 +655,16 @@ function POSTerminalPage() {
                   setAuthReceipt(null);
                   setCode("");
                 }}
-                className="h-12 flex-1 rounded-xl bg-obligon-green font-extrabold text-white shadow-green"
+                className="h-12 flex-1 rounded-xl bg-obligon-green font-extrabold text-white shadow-none"
               >
                 Next Authorization
               </button>
             </div>
           </div>
         ) : (
-          <form onSubmit={handleAuthorize} className="rounded-2xl border border-obligon-border bg-white p-5 shadow-card space-y-5 sm:p-8">
+          <form onSubmit={handleAuthorize} className="rounded-2xl border border-obligon-border bg-white p-5 shadow-sm space-y-5 sm:p-8">
             <div>
-              <label htmlFor="pos-code" className="text-xs font-extrabold uppercase text-obligon-text block mb-2">
+              <label htmlFor="pos-code" className="text-xs font-semibold uppercase text-obligon-text block mb-2">
                 {mode === "checkout" ? "6-Digit Paid Fuel Code" : "6-Digit Driver Authorization Code"}
               </label>
               <input
@@ -666,7 +674,7 @@ function POSTerminalPage() {
                 maxLength={6}
                 inputMode="numeric"
                 placeholder="• • • • • •"
-                className="h-16 w-full min-w-0 rounded-xl border border-[#cfd8cc] bg-[#f7fbf8] text-center font-mono text-2xl font-extrabold tracking-[6px] text-obligon-navy outline-none focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20 sm:text-3xl sm:tracking-[14px]"
+                className="h-16 w-full min-w-0 rounded-xl border border-obligon-border bg-obligon-mist/60 text-center font-mono text-2xl font-extrabold tracking-[6px] text-obligon-navy outline-none focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20 sm:text-3xl sm:tracking-[14px]"
                 required
                 autoFocus
               />
@@ -674,7 +682,7 @@ function POSTerminalPage() {
 
             {mode === "wallet" ? <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="pos-fuel-type" className="text-xs font-extrabold uppercase text-obligon-text block mb-1.5">
+                <label htmlFor="pos-fuel-type" className="text-xs font-semibold uppercase text-obligon-text block mb-1.5">
                   Fuel Type
                 </label>
                 <select
@@ -682,7 +690,7 @@ function POSTerminalPage() {
                   value={activeFuelType}
                   onChange={(e) => setFuelType(e.target.value)}
                   disabled={!fuelTypes.length}
-                  className="h-12 w-full rounded-xl border border-[#cfd8cc] bg-white px-3 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green disabled:opacity-60"
+                  className="h-12 w-full rounded-xl border border-obligon-border bg-white px-3 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green disabled:opacity-60"
                 >
                   {fuelTypes.length ? (
                     fuelTypes.map((t) => <option key={t}>{t}</option>)
@@ -697,21 +705,21 @@ function POSTerminalPage() {
                 ) : null}
               </div>
               <div>
-                <label htmlFor="pos-litres" className="text-xs font-extrabold uppercase text-obligon-text block mb-1.5">
-                  Litres to Dispense
+                <label htmlFor="pos-litres" className="text-xs font-semibold uppercase text-obligon-text block mb-1.5">
+                  Quantity to dispense
                 </label>
                 <input
                   id="pos-litres"
                   value={litres}
                   onChange={(e) => setLitres(e.target.value.replace(/[^\d.]/g, ""))}
                   inputMode="decimal"
-                  aria-label="Litres to dispense"
-                  className="h-12 w-full rounded-xl border border-[#cfd8cc] px-4 font-display text-xl font-extrabold text-obligon-navy outline-none focus:border-obligon-green"
+                  aria-label="Quantity to dispense"
+                  className="h-12 w-full rounded-xl border border-obligon-border px-4 font-display text-lg font-bold tracking-tight sm:text-xl text-obligon-navy outline-none focus:border-obligon-green"
                   required
                 />
                 {unitPrice != null ? (
                   <p className="mt-1.5 text-xs font-bold text-obligon-text">
-                    {unitPrice.toLocaleString("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 2 })}/L
+                    {unitPrice.toLocaleString("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 2 })}/{sellingUnit ? sellingUnitLabel(sellingUnit) : "unit awaiting approval"}
                     {estimateKobo != null ? (
                       <>
                         {" · "}
@@ -730,9 +738,9 @@ function POSTerminalPage() {
             </div> : <p className="rounded-xl bg-obligon-mist p-4 text-sm text-obligon-text">Use the code from the customer’s paid station checkout. This order has already been priced and paid; confirm it at the station before dispensing.</p>}
 
             <button
-              disabled={verifying || !/^\d{6}$/.test(code) || !activeStation || (mode === "wallet" && (!litresValid || !fuelTypes.length || pricesLoading || pricesFailed))}
+              disabled={verifying || !/^\d{6}$/.test(code) || !activeStation || (mode === "wallet" && (!litresValid || !fuelTypes.length || !sellingUnit || pricesLoading || pricesFailed))}
               type="submit"
-              className="mt-4 h-14 w-full rounded-xl bg-obligon-green font-extrabold text-white text-base shadow-green hover:bg-obligon-green/90 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="mt-4 h-14 w-full rounded-xl bg-obligon-green font-extrabold text-white text-base shadow-none hover:bg-obligon-green/90 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {verifying ? <Loader2 size={20} className="animate-spin" /> : mode === "checkout" ? "Record Paid Fuel Fulfillment" : "Authorize Dispense"}
             </button>
@@ -765,10 +773,11 @@ function SettlementsPage({
     finally {setChoosingDefault(null);}
   }
   const defaultAccount = data?.bankAccounts.find((account) => account.isDefault) ?? data?.bankAccounts[0];
+  const destinationReady = Boolean(defaultAccount?.isDefault && defaultAccount.verified && !defaultAccount.needsRenomination);
 
   return (
     <DashboardCanvas>
-      <h1 className="mb-8 font-display text-3xl font-extrabold text-obligon-navy">Settlements and payouts</h1>
+      <h1 className="mb-8 font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Settlements and payouts</h1>
       <AsyncBoundary
         status={status}
         error={error?.message ?? null}
@@ -778,14 +787,14 @@ function SettlementsPage({
         {data ? (
           <div className="grid gap-8 xl:grid-cols-[320px_minmax(0,1fr)]">
             <aside className="space-y-5">
-              <article className="rounded-xl border border-[#d7d8e4] bg-white p-6 shadow-sm">
-                <h2 className="font-display text-xl font-extrabold text-obligon-navy">
+              <article className="min-w-0 rounded-2xl border border-obligon-border bg-white p-5 sm:p-6">
+                <h2 className="font-display text-lg font-bold tracking-tight sm:text-xl text-obligon-navy">
                   {defaultAccount ? "Settlement Account" : "No Settlement Account"}
                 </h2>
 
-                <p className="mt-3 text-sm text-obligon-text">Choose where Flutterwave sends your fuel revenue. A new destination needs admin verification.</p>
+                <p className="mt-3 text-sm text-obligon-text">{!defaultAccount ? "Add a settlement account, then complete admin verification before receiving fuel revenue." : !defaultAccount.isDefault ? "Choose a default settlement account before receiving fuel revenue." : !defaultAccount.verified || defaultAccount.needsRenomination ? "Your settlement destination needs admin verification before it can receive fuel revenue." : "Flutterwave settles eligible fuel revenue to your verified destination."}</p>
                 <div className="mt-4 space-y-3">
-                  {data.bankAccounts.map(account=><div key={account.id} className="rounded-xl border border-obligon-border bg-[#f7fbf8] p-4">
+                  {data.bankAccounts.map(account=><div key={account.id} className="rounded-xl border border-obligon-border bg-obligon-mist/60 p-4">
                     <p className="font-bold text-obligon-navy">{account.bankName} {account.isDefault?<span className="text-xs">· Default</span>:null}</p>
                     <p className="mt-1 font-mono text-sm">{account.accountMask}</p><p className="text-xs">{account.accountName}</p>
                     <p className="mt-2 text-xs font-bold">{account.needsRenomination?"Re-add this bank account to register a secure settlement destination, then choose it as default.":account.verified?"Verified destination":"Awaiting admin verification"}</p>
@@ -796,21 +805,21 @@ function SettlementsPage({
                 <button type="button" onClick={()=>setAddingAccount(true)} className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-obligon-green px-4 text-xs font-bold text-white"><Plus size={14}/>Add settlement account</button>
 
                 <div className="mt-6 rounded-xl border border-obligon-border p-4">
-                  <p className="text-[11px] font-extrabold uppercase tracking-[0.8px] text-obligon-text">Pending settlement</p>
-                  <p className="mt-1 font-display text-2xl font-extrabold text-obligon-navy">{data.totals.pendingLabel}</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.8px] text-obligon-text">Pending settlement</p>
+                  <p className="mt-1 font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">{data.totals.pendingLabel}</p>
                   <p className="mt-1 text-xs font-medium text-obligon-text">
-                    Revenue awaiting provider settlement to your bank account.
+                    {destinationReady ? "Revenue awaiting provider settlement to your bank account." : "Recorded revenue awaiting an eligible settlement destination and provider settlement."}
                   </p>
-                  <p className="mt-4 text-[11px] font-extrabold uppercase tracking-[0.8px] text-obligon-text">Settled to date</p>
-                  <p className="mt-1 font-display text-2xl font-extrabold text-obligon-navy">{data.totals.totalSettledLabel}</p>
+                  <p className="mt-4 text-xs font-semibold uppercase tracking-[0.8px] text-obligon-text">Settled to date</p>
+                  <p className="mt-1 font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">{data.totals.totalSettledLabel}</p>
 
                   <div className="mt-4 border-t border-obligon-border pt-4">
-                    <p className="text-xs font-extrabold text-obligon-navy">Automatic direct settlement</p>
-                    <p className="mt-1 text-xs text-obligon-text">Flutterwave sends fuel revenue to your bank account and deducts approved discounts for Obligon. No manual payout request is required.</p>
+                    <p className="text-xs font-extrabold text-obligon-navy">{destinationReady ? "Automatic direct settlement" : "Complete your settlement setup"}</p>
+                    <p className="mt-1 text-xs leading-5 text-obligon-text">{destinationReady ? "Flutterwave sends eligible fuel revenue to your bank account and deducts approved discounts for Obligon. No manual payout request is required." : "Add an account and wait for admin verification. Once your destination is eligible, Flutterwave can settle fuel revenue and deduct approved discounts for Obligon."}</p>
                   </div>
                 </div>
 
-                <p className="mt-2 text-xs text-obligon-text">Manual payouts are inactive. Your settlement account receives funds automatically.</p>
+                <p className="mt-2 text-xs leading-5 text-obligon-text">{destinationReady ? "Manual payouts are inactive. Eligible revenue is settled automatically by the provider." : "Manual payouts are inactive. A verified settlement destination is required before provider settlement."}</p>
               </article>
             </aside>
 
@@ -860,13 +869,17 @@ function SettlementsPage({
 function DisputesPage() {
   const { status, data, error, reload } = useAsync(() => api.getPartnerDisputes());
   const [open, setOpen] = React.useState<PartnerDispute | null>(null);
+  const [query, setQuery] = React.useState("");
+  const rows = (data ?? []).filter(row => [row.reference, ...row.cells].join(" ").toLowerCase().includes(query.trim().toLowerCase()));
 
   return (
     <DashboardCanvas>
+      <DashboardSearchQuery onSearch={setQuery} />
       <div className="mb-8">
-        <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Disputes &amp; Reconciliations</h1>
+        <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Disputes &amp; Reconciliations</h1>
         <p className="mt-1 text-sm text-obligon-text">Manage customer charge disputes, pump meter adjustments, and proof of dispensing.</p>
       </div>
+      <label className="mb-6 block max-w-sm text-sm font-bold">Search disputes<input type="search" maxLength={254} value={query} onChange={event => setQuery(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-obligon-border bg-white px-3 font-medium" placeholder="Case reference or customer" /></label>
       <AsyncBoundary
         status={status}
         error={error?.message ?? null}
@@ -879,7 +892,7 @@ function DisputesPage() {
           <DataTable
             title="Dispute Cases"
             columns={["Case ID", "Customer / Vehicle", "Claim Reason", "Amount Disputed"]}
-            rows={data}
+            rows={rows}
             rowKey={(row) => row.id ?? row.reference ?? row.cells[0]}
             onAction={(row) => row && setOpen(row)}
           />
@@ -940,10 +953,10 @@ function StationProfilePage() {
       />
       {!creating && data ? (
         <article className="h-fit min-w-0 rounded-xl border border-obligon-border bg-white p-5 sm:p-7">
-          <h2 className="font-display text-xl font-extrabold text-obligon-navy">Equipment</h2>
+          <h2 className="font-display text-lg font-bold tracking-tight sm:text-xl text-obligon-navy">Equipment</h2>
           {data.equipment.length ? <ul className="mt-5 space-y-3">{data.equipment.map(item => <li key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-obligon-border p-3 text-xs font-bold"><span>{item.name}</span><span className="text-obligon-text">{item.status}{item.lastService ? ` · ${item.lastService}` : ""}</span></li>)}</ul> : <p className="mt-4 text-sm text-obligon-text">No equipment recorded.</p>}
-          <h2 className="mt-8 font-display text-xl font-extrabold text-obligon-navy">Recent dispensing</h2>
-          {data.logs.length ? <ul className="mt-4 space-y-3">{data.logs.slice(0, 8).map(log => <li key={log.id} className="flex flex-wrap justify-between gap-2 text-xs font-bold"><span>{log.fuelType} · {log.litres} L</span><span className="text-obligon-text">{log.time}</span></li>)}</ul> : <p className="mt-4 text-sm text-obligon-text">No dispensing recorded yet.</p>}
+          <h2 className="mt-8 font-display text-lg font-bold tracking-tight sm:text-xl text-obligon-navy">Recent dispensing</h2>
+          {data.logs.length ? <ul className="mt-4 space-y-3">{data.logs.slice(0, 8).map(log => <li key={log.id} className="flex flex-wrap justify-between gap-2 text-xs font-bold"><span>{log.fuelType} · {log.quantity ?? log.litres} {sellingUnitLabel(priceSellingUnit(log.fuelType, log.sellingUnit))}</span><span className="text-obligon-text">{log.time}</span></li>)}</ul> : <p className="mt-4 text-sm text-obligon-text">No dispensing recorded yet.</p>}
         </article>
       ) : null}
     </div>
@@ -952,7 +965,7 @@ function StationProfilePage() {
   return (
     <DashboardCanvas>
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div><h1 className="font-display text-3xl font-extrabold text-obligon-navy">Station Profile</h1><p className="mt-2 text-sm text-obligon-text">The details customers see in the station locator.</p></div>
+        <div><h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Station Profile</h1><p className="mt-2 text-sm text-obligon-text">The details customers see in the station locator.</p></div>
         {station && !creating ? <button type="button" disabled={saving} onClick={() => setOperationsOpen(true)} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-obligon-border bg-white px-5 text-sm font-extrabold text-obligon-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-obligon-green disabled:opacity-50"><Fuel size={16} aria-hidden="true" />Station Operations</button> : null}
       </div>
       <div className="mb-6 flex flex-wrap items-end gap-4">
@@ -967,7 +980,7 @@ function StationProfilePage() {
       {listError ? <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-obligon-border bg-white p-4 text-sm" role="alert"><span>The station list could not load: {listError.message}</span><button type="button" onClick={reloadList} className="min-h-11 rounded-lg border border-obligon-border px-3 font-bold">Retry station list</button></div> : null}
       {!creating && stationList?.stations.find(item => item.id === stationId)?.review_note ? <p className="mb-4 rounded-xl border border-obligon-border bg-white p-4 text-sm" role="status">Admin review: {stationList.stations.find(item => item.id === stationId)?.review_note}</p> : null}
       {creating ? editor : <AsyncBoundary status={status === "error" ? "error" : profileReady ? status : "loading"} error={error?.message ?? null} onRetry={reload} loadingLabel="Loading station…">{data && profileReady ? editor : null}</AsyncBoundary>}
-      {operationsOpen && station && !creating ? <StationOperationsModal key={stationId} stationId={stationId} onClose={() => setOperationsOpen(false)} onDone={() => { reload(); setOperationsOpen(false); }} /> : null}
+      {operationsOpen && station && !creating ? <StationOperationsModal key={stationId} stationId={stationId} station={station} onClose={() => setOperationsOpen(false)} onDone={() => { reload(); setOperationsOpen(false); }} /> : null}
     </DashboardCanvas>
   );
 }
@@ -1021,7 +1034,7 @@ function ExportButton({
       onClick={run}
       disabled={busy}
       aria-busy={busy}
-      className={`inline-flex h-11 items-center gap-2 rounded-xl px-5 text-sm font-extrabold transition disabled:cursor-not-allowed disabled:opacity-60 ${className ?? "border border-[#d7d8e4] bg-white text-obligon-navy hover:bg-[#f7f7fd]"}`}
+      className={`inline-flex h-11 items-center gap-2 rounded-xl px-5 text-sm font-extrabold transition disabled:cursor-not-allowed disabled:opacity-60 ${className ?? "border border-obligon-border bg-white text-obligon-navy hover:bg-obligon-mist"}`}
     >
       {busy ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
       {busy ? pendingLabel : label}
@@ -1076,9 +1089,10 @@ function TransactionsPage() {
 
   return (
     <DashboardCanvas>
+      <DashboardSearchQuery onSearch={value => { setQuery(value); setPage(0); }} />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
-          <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Fleet Transactions</h1>
+          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Fleet Transactions</h1>
           <p className="mt-1 text-sm text-obligon-text">
             Every card-authorized fuel dispense across your partner network.
             {data ? ` ${total.toLocaleString()} matching.` : ""}
@@ -1092,13 +1106,14 @@ function TransactionsPage() {
         />
       </div>
 
-      <label className="mb-6 flex h-11 max-w-sm items-center gap-2 rounded-xl border border-[#d7d8e4] bg-white px-3">
+      <label className="mb-6 flex h-11 max-w-sm items-center gap-2 rounded-xl border border-obligon-border bg-white px-3">
         <CreditCard size={16} className="text-obligon-text" />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by reference or fleet…"
           aria-label="Search transactions"
+          maxLength={254}
           className="w-full bg-transparent text-sm outline-none"
         />
       </label>
@@ -1125,7 +1140,7 @@ function TransactionsPage() {
             {total > PAGE_SIZE ? (
               <nav
                 aria-label="Transaction pages"
-                className="mt-4 flex items-center justify-between border-t border-[#e3e4ef] pt-4"
+                className="mt-4 flex items-center justify-between border-t border-obligon-border pt-4"
               >
                 <p className="text-xs text-obligon-text">
                   Showing {page * PAGE_SIZE + 1}–{page * PAGE_SIZE + shown} of {total.toLocaleString()}
@@ -1135,7 +1150,7 @@ function TransactionsPage() {
                     type="button"
                     onClick={() => setPage((p) => Math.max(0, p - 1))}
                     disabled={page === 0 || status === "loading"}
-                    className="inline-flex h-9 items-center rounded-lg border border-[#d7d8e4] bg-white px-3 text-xs font-extrabold text-obligon-navy disabled:opacity-40"
+                    className="inline-flex min-h-11 items-center rounded-lg border border-obligon-border bg-white px-3 text-xs font-extrabold text-obligon-navy disabled:opacity-40"
                   >
                     Previous
                   </button>
@@ -1146,7 +1161,7 @@ function TransactionsPage() {
                     type="button"
                     onClick={() => setPage((p) => p + 1)}
                     disabled={!hasNext || status === "loading"}
-                    className="inline-flex h-9 items-center rounded-lg border border-[#d7d8e4] bg-white px-3 text-xs font-extrabold text-obligon-navy disabled:opacity-40"
+                    className="inline-flex min-h-11 items-center rounded-lg border border-obligon-border bg-white px-3 text-xs font-extrabold text-obligon-navy disabled:opacity-40"
                   >
                     Next
                   </button>
@@ -1169,7 +1184,7 @@ function ReportsPage() {
     <DashboardCanvas>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
-          <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Analytics &amp; Fleet Reports</h1>
+          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Analytics &amp; Fleet Reports</h1>
           <p className="mt-1 text-sm text-obligon-text">Consumption and spend by enrolled fleet account.</p>
         </div>
         <div className="flex items-center gap-3">
@@ -1177,7 +1192,7 @@ function ReportsPage() {
             value={range}
             onChange={(e) => setRange(Number(e.target.value))}
             aria-label="Reporting period"
-            className="h-11 rounded-xl border border-[#d7d8e4] bg-white px-4 text-sm font-extrabold text-obligon-navy outline-none"
+            className="h-11 rounded-xl border border-obligon-border bg-white px-4 text-sm font-extrabold text-obligon-navy outline-none"
           >
             <option value={7}>Last 7 days</option>
             <option value={30}>Last 30 days</option>
@@ -1188,7 +1203,7 @@ function ReportsPage() {
             path="/api/partner/reports/export"
             label="Export Report"
             pendingLabel="Preparing…"
-            className="bg-obligon-green text-white shadow-green hover:bg-obligon-green/90"
+            className="bg-obligon-green text-white shadow-none hover:bg-obligon-green/90"
             query={{ range }}
           />
         </div>
@@ -1202,15 +1217,15 @@ function ReportsPage() {
       >
         {data ? (
           <>
-            <div className="mb-8 grid gap-6 sm:grid-cols-3">
+            <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
               {data.metrics.map((metric, index) => (
-                <SmallMetric key={metric.label} metric={metric} icon={metricIcons[index] ?? <BarChart3 size={20} />} />
+                <SmallMetric key={metric.label} metric={metric} icon={metricIcons[index] ?? <BarChart3 size={20} />} className={data.metrics.length === 3 && index === 2 ? "col-span-2 sm:col-span-1" : ""} />
               ))}
             </div>
             <DataTable
               title="Fleet Consumption"
-              subtitle="Litres dispensed and spend by enrolled fleet account."
-              columns={["Fleet Account", "Litres (L)", "Spend (₦)"]}
+              subtitle="Recorded quantities by selling unit and spend by enrolled fleet account."
+              columns={["Fleet Account", "Quantity by unit", "Spend (₦)"]}
               rows={data.companies}
               rowKey={(row) => row.cells[0]}
             />
@@ -1223,6 +1238,8 @@ function ReportsPage() {
 
 // ============ NOTIFICATIONS ============
 function NotificationsPage() {
+  const { user } = useSession();
+  const workshop = partnerTypeFor(user) === "mechanic";
   const { success: toastSuccess, error: toastError } = useToast();
   // The same fetch the header badge reads, so marking something read clears the
   // badge. This used to run its own `useAsync`, and the header kept its own
@@ -1261,9 +1278,9 @@ function NotificationsPage() {
     <DashboardCanvas>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
-          <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Notifications</h1>
+          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Notifications</h1>
           <p className="mt-1 text-sm text-obligon-text">
-            Finance, support, security, and platform alerts for your station network.
+            {workshop ? "Account, team and support alerts for your workshop." : "Finance, support, security and platform alerts for your station network."}
             {data?.unreadCount ? ` ${data.unreadCount} unread.` : ""}
           </p>
         </div>
@@ -1271,7 +1288,7 @@ function NotificationsPage() {
           type="button"
           disabled={busy || !data?.unreadCount}
           onClick={markAllRead}
-          className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#d7d8e4] bg-white px-5 text-sm font-extrabold text-obligon-navy hover:bg-[#f7f7fd] transition disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-11 items-center gap-2 rounded-xl border border-obligon-border bg-white px-5 text-sm font-extrabold text-obligon-navy hover:bg-obligon-mist transition disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Check size={16} />
           Mark all as read
@@ -1284,27 +1301,27 @@ function NotificationsPage() {
         isEmpty={!data || data.groups.length === 0}
         onRetry={reload}
         loadingLabel="Loading notifications…"
-        empty={{ title: "Nothing to report", message: "Alerts about settlements, disputes and security will appear here." }}
+        empty={{ title: "Nothing to report", message: workshop ? "Alerts about your workshop account, team and support requests will appear here." : "Alerts about settlements, disputes and security will appear here." }}
       >
         {data ? (
           <div className="space-y-8">
             {data.groups.map((group: PartnerNotifications["groups"][number]) => (
               <section key={group.label}>
-                <h2 className="mb-3 text-xs font-extrabold uppercase tracking-[1px] text-obligon-text">{group.label}</h2>
-                <div className="divide-y divide-[#ececf5] overflow-hidden rounded-xl border border-[#d7d8e4] bg-white shadow-sm">
+                <h2 className="mb-3 text-xs font-semibold uppercase tracking-[1px] text-obligon-text">{group.label}</h2>
+                <div className="divide-y divide-obligon-border/70 min-w-0 overflow-hidden rounded-2xl border border-obligon-border bg-white">
                   {group.items.map((item) => (
                     <button
                       key={item.id ?? `${group.label}-${item.title}`}
                       type="button"
                       disabled={item.read || busy}
                       onClick={() => item.id && void markRead(item.id)}
-                      className="flex w-full items-start gap-4 px-6 py-5 text-left hover:bg-[#fbfbff] transition disabled:cursor-default disabled:opacity-70"
+                      className="flex w-full items-start gap-4 px-6 py-5 text-left hover:bg-obligon-mist/50 transition disabled:cursor-default disabled:opacity-70"
                     >
                       <span className={`mt-1 grid size-9 shrink-0 place-items-center rounded-xl ${item.read ? "bg-[#eef0f6] text-[#737582]" : "bg-[#ecfbd7] text-obligon-green"}`}>
                         <Bell size={16} />
                       </span>
-                      <span className="flex-1">
-                        <span className="flex items-center justify-between gap-3">
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center justify-between gap-2">
                           <span className={`text-sm ${item.read ? "font-bold text-obligon-text" : "font-extrabold text-obligon-navy"}`}>{item.title}</span>
                           <span className="shrink-0 text-xs font-bold text-obligon-text">{item.time}</span>
                         </span>
@@ -1325,43 +1342,49 @@ function NotificationsPage() {
 
 // ============ STAFF ============
 function StaffPage() {
+  const { user } = useSession();
+  const mechanic = partnerTypeFor(user) === "mechanic";
   const { status, data, error, reload } = useAsync(() => api.getPartnerStaff());
   const [inviting, setInviting] = React.useState(false);
   const [editing, setEditing] = React.useState<PartnerStaffMember | null>(null);
+  const [query, setQuery] = React.useState("");
+  const rows = (data?.staff ?? []).filter(row => row.cells.join(" ").toLowerCase().includes(query.trim().toLowerCase()));
 
   return (
     <DashboardCanvas>
+      <DashboardSearchQuery onSearch={setQuery} />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
-          <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Station Staff</h1>
+          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">{mechanic ? "Workshop team" : "Station Staff"}</h1>
           <p className="mt-1 text-sm text-obligon-text">
-            Attendants and supervisors with access to your station.
+            {mechanic ? "Team members with access to your workshop." : "Attendants and supervisors with access to your station."}
             {data ? ` ${data.stats.active} of ${data.stats.total} active.` : ""}
           </p>
         </div>
         <button
           type="button"
           onClick={() => setInviting(true)}
-          className="inline-flex h-11 items-center gap-2 rounded-xl bg-obligon-green px-5 text-sm font-extrabold text-white shadow-green hover:bg-obligon-green/90 transition"
+          className="inline-flex h-11 items-center gap-2 rounded-xl bg-obligon-green px-5 text-sm font-extrabold text-white shadow-none hover:bg-obligon-green/90 transition"
         >
           <Plus size={16} />
           Invite Attendant
         </button>
       </div>
 
+      <label className="mb-6 block max-w-sm text-sm font-bold">Search staff<input type="search" maxLength={254} value={query} onChange={event => setQuery(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-obligon-border bg-white px-3 font-medium" placeholder="Name, email or role" /></label>
       <AsyncBoundary
         status={status}
         error={error?.message ?? null}
         isEmpty={!data || data.staff.length === 0}
         onRetry={reload}
         loadingLabel="Loading staff…"
-        empty={{ title: "No staff yet", message: "Invite attendants and supervisors to your station." }}
+        empty={{ title: "No staff yet", message: mechanic ? "Invite team members to your workshop." : "Invite attendants and supervisors to your station." }}
       >
         {data ? (
           <DataTable
             title="Staff Members"
-            columns={["Reference", "Member", "Role"]}
-            rows={data.staff}
+            columns={["Reference", "Member", "Role", "Access"]}
+            rows={rows}
             rowKey={(row, index) => row.id ?? `${row.cells[0]}-${index}`}
             onAction={(row) => row && setEditing(row)}
           />
@@ -1375,6 +1398,7 @@ function StaffPage() {
 
 // ============ SETTINGS ============
 function SettingsPage() {
+  const { user } = useSession();
   const { success: toastSuccess, error: toastError } = useToast();
   const [saving,setSaving]=React.useState(false);
   const { status, data, error, reload } = useAsync(() => api.getPartnerSettings());
@@ -1393,7 +1417,7 @@ function SettingsPage() {
   return (
     <DashboardCanvas>
       <div className="mb-8">
-        <h1 className="font-display text-3xl font-extrabold text-obligon-navy">Organisation Settings</h1>
+        <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Organisation Settings</h1>
         <p className="mt-1 text-sm text-obligon-text">Your registered details and account security.</p>
       </div>
 
@@ -1405,8 +1429,8 @@ function SettingsPage() {
       >
         {data ? (
           <div><form className="mb-6 rounded-xl border bg-white p-6" onSubmit={async e=>{e.preventDefault();const form=new FormData(e.currentTarget);setSaving(true);try{await api.request("/api/partner/settings",{method:"PUT",body:JSON.stringify(Object.fromEntries(form))});toastSuccess("Organisation details saved.");reload();}catch(error){toastError((error as Error).message);}finally{setSaving(false);}}}><h2 className="text-xl font-bold">Organisation details</h2>{([['name','Organisation',data.org.name],['rcNumber','RC number',data.org.rcNumber],['address','Address',data.org.address],['city','City',data.org.city]] as const).map(([name,label,value])=><label key={name} className="mt-4 block">{label}<input name={name} defaultValue={value??''} required={name==='name'} maxLength={name==='address'?500:200} className="mt-2 block min-h-12 w-full rounded border p-3"/></label>)}<p className="mt-3 text-sm">Only organisation owners and administrators can save these details.</p><button disabled={saving} className="mt-4 min-h-12 rounded bg-obligon-green px-5 font-bold text-white">{saving?'Saving…':'Save details'}</button></form><Link href="/auth/mfa/setup" className="mb-4 inline-flex min-h-12 items-center font-bold text-obligon-green underline">Manage two-factor authentication</Link><Link href="/forgot-password" className="ml-5 inline-flex min-h-12 items-center font-bold text-obligon-green underline">Reset password</Link>
-          <section className="overflow-hidden rounded-xl border border-[#d7d8e4] bg-white shadow-sm">
-            <div className="divide-y divide-[#ececf5]">
+          <section className="min-w-0 overflow-hidden rounded-2xl border border-obligon-border bg-white">
+            <div className="divide-y divide-obligon-border/70">
               {rows.map(([label, value]) => (
                 <div key={label} className="flex flex-col gap-1 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
                   <span className="text-sm font-bold text-obligon-navy">{label}</span>
@@ -1414,7 +1438,7 @@ function SettingsPage() {
                 </div>
               ))}
             </div>
-          </section><PartnerServiceRequests/><PartnerApiKeys/></div>
+          </section><section id="partner-support"><PartnerServiceRequests/></section>{partnerPageAllowed(user, "transactions") ? <PartnerApiKeys/> : null}</div>
         ) : null}
       </AsyncBoundary>
     </DashboardCanvas>
@@ -1426,6 +1450,7 @@ function SettingsPage() {
 // than a console page, and forcing it through this switch gave it a table-page
 // layout it does not suit.
 export function DashboardScreen({ pageKey }: { pageKey: DashboardPageKey }) {
+  const { user } = useSession();
   const [payout, setPayout] = React.useState<{ claimableKobo: number; claimableLabel: string } | null>(null);
   // Bumped whenever a payout, retry or new settlement account changes the balance.
   //
@@ -1437,7 +1462,8 @@ export function DashboardScreen({ pageKey }: { pageKey: DashboardPageKey }) {
   const [settlementVersion, setSettlementVersion] = React.useState(0);
 
   const pages: Partial<Record<DashboardPageKey, React.ReactNode>> = {
-    overview: <OverviewPage />,
+    overview: partnerTypeFor(user) === "mechanic" ? <WorkshopDashboard /> : partnerTypeFor(user) === "other" ? <PartnerAccountOverview /> : <OverviewPage />,
+    workshop: <WorkshopDashboard edit />,
     pricing: <FuelPricingPage />,
     pos: <POSTerminalPage />,
     settlements: (
@@ -1520,9 +1546,9 @@ function Modal({
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className="max-h-[calc(100dvh-2rem)] w-full min-w-0 max-w-md overflow-y-auto rounded-2xl bg-white p-5 shadow-hero outline-none sm:p-6"
+        className="max-h-[calc(100dvh-2rem)] w-full min-w-0 max-w-md overflow-y-auto rounded-2xl bg-white p-5 shadow-lg outline-none sm:p-6"
       >
-        <h2 className="font-display text-2xl font-extrabold text-obligon-navy">{title}</h2>
+        <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">{title}</h2>
         {description ? <p className="mt-1 text-sm font-medium text-obligon-text">{description}</p> : null}
         {children}
       </div>
@@ -1540,8 +1566,8 @@ function FormError({ message }: { message: string | null }) {
 }
 
 const fieldClass =
-  "mt-1.5 h-11 w-full rounded-xl border border-[#cfd8cc] px-4 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green disabled:opacity-60";
-const labelClass = "block text-xs font-extrabold uppercase text-obligon-text";
+  "mt-1.5 h-11 w-full rounded-xl border border-obligon-border px-4 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green disabled:opacity-60";
+const labelClass = "block text-sm font-semibold text-obligon-text";
 
 /**
  * Adds the settlement account.
@@ -1761,6 +1787,8 @@ function StaffMemberModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { user } = useSession();
+  const canOperatePos = partnerPageAllowed(user, "verification");
   const { success: toastSuccess } = useToast();
   const editing = Boolean(member);
   const [form, setForm] = React.useState({
@@ -1769,7 +1797,7 @@ function StaffMemberModal({
     phone: "",
     role: "dispatcher",
     enabled: member ? member.status === "ACTIVE" : true,
-    cardAccess: member ? member.cardAccess === true : true
+    cardAccess: canOperatePos && (member ? member.cardAccess === true : true)
   });
   const [submitting, setSubmitting] = React.useState(false);
   const [removing, setRemoving] = React.useState(false);
@@ -1793,13 +1821,13 @@ function StaffMemberModal({
           email: form.email.trim(),
           phone: form.phone.trim(),
           role: form.role,
-          cardAccess: form.cardAccess
+          cardAccess: canOperatePos && form.cardAccess
         });
         toastSuccess(`${form.fullName.trim()} added. Their partner account has been added.`);
         onSaved();
         onClose();
       } catch (err) {
-        setFormError(err instanceof Error ? err.message : "Could not add that attendant.");
+        setFormError(err instanceof Error ? err.message : "Could not add that team member.");
       } finally {
         setSubmitting(false);
       }
@@ -1809,18 +1837,18 @@ function StaffMemberModal({
     // but a row without an id would otherwise send `/staff/undefined` and produce a
     // 400 the partner cannot act on.
     if (!member?.id) {
-      setFormError("That attendant could not be identified. Reload the list and try again.");
+      setFormError("That team member could not be identified. Reload the list and try again.");
       return;
     }
     setSubmitting(true);
     setFormError(null);
     try {
-      await mutationsApi.updateStaff(member.id, { enabled: form.enabled, cardAccess: form.cardAccess });
-      toastSuccess("Attendant updated.");
+      await mutationsApi.updateStaff(member.id, { enabled: form.enabled, cardAccess: canOperatePos && form.cardAccess });
+      toastSuccess("Team member updated.");
       onSaved();
       onClose();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Could not update that attendant.");
+      setFormError(err instanceof Error ? err.message : "Could not update that team member.");
     } finally {
       setSubmitting(false);
     }
@@ -1832,19 +1860,19 @@ function StaffMemberModal({
     setFormError(null);
     try {
       await mutationsApi.removeStaff(member.id);
-      toastSuccess("Attendant removed.");
+      toastSuccess("Team member removed.");
       onSaved();
       onClose();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Could not remove that attendant.");
+      setFormError(err instanceof Error ? err.message : "Could not remove that team member.");
       setRemoving(false);
     }
   }
 
   return (
     <Modal
-      title={editing ? "Attendant" : "Invite Attendant"}
-      description={editing ? member?.cells[0] : "Add a station colleague with access based on their role."}
+      title={editing ? "Team member" : "Invite team member"}
+      description={editing ? member?.cells[0] : "Add a colleague with access based on their role."}
       onClose={onClose}
     >
       <form onSubmit={submit}>
@@ -1882,20 +1910,20 @@ function StaffMemberModal({
             <label className={`mt-4 block ${labelClass}`}>
               Role
               <select className={fieldClass} value={form.role} onChange={set("role")}>
-                <option value="dispatcher">Attendant / Dispatcher</option>
+                <option value="dispatcher">{canOperatePos ? "Attendant / Dispatcher" : "Team member / Dispatcher"}</option>
                 <option value="manager">Manager</option>
                 <option value="admin">Admin</option>
               </select>
             </label>
             <p className="mt-3 text-xs font-medium text-obligon-text">
-              Roles decide what an attendant can do. Owner access cannot be assigned here.
+              Roles decide what an team member can do. Owner access cannot be assigned here.
             </p>
           </>
         )}
-        <label className="mt-4 flex items-center gap-3">
+        {canOperatePos ? <label className="mt-4 flex items-center gap-3">
           <input type="checkbox" checked={form.cardAccess} disabled={submitting || removing} onChange={(event) => setForm((prev) => ({ ...prev, cardAccess: event.target.checked }))} className="size-4" />
           <span className="text-sm font-bold text-obligon-navy">Allow POS payments</span>
-        </label>
+        </label> : null}
         <div className="mt-6 flex gap-3">
           <button type="button" onClick={onClose} className="h-11 flex-1 rounded-xl border border-[#071853] text-sm font-bold">
             Cancel
@@ -1995,7 +2023,7 @@ function DisputeDetailModal({
             rows={4}
             required
             placeholder="Describe what happened at the dispenser…"
-            className="mt-1.5 w-full rounded-xl border border-[#cfd8cc] px-4 py-3 text-sm font-medium text-obligon-navy outline-none focus:border-obligon-green"
+            className="mt-1.5 w-full rounded-xl border border-obligon-border px-4 py-3 text-sm font-medium text-obligon-navy outline-none focus:border-obligon-green"
           />
         </label>
         <p className="mt-2 text-xs font-medium text-obligon-text">
@@ -2030,17 +2058,22 @@ function DisputeDetailModal({
  */
 function StationOperationsModal({
   stationId,
+  station,
   onClose,
   onDone
 }: {
   stationId: string;
+  station: NonNullable<PartnerStation["station"]>;
   onClose: () => void;
   onDone: () => void;
 }) {
   const { success: toastSuccess, error: toastError } = useToast();
   const [busy, setBusy] = React.useState<"asset" | "resupply" | "message" | null>(null);
   const [file, setFile] = React.useState<File | null>(null);
-  const [fuelType, setFuelType] = React.useState("AGO Diesel");
+  const [fuelType, setFuelType] = React.useState("");
+  const fuels = (station.fuels ?? []).filter(fuel => station.approvedSellingUnits?.[partnerFuelCode(fuel) ?? ""]);
+  const activeFuel = fuels.includes(fuelType) ? fuelType : fuels[0] ?? "";
+  const sellingUnit = priceSellingUnit(activeFuel, station.approvedSellingUnits?.[partnerFuelCode(activeFuel) ?? ""]);
   const [litres, setLitres] = React.useState("");
   const [message, setMessage] = React.useState("");
 
@@ -2060,10 +2093,11 @@ function StationOperationsModal({
 
   async function requestResupply() {
     const parsed = Number(litres);
-    if (!Number.isFinite(parsed) || parsed <= 0) return;
+    if (!Number.isInteger(parsed) || parsed <= 0) { toastError("Enter a whole resupply quantity greater than zero."); return; }
+    if (!sellingUnit || !activeFuel) return;
     setBusy("resupply");
     try {
-      await mutationsApi.requestResupply({ fuelType, litres: parsed, stationId });
+      await mutationsApi.requestResupply({ fuelType: activeFuel, litres: parsed, sellingUnit, stationId });
       toastSuccess(`Resupply request for ${parsed.toLocaleString()} L of ${fuelType} recorded. A team member will follow up.`);
       setLitres("");
     } catch (err) {
@@ -2120,27 +2154,25 @@ function StationOperationsModal({
         <h3 className={labelClass}>Request resupply</h3>
         <div className="mt-2 grid min-w-0 grid-cols-2 gap-2 sm:flex">
           <select
-            value={fuelType}
+            value={activeFuel}
             onChange={(event) => setFuelType(event.target.value)}
             aria-label="Fuel type"
-            className="h-10 min-w-0 w-full sm:flex-1 rounded-xl border border-[#cfd8cc] px-3 text-xs font-bold text-obligon-navy"
+            className="h-10 min-w-0 w-full sm:flex-1 rounded-xl border border-obligon-border px-3 text-xs font-bold text-obligon-navy"
           >
-            <option>AGO Diesel</option>
-            <option>PMS</option>
-            <option>Petrol</option>
+            {fuels.map(fuel => <option key={fuel}>{fuel}</option>)}
           </select>
           <input
             value={litres}
             onChange={(event) => setLitres(event.target.value.replace(/[^\d.]/g, ""))}
-            inputMode="decimal"
-            placeholder="Litres"
-            aria-label="Litres"
-            className="h-10 min-w-0 w-full sm:w-24 rounded-xl border border-[#cfd8cc] px-3 text-xs font-bold text-obligon-navy"
+            type="number" min={1} step={1} inputMode="numeric"
+            placeholder={sellingUnit ? `Quantity (${sellingUnitLabel(sellingUnit)})` : "Awaiting unit approval"}
+            aria-label="Resupply quantity"
+            className="h-10 min-w-0 w-full sm:w-24 rounded-xl border border-obligon-border px-3 text-xs font-bold text-obligon-navy"
           />
           <button
             type="button"
             onClick={requestResupply}
-            disabled={busy !== null || litres.trim() === ""}
+            disabled={busy !== null || litres.trim() === "" || !sellingUnit || !activeFuel}
             className="col-span-2 h-10 shrink-0 rounded-xl bg-obligon-green px-4 text-xs font-extrabold text-white disabled:opacity-40"
           >
             {spinner("resupply") ?? "Request"}
@@ -2156,7 +2188,7 @@ function StationOperationsModal({
             onChange={(event) => setMessage(event.target.value)}
             placeholder="Display message for the terminal"
             aria-label="Terminal message"
-            className="h-10 min-w-0 w-full flex-1 rounded-xl border border-[#cfd8cc] px-3 text-xs font-bold text-obligon-navy"
+            className="h-10 min-w-0 w-full flex-1 rounded-xl border border-obligon-border px-3 text-xs font-bold text-obligon-navy"
           />
           <button
             type="button"
@@ -2233,8 +2265,8 @@ toastSuccess(`Payout ${result.reference} submitted and is being processed.`);
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[#071853]/65 px-5 backdrop-blur-sm">
-      <form onSubmit={submit} className="w-full max-w-md rounded-2xl bg-white p-6 shadow-hero">
-        <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Request Settlement Payout</h2>
+      <form onSubmit={submit} className="w-full max-w-md rounded-2xl bg-white p-6 shadow-lg">
+        <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">Request Settlement Payout</h2>
         <p className="mt-1 text-sm font-medium text-obligon-text">
           {nothingClaimable
             ? "There is no settled balance available to withdraw right now."
@@ -2248,7 +2280,7 @@ toastSuccess(`Payout ${result.reference} submitted and is being processed.`);
         ) : null}
 
         <label className="mt-5 block">
-          <span className="text-xs font-extrabold uppercase text-obligon-text">Payout Amount (₦)</span>
+          <span className="text-xs font-semibold uppercase text-obligon-text">Payout Amount (₦)</span>
           <input
             value={amount}
             onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
@@ -2256,7 +2288,7 @@ toastSuccess(`Payout ${result.reference} submitted and is being processed.`);
             disabled={nothingClaimable}
             placeholder={nothingClaimable ? undefined : maxNaira.toLocaleString("en-NG")}
             aria-describedby="payout-available"
-            className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 font-display text-xl font-extrabold text-obligon-navy outline-none focus:border-obligon-green disabled:opacity-60"
+            className="mt-1.5 h-12 w-full rounded-xl border border-obligon-border px-4 font-display text-lg font-bold tracking-tight sm:text-xl text-obligon-navy outline-none focus:border-obligon-green disabled:opacity-60"
             required
           />
           <span id="payout-available" className="mt-1.5 block text-xs font-medium text-obligon-text">

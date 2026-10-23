@@ -47,6 +47,12 @@ interface Review {
   net_kobo?: number;
   failure_reason?: string;
 }
+function BankVerificationStatus({ loading, failed, empty }: { loading: boolean; failed: boolean; empty: boolean }) {
+  if (loading) return <p role="status" className="mt-3 text-obligon-text">Loading partner bank accounts…</p>;
+  if (failed) return <p role="status" className="mt-3 text-obligon-text">Bank accounts could not be loaded. Refresh operational records to try again.</p>;
+  if (empty) return <p role="status" className="mt-3 text-obligon-text">No partner bank accounts are available for verification.</p>;
+  return null;
+}
 export function OperationsInbox() {
   const [review, setReview] = React.useState<{
     payouts: Review[];
@@ -130,17 +136,19 @@ export function OperationsInbox() {
   }
   if (loading || loadFailed)
     return (
-      <section className="p-6 sm:p-10">
-        <h1 className="text-3xl font-bold">Support and Settlement Review</h1>
+      <section className="mx-auto w-full min-w-0 max-w-[1600px] px-4 py-6 text-sm sm:px-6 sm:py-8 lg:px-8 [&_button]:min-h-11 [&_button]:rounded-lg [&_button]:px-4 [&_button]:font-semibold [&_textarea]:min-h-28 [&_textarea]:rounded-xl [&_p]:break-words">
+        <h1 className="border-b border-obligon-border pb-6 text-2xl font-bold tracking-tight sm:text-3xl">Support and Settlement Review</h1>
         <button type="button" disabled={loading || busy} onClick={() => void load()} className="mt-4 min-h-12 rounded border px-4">Refresh</button>
         {loading ? <p role="status" className="mt-4">
           Loading operational records…
         </p> : <p role="alert" className="mt-4 text-red-700">{error}</p>}
+        <h2 className="mt-8 text-xl font-bold">Partner bank verification</h2>
+        <BankVerificationStatus loading={loading} failed={loadFailed} empty={banks.length === 0} />
       </section>
     );
   return (
-    <section className="p-6 sm:p-10">
-      <h1 className="text-3xl font-bold">Support and Settlement Review</h1>
+    <section className="mx-auto w-full min-w-0 max-w-[1600px] px-4 py-6 text-sm sm:px-6 sm:py-8 lg:px-8 [&_button]:min-h-11 [&_button]:rounded-lg [&_button]:px-4 [&_button]:font-semibold [&_textarea]:min-h-28 [&_textarea]:rounded-xl [&_p]:break-words">
+      <h1 className="border-b border-obligon-border pb-6 text-2xl font-bold tracking-tight sm:text-3xl">Support and Settlement Review</h1>
       <button type="button" disabled={loading || busy} onClick={() => void load()} className="mt-4 min-h-12 rounded border px-4">Refresh</button>
       {error && (
         <p role="alert" className="my-4 text-red-700">
@@ -148,12 +156,12 @@ export function OperationsInbox() {
         </p>
       )}
       <h2 className="mt-6 text-xl font-bold">Customer support</h2>
-      <div className="my-4 grid gap-4 md:grid-cols-2">
+      <div className="my-5 grid min-w-0 items-start gap-5 xl:grid-cols-2">
         <div>
           {tickets.map((t) => (
             <button
               key={t.id}
-              className="mb-2 block w-full rounded border bg-white p-3 text-left"
+              className="mb-3 block w-full break-words rounded-xl border border-obligon-border bg-white p-4 text-left leading-6 hover:bg-obligon-mist"
               onClick={() => void select(t)}
             >
               {t.reference} ·{" "}
@@ -167,7 +175,7 @@ export function OperationsInbox() {
           {!tickets.length && <p>No support requests.</p>}
         </div>
         {selected && (
-          <div className="rounded border bg-white p-4">
+          <div className="min-w-0 rounded-xl border border-obligon-border bg-white p-5">
             <h3 className="font-bold">{selected.subject}</h3>
             <p className="mt-2 text-sm">
               {selected.category} · {selected.priority} priority ·{" "}
@@ -261,7 +269,7 @@ export function OperationsInbox() {
       </div>
       <h2 className="mt-8 text-xl font-bold">Paid fuel exceptions</h2>
       {orders.map((o) => (
-        <article key={o.id} className="my-3 rounded border bg-white p-4">
+        <article key={o.id} className="my-4 rounded-xl border border-obligon-border bg-white p-5">
           <p>
             {o.reference} · {o.full_name} · {o.station_name} · ₦
             {(Number(o.amount_kobo) / 100).toLocaleString()} · {o.status}
@@ -288,7 +296,7 @@ export function OperationsInbox() {
         unknown.
       </p>
       {review.payouts.map((p) => (
-        <article key={p.id} className="my-3 rounded border bg-white p-4">
+        <article key={p.id} className="my-4 rounded-xl border border-obligon-border bg-white p-5">
           <p>
             {p.organization} · {p.reference} · ₦
             {(Number(p.amount_kobo) / 100).toLocaleString()}
@@ -297,7 +305,7 @@ export function OperationsInbox() {
         </article>
       ))}
       {review.settlements.map((s) => (
-        <article key={s.id} className="my-3 rounded border bg-white p-4">
+        <article key={s.id} className="my-4 rounded-xl border border-obligon-border bg-white p-5">
           {s.organization} · {s.reference} · Historical settlement requires
           statement reconciliation.
         </article>
@@ -306,8 +314,9 @@ export function OperationsInbox() {
         <p>No settlement exceptions.</p>
       )}
       <h2 className="mt-8 text-xl font-bold">Partner bank verification</h2>
+      <BankVerificationStatus loading={loading} failed={loadFailed} empty={banks.length === 0} />
       {banks.map((b) => (
-        <article key={b.id} className="my-3 rounded border bg-white p-4">
+        <article key={b.id} className="my-4 rounded-xl border border-obligon-border bg-white p-5">
           <p>
             {b.organization} · {b.bankName} · {b.accountName} · {b.accountMask}{" "}
             ·{" "}

@@ -19,7 +19,7 @@ export type FleetChoices = {
 };
 export type CompanyProfile = { id: string; name: string; rcNumber: string | null; address: string | null; city: string | null; website: string | null; description: string | null; plan: string | null; verificationStatus: string; fleetId: string | null };
 export type CompanyNotification = { id: string; title: string; body: string; time: string; read: boolean; category: string; actionRequired: boolean; link: string | null };
-export type CompanyStation = { id: string; name: string; address: string; lat: number | null; lng: number | null; hours: string; fuels: string[]; prices?: Array<{ fuel: string; priceLabel: string }> };
+export type CompanyStation = { id: string; name: string; address: string; lat: number | null; lng: number | null; hours: string; fuels: string[]; prices?: Array<{ fuel: string; priceLabel: string; sellingUnit?: "litre"|"kg"|"scm" }> };
 export type CompanyBilling = { plan: null | { name: string; priceLabel: string; status: string; nextBilling: string | null }; invoices: CompanyRow[]; paymentMethods: Array<{ id: string; display: string; isDefault: boolean }> };
 const get = <T>(path: string) => api.request<T>(`/api/company${path}`);
 export const companyApi = {

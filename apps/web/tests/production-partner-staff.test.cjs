@@ -3,13 +3,14 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
+const partnerAccess = require('../../../packages/shared/partner-access.mjs');
 const element = (type, props, ...children) => ({ type, props: { ...props, children } });
 const nodes = tree => !tree || typeof tree !== 'object' ? [] : Array.isArray(tree) ? tree.flatMap(nodes) : [tree, ...nodes(tree.props?.children)];
 const text = tree => nodes(tree).flatMap(node => node.props?.children ?? []).filter(value => typeof value === 'string' || typeof value === 'number').join(' ');
 function load(path, { dependencies = {}, globals = {}, expose = '' } = {}) {
  const exports = {};
  const code = ts.transpileModule(fs.readFileSync(require.resolve(path), 'utf8') + expose, { fileName: require.resolve(path), compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }).outputText;
- vm.runInNewContext(code, { exports, Error, URLSearchParams, setTimeout, clearTimeout, require: name => name === 'next/dynamic' ? { default: () => 'StationProfileForm', __esModule: true } : dependencies[name] ?? {}, ...globals });
+ vm.runInNewContext(code, { exports, Error, URLSearchParams, setTimeout, clearTimeout, require: name => name.endsWith('/partner-access.mjs') ? partnerAccess : name === 'next/dynamic' ? { default: () => 'StationProfileForm', __esModule: true } : dependencies[name] ?? {}, ...globals });
  return exports;
 }
 function hooks() {
@@ -25,10 +26,10 @@ function hooks() {
 }
 const flush = async () => { for (let i = 0; i < 24; i++) await Promise.resolve(); };
 
-function fixture(member = null) {
+function fixture(member = null, partnerType = 'fuel_station') {
  const runtime = hooks(), calls = [];
  const { StaffMemberModal } = load('../components/dashboard/DashboardScreen.tsx', { expose: '\nexport { StaffMemberModal };', dependencies: {
-  react: runtime.React, '@/components/shared/Toast': { useToast: () => ({ success() {} }) },
+  react: runtime.React, '@/components/shared/AuthContext': {useSession:()=>({user:{role:'partner',partnerType}})}, '@/components/shared/Toast': { useToast: () => ({ success() {} }) },
   '@/lib/services': { mutationsApi: { async addStaff(payload) { calls.push({kind:'add',payload}); }, async updateStaff(id,payload) { calls.push({kind:'update',id,payload}); } } },
  } });
  const render = () => runtime.render(StaffMemberModal, {member,onClose() {},onSaved() {}});
@@ -43,3 +44,7 @@ test('editing disabled staff starts disabled and submits the chosen enabled stat
  const f=fixture({id:'member',cells:['ST-TEST','Test'],status:'SUSPENDED',cardAccess:false});let tree=f.render();const enabled=nodes(tree).find(node=>node.type==='input'&&node.props.type==='checkbox');assert.equal(enabled.props.checked,false);
  enabled.props.onChange({target:{checked:true}});tree=f.render();await nodes(tree).find(node=>node.type==='form').props.onSubmit({preventDefault(){}});assert.equal(f.calls[0].id,'member');assert.equal(f.calls[0].payload.enabled,true);
 });
+
+ test('mechanic team invitation hides POS permission and always sends false',async()=>{
+ const f=fixture(null,'mechanic');let tree=f.render();assert.doesNotMatch(text(tree),/Allow POS payments/);const inputs=nodes(tree).filter(n=>n.type==='input');inputs[0].props.onChange({target:{value:'Technician'}});inputs[1].props.onChange({target:{value:'technician@example.invalid'}});tree=f.render();await nodes(tree).find(n=>n.type==='form').props.onSubmit({preventDefault(){}});assert.equal(f.calls[0].payload.cardAccess,false);
+ });

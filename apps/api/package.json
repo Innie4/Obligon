@@ -26,6 +26,7 @@
     "check:prefs": "node tests/prefs-security.check.mjs"
   },
   "dependencies": {
+    "@simplewebauthn/server": "14.0.3",
     "@supabase/supabase-js": "^2.45.4",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -33,6 +34,7 @@
     "express": "^5.1.0",
     "express-rate-limit": "^7.4.0",
     "helmet": "^7.1.0",
+    "jose": "6.2.13",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.4.0",
     "otplib": "^12.0.1",

@@ -94,7 +94,7 @@ export default function ResetPasswordPage() {
         ) : (
           <form onSubmit={handleSubmit} className="mt-8 space-y-5" noValidate>
             <div>
-              <label htmlFor="reset-email" className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-1">
+              <label htmlFor="reset-email" className="text-sm font-semibold text-obligon-text block mb-1">
                 Account Email
               </label>
               <input
@@ -114,7 +114,7 @@ export default function ResetPasswordPage() {
             </div>
 
             <div>
-              <label htmlFor="reset-code" className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-1">
+              <label htmlFor="reset-code" className="text-sm font-semibold text-obligon-text block mb-1">
                 6-Digit Reset Code
               </label>
               <input
@@ -136,7 +136,7 @@ export default function ResetPasswordPage() {
             </div>
 
             <div>
-              <label htmlFor="reset-password" className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-1">
+              <label htmlFor="reset-password" className="text-sm font-semibold text-obligon-text block mb-1">
                 New Password
               </label>
               <input
@@ -156,7 +156,7 @@ export default function ResetPasswordPage() {
             </div>
 
             <div>
-              <label htmlFor="reset-confirm" className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-1">
+              <label htmlFor="reset-confirm" className="text-sm font-semibold text-obligon-text block mb-1">
                 Confirm New Password
               </label>
               <input
@@ -214,7 +214,7 @@ export default function ResetPasswordPage() {
           </form>
         )}
 
-        <Link href={routes.forgotPassword ?? "/forgot-password"} className="mt-8 inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[1.2px] text-obligon-green">
+        <Link href={routes.forgotPassword ?? "/forgot-password"} className="mt-8 inline-flex items-center gap-2 text-sm font-bold text-obligon-green">
           <ArrowLeft size={16} />
           Request a new code
         </Link>

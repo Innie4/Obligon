@@ -25,7 +25,8 @@ import {
 } from "lucide-react";
 import { dashboardNav, type DashboardIcon, type DashboardPageKey } from "@/lib/mock/dashboard-data";
 import { useSession } from "@/components/shared/AuthContext";
-import { LogoutButton } from "@/components/auth/LogoutButton";
+import { LogoutButton, SignInOptionsLink } from "@/components/auth/LogoutButton";
+import { partnerPageAllowed } from "../../../../packages/shared/partner-access.mjs";
 
 const iconMap = {
   overview: LayoutDashboard,
@@ -52,6 +53,7 @@ const item = (key: DashboardPageKey): NavItem => {
 
 const primaryItems: NavItem[] = [
   item("overview"),
+  item("workshop"),
   item("billing"),
   // Shown above the fold: it is the one nav item that changes what the platform will
   // let this partner do, and it is easy to forget it exists.
@@ -100,10 +102,7 @@ export function PartnershipSidebar() {
   const toggleGroup = (key: string) =>
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  const mechanicKeys = new Set<DashboardPageKey>([
-    "overview", "transactions", "reports", "staff", "disputes", "notifications", "settings"
-  ]);
-  const visible = (nav: NavItem) => user?.role !== "mechanic" || mechanicKeys.has(nav.key);
+  const visible = (nav: NavItem) => partnerPageAllowed(user, nav.key);
   const visiblePrimaryItems = primaryItems.filter(visible);
   const visibleGroups = navGroups
     .map((group) => ({ ...group, items: group.items.filter(visible) }))
@@ -119,8 +118,9 @@ export function PartnershipSidebar() {
       <Link
         key={nav.key}
         href={nav.href}
-        className={`relative flex min-h-[42px] items-center gap-3 rounded-xl px-4 text-[13px] font-bold transition ${
-          active ? "bg-obligon-green text-white shadow-green" : "text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green"
+        aria-current={active ? "page" : undefined}
+        className={`relative flex min-h-11 items-center gap-3 rounded-xl px-4 text-sm font-semibold transition-colors ${
+          active ? "bg-[#edf4e7] text-obligon-green" : "text-[#4f5663] hover:bg-obligon-mist hover:text-obligon-green"
         }`}
       >
         <Icon size={18} className="shrink-0" />
@@ -130,12 +130,12 @@ export function PartnershipSidebar() {
   };
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r border-[#dfe5ec] bg-white px-6 py-8 text-[#07162f] lg:flex">
-      <Link href="/dashboard" className="block" aria-label="Obligon LTD home">
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r border-obligon-border bg-white px-5 py-6 text-[#07162f] lg:flex">
+      <Link href="/dashboard" className="block shrink-0 px-4" aria-label="Obligon LTD home">
         <DashboardLogo priority />
       </Link>
 
-      <nav className="mt-8 flex-1 overflow-y-auto pb-5">
+      <nav aria-label="Partner navigation" className="mt-7 min-h-0 flex-1 overflow-y-auto overscroll-contain pb-5">
         <div className="space-y-1">
           {visiblePrimaryItems.map(renderLink)}
 
@@ -149,7 +149,7 @@ export function PartnershipSidebar() {
                 <button
                   type="button"
                   onClick={() => toggleGroup(group.key)}
-                  className={`relative flex min-h-[42px] w-full items-center gap-3 rounded-xl px-4 text-[13px] font-bold transition ${
+                  className={`relative flex min-h-11 w-full items-center gap-3 rounded-xl px-4 text-sm font-semibold transition-colors ${
                     groupActive ? "bg-[#f2f6f2] text-obligon-green" : "text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green"
                   }`}
                   aria-expanded={open}
@@ -173,12 +173,11 @@ export function PartnershipSidebar() {
         </div>
       </nav>
 
-      <div className="mx-5 border-t border-[#dfe5ec] py-5">
-        <LogoutButton className="h-[42px] w-full justify-start rounded-xl px-4 text-[13px] text-[#c1121f] hover:bg-[#fff0f3]" />
+      <div className="shrink-0 border-t border-obligon-border pt-4">
+        <SignInOptionsLink className="w-full justify-start text-[13px]" />
+        <LogoutButton className="min-h-11 w-full justify-start rounded-xl px-4 text-sm text-[#c1121f] hover:bg-[#fff0f3]" />
       </div>
 
     </aside>
   );
 }
-
-

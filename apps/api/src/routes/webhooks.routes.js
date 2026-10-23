@@ -39,6 +39,15 @@ router.post("/paystack", webhookLimiter, async (req, res) => {
       verification = await verifyCheckout({provider:"paystack",reference:topup.reference,expectedAmountKobo:Number(topup.charged_kobo),expectedCurrency:"NGN",simulated:false});
       if (!verification.paid) throw new Error("Payment is awaiting provider confirmation");
     }
+    if (['transfer.success','transfer.failed'].includes(event.event)) {
+      const payout=await one("SELECT id FROM payouts WHERE reference=$1 AND COALESCE(transfer_provider,provider)='paystack'",[event.data?.reference]);
+      if (payout) {
+        const {reconcilePayouts}=await import('../lib/scheduler.js');
+        await reconcilePayouts({payoutId:payout.id});
+        const current=await one('SELECT status FROM payouts WHERE id=$1',[payout.id]);
+        if (current?.status==='processing') throw new Error('Transfer is awaiting exact provider confirmation');
+      }
+    }
     const outcome = await processEvent(eventKey, async t => {
       switch (event.event) {
         case "charge.success":
@@ -46,12 +55,8 @@ router.post("/paystack", webhookLimiter, async (req, res) => {
           break;
         case "transfer.success":
         case "transfer.failed": {
-          // A delayed failure cannot overwrite a payout already recorded paid.
-          const payout=await t.one("SELECT * FROM payouts WHERE reference=$1 AND provider='paystack' FOR UPDATE",[event.data?.reference]);
-          if (!payout || !['pending','processing'].includes(payout.status)) break;
-          if (event.data?.currency !== 'NGN' || String(event.data?.amount) !== String(payout.amount_kobo)) throw new Error("Payout evidence does not match recorded currency and amount");
-          await t.query(`UPDATE payouts SET status=$2,paid_at=CASE WHEN $2='success' THEN now() ELSE paid_at END,
-            failure_reason=CASE WHEN $2='failed' THEN $3 ELSE NULL END WHERE id=$1`,[payout.id,event.event==='transfer.success'?'success':'failed',String(event.data?.reason??'Transfer failed at provider').slice(0,200)]);
+          // Current server-side transfer lookup and its fenced settlement allocator
+          // own both accounting effects. Signed payloads alone never release claims.
           break;
         }
         case "subscription.create":

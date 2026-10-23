@@ -1,4 +1,5 @@
 import type { PartnerStation } from "@/lib/services/types";
+import { fuelSellingUnits, partnerFuelCode, type SellingUnit } from "../../../packages/shared/partner-access.mjs";
 import type { StationLocation } from "@/components/dashboard/StationLocationPicker";
 import { isNigeriaCity, nigeriaCityLabel, parseNigeriaCityLabel } from "../../../packages/shared/nigeria-cities.mjs";
 import { parseOpeningHours, openingHoursText, validateOpeningHours, type OpeningHoursValue } from "./station-profile-fields";
@@ -10,6 +11,7 @@ export type StationProfileDraft = {
   city: string;
   hours: OpeningHoursValue;
   fuels: string[];
+  sellingUnits: Record<string, SellingUnit>;
   location: StationLocation | null;
 };
 export type StationProfileSubmission = {
@@ -18,6 +20,7 @@ export type StationProfileSubmission = {
   city: string;
   hours: string;
   fuels: string[];
+  sellingUnits: Record<string, SellingUnit>;
   lat: number;
   lng: number;
 };
@@ -32,6 +35,7 @@ export function stationProfileDraft(station: Station): StationProfileDraft {
     state: place?.state ?? "", city: place?.city ?? "",
     hours: parseOpeningHours(station?.hours ?? null),
     fuels: station?.fuels ? [...station.fuels] : [],
+    sellingUnits: { ...station?.sellingUnits },
     location: typeof lat === "number" && Number.isFinite(lat) && Math.abs(lat) <= 90 && typeof lng === "number" && Number.isFinite(lng) && Math.abs(lng) <= 180 ? { lat, lng } : null
   };
 }
@@ -52,6 +56,12 @@ export function stationProfileErrors(draft: StationProfileDraft, station: Statio
   if (!unchangedLegacy && !isNigeriaCity(draft.state, draft.city)) errors.city = "Choose a city or town in the selected State / FCT.";
   if (!savedCity(draft, station) || (savedCity(draft, station)?.length ?? 0) > 100) errors.city = "Choose a valid city and State / FCT.";
   if (!draft.fuels.length || draft.fuels.length > 20 || draft.fuels.some(fuel => !fuel.trim() || fuel.length > 80)) errors.fuels = "Select at least one fuel, up to 20 options.";
+  for (const fuel of draft.fuels) {
+    const code = partnerFuelCode(fuel);
+    const units = fuelSellingUnits(fuel);
+    const unit = code ? draft.sellingUnits?.[code] ?? (units.length === 1 ? units[0] : undefined) : undefined;
+    if (!unit || !units.includes(unit)) errors.sellingUnits = "Choose a valid selling unit for every fuel. Gas units require admin approval.";
+  }
   const hoursError = validateOpeningHours(draft.hours);
   if (hoursError) errors.hours = hoursError;
   if (!draft.location || !Number.isFinite(draft.location.lat) || !Number.isFinite(draft.location.lng) || Math.abs(draft.location.lat) > 90 || Math.abs(draft.location.lng) > 180) errors.location = "Use GPS or choose the station’s exact position on the map.";
@@ -63,7 +73,7 @@ export function stationProfileSubmission(draft: StationProfileDraft, station: St
   if (Object.keys(errors).length || !draft.location) throw new Error(Object.values(errors)[0] ?? "Choose the station location.");
   return {
     name: draft.name.trim(), address: draft.address.trim(), city: savedCity(draft, station)!,
-    fuels: [...draft.fuels], hours: openingHoursText(draft.hours),
+    fuels: [...draft.fuels], sellingUnits: Object.fromEntries(draft.fuels.map(fuel => { const code = partnerFuelCode(fuel)!; return [code, draft.sellingUnits?.[code] ?? fuelSellingUnits(fuel)[0]]; })), hours: openingHoursText(draft.hours),
     lat: draft.location.lat, lng: draft.location.lng
   };
 }

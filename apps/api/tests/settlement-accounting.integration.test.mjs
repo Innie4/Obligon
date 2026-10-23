@@ -17,6 +17,7 @@ const originalFetch = globalThis.fetch;
 const integration = (name, fn) => test(name, { skip: !databaseUrl }, fn);
 const migration020 = await readFile(new URL("../src/migrations/020_settlement_accounting.sql", import.meta.url), "utf8");
 const migration019 = await readFile(new URL("../src/migrations/019_settlement_accrual.sql", import.meta.url), "utf8");
+const migration037 = await readFile(new URL("../src/migrations/037_payout_reconciliation_claims.sql", import.meta.url), "utf8");
 
 before(async () => {
   if (!databaseUrl) return;
@@ -57,7 +58,7 @@ before(async () => {
     CREATE UNIQUE INDEX ON notifications(event_key) WHERE event_key IS NOT NULL;
     CREATE TABLE audit_logs(actor_user_id uuid, actor_role text, action text, entity_type text, entity_id uuid, ip text, metadata jsonb);
   `);
-  await pool.query(`BEGIN; ${migration019} ${migration020} COMMIT;`);
+  await pool.query(`BEGIN; ${migration019} ${migration020} ${migration037} COMMIT;`);
 });
 
 beforeEach(async () => {
@@ -103,6 +104,30 @@ integration("a Lagos month-boundary sale belongs to the previous month even with
   assert.deepEqual(rows.map(r => Number(r.gross_kobo)), [12300]);
 });
 
+integration("oversized settlement accrual rolls back without advancing its watermark", async () => {
+  const { orgId, stationId } = await partner();
+  await sale(stationId, "4503599627370496", lastMonth);
+  await sale(stationId, "4503599627370497", lastMonth);
+  const before = (await pool.query("SELECT last_settled_through::text AS value FROM settlement_periods WHERE partner_org_id=$1", [orgId])).rows[0].value;
+  const result = await accrueSettlements();
+  assert.ok(result.errors >= 1);
+  assert.equal((await pool.query("SELECT count(*)::int AS n FROM settlements WHERE partner_org_id=$1", [orgId])).rows[0].n, 0);
+  assert.equal((await pool.query("SELECT last_settled_through::text AS value FROM settlement_periods WHERE partner_org_id=$1", [orgId])).rows[0].value, before);
+});
+
+integration("automatic settlement rejects an aggregate above the exact integer range before submitting", async () => {
+  const { orgId } = await partner();
+  await pool.query("UPDATE organizations SET auto_settlement=true WHERE id=$1", [orgId]);
+  await pool.query("INSERT INTO bank_accounts(organization_id) VALUES($1)", [orgId]);
+  await pool.query(`INSERT INTO settlements(partner_org_id,period_start,period_end,gross_kobo,fees_kobo,net_kobo,status,reference)
+    VALUES($1,'2026-06-01','2026-07-01',4503599627370496,0,4503599627370496,'pending','large-one'),
+      ($1,'2026-07-01','2026-08-01',4503599627370497,0,4503599627370497,'pending','large-two')`, [orgId]);
+  const result = await runAutoSettlements();
+  assert.equal(result.length, 0); assert.equal(transferPosts, 0);
+  assert.equal((await pool.query("SELECT count(*)::int AS n FROM payouts")).rows[0].n, 0);
+  assert.equal((await pool.query("SELECT SUM(net_kobo-paid_kobo)::text AS unpaid FROM settlements")).rows[0].unpaid, "9007199254740993");
+});
+
 integration("a partner created after migration enrollment accrues its first completed earning month", async () => {
   const { orgId, stationId } = await partner({ enroll: false });
   await sale(stationId, 10000, lastMonth);
@@ -128,6 +153,31 @@ async function pendingPayout(amount) {
   await pool.query("INSERT INTO payouts(partner_org_id,amount_kobo,status,provider,transfer_provider,provider_reference) VALUES ($1,$2,'processing','flutterwave','flutterwave','101')", [orgId, amount]);
   return { orgId, settlementId: settlement.id };
 }
+
+integration("unresolved payouts rotate so a newer successful payout is not starved", async () => {
+  const { orgId, settlementId } = await pendingPayout(4000);
+  await pool.query("DELETE FROM payouts");
+  await pool.query(`INSERT INTO payouts(partner_org_id,amount_kobo,status,provider,transfer_provider,provider_reference,reference,created_at)
+    SELECT $1,4000,'processing','flutterwave','flutterwave',n::text,'ROTATE-'||n,
+      now()-interval '2 days'+n*interval '1 second' FROM generate_series(1,101) n`, [orgId]);
+  const previous = globalThis.fetch;
+  const lookups = [];
+  globalThis.fetch = async (url, options = {}) => {
+    assert.notEqual(options.method, "POST", "Reconciliation must never submit another transfer");
+    const id = Number(new URL(url).pathname.split("/").at(-1));
+    lookups.push(id);
+    return Response.json({ status: "success", data: {
+      id, status: id === 101 ? "SUCCESSFUL" : "NEW", amount: "40", currency: "NGN", reference: `ROTATE-${id}`,
+    } });
+  };
+  try {
+    assert.equal((await reconcilePayouts()).settled, 0);
+    assert.equal((await reconcilePayouts()).settled, 1);
+    assert.ok(lookups.includes(101), "An unresolved first page must not hide later receipts");
+    assert.equal((await pool.query("SELECT paid_kobo FROM settlements WHERE id=$1", [settlementId])).rows[0].paid_kobo, "4000");
+    assert.equal((await pool.query("SELECT count(*)::int AS n FROM payouts WHERE status='processing'")).rows[0].n, 100);
+  } finally { globalThis.fetch = previous; }
+});
 integration("a partial payout preserves the unsettled claim and original period gross, fees and net", async () => {
   const { orgId, settlementId } = await pendingPayout(4000);
   await reconcilePayouts();
@@ -210,6 +260,28 @@ integration("concurrent reconciliation applies a confirmed partial payment once"
   await Promise.all([reconcilePayouts(), reconcilePayouts()]);
   const { rows: [period] } = await pool.query("SELECT paid_kobo FROM settlements WHERE id=$1", [settlementId]);
   assert.equal(Number(period.paid_kobo), 4000);
+});
+
+integration("an active payout claim prevents another worker from duplicating provider lookup", async () => {
+  const { settlementId } = await pendingPayout(4000);
+  const previous = globalThis.fetch;
+  let entered, release;
+  const observed = new Promise(resolve => { entered = resolve; });
+  const gate = new Promise(resolve => { release = resolve; });
+  let lookups = 0;
+  globalThis.fetch = async (_url, options = {}) => {
+    assert.notEqual(options.method, "POST");
+    lookups += 1; entered(); await gate;
+    return Response.json({ status: "success", data: { id:101,status:"SUCCESSFUL",amount:"40",currency:"NGN" } });
+  };
+  try {
+    const first = reconcilePayouts(); await observed;
+    const other = await reconcilePayouts();
+    assert.equal(other.settled, 0); assert.equal(lookups, 1);
+    release(); assert.equal((await first).settled, 1);
+    assert.equal((await pool.query("SELECT paid_kobo FROM settlements WHERE id=$1", [settlementId])).rows[0].paid_kobo, "4000");
+    assert.equal((await pool.query("SELECT reconcile_claim_token,reconcile_claim_until FROM payouts")).rows[0].reconcile_claim_token, null);
+  } finally { release(); globalThis.fetch = previous; }
 });
 
 integration("notification failure after a submitted transfer never releases the payout reservation", async () => {
@@ -298,7 +370,9 @@ integration("a lost transfer response is recovered by its exact stable reference
 integration('a delayed failed lookup cannot overwrite a concurrently settled payout',async()=>{
  const {settlementId}=await pendingPayout(4000);const previous=globalThis.fetch;let entered,release;const observed=new Promise(r=>{entered=r});const gate=new Promise(r=>{release=r});let calls=0;
  globalThis.fetch=async()=>{const n=++calls;if(n===1){entered();await gate;}return Response.json({status:'success',data:{id:101,status:n===1?'FAILED':'SUCCESSFUL',amount:'40',currency:'NGN'}});};
- try{const delayed=reconcilePayouts();await observed;assert.equal((await reconcilePayouts()).settled,1);release();assert.equal((await delayed).failed,0);
+ try{const delayed=reconcilePayouts();await observed;
+ await pool.query("UPDATE payouts SET reconcile_claim_until=clock_timestamp()-interval '1 second'");
+ assert.equal((await reconcilePayouts()).settled,1);release();assert.equal((await delayed).failed,0);
  assert.equal((await pool.query('SELECT status FROM payouts')).rows[0].status,'success');assert.equal((await pool.query('SELECT paid_kobo FROM settlements WHERE id=$1',[settlementId])).rows[0].paid_kobo,'4000');
  assert.equal((await pool.query("SELECT count(*)::int AS n FROM audit_logs WHERE action='settlement.payout_failed'")).rows[0].n,0);
  }finally{release();globalThis.fetch=previous;}
@@ -323,6 +397,7 @@ integration('a delayed old failure cannot retire a newer retry while its provide
  globalThis.fetch=async()=>{if(++lookups===1){entered();await gate;}return Response.json({status:'success',data:{id:101,status:'FAILED',reference:'OLD-ATTEMPT',amount:'40',currency:'NGN'}});};
  try {
   const delayed=reconcilePayouts();await observed;
+  await pool.query("UPDATE payouts SET reconcile_claim_until=clock_timestamp()-interval '1 second'");
   assert.equal((await reconcilePayouts()).failed,1);
   // The actual retry owner changes the merchant reference before its new POST returns.
   await pool.query("UPDATE payouts SET status='processing',reference='NEW-ATTEMPT',failure_reason=NULL");
@@ -345,6 +420,7 @@ integration('delayed provider id recovery cannot replace the receipt for a newer
  };
  try {
   const delayed=reconcilePayouts();await observed;
+  await pool.query("UPDATE payouts SET reconcile_claim_until=clock_timestamp()-interval '1 second'");
   assert.equal((await reconcilePayouts()).failed,1);
   // The retry has both a new merchant reference and its newly returned receipt.
   await pool.query("UPDATE payouts SET status='processing',reference='NEW-RECOVERY',provider_reference='202',failure_reason=NULL");

@@ -191,7 +191,7 @@ export function Pricing() {
     <section id="pricing" className="bg-obligon-mist py-20 lg:py-32" data-node-id="2:71">
       <div className="mx-auto w-full max-w-[1216px] min-w-0 px-5 sm:px-8">
         <div className="mx-auto max-w-[672px] text-center">
-          <p className="text-[13px] font-semibold uppercase tracking-[2.4px] text-obligon-green">Plans and Access</p>
+          <p className="text-[13px] font-semibold text-obligon-green">Plans and Access</p>
           <h2 className="mt-4 font-display text-[32px] leading-10 text-obligon-navy sm:text-4xl">
             Plans for People and Businesses
           </h2>
@@ -206,9 +206,9 @@ export function Pricing() {
               type="button"
               onClick={() => setTab("individual")}
               aria-pressed={tab === "individual"}
-              className={`h-[42px] rounded-full px-8 text-sm font-semibold transition ${
+              className={`min-h-11 rounded-full px-8 text-sm font-semibold transition ${
                 tab === "individual"
-                  ? "border border-[#e5e7eb] bg-white text-[#060b19] shadow-[0_1px_1px_rgba(0,0,0,0.05)]"
+                  ? "border border-[#e5e7eb] bg-white text-[#060b19]"
                   : "text-[#4b5563]"
               }`}
             >
@@ -218,9 +218,9 @@ export function Pricing() {
               type="button"
               onClick={() => setTab("organization")}
               aria-pressed={tab === "organization"}
-              className={`h-[42px] rounded-full px-8 text-sm font-semibold transition ${
+              className={`min-h-11 rounded-full px-8 text-sm font-semibold transition ${
                 tab === "organization"
-                  ? "border border-[#e5e7eb] bg-white text-[#060b19] shadow-[0_1px_1px_rgba(0,0,0,0.05)]"
+                  ? "border border-[#e5e7eb] bg-white text-[#060b19]"
                   : "text-[#4b5563]"
               }`}
             >
@@ -247,7 +247,7 @@ export function Pricing() {
                 plan.dark
                   ? "border border-obligon-blue bg-obligon-blue text-white"
                   : plan.recommended
-                    ? "z-10 -mt-2 border-2 border-obligon-green bg-white text-obligon-navy shadow-card lg:scale-105"
+                    ? "border-2 border-obligon-green bg-white text-obligon-navy"
                     : "border border-obligon-border bg-white text-obligon-navy"
               }`}
             >
@@ -258,7 +258,7 @@ export function Pricing() {
               ) : null}
 
               <p
-                className={`text-[13px] font-bold uppercase tracking-[1.2px] ${
+                className={`text-[13px] font-bold ${
                   plan.dark ? "text-obligon-lime" : plan.recommended ? "text-obligon-green" : "text-obligon-text"
                 }`}
               >
@@ -285,8 +285,8 @@ export function Pricing() {
                     className={`flex items-center gap-3 text-sm leading-5 ${
                       !feature.enabled
                         ? plan.dark
-                          ? "text-white/40"
-                          : "text-obligon-text/50"
+                          ? "text-white/75"
+                          : "text-obligon-text"
                         : plan.dark
                           ? "text-white/80"
                           : plan.recommended

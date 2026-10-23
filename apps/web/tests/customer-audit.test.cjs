@@ -3,13 +3,14 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
+const partnerAccess = require('../../../packages/shared/partner-access.mjs');
 
 function load(path, { dependencies = {}, globals = {}, expose = '' } = {}) {
   const exports = {};
   const code = ts.transpileModule(fs.readFileSync(require.resolve(path), 'utf8') + expose, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true },
   }).outputText;
-  vm.runInNewContext(code, { exports, Error, require: name => dependencies[name] ?? {}, ...globals });
+  vm.runInNewContext(code, { exports, Error, require: name => name.endsWith('/partner-access.mjs') ? partnerAccess : name==='./partner-selling-unit' ? load('../lib/partner-selling-unit.ts',{dependencies:{'../../../packages/shared/partner-access.mjs':partnerAccess}}) : dependencies[name] ?? {}, ...globals });
   return exports;
 }
 const presentation = load('../lib/customer-presentation.ts');
@@ -41,7 +42,7 @@ test('receipts keep actual failed/pending/refunded statuses and omit unknown car
   }
   const receipt = presentation.customerReceiptText({ ...event, status: 'success', maskedPan: '•••• 9876', fuel: 'PMS', vehicle: 'TEST-123', litres: 12.5, time: '13 Oct 2026' });
   assert.ok(receipt.includes('Card Number: •••• 9876'));
-  assert.ok(receipt.includes('Volume: 12.5 L'));
+  assert.ok(receipt.includes('Quantity: 12.5 L'));
   const movement = presentation.customerReceiptText({ ...event, kind: 'movement', status: 'debited', subtitle: 'Card withdrawal' });
   assert.ok(movement.includes('Type: Wallet movement'));
   assert.ok(!movement.includes('Fuel purchase'));
@@ -98,15 +99,15 @@ test('the phone account menu exposes wallet, profile and real sign-out', () => {
   const runtime = hooks();
   const Link = () => null;
   const LogoutButton = () => null;
-  const { MobileHeader } = load('../components/customer-dashboard/CustomerShell.tsx', {
-    expose: '\nexport { MobileHeader };', globals: { React: runtime.React },
-    dependencies: { react: runtime.React, 'next/link': Link, '@/components/auth/LogoutButton': { LogoutButton }, '@/lib/mock/customer-data': load('../lib/mock/customer-data.ts') },
+  const { MobileCustomerAccount } = load('../components/customer-dashboard/CustomerShell.tsx', {
+    expose: '\nexport { MobileCustomerAccount };', globals: { React: runtime.React },
+    dependencies: { react: runtime.React, 'next/link': Link, 'next/navigation': { usePathname: () => '/customer' }, '@/components/auth/LogoutButton': { LogoutButton }, '@/lib/mock/customer-data': load('../lib/mock/customer-data.ts') },
   });
-  const closed = runtime.render(MobileHeader);
-  const account = nodes(closed).find(node => node.type === 'button' && node.props['aria-controls']);
+  const closed = runtime.render(MobileCustomerAccount);
+  const account = nodes(closed).find(node => node.type === 'button' && node.props['aria-expanded'] !== undefined);
   assert.equal(account.props['aria-expanded'], false);
   account.props.onClick();
-  const open = nodes(runtime.render(MobileHeader));
+  const open = nodes(runtime.render(MobileCustomerAccount));
   assert.ok(open.some(node => node.type === Link && node.props.href === '/customer/wallet'));
   assert.ok(open.some(node => node.type === Link && node.props.href === '/customer/profile'));
   assert.ok(open.some(node => node.type === LogoutButton));
@@ -181,3 +182,7 @@ test('recent activity rows are native keyboard-operable buttons', () => {
   row.props.onClick();
   assert.deepEqual(paths, ['/customer/wallet']);
 });
+
+ test('gas receipts use recorded kg and standard cubic metres without litre conversion',()=>{
+  for(const unit of ['kg','scm']) { const receipt=presentation.customerReceiptText({id:'gas-record',kind:'dispense',reference:'GAS',title:'CNG',station:'Station',fuel:'CNG',litres:12.5,quantity:12.5,sellingUnit:unit,amount:'₦100',signedKobo:-10000,status:'success',time:'Recorded time'}); assert.match(receipt,new RegExp('Quantity: 12\\.5 '+(unit==='kg'?'kg':'standard m³')));assert.doesNotMatch(receipt,/12\.5 L/); }
+ });

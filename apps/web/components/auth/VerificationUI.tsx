@@ -203,7 +203,7 @@ export function VerificationUI() {
             mistake to leave. */}
         <Link
           href={routes.login}
-          className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[1.2px] text-obligon-green hover:underline"
+          className="inline-flex items-center gap-2 text-xs font-extrabold text-obligon-green hover:underline"
         >
           <ArrowLeft size={15} />
           Back to Login
@@ -235,15 +235,15 @@ export function VerificationUI() {
             >
               <Icon size={17} className="shrink-0 text-obligon-navy" />
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-extrabold uppercase text-obligon-text">{label}</p>
+                <p className="text-xs font-semibold text-obligon-text">{label}</p>
                 <p className="truncate text-sm font-bold text-obligon-navy">{detail}</p>
               </div>
               {verified || sent ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-obligon-lime/30 px-2.5 py-1 text-[11px] font-extrabold text-obligon-navy">
+                <span className="inline-flex items-center gap-1 rounded-full bg-obligon-lime/30 px-2.5 py-1 text-xs font-extrabold text-obligon-navy">
                   <Check size={12} /> {verified ? "Verified" : "Sent"}
                 </span>
               ) : (
-                <span className="rounded-full bg-[#fff3d8] px-2.5 py-1 text-[11px] font-extrabold text-[#9a6300]">
+                <span className="rounded-full bg-[#fff3d8] px-2.5 py-1 text-xs font-extrabold text-[#9a6300]">
                   Not sent
                 </span>
               )}
@@ -280,7 +280,7 @@ export function VerificationUI() {
         ) : (
           <form onSubmit={verify} className="mt-8">
             <fieldset disabled={busy} className="mb-6">
-              <legend className="text-xs font-extrabold uppercase text-obligon-text">Code delivery method</legend>
+              <legend className="text-xs font-semibold text-obligon-text">Code delivery method</legend>
               <div className="mt-2 grid grid-cols-2 gap-3">
                 {([
                   { channel: "email", label: "Email code", verified: emailVerified },
@@ -293,7 +293,7 @@ export function VerificationUI() {
                 ))}
               </div>
             </fieldset>
-            <label htmlFor="otp-code" className="block text-xs font-extrabold uppercase text-obligon-text">
+            <label htmlFor="otp-code" className="block text-xs font-semibold text-obligon-text">
               6-digit {selectedChannel === "email" ? "email" : "SMS"} code
             </label>
             <input

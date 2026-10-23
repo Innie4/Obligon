@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { SubscriptionPanel } from "@/components/shared/SubscriptionPanel";
+import { sellingUnitLabel } from "../../../../packages/shared/partner-access.mjs";
 import { CustomerFuelCheckout } from "./CustomerFuelCheckout";
 import type { ComponentType } from "react";
 import {
@@ -46,6 +48,8 @@ import { api, mutationsApi, DEFAULT_NOTIFICATION_PREFS, ApiError, type CardCheck
 import { AsyncBoundary } from "@/components/shared/States";
 import { useAsync } from "@/components/shared/useAsync";
 import { usePolling } from "@/components/shared/usePolling";
+import { DashboardSearchQuery } from "@/components/shared/DashboardSearchQuery";
+import type { Station } from "@/lib/services/types";
 import { useSession } from "@/components/shared/AuthContext";
 import { useToast } from "@/components/shared/Toast";
 import { Toggle } from "@/components/shared/Toggle";
@@ -72,11 +76,11 @@ const toneClasses: Record<CustomerTone, string> = {
 };
 
 function Canvas({ children, compact = false }: { children: React.ReactNode; compact?: boolean }) {
-  return <section className={`px-5 pb-28 pt-10 sm:px-8 lg:px-16 lg:pb-16 ${compact ? "lg:pt-9" : "lg:pt-16"}`}>{children}</section>;
+  return <section className={`mx-auto w-full max-w-[1440px] min-w-0 px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-6 sm:px-8 sm:pt-8 lg:px-12 lg:pb-12 ${compact ? "lg:pt-8" : "lg:pt-10"}`}>{children}</section>;
 }
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <article className={`rounded-2xl border border-[#dbe2d8] bg-white ${className}`}>{children}</article>;
+  return <article className={`min-w-0 rounded-2xl border border-obligon-border bg-white ${className}`}>{children}</article>;
 }
 
 function MiniIcon({ tone = "green", children }: { tone?: CustomerTone; children: React.ReactNode }) {
@@ -85,8 +89,8 @@ function MiniIcon({ tone = "green", children }: { tone?: CustomerTone; children:
 
 function SectionTitle({ title, action }: { title: string; action?: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <h2 className="font-display text-2xl font-extrabold tracking-normal text-obligon-navy">{title}</h2>
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">{title}</h2>
       {action}
     </div>
   );
@@ -121,13 +125,13 @@ function VehicleTable() {
       empty={{ title: "No vehicle data", message: "Vehicle performance metrics will appear here." }}
     >
       <Card className="overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-6 border-b border-[#eef3ee]">
-          <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Vehicle Performance</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-5 sm:px-6 border-b border-[#eef3ee]">
+          <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">Vehicle Performance</h2>
           <button onClick={() => router.push("/customer/transactions")} className="text-sm font-extrabold text-obligon-green hover:underline" type="button">
             View All
           </button>
         </div>
-        <div className="overflow-x-auto">
+        <div tabIndex={0} role="region" aria-label="Vehicle performance table, scroll horizontally to see all columns" className="overflow-x-auto overscroll-x-contain focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-obligon-green">
           <table className="w-full min-w-[520px] border-collapse text-left">
             <thead className="bg-[#f0f4f0] text-xs uppercase tracking-[0.8px] text-[#3f463d]">
               <tr>
@@ -139,7 +143,7 @@ function VehicleTable() {
             </thead>
             <tbody className="divide-y divide-[#eef3ee]">
               {(vehicles ?? []).map(([id, spend, volume, efficiency]) => (
-                <tr key={id} className="hover:bg-[#f7fbf8] transition">
+                <tr key={id} className="hover:bg-obligon-mist/60 transition">
                   <td className="px-6 py-4 font-bold text-obligon-green">{id}</td>
                   <td className="font-semibold text-obligon-navy">{spend}</td>
                   <td className="text-obligon-text">{volume}</td>
@@ -174,8 +178,8 @@ function ActivityList({ desktop = false }: { desktop?: boolean }) {
       }}
     >
       <Card className="overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-6 border-b border-[#eef3ee]">
-          <h2 className="font-display text-2xl font-extrabold text-obligon-navy">{desktop ? "Recent Activity" : "Recent Transactions"}</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-5 sm:px-6 border-b border-[#eef3ee]">
+          <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">{desktop ? "Recent Activity" : "Recent Transactions"}</h2>
           {/* Notifications, not the transaction page. This panel lists account
               events as well as purchases, so sending someone to a page that only
               showed fuel dispenses lost most of what they were looking at — and
@@ -191,7 +195,7 @@ function ActivityList({ desktop = false }: { desktop?: boolean }) {
               key={item.id}
               type="button"
               onClick={() => router.push(item.link || "/customer/transactions")}
-              className="flex w-full items-center gap-4 px-6 py-4 text-left hover:bg-[#f7fbf8] transition"
+              className="flex w-full items-center gap-4 px-6 py-4 text-left hover:bg-obligon-mist/60 transition"
             >
               <MiniIcon tone={item.kind === "notification" ? "blue" : "muted"}>
                 {item.kind === "notification" ? <Bell size={18} /> : <Fuel size={18} />}
@@ -228,15 +232,7 @@ function metricHelper(metrics: { label: string; value: string; helper?: string }
   return metrics?.find((item) => item.label === label)?.helper;
 }
 
-function greetingHour() {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
-}
-
 function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
-  const { user } = useSession();
   const router = useRouter();
   const { status, data: metrics, error, reload, refresh } = useAsync(
     () => api.getCustomerOverviewMetrics(),
@@ -254,7 +250,6 @@ function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
     : cardLoadStatus === "error" ? "Card status unavailable"
     : !cardData?.card ? "No card issued"
     : `Card ${cardData.card.status}`;
-  const firstName = user?.name?.split(" ")[0] ?? "Driver";
   const totalBalance = metricValue(metrics, "Total Account Balance", "₦0.00");
   const mtdSpend = metricValue(metrics, "MTD Spend", "₦0.00");
   const mtdSpendHelper = metricHelper(metrics, "MTD Spend") ?? "";
@@ -263,7 +258,7 @@ function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
   const projectedHelper = "Manage in My Card";
   const budgetUsage = metricValue(metrics, "Budget Usage", "-");
   const budgetLimit = metricHelper(metrics, "Budget Usage") ?? "Not set";
-  const litres = metricValue(metrics, "Litres Consumed", "0 L");
+  const litres = metricValue(metrics, "Fuel quantities", metricValue(metrics, "Litres Consumed", "No quantity recorded"));
   const txnCount = metricValue(metrics, "Transactions", "0");
   const security = metricValue(metrics, "Security Status", "0 Alerts");
   const securityHelper = metricHelper(metrics, "Security Status") ?? "0 Blocked | 0 Suspicious";
@@ -275,10 +270,7 @@ function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
 
   return (
     <Canvas>
-      <div className="lg:hidden">
-        <h2 className="font-display text-[34px] font-extrabold leading-tight text-obligon-green">{greetingHour()}, {firstName}</h2>
-        <p className="mt-2 text-base text-[#3f463d]">Here is your personal account overview for today.</p>
-      </div>
+      <div className="mb-6 lg:hidden"><h2 className="font-display text-2xl font-bold tracking-tight text-obligon-navy">Overview</h2><p className="mt-2 text-sm text-obligon-text">Your balance and recent activity.</p></div>
 
       <AsyncBoundary
         status={status}
@@ -288,15 +280,22 @@ function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
         loadingLabel="Loading overview…"
         empty={{ title: "No overview data", message: "Account metrics will appear here once available." }}
       >
-        <div className="mt-8 grid gap-6 lg:mt-0 lg:grid-cols-[1fr_282px]">
-          <Card className="p-6 lg:p-8">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <Card className="flex flex-col justify-between p-5 sm:p-6">
             <div className="flex justify-between items-center">
-              <p className="text-xs font-extrabold uppercase tracking-[0.8px] text-[#3f463d]">Total Account Balance</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.8px] text-[#3f463d]">Total Account Balance</p>
               <WalletCards size={22} className="text-obligon-green" />
             </div>
-            <p className="mt-4 font-display text-[40px] font-extrabold leading-none text-obligon-navy lg:text-[56px]">
+            <p className="mt-4 font-display break-words text-[36px] font-bold leading-tight tracking-tight text-obligon-navy sm:text-[44px] xl:text-[52px]">
               {totalBalance}
             </p>
+            <div className="mt-6 border-t border-obligon-border pt-4">
+              <p className="text-sm text-obligon-text">Manage your balance and fuel card.</p>
+              <div className="mt-3 flex flex-wrap gap-3">
+                <Link href="/customer/wallet" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-obligon-green px-4 text-sm font-semibold text-white">Open Wallet</Link>
+                <Link href="/customer/card" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-obligon-border px-4 text-sm font-semibold text-obligon-navy">Manage My Card</Link>
+              </div>
+            </div>
           </Card>
           {/* Keep the spend summary available to everyone and send edits to My Card. */}
           <Card className="p-6 text-left">
@@ -307,9 +306,9 @@ function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
               aria-label="Manage your fuel budget in My Card"
             >
               <div className="flex items-baseline justify-between gap-3">
-                <p className="text-xs font-extrabold uppercase tracking-[0.8px] text-[#3f463d]">MTD Spend</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.8px] text-[#3f463d]">MTD Spend</p>
                 {mtdSpendHelper ? (
-                  <p className="text-[11px] font-semibold text-obligon-text">{mtdSpendHelper}</p>
+                  <p className="text-xs font-semibold text-obligon-text">{mtdSpendHelper}</p>
                 ) : null}
               </div>
               <p className="mt-4 font-display text-[32px] font-extrabold text-[#b51f24]">{mtdSpend}</p>
@@ -343,7 +342,7 @@ function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
         <div className="mt-6 grid gap-6 sm:grid-cols-3">
           <Card className="p-5">
             <Fuel className="text-obligon-green" size={22} />
-            <p className="mt-2 text-xs font-bold uppercase text-[#3f463d]">Litres Consumed</p>
+            <p className="mt-2 text-xs font-bold uppercase text-[#3f463d]">Fuel quantities</p>
             <p className="mt-1 text-2xl font-extrabold text-obligon-navy">{litres}</p>
           </Card>
           <Card className="p-5">
@@ -360,7 +359,7 @@ function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
           </Card>
         </div>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_282px]">
+        <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
           <VehicleTable />
           <ActivityList desktop />
         </div>
@@ -379,6 +378,7 @@ function TransactionsPage() {
   const [selectedTxn, setSelectedTxn] = React.useState<CustomerMoneyEvent | null>(null);
   const receiptLinkConsumed = React.useRef<string | null>(null);
   const [currentPage, setCurrentPage] = React.useState(1);
+  const [query, setQuery] = React.useState("");
   const pageSize = 5;
   const { success: toastSuccess, error: toastError } = useToast();
   const [downloadingReceipt, setDownloadingReceipt] = React.useState(false);
@@ -403,6 +403,7 @@ function TransactionsPage() {
   const fuels = Array.from(new Set(dispenses.map((r) => r.fuel ?? ""))).filter((f): f is string => Boolean(f));
 
   const filtered = rows.filter((row) => {
+    if (query.trim() && ![row.reference, row.title, row.subtitle, row.station, row.vehicle, row.fuel].filter(Boolean).join(" ").toLowerCase().includes(query.trim().toLowerCase())) return false;
     if (applied.station !== "All Stations" && row.station !== applied.station) return false;
     if (applied.vehicle !== "All Vehicles" && (row.vehicle ?? "") !== applied.vehicle) return false;
     if (applied.fuel !== "All Fuels" && (row.fuel ?? "") !== applied.fuel) return false;
@@ -438,11 +439,11 @@ function TransactionsPage() {
   function Select({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) {
     return (
       <label className="block">
-        <span className="text-xs font-extrabold uppercase text-obligon-text">{label}</span>
+        <span className="text-xs font-semibold uppercase text-obligon-text">{label}</span>
         <select
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="mt-2 h-12 w-full rounded-xl border border-[#cfd8cc] bg-white px-3 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green"
+          className="mt-2 h-12 w-full rounded-xl border border-obligon-border bg-white px-3 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green"
         >
           {options.map((option) => (
             <option key={option} value={option}>{option}</option>
@@ -462,9 +463,16 @@ function TransactionsPage() {
       empty={{ title: "No transactions found", message: "Your transaction history will appear here once activity is recorded." }}
     >
       <Canvas compact>
+        <DashboardSearchQuery onSearch={value => {
+          setQuery(value); setCurrentPage(1);
+          if (value) {
+            const cleared = { station: "All Stations", vehicle: "All Vehicles", fuel: "All Fuels" };
+            setFilters(cleared); setApplied(cleared);
+          }
+        }} />
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
-            <h2 className="font-display text-3xl font-extrabold text-obligon-navy">Transaction History</h2>
+            <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Transaction History</h2>
             <p className="mt-1 text-sm text-obligon-text">Complete ledger of fuel card dispenses and wallet top-ups.</p>
           </div>
           <div className="flex gap-2">
@@ -479,9 +487,13 @@ function TransactionsPage() {
           </div>
         </div>
 
+        <label className="mb-5 block max-w-lg text-sm font-bold text-obligon-navy">Search transactions
+          <input type="search" value={query} maxLength={254} onChange={event => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Reference, station, vehicle or fuel" className="mt-2 h-12 w-full rounded-xl border border-obligon-border bg-white px-3 text-sm font-medium outline-none focus:border-obligon-green" />
+        </label>
+
         {hasActiveFilters ? (
-          <div className="mb-6 flex flex-wrap items-center gap-2 rounded-xl bg-[#f7fbf8] p-3 border border-obligon-border">
-            <span className="text-xs font-extrabold uppercase text-obligon-text mr-2">Active Filters:</span>
+          <div className="mb-6 flex flex-wrap items-center gap-2 rounded-xl bg-obligon-mist/60 p-3 border border-obligon-border">
+            <span className="text-xs font-semibold uppercase text-obligon-text mr-2">Active Filters:</span>
             {applied.station !== "All Stations" && (
               <span className="rounded-lg bg-white border px-3 py-1 text-xs font-bold text-obligon-green">
                 Station: {applied.station}
@@ -513,7 +525,8 @@ function TransactionsPage() {
         ) : null}
 
         <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
+          <p className="border-b border-obligon-border bg-obligon-mist/60 px-5 py-3 text-xs leading-5 text-obligon-text xl:hidden">Scroll horizontally to view amounts, balances and receipts.</p>
+          <div tabIndex={0} role="region" aria-label="Transaction history table, scroll horizontally to see all columns" className="overflow-x-auto overscroll-x-contain focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-obligon-green">
             <table className="w-full text-left min-w-[640px]">
               <thead className="bg-[#f0f4f0] text-xs uppercase text-[#3f463d]">
                 <tr>
@@ -525,7 +538,7 @@ function TransactionsPage() {
               <tbody className="divide-y divide-[#eef3ee]">
                 {paginated.length > 0 ? (
                   paginated.map((row) => (
-                    <tr key={row.id} className="transition hover:bg-[#f7fbf8]">
+                    <tr key={row.id} className="transition hover:bg-obligon-mist/60">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <MiniIcon tone={row.kind === "dispense" ? "muted" : "green"}>
@@ -542,10 +555,10 @@ function TransactionsPage() {
                       <td className="px-6 py-4 text-xs font-bold text-obligon-text">
                         {row.reference ?? "N/A"}
                       </td>
-                      <td className={`px-6 py-4 font-extrabold ${row.signedKobo >= 0 ? "text-obligon-green" : "text-obligon-navy"}`}>
+                      <td className={`whitespace-nowrap px-6 py-4 font-extrabold tabular-nums ${row.signedKobo >= 0 ? "text-obligon-green" : "text-obligon-navy"}`}>
                         {row.amount}
                       </td>
-                      <td className="px-6 py-4 text-xs font-bold text-obligon-text">
+                      <td className="whitespace-nowrap px-6 py-4 text-xs font-bold tabular-nums text-obligon-text">
                         {row.balanceAfterLabel ?? "N/A"}
                       </td>
                       <td className="px-6 py-4 text-xs text-obligon-text">{row.time}</td>
@@ -553,7 +566,7 @@ function TransactionsPage() {
                         <button
                           type="button"
                           onClick={() => setSelectedTxn(row)}
-                          className="rounded-lg bg-obligon-mist border border-obligon-border px-3 py-1.5 text-xs font-bold text-obligon-navy hover:bg-obligon-green hover:text-white transition"
+                          className="min-h-11 whitespace-nowrap rounded-lg bg-obligon-mist border border-obligon-border px-3 py-2 text-sm font-semibold text-obligon-navy hover:bg-obligon-green hover:text-white transition"
                         >
                           View Receipt
                         </button>
@@ -580,7 +593,7 @@ function TransactionsPage() {
                 type="button"
                 disabled={currentPage <= 1}
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                className="h-9 px-3 rounded-lg border border-[#cfd8cc] text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-obligon-mist"
+                className="min-h-11 px-3 rounded-lg border border-obligon-border text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-obligon-mist"
               >
                 Previous
               </button>
@@ -591,7 +604,7 @@ function TransactionsPage() {
                 type="button"
                 disabled={currentPage >= totalPages}
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                className="h-9 px-3 rounded-lg border border-[#cfd8cc] text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-obligon-mist"
+                className="min-h-11 px-3 rounded-lg border border-obligon-border text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-obligon-mist"
               >
                 Next
               </button>
@@ -603,7 +616,7 @@ function TransactionsPage() {
         {filtersOpen ? (
           <ModalFrame title="Filter transactions" onClose={() => setFiltersOpen(false)}>
             <div className="p-6">
-              <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Filter Transactions</h2>
+              <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">Filter Transactions</h2>
               <p className="mt-1 text-sm text-obligon-text">Narrow your transaction history by station, vehicle, or fuel type.</p>
               <div className="mt-6 space-y-4">
                 <Select
@@ -645,7 +658,7 @@ function TransactionsPage() {
                     setCurrentPage(1);
                     setFiltersOpen(false);
                   }}
-                  className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white shadow-green"
+                  className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white shadow-none"
                 >
                   Apply Filters
                 </button>
@@ -672,14 +685,14 @@ function TransactionsPage() {
                   {selectedTxn.status ? selectedTxn.status.toUpperCase() : "UNKNOWN"}
                 </span>
               </div>
-              <h2 className="mt-4 font-display text-3xl font-extrabold text-obligon-navy">Transaction Receipt</h2>
+              <h2 className="mt-4 font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Transaction Receipt</h2>
               <p className="mt-1 text-xs text-obligon-text">
                 {selectedTxn.reference ? "Reference" : "Record ID"}: <span className="font-mono font-extrabold text-obligon-navy">
                   {selectedTxn.reference ?? selectedTxn.id}
                 </span>
               </p>
 
-              <div className="mt-6 rounded-2xl bg-[#f7fbf8] p-5 border border-obligon-border">
+              <div className="mt-6 rounded-2xl bg-obligon-mist/60 p-5 border border-obligon-border">
                 <p className="text-xs font-bold uppercase text-obligon-text">Recorded Amount</p>
                 <p className="mt-1 font-display text-4xl font-extrabold text-obligon-green">{selectedTxn.amount}</p>
               </div>
@@ -695,7 +708,7 @@ function TransactionsPage() {
                   type="button"
                   disabled={downloadingReceipt}
                   onClick={() => handleDownloadReceipt(selectedTxn)}
-                  className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white shadow-green flex items-center justify-center gap-2"
+                  className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white shadow-none flex items-center justify-center gap-2"
                 >
                   {downloadingReceipt ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
                   Download Receipt
@@ -776,7 +789,7 @@ function CardPage({
   const [openRequestError, setOpenRequestError] = React.useState("");
   const [cardLoadRevision, setCardLoadRevision] = React.useState(0);
 
-  const { status: plansStatus, data: plans } = useAsync(() => api.getCardPlans());
+  const { status: plansStatus, data: plans, error: plansError, reload: reloadPlans } = useAsync(() => api.getCardPlans());
   const [planModalOpen, setPlanModalOpen] = React.useState(false);
   const [preferredPlan,setPreferredPlan]=React.useState<string>();
   React.useEffect(() => {
@@ -1164,7 +1177,7 @@ function CardPage({
   return (
     <Canvas>
       <div className="mb-8">
-        <h2 className="font-display text-3xl font-extrabold text-obligon-navy">Card Management</h2>
+        <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Card Management</h2>
         <p className="mt-1 text-obligon-text">View your Fuelvista card status and manage your subscription.</p>
       </div>
 
@@ -1176,8 +1189,8 @@ function CardPage({
       </div> : null}
 
       {hasCard === false ? (
-        <Card className="mb-8 border-obligon-green/30 bg-[#f7fbf8] p-6">
-          <h2 className="font-display text-xl font-extrabold text-obligon-navy">Get your Fuelvista Card</h2>
+        <Card className="mb-8 border-obligon-green/30 bg-obligon-mist/60 p-6">
+          <h2 className="font-display text-lg font-bold tracking-tight sm:text-xl text-obligon-navy">Get your Fuelvista Card</h2>
           <p className="mt-1 text-sm text-obligon-text">
             Choose a subscription plan, pay for it, then verify your identity. We issue your card once
             verification completes.
@@ -1186,11 +1199,11 @@ function CardPage({
           {cardRequest ? (
             <div className="mt-5 space-y-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-obligon-blue/10 px-3 py-1 text-[10px] font-extrabold uppercase text-obligon-blue">
+                <span className="rounded-full bg-obligon-blue/10 px-3 py-1 text-xs font-semibold uppercase text-obligon-blue">
                   {cardRequest.planName ?? "Plan"} {cardRequest.planAmountLabel ?? ""}
                 </span>
                 <span
-                  className={`rounded-full px-3 py-1 text-[10px] font-extrabold uppercase ${
+                  className={`rounded-full px-3 py-1 text-xs font-semibold uppercase ${
                     closedRequest
                       ? refundConfirmed ? "bg-[#e8fbd7] text-obligon-green" : "bg-[#fff3d8] text-[#9a6300]"
                       : cardRequest.paymentStatus === "paid"
@@ -1300,6 +1313,8 @@ function CardPage({
         <CardPlanModal
           plans={[...(plans ?? [])].sort((a,b)=>Number(b.code===preferredPlan)-Number(a.code===preferredPlan))}
           loading={plansStatus === "loading"}
+          error={plansError?.message ?? null}
+          onRetry={reloadPlans}
           busyPlan={busyPlan}
           onSelect={(plan) => void handleSelectPlan(plan)}
           onClose={() => setPlanModalOpen(false)}
@@ -1347,7 +1362,7 @@ function CardPage({
 
       {hasCard === true ? <div className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
         <article
-          className={`relative min-h-[290px] overflow-hidden rounded-2xl p-8 text-white shadow-xl ${
+          className={`relative min-h-[260px] overflow-hidden rounded-2xl p-5 text-white shadow-sm sm:min-h-[290px] sm:p-8 ${
             blocked
               ? "bg-[linear-gradient(135deg,#2a0606,#1a0808)]"
               : frozen
@@ -1357,19 +1372,19 @@ function CardPage({
         >
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_0%,rgba(170,248,87,.32),transparent_28%)]" />
           <div className="relative flex h-full flex-col justify-between">
-            <div className="flex justify-between items-center">
-              <p className="font-display text-3xl font-extrabold tracking-tight">Obligon LTD</p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="font-display text-2xl font-bold tracking-tight sm:text-3xl">Obligon LTD</p>
               <span className={`rounded-full ${status.className}`}>{status.label}</span>
             </div>
             <div className="mt-8">
-              <p className="font-mono text-2xl tracking-[4px] text-white/90">{card?.maskedPan ?? "•••• •••• •••• ••••"}</p>
+              <p className="break-words font-mono text-lg tracking-[2px] text-white/90 sm:text-2xl sm:tracking-[4px]">{card?.maskedPan ?? "•••• •••• •••• ••••"}</p>
               <div className="mt-8 grid gap-4 sm:grid-cols-2">
                 <div>
-                  <p className="text-[10px] uppercase font-bold tracking-wider text-white/60">CARDHOLDER NAME</p>
+                  <p className="text-xs uppercase font-bold tracking-wider text-white/60">CARDHOLDER NAME</p>
                   <p className="font-extrabold text-sm text-white">{card?.holder ?? "N/A"}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase font-bold tracking-wider text-white/60">DAILY SPEND LIMIT</p>
+                  <p className="text-xs uppercase font-bold tracking-wider text-white/60">DAILY SPEND LIMIT</p>
                   <p className="font-extrabold text-sm text-obligon-lime">{card?.dailyLimitLabel ?? "N/A"}</p>
                 </div>
               </div>
@@ -1389,7 +1404,7 @@ function CardPage({
                 type="button"
                 disabled={disabled}
                 onClick={() => onModal(modal)}
-                className={`w-full rounded-2xl border border-[#dbe2d8] bg-white p-4 text-left transition hover:border-obligon-green hover:bg-[#f7fbf8] ${
+                className={`w-full rounded-2xl border border-obligon-border bg-white p-4 text-left transition hover:border-obligon-green hover:bg-obligon-mist/60 ${
                   disabled ? "cursor-not-allowed opacity-50" : ""
                 }`}
               >
@@ -1397,7 +1412,7 @@ function CardPage({
                   <MiniIcon tone={tone}><Icon size={19} /></MiniIcon>
                   <div className="min-w-0 flex-1">
                     <h2 className="text-sm font-extrabold text-obligon-navy">{title}</h2>
-                    <p className="text-xs text-obligon-text truncate">{body}</p>
+                    <p className="mt-1 text-xs leading-5 text-obligon-text">{body}</p>
                   </div>
                 </div>
               </button>
@@ -1447,7 +1462,6 @@ function WalletPage({
   } = useAsync(() => api.getCustomerWallet(), [balanceRefreshKey]);
   const [walletLoadedAt, setWalletLoadedAt] = React.useState<number | null>(null);
   React.useEffect(() => { if (wallet) setWalletLoadedAt(Date.now()); }, [wallet]);
-  const { data: topUpHistory } = useAsync(() => api.getCustomerTopUpHistory());
   // The overview carries the MTD figures the wallet page reuses, and it is a
   // separate aggregate, so it is refreshed on the same tick rather than folded
   // into the wallet response.
@@ -1482,12 +1496,12 @@ function WalletPage({
     <Canvas>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="font-display text-3xl font-extrabold text-obligon-navy">Wallet Management</h2>
+          <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Wallet Management</h2>
           <p className="mt-1 text-obligon-text">Fund your prepaid fuel balance and manage your spending.</p>
         </div>
         <button
           onClick={() => onModal("topup")}
-          className="h-12 rounded-xl bg-obligon-green px-6 font-extrabold text-white shadow-green hover:bg-obligon-green/90 transition"
+          className="h-12 rounded-xl bg-obligon-green px-6 font-extrabold text-white shadow-none hover:bg-obligon-green/90 transition"
           type="button"
         >
           + Add Funds to Wallet
@@ -1496,7 +1510,7 @@ function WalletPage({
 
       <Card className="mt-8 p-5 sm:p-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs font-extrabold uppercase text-obligon-text">Available Fuel Balance</p>
+          <p className="text-xs font-semibold uppercase text-obligon-text">Available Fuel Balance</p>
           {/* The real budget, not a claim about auto-recharging. The previous
               copy asserted an auto-recharge threshold that no code implemented,
               so a customer with an empty wallet was told it would be topped up
@@ -1532,22 +1546,22 @@ function WalletPage({
             trust. It is the sum of the charges that were actually taken, which is
             the number a customer will recognise from their bank statement. */}
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-xl border border-obligon-border bg-[#f7fbf8] p-4">
-            <p className="text-xs font-extrabold uppercase text-obligon-text">Settled with Flutterwave</p>
-            <p className="mt-1 font-display text-2xl font-extrabold text-obligon-navy">
+          <div className="rounded-xl border border-obligon-border bg-obligon-mist/60 p-4">
+            <p className="text-xs font-semibold uppercase text-obligon-text">Settled with Flutterwave</p>
+            <p className="mt-1 font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">
               {wallet?.settledInLabel ?? (walletStatus === "loading" ? "Loading payments…" : "Payments unavailable")}
             </p>
-            <p className="mt-1 text-[11px] font-semibold text-obligon-text">
+            <p className="mt-1 text-xs font-semibold text-obligon-text">
               {!wallet ? "Confirmed payment history has not loaded." : wallet.settledCount
                 ? `${wallet.settledCount} confirmed payment${wallet.settledCount === 1 ? "" : "s"}`
                 : "No confirmed payments yet"}
             </p>
           </div>
           {lastTopUp ? (
-            <div className="rounded-xl border border-obligon-border bg-[#f7fbf8] p-4">
-              <p className="text-xs font-extrabold uppercase text-obligon-text">Last top-up</p>
-              <p className="mt-1 font-display text-2xl font-extrabold text-obligon-navy">{lastTopUp.chargedLabel}</p>
-              <p className="mt-1 text-[11px] font-semibold text-obligon-text">
+            <div className="rounded-xl border border-obligon-border bg-obligon-mist/60 p-4">
+              <p className="text-xs font-semibold uppercase text-obligon-text">Last top-up</p>
+              <p className="mt-1 font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">{lastTopUp.chargedLabel}</p>
+              <p className="mt-1 text-xs font-semibold text-obligon-text">
                 <span className="font-extrabold text-obligon-navy">{lastTopUp.reference}</span>
                 {" · "}
                 {lastTopUp.status === "success" ? (
@@ -1557,7 +1571,7 @@ function WalletPage({
                 )}
               </p>
               {lastTopUp.providerTransactionId ? (
-                <p className="mt-1 text-[11px] font-semibold text-obligon-text">
+                <p className="mt-1 text-xs font-semibold text-obligon-text">
                   Transaction {lastTopUp.providerTransactionId} on {lastTopUp.provider}
                 </p>
               ) : null}
@@ -1592,19 +1606,19 @@ function WalletPage({
       >
         <Card className="mt-8 overflow-hidden">
           <div className="flex items-center justify-between px-6 py-5 border-b border-[#eef3ee]">
-            <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Recent Funding Records</h2>
+            <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">Recent Funding Records</h2>
             <button onClick={() => router.push("/customer/transactions")} className="text-sm font-bold text-obligon-green hover:underline" type="button">
               View All
             </button>
           </div>
-          <div className="hidden lg:block overflow-x-auto">
+          <div tabIndex={0} role="region" aria-label="Wallet history table, scroll horizontally to see all columns" className="hidden overflow-x-auto overscroll-x-contain focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-obligon-green lg:block">
             <table className="w-full text-left">
               <thead className="bg-[#f0f4f0] text-xs uppercase text-obligon-text">
                 <tr>{["Date", "Reference", "Method", "Amount"].map((h) => <th className="px-6 py-4" key={h}>{h}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-[#eef3ee]">
                 {(desktopTopUps ?? []).map((row) => (
-                  <tr className="hover:bg-[#f7fbf8] transition" key={row[1]}>
+                  <tr className="hover:bg-obligon-mist/60 transition" key={row[1]}>
                     {row.map((cell, idx) => (
                       <td className={`px-6 py-4 ${idx === 3 ? "font-extrabold text-obligon-green" : "text-sm text-obligon-navy"}`} key={cell}>
                         {cell}
@@ -1616,8 +1630,8 @@ function WalletPage({
             </table>
           </div>
           <div className="divide-y divide-[#eef3ee] lg:hidden">
-            {(topUpHistory ?? []).map(([method, date, amount]) => (
-              <div key={date} className="flex justify-between p-5">
+            {(desktopTopUps ?? []).map(([date, reference, method, amount]) => (
+              <div key={reference} className="flex flex-wrap justify-between gap-3 p-5">
                 <div>
                   <p className="font-extrabold text-obligon-navy">{method}</p>
                   <p className="text-xs text-obligon-text">{date}</p>
@@ -1668,7 +1682,13 @@ function StationsPage() {
     }).catch(() => {});
     return () => { active = false; if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current); };
   }, [startLocation]);
-  const { status, data: stations, error, reload, refresh } = useAsync(() => api.getStations(location), [location?.lat, location?.lng]);
+  const [query, setQuery] = React.useState("");
+  const { status, data: stations, error, reload, refresh } = useAsync(() => {
+    if (!query.trim()) return api.getStations(location);
+    const params = new URLSearchParams({ search: query.trim() });
+    if (location) { params.set("lat", String(location.lat)); params.set("lng", String(location.lng)); }
+    return api.request<{ stations: Station[] }>(`/api/customer/stations?${params}`).then(result => result.stations);
+  }, [query, location?.lat, location?.lng]);
   const refreshRef = React.useRef(refresh);
   refreshRef.current = refresh;
   React.useEffect(() => {
@@ -1678,10 +1698,9 @@ function StationsPage() {
     document.addEventListener("visibilitychange", update);
     return () => { clearInterval(timer); window.removeEventListener("focus", update); document.removeEventListener("visibilitychange", update); };
   }, []);
-  const [query, setQuery] = React.useState("");
   const [fuelsOpen, setFuelsOpen] = React.useState(false);
   const [selectedFuels, setSelectedFuels] = React.useState<string[]>([]);
-  const [detail, setDetail] = React.useState<{ name: string; address: string; distance: string; distanceKm?: number | null; hours?: string; diesel?: string; unleaded?: string; fuels?: string[] } | null>(null);
+  const [detail, setDetail] = React.useState<{ name: string; address: string; distance: string; distanceKm?: number | null; hours?: string; diesel?: string; unleaded?: string; fuels?: string[]; prices?: Array<{fuelType:string;priceLabel:string;sellingUnit:"litre"|"kg"|"scm"}> } | null>(null);
   const [directionTarget, setDirectionTarget] = React.useState<{ name: string; address: string; distance: string } | null>(null);
 
   const allFuels = Array.from(new Set(stations?.flatMap((station) => station.fuels.map(stationFuelName)) ?? []));
@@ -1689,28 +1708,30 @@ function StationsPage() {
   const visible = stations?.filter((station) => {
     const matchesQuery =
       query.trim() === "" ||
-      station.name.toLowerCase().includes(query.toLowerCase()) ||
-      station.address.toLowerCase().includes(query.toLowerCase());
+      station.name.toLowerCase().includes(query.trim().toLowerCase()) ||
+      station.address.toLowerCase().includes(query.trim().toLowerCase());
     const matchesFuel = selectedFuels.length === 0 || station.fuels.some((fuel) => selectedFuels.includes(stationFuelName(fuel)));
     return matchesQuery && matchesFuel;
   }) ?? [];
 
   return (
-    <>
-      <div className="mb-4 rounded-xl border border-[#dbe2d8] bg-white p-4">
+    <Canvas>
+      <div className="mb-6"><h2 className="font-display text-2xl font-bold tracking-tight text-obligon-navy">Find a station</h2><p className="mt-2 text-sm text-obligon-text">Search locations, view fuel prices and get directions.</p></div>
+      <DashboardSearchQuery onSearch={value => { setQuery(value); if (value) setSelectedFuels([]); }} />
+      <div className="mb-4 rounded-xl border border-obligon-border bg-white p-4">
         <p role="status" className="text-sm text-obligon-text">{locationMessage}</p>
-        <button type="button" onClick={startLocation} className="mt-2 font-bold text-obligon-green">Use my location</button>
+        <button type="button" onClick={startLocation} className="mt-2 inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold text-obligon-green">Use my location</button>
         <details className="mt-2 text-sm">
-          <summary>Set location manually</summary>
+          <summary className="min-h-11 cursor-pointer py-3 font-medium">Set location manually</summary>
           <form className="mt-2 flex flex-wrap gap-2" onSubmit={e => {
             e.preventDefault();
             if (watchId.current !== null) { navigator.geolocation.clearWatch(watchId.current); watchId.current = null; }
             setLocation({ lat: Number(coordinates.lat), lng: Number(coordinates.lng) });
             setLocationMessage("Closest stations first · using your selected location.");
           }}>
-            <label>Latitude<input required type="number" step="any" min="-90" max="90" value={coordinates.lat} onChange={e => setCoordinates({ ...coordinates, lat: e.target.value })} className="mx-2 w-36 rounded border p-2" /></label>
-            <label>Longitude<input required type="number" step="any" min="-180" max="180" value={coordinates.lng} onChange={e => setCoordinates({ ...coordinates, lng: e.target.value })} className="mx-2 w-36 rounded border p-2" /></label>
-            <button type="submit" className="font-bold text-obligon-green">Find closest stations</button>
+            <label>Latitude<input required type="number" step="any" min="-90" max="90" value={coordinates.lat} onChange={e => setCoordinates({ ...coordinates, lat: e.target.value })} className="mx-2 min-h-11 w-36 rounded-lg border border-obligon-border p-2" /></label>
+            <label>Longitude<input required type="number" step="any" min="-180" max="180" value={coordinates.lng} onChange={e => setCoordinates({ ...coordinates, lng: e.target.value })} className="mx-2 min-h-11 w-36 rounded-lg border border-obligon-border p-2" /></label>
+            <button type="submit" className="min-h-11 rounded-lg px-3 font-semibold text-obligon-green">Find closest stations</button>
           </form>
         </details>
       </div>
@@ -1722,20 +1743,21 @@ function StationsPage() {
       loadingLabel="Loading station network…"
       empty={{ title: "No stations found", message: "Station locations will appear here." }}
     >
-      <Canvas>
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="flex flex-1 items-center gap-2 rounded-xl border border-[#dbe2d8] bg-white p-3">
+          <div className="flex flex-1 items-center gap-2 rounded-xl border border-obligon-border bg-white p-3">
             <MapPinned size={18} className="text-obligon-green shrink-0" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              maxLength={254}
               className="w-full bg-transparent text-sm text-obligon-navy outline-none"
               placeholder="Search by station name, street or city..."
+              aria-label="Search stations"
             />
           </div>
           <button
             onClick={() => setFuelsOpen(true)}
-            className="h-12 rounded-xl bg-obligon-green px-5 font-bold text-white shadow-green hover:bg-obligon-green/90 transition text-sm"
+            className="h-12 rounded-xl bg-obligon-green px-5 font-bold text-white shadow-none hover:bg-obligon-green/90 transition text-sm"
             type="button"
           >
             {selectedFuels.length > 0 ? `Fuels (${selectedFuels.length})` : "Filter Fuels"}
@@ -1765,15 +1787,8 @@ function StationsPage() {
           </div>
         ) : null}
 
-        <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
-          <Card className="relative min-h-[500px] overflow-hidden bg-[#dfe8ed]">
-            <StationMap
-              points={visible.flatMap(st => st.lat !== null && st.lng !== null ? [{ id: st.id ?? st.name, name: st.name, lat: st.lat, lng: st.lng }] : [])}
-              onSelect={(point) => setDetail(visible.find(st => (st.id ?? st.name) === point.id) ?? null)}
-              height="h-[500px]"
-            />
-          </Card>
-          <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
+        <div className="grid items-start gap-6 xl:grid-cols-[minmax(280px,380px)_minmax(0,1fr)]">
+          <div aria-label="Available stations" className="grid gap-4 sm:grid-cols-2 xl:max-h-[560px] xl:grid-cols-1 xl:overflow-y-auto xl:overscroll-contain xl:pr-1">
             {visible.map((st) => (
               <Card key={st.id ?? st.name} className="p-5">
                 <div className="flex justify-between items-start">
@@ -1788,14 +1803,14 @@ function StationsPage() {
                   <button
                     type="button"
                     onClick={() => setDirectionTarget({ name: st.name, address: st.address, distance: st.distance })}
-                    className="h-9 flex-1 rounded-lg bg-obligon-green text-xs font-bold text-white"
+                    className="min-h-11 flex-1 rounded-lg bg-obligon-green text-xs font-bold text-white"
                   >
                     Directions
                   </button>
                   <button
                     type="button"
                     onClick={() => setDetail(st)}
-                    className="h-9 flex-1 rounded-lg border border-[#cfd8cc] text-xs font-bold text-obligon-navy"
+                    className="min-h-11 flex-1 rounded-lg border border-obligon-border text-xs font-bold text-obligon-navy"
                   >
                     Station Details
                   </button>
@@ -1803,6 +1818,15 @@ function StationsPage() {
               </Card>
             ))}
           </div>
+          <Card className="h-fit overflow-hidden p-4">
+            <h2 className="mb-3 text-sm font-semibold text-obligon-navy">Station map</h2>
+            <StationMap
+              points={visible.flatMap(st => st.lat !== null && st.lng !== null ? [{ id: st.id ?? st.name, name: st.name, lat: st.lat, lng: st.lng }] : [])}
+              onSelect={(point) => setDetail(visible.find(st => (st.id ?? st.name) === point.id) ?? null)}
+              height="h-[260px] sm:h-[320px] xl:h-[360px]"
+            />
+          </Card>
+
         </div>
 
         {fuelsOpen && <ModalFrame title="Filter stations by fuel" onClose={() => setFuelsOpen(false)}><div className="p-6"><h2 className="text-2xl font-bold">Filter by fuel</h2>{allFuels.map(fuel => <label key={fuel} className="flex min-h-12 items-center gap-3"><input type="checkbox" checked={selectedFuels.includes(fuel)} onChange={e => setSelectedFuels(prev => e.target.checked ? [...prev, fuel] : prev.filter(f => f !== fuel))} />{fuel}</label>)}<button type="button" className="mt-4 min-h-12 rounded-lg bg-obligon-green px-6 font-bold text-white" onClick={() => setFuelsOpen(false)}>Show stations</button></div></ModalFrame>}
@@ -1811,22 +1835,24 @@ function StationsPage() {
         {detail ? (
           <ModalFrame title="Station details" onClose={() => setDetail(null)}>
             <div className="p-6 sm:p-8">
-              <h2 className="font-display text-3xl font-extrabold text-obligon-navy">{detail.name}</h2>
+              <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">{detail.name}</h2>
               <p className="mt-1 text-sm text-obligon-text">{detail.address}</p>
               <p className="mt-1 text-xs font-bold text-obligon-green">{detail.distanceKm != null ? `${detail.distance} away` : "Distance unavailable"} • {detail.hours}</p>
 
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl bg-[#f7fbf8] p-4">
+              {detail.prices ? <div className="mt-6 grid gap-3 sm:grid-cols-2">{detail.prices.length ? detail.prices.map(price => <div key={price.fuelType} className="rounded-xl bg-obligon-mist/60 p-4"><p className="text-xs font-bold text-obligon-text">{price.fuelType}</p><p className="mt-1 text-xl font-extrabold text-obligon-navy">{price.priceLabel} / {sellingUnitLabel(price.sellingUnit)}</p></div>) : <p className="text-sm text-obligon-text">No approved prices are available yet.</p>}</div> : <>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl bg-obligon-mist/60 p-4">
                   <p className="text-xs font-bold uppercase text-obligon-text">Diesel (AGO)</p>
                   <p className="mt-1 font-extrabold text-xl text-obligon-navy">{detail.diesel}</p>
                 </div>
-                <div className="rounded-xl bg-[#f7fbf8] p-4">
+                <div className="rounded-xl bg-obligon-mist/60 p-4">
                   <p className="text-xs font-bold uppercase text-obligon-text">Petrol (PMS)</p>
                   <p className="mt-1 font-extrabold text-xl text-obligon-navy">{detail.unleaded}</p>
                 </div>
               </div>
 
-              <div className="mt-6 flex gap-3">
+              </>}
+            <div className="mt-6 flex gap-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -1854,9 +1880,9 @@ function StationsPage() {
         {directionTarget ? (
           <ModalFrame title="Station directions" onClose={() => setDirectionTarget(null)}>
             <div className="p-6 sm:p-8">
-              <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Route Directions</h2>
+              <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">Route Directions</h2>
               <p className="mt-1 text-sm text-obligon-text">Navigating to {directionTarget.name}</p>
-              <div className="mt-4 rounded-xl bg-[#f7fbf8] p-4 space-y-2 text-sm font-bold text-obligon-navy">
+              <div className="mt-4 rounded-xl bg-obligon-mist/60 p-4 space-y-2 text-sm font-bold text-obligon-navy">
                 <p>📍 Destination: {directionTarget.address}</p>
                 <p>📏 Distance: {directionTarget.distance}</p>
                 <p>Open the route below for current travel times.</p>
@@ -1865,22 +1891,22 @@ function StationsPage() {
                 href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(directionTarget.address)}${location ? `&origin=${location.lat},${location.lng}` : ""}`}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-6 flex h-12 w-full items-center justify-center rounded-lg bg-obligon-green font-extrabold text-white shadow-green"
+                className="mt-6 flex h-12 w-full items-center justify-center rounded-lg bg-obligon-green font-extrabold text-white shadow-none"
               >
                 Open in Google Maps ↗
               </a>
             </div>
           </ModalFrame>
         ) : null}
-      </Canvas>
     </AsyncBoundary>
-    </>
+    </Canvas>
   );
 }
 
 function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void }) {
-  const {data: services}=useAsync(()=>api.request<{services:Array<{label:string;available:boolean}>;message:string}>("/api/customer/services"));
+  const { data: services, status: servicesStatus, error: servicesError, reload: reloadServices } = useAsync(() => api.request<{ services: Array<{ label: string; available: boolean }>; message: string }>("/api/customer/services"));
   const [serviceReference,setServiceReference]=React.useState("");
+  const [serviceError, setServiceError] = React.useState<string | null>(null);
   type Ticket = { id: string; reference: string; subject: string; status: string };
   type Message = { id: string; role: string; body: string; time: string; sender: string };
   const { error: toastError } = useToast();
@@ -1893,6 +1919,12 @@ function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void 
   const [sending, setSending] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [messageLoading, setMessageLoading] = React.useState(false);
+  const [messageError, setMessageError] = React.useState<string | null>(null);
+  const [sendError, setSendError] = React.useState<string | null>(null);
+  const [sendNotice, setSendNotice] = React.useState<string | null>(null);
+  const [ticketRevision, setTicketRevision] = React.useState(0);
+  const [messageRevision, setMessageRevision] = React.useState(0);
 
   const loadTickets = React.useCallback(async () => {
     const data = await api.request<{ tickets: Ticket[] }>("/api/customer/support/tickets");
@@ -1904,29 +1936,36 @@ function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void 
     setLoading(true);
     setLoadError(null);
     void loadTickets().catch((error) => setLoadError(error instanceof Error ? error.message : "Could not load support requests.")).finally(() => setLoading(false));
-  }, [chatOpen, loadTickets]);
+  }, [chatOpen, loadTickets, ticketRevision]);
 
   React.useEffect(() => {
-    if (!chatOpen || !ticketId) { setMessages([]); return; }
+    if (!chatOpen || !ticketId) { setMessages([]); setMessageLoading(false); setMessageError(null); return; }
     let active = true;
+    setMessageLoading(true);
+    setMessageError(null);
     async function loadMessages() {
       try {
         const data = await api.request<{ messages: Message[]; status: string }>(`/api/customer/support/tickets/${ticketId}/messages`);
-        if (active) { setMessages(data.messages); setTicketStatus(data.status); setLoadError(null); }
+        if (active) { setMessages(data.messages); setTicketStatus(data.status); setMessageError(null); setSendNotice(null); }
       } catch (error) {
-        if (active) setLoadError(error instanceof Error ? error.message : "Could not load messages.");
+        if (active) setMessageError(error instanceof Error ? error.message : "Could not load messages.");
+      } finally {
+        if (active) setMessageLoading(false);
       }
     }
     void loadMessages();
     const timer = setInterval(() => void loadMessages(), 10000);
     return () => { active = false; clearInterval(timer); };
-  }, [chatOpen, ticketId]);
+  }, [chatOpen, ticketId, messageRevision]);
 
   async function handleSendChat(e: React.FormEvent) {
     e.preventDefault();
     const body = inputMsg.trim();
     if (!body || sending) return;
     setSending(true);
+    setSendError(null);
+    setSendNotice(null);
+    let accepted = false;
     try {
       let id = ticketId;
       if (!id) {
@@ -1939,65 +1978,109 @@ function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void 
       } else {
         await api.request(`/api/customer/support/tickets/${id}/messages`, { method: "POST", body: JSON.stringify({ body }) });
       }
+      accepted = true;
       setInputMsg("");
       const data = await api.request<{ messages: Message[]; status: string }>(`/api/customer/support/tickets/${id}/messages`);
       setMessages(data.messages);
       setTicketStatus(data.status);
+      setMessageError(null);
+      setSendNotice(null);
       await loadTickets();
     } catch (error) {
-      toastError(error instanceof Error ? error.message : "Your message could not be sent. Please try again.");
+      const message = accepted ? "Your message was sent, but the conversation could not be refreshed. Use Refresh messages to check for replies." : error instanceof Error ? error.message : "Your message could not be sent. Please try again.";
+      if (accepted) setSendNotice(message); else setSendError(message);
+      toastError(message);
     } finally { setSending(false); }
   }
 
   return (
     <Canvas>
-      <section className="mb-6 rounded-xl border bg-white p-6"><h2 className="text-2xl font-bold">Request a plan service</h2><p className="mt-2 text-sm text-obligon-text">{services?.message}</p>{services&&<form className="mt-4 space-y-4" onSubmit={async e=>{e.preventDefault();const form=new FormData(e.currentTarget);setSending(true);try{const result=await api.request<{reference:string}>("/api/customer/services",{method:"POST",body:JSON.stringify(Object.fromEntries(form))});setServiceReference(result.reference);await loadTickets();}catch(e){toastError((e as Error).message);}finally{setSending(false);}}}><label className="block">Service<select name="service" required className="mt-2 block min-h-12 w-full rounded border p-3"><option value="">Choose an included service</option>{services.services.map(service=><option key={service.label} disabled={!service.available} value={service.label}>{service.label}{!service.available?" · Not included / active plan required":""}</option>)}</select></label><label className="block">Location and requirements<textarea name="message" required maxLength={5000} className="mt-2 block min-h-28 w-full rounded border p-3"/></label><button disabled={sending||!services.services.some(service=>service.available)} className="min-h-12 rounded bg-obligon-green px-6 font-bold text-white">{sending?"Submitting…":"Request coordination"}</button></form>}{serviceReference&&<p role="status" className="mt-4">Request {serviceReference} recorded. Use Open Support Messages below to follow the response.</p>}</section>
       <div className="mb-8">
-        <h2 className="font-display text-3xl font-extrabold text-obligon-navy">Customer Support Center</h2>
+        <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Customer Support Center</h2>
         <p className="mt-1 text-obligon-text">Billing, card, and transaction assistance.</p>
       </div>
       <div className="grid gap-6 sm:grid-cols-2">
         <Card className="p-6">
           <MessageCircle className="text-obligon-green" size={28} />
-          <h2 className="mt-4 font-display text-2xl font-extrabold text-obligon-navy">Support Messages</h2>
+          <h2 className="mt-4 font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">Support Messages</h2>
           <p className="mt-1 text-sm text-obligon-text">Send a request and follow real replies from the support team. Messages are saved to your account.</p>
-          <button onClick={() => setChatOpen(true)} className="mt-6 h-11 rounded-xl bg-obligon-green px-5 text-sm font-bold text-white" type="button">Open Support Messages</button>
+          <button onClick={() => { setLoading(true); setLoadError(null); setChatOpen(true); }} className="mt-6 h-11 rounded-xl bg-obligon-green px-5 text-sm font-bold text-white" type="button">Open Support Messages</button>
         </Card>
         <Card className="p-6">
           <AlertTriangle className="text-[#c1121f]" size={28} />
-          <h2 className="mt-4 font-display text-2xl font-extrabold text-obligon-navy">Transaction Dispute</h2>
+          <h2 className="mt-4 font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">Transaction Dispute</h2>
           <p className="mt-1 text-sm text-obligon-text">File an official report regarding pump discrepancy or double charges.</p>
           <button onClick={() => onModal("report")} className="mt-6 h-11 rounded-xl bg-[#20251f] px-5 text-sm font-bold text-white" type="button">File Issue Report</button>
         </Card>
       </div>
+      <section className="mt-6 min-w-0 rounded-2xl border border-obligon-border bg-white p-5 sm:p-6">
+        <h2 className="font-display text-xl font-bold tracking-tight text-obligon-navy">Request a plan service</h2>
+        <AsyncBoundary status={servicesStatus} error={servicesError?.message ?? null} onRetry={reloadServices} loadingLabel="Loading included services…">
+          {services ? <>
+            <p className="mt-2 text-sm leading-6 text-obligon-text">{services.message}</p>
+            {services.services.some(service => service.available) ? <form className="mt-5 space-y-5" onSubmit={async event => {
+              event.preventDefault();
+              const form = new FormData(event.currentTarget);
+              setSending(true); setServiceError(null); setServiceReference("");
+              try {
+                const result = await api.request<{ reference: string }>("/api/customer/services", { method: "POST", body: JSON.stringify(Object.fromEntries(form)) });
+                setServiceReference(result.reference);
+                try { await loadTickets(); } catch (cause) { setLoadError(cause instanceof Error ? cause.message : "Your support requests could not be refreshed."); }
+              } catch (cause) {
+                const message = cause instanceof Error ? cause.message : "Your service request could not be sent. Please try again.";
+                setServiceError(message); toastError(message);
+              } finally { setSending(false); }
+            }}>
+              <label className="block text-sm font-semibold text-obligon-navy">Service
+                <select name="service" required disabled={sending} className="mt-2 block min-h-12 w-full rounded-xl border border-obligon-border bg-white p-3 font-normal disabled:opacity-60">
+                  <option value="">Choose an included service</option>
+                  {services.services.map(service => <option key={service.label} disabled={!service.available} value={service.label}>{service.label}{!service.available ? " · Not included / active plan required" : ""}</option>)}
+                </select>
+              </label>
+              <label className="block text-sm font-semibold text-obligon-navy">Location and requirements<textarea name="message" required disabled={sending} maxLength={5000} className="mt-2 block min-h-28 w-full rounded-xl border border-obligon-border bg-white p-3 font-normal disabled:opacity-60" /></label>
+              <button type="submit" disabled={sending || !services.services.some(service => service.available)} className="min-h-12 rounded-xl bg-obligon-green px-5 text-sm font-semibold text-white disabled:opacity-60">{sending ? "Submitting…" : "Request coordination"}</button>
+              {!services.services.some(service => service.available) ? <p className="text-sm text-obligon-text">Your current plan has no available coordination services. You can still contact Support below.</p> : null}
+            </form> : <p className="mt-4 rounded-xl bg-obligon-mist/60 p-4 text-sm text-obligon-text">Coordination services require an eligible active plan. You can still send messages or report an issue above.</p>}
+            {!services.services.some(service => service.available) ? <Link href="/customer/card#subscription" className="mt-2 inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold text-obligon-green underline">View plans in My Card</Link> : null}
+          </> : null}
+        </AsyncBoundary>
+        {serviceError ? <p role="alert" className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">{serviceError}</p> : null}
+        {serviceReference ? <p role="status" className="mt-4 rounded-xl bg-obligon-mist p-4 text-sm text-obligon-green">Request {serviceReference} recorded. Use Open Support Messages above to follow the response.</p> : null}
+      </section>
       {chatOpen ? (
         <ModalFrame title="Support chat" onClose={() => setChatOpen(false)}>
-          <div className="flex h-[560px] flex-col">
-            <div className="border-b border-[#eef3ee] bg-[#f7fbf8] p-4">
+          <div className="flex h-[min(560px,calc(94dvh-88px))] min-h-[320px] flex-col">
+            <div className="shrink-0 border-b border-obligon-border bg-obligon-mist/60 p-4">
               <h2 className="text-sm font-extrabold text-obligon-navy">Support Messages</h2>
               <label htmlFor="support-ticket" className="sr-only">Support request</label>
-              <select id="support-ticket" value={ticketId} disabled={sending || loading} onChange={(e) => { setTicketId(e.target.value); setMessages([]); setTicketStatus(""); }} className="mt-2 w-full rounded-lg border p-2 text-sm">
+              <select id="support-ticket" value={ticketId} disabled={sending || loading} onChange={(e) => { setTicketId(e.target.value); setMessages([]); setTicketStatus(""); setMessageLoading(Boolean(e.target.value)); setSendError(null); setSendNotice(null); }} className="mt-2 min-h-12 w-full rounded-xl border border-obligon-border bg-white p-3 text-sm">
                 <option value="">New support request</option>
                 {tickets.map((ticket) => <option key={ticket.id} value={ticket.id}>{ticket.reference} · {ticket.subject}</option>)}
               </select>
               <p className="mt-2 text-xs text-obligon-text">{ticketId ? `Request ${ticketStatus || "loading"}. Replies appear here when the team responds.` : "Your first message opens a support request. The team will reply here."}</p>
             </div>
-            <div className="flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite">
-              {loadError ? <p role="alert" className="text-sm text-[#c1121f]">{loadError}</p> : null}
-              {loading ? <p className="text-sm text-obligon-text">Loading requests…</p> : null}
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4" aria-live="polite">
+              {loadError ? <div role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800"><p>{loadError}</p><button type="button" disabled={loading} onClick={() => setTicketRevision(value => value + 1)} className="mt-1 min-h-11 rounded-lg px-2 font-semibold underline disabled:opacity-60">Retry loading requests</button></div> : null}
+              {messageError ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{messageError}</p> : null}
+              {sendError ? <p role="alert" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{sendError}</p> : null}
+              {sendNotice ? <p role="status" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{sendNotice}</p> : null}
+              {loading ? <p role="status" className="text-sm text-obligon-text">Loading requests…</p> : null}
+              {messageLoading ? <p role="status" className="text-sm text-obligon-text">Loading messages…</p> : null}
+              {!loading && !messageLoading && !loadError && !messageError && !messages.length ? <p className="rounded-xl bg-obligon-mist/60 p-4 text-sm leading-6 text-obligon-text">{ticketId ? "There are no messages in this request yet." : tickets.length ? "Choose an existing request above, or send a message to start a new one." : "No support requests yet. Send your first message below."}</p> : null}
+              {ticketId ? <button type="button" disabled={messageLoading || sending} onClick={() => setMessageRevision(value => value + 1)} className="min-h-11 rounded-lg px-2 text-sm font-semibold text-obligon-green underline disabled:opacity-60">Refresh messages</button> : null}
               {messages.map((message) => (
                 <div key={message.id} className={`flex ${message.role === "customer" ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[80%] rounded-2xl p-3 text-sm ${message.role === "customer" ? "bg-obligon-green text-white" : "bg-[#f0f4f0] text-obligon-navy"}`}>
                     <p className="mb-1 text-xs font-bold">{message.role === "customer" ? "You" : message.sender}</p>
-                    <p className="whitespace-pre-wrap">{message.body}</p>
-                    <span className="mt-1 block text-right text-[10px] opacity-70">{message.time}</span>
+                    <p className="break-words whitespace-pre-wrap">{message.body}</p>
+                    <span className="mt-1 block text-right text-xs opacity-70">{message.time}</span>
                   </div>
                 </div>
               ))}
             </div>
-            <form onSubmit={handleSendChat} className="flex gap-2 border-t border-[#eef3ee] bg-white p-3">
+            <form onSubmit={handleSendChat} className="flex shrink-0 gap-2 border-t border-obligon-border bg-white p-3 pb-[max(12px,env(safe-area-inset-bottom))]">
               <label htmlFor="support-message" className="sr-only">Message</label>
-              <input id="support-message" value={inputMsg} disabled={sending} maxLength={4000} onChange={(e) => setInputMsg(e.target.value)} placeholder="Type your message…" className="h-11 min-w-0 flex-1 rounded-xl border border-[#cfd8cc] px-4 text-sm" />
+              <input id="support-message" value={inputMsg} disabled={sending} maxLength={4000} onChange={(e) => setInputMsg(e.target.value)} placeholder="Type your message…" className="h-11 min-w-0 flex-1 rounded-xl border border-obligon-border px-4 text-sm" />
               <button aria-label="Send message" disabled={sending || !inputMsg.trim()} type="submit" className="h-11 rounded-xl bg-obligon-green px-4 font-bold text-white disabled:opacity-50">{sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}</button>
             </form>
           </div>
@@ -2165,45 +2248,45 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
       <Canvas>
         <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
         <Card className="p-6 sm:p-8">
-          <h2 className="font-display text-3xl font-extrabold text-obligon-navy">Profile &amp; Settings</h2>
+          <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Profile &amp; Settings</h2>
           <p className="mt-1 text-sm text-obligon-text">Manage your personal details and communication preferences.</p>
 
           <form onSubmit={handleSave} className="mt-6 space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block">
-                <span className="text-xs font-extrabold uppercase text-obligon-text">Full Name</span>
+                <span className="text-xs font-semibold uppercase text-obligon-text">Full Name</span>
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green"
+                  className="mt-1.5 h-12 w-full rounded-xl border border-obligon-border px-4 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green"
                   required
                 />
               </label>
               <label className="block">
-                <span className="text-xs font-extrabold uppercase text-obligon-text">Email Address</span><p id="profile-email-help" className="text-xs text-obligon-text">Your sign-in email. Contact support to change it securely.</p>
+                <span className="text-xs font-semibold uppercase text-obligon-text">Email Address</span><p id="profile-email-help" className="text-xs text-obligon-text">Your sign-in email. Contact support to change it securely.</p>
                 <input
                   value={email}
                   readOnly aria-describedby="profile-email-help"
                   type="email"
-                  className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green"
+                  className="mt-1.5 h-12 w-full rounded-xl border border-obligon-border px-4 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green"
                   required
                 />
               </label>
               <label className="block">
-                <span className="text-xs font-extrabold uppercase text-obligon-text">Phone Number</span>
+                <span className="text-xs font-semibold uppercase text-obligon-text">Phone Number</span>
                 <input
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green"
+                  className="mt-1.5 h-12 w-full rounded-xl border border-obligon-border px-4 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green"
                   required
                 />
               </label>
               <label className="block">
-                <span className="text-xs font-extrabold uppercase text-obligon-text">Primary Address</span>
+                <span className="text-xs font-semibold uppercase text-obligon-text">Primary Address</span>
                 <input
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className="mt-1.5 h-12 w-full rounded-xl border border-[#cfd8cc] px-4 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green"
+                  className="mt-1.5 h-12 w-full rounded-xl border border-obligon-border px-4 text-sm font-bold text-obligon-navy outline-none focus:border-obligon-green"
                   required
                 />
               </label>
@@ -2211,9 +2294,9 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
 
             <div className="pt-6 border-t border-[#eef3ee]">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="font-display text-xl font-extrabold text-obligon-navy">Notification Preferences</h2>
+                <h2 className="font-display text-lg font-bold tracking-tight sm:text-xl text-obligon-navy">Notification Preferences</h2>
                 {prefsSaving ? (
-                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-obligon-text">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-obligon-text">
                     <Loader2 size={12} className="animate-spin" /> Saving
                   </span>
                 ) : null}
@@ -2241,7 +2324,7 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
                     }
                   ] as const
                 ).map((row) => (
-                  <div key={row.key} className="rounded-xl border border-obligon-border bg-[#f7fbf8] p-3.5">
+                  <div key={row.key} className="rounded-xl border border-obligon-border bg-obligon-mist/60 p-3.5">
                     <Toggle
                       label={row.label}
                       description={row.description}
@@ -2284,7 +2367,7 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
               {pushError ? <p role="alert" className="mt-3 text-sm text-red-700">{pushError}</p> : null}
               <div className="mt-4 rounded-xl border border-obligon-border bg-white p-3.5">
                 <p className="text-xs font-bold text-obligon-navy">Alert Categories</p>
-                <p className="mt-1 text-[11px] leading-4 text-obligon-text">
+                <p className="mt-1 text-xs leading-4 text-obligon-text">
                   Turn off whole categories you never want to hear about.
                 </p>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -2314,7 +2397,7 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
             <button
               disabled={saving}
               type="submit"
-              className="mt-6 h-12 rounded-xl bg-obligon-green px-8 font-extrabold text-white shadow-green hover:bg-obligon-green/90 transition flex items-center justify-center gap-2"
+              className="mt-6 h-12 rounded-xl bg-obligon-green px-8 font-extrabold text-white shadow-none hover:bg-obligon-green/90 transition flex items-center justify-center gap-2"
             >
               {saving ? <Loader2 size={18} className="animate-spin" /> : "Save Changes"}
             </button>
@@ -2323,18 +2406,18 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
 
         <div className="space-y-6">
           <Card className="p-6">
-            <h2 className="font-display text-xl font-extrabold text-obligon-navy">Security Settings</h2>
+            <h2 className="font-display text-lg font-bold tracking-tight sm:text-xl text-obligon-navy">Security Settings</h2>
             <div className="mt-4 space-y-3">
               <button
                 type="button"
                 onClick={() => onModal("changePassword")}
-                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-obligon-border hover:bg-[#f7fbf8] transition text-left"
+                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-obligon-border hover:bg-obligon-mist/60 transition text-left"
               >
                 <div className="flex items-center gap-3">
                   <LockKeyhole size={18} className="text-obligon-green" />
                   <div>
                     <p className="text-xs font-extrabold text-obligon-navy">Change Password</p>
-                    <p className="text-[11px] text-obligon-text">Update your account password</p>
+                    <p className="text-xs text-obligon-text">Update your account password</p>
                   </div>
                 </div>
                 <ArrowRight size={16} className="text-obligon-text" />
@@ -2343,13 +2426,13 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
               <button
                 type="button"
                 onClick={() => onModal("changePin")}
-                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-obligon-border hover:bg-[#f7fbf8] transition text-left"
+                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-obligon-border hover:bg-obligon-mist/60 transition text-left"
               >
                 <div className="flex items-center gap-3">
                   <CreditCard size={18} className="text-obligon-green" />
                   <div>
                     <p className="text-xs font-extrabold text-obligon-navy">Transaction PIN</p>
-                    <p className="text-[11px] text-obligon-text">Update 4-digit card authorization PIN</p>
+                    <p className="text-xs text-obligon-text">Update 4-digit card authorization PIN</p>
                   </div>
                 </div>
                 <ArrowRight size={16} className="text-obligon-text" />
@@ -2358,19 +2441,19 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
               <button
                 type="button"
                 onClick={() => onModal("twoFactor")}
-                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-obligon-border hover:bg-[#f7fbf8] transition text-left"
+                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-obligon-border hover:bg-obligon-mist/60 transition text-left"
               >
                 <div className="flex items-center gap-3">
                   <ShieldCheck size={18} className="text-obligon-green" />
                   <div>
                     <p className="text-xs font-extrabold text-obligon-navy">Two-Factor Authentication</p>
-                    <p className="text-[11px] text-obligon-text">
+                    <p className="text-xs text-obligon-text">
                       {twoFactor ? "Enabled. A code is required at sign-in." : "Add a verification code at sign-in"}
                     </p>
                   </div>
                 </div>
                 <span
-                  className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                  className={`text-xs font-semibold uppercase px-2 py-0.5 rounded-full ${
                     twoFactor ? "bg-[#e8fbd7] text-obligon-green" : "bg-[#f0f4f0] text-obligon-text"
                   }`}
                 >
@@ -2378,10 +2461,13 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
                 </span>
               </button>
 
-              <div className="rounded-xl border border-obligon-border p-3.5">
-                <p className="text-sm font-bold text-obligon-navy">Biometric Sign-In (not available yet)</p>
-                <p className="mt-1 text-xs text-obligon-text">Biometric transaction approval is not yet available. Use your password, card PIN, and two-factor authentication.</p>
-              </div>
+              <Link href={routes.signInOptions} className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-obligon-border p-3.5 text-left transition hover:bg-obligon-mist/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-obligon-green">
+                <div>
+                  <p className="text-sm font-bold text-obligon-navy">Google and passkey sign-in</p>
+                  <p className="mt-1 text-xs text-obligon-text">Manage Google sign-in or add a passkey. Your device may use fingerprint, face recognition, or its PIN. Transaction approvals still use your password, card PIN, and two-factor authentication.</p>
+                </div>
+                <ArrowRight size={16} className="shrink-0 text-obligon-text" aria-hidden="true" />
+              </Link>
             </div>
 
             <button
@@ -2442,6 +2528,22 @@ function NotificationsPage() {
   }
 
   return (
+    <Canvas>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
+          <div>
+            <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Notifications</h2>
+            <p className="mt-1 text-obligon-text">Security alerts, transaction confirmations, and system notices.</p>
+          </div>
+          <button
+            onClick={handleMarkAll}
+            disabled={saving || !(notifications ?? []).some(n => !n.read && (!n.id || !readItems.has(n.id)))}
+            className="min-h-11 rounded-xl border border-obligon-border bg-white px-4 text-sm font-semibold text-obligon-green hover:bg-obligon-mist transition"
+            type="button"
+          >
+            Mark all as read
+          </button>
+        </div>
+
     <AsyncBoundary
       status={status}
       error={error?.message ?? null}
@@ -2450,22 +2552,6 @@ function NotificationsPage() {
       loadingLabel="Loading notifications…"
       empty={{ title: "No notifications", message: "You're all caught up. Alerts will appear here." }}
     >
-      <Canvas>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
-          <div>
-            <h2 className="font-display text-3xl font-extrabold text-obligon-navy">Notifications</h2>
-            <p className="mt-1 text-obligon-text">Security alerts, transaction confirmations, and system notices.</p>
-          </div>
-          <button
-            onClick={handleMarkAll}
-            disabled={saving || !(notifications ?? []).some(n => !n.read && (!n.id || !readItems.has(n.id)))}
-            className="h-10 rounded-xl border border-obligon-border bg-white px-4 text-xs font-bold text-obligon-green hover:bg-obligon-mist transition"
-            type="button"
-          >
-            Mark all as read
-          </button>
-        </div>
-
         <Card className="overflow-hidden divide-y divide-[#eef3ee]">
           {(notifications ?? []).map((n) => {
             const isRead = Boolean(n.read || (n.id && readItems.has(n.id)));
@@ -2477,13 +2563,13 @@ function NotificationsPage() {
                 onClick={() => n.id && void handleRead(n.id)}
                 aria-label={`${isRead ? "Read notification" : "Mark notification as read"}: ${n.title}`}
                 aria-describedby={n.id ? `customer-notification-description-${n.id}` : undefined}
-                className={`flex w-full items-start gap-4 p-5 text-left transition ${isRead ? "bg-white opacity-70" : "bg-[#f7fbf8]"}`}
+                className={`flex w-full items-start gap-4 p-5 text-left transition ${isRead ? "bg-white opacity-70" : "bg-obligon-mist/60"}`}
               >
                 <MiniIcon tone={n.title.includes("Security") ? "red" : "green"}>
                   <Bell size={18} />
                 </MiniIcon>
                 <div id={n.id ? `customer-notification-description-${n.id}` : undefined} className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <h2 className="text-sm font-extrabold text-obligon-navy">{n.title}</h2>
                     <span className="text-xs text-obligon-text">{n.time}</span>
                   </div>
@@ -2493,8 +2579,8 @@ function NotificationsPage() {
             );
           })}
         </Card>
-      </Canvas>
     </AsyncBoundary>
+    </Canvas>
   );
 }
 

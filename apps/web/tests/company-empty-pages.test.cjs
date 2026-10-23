@@ -16,6 +16,7 @@ function load(file) {
   if(cache.has(file))return cache.get(file);
   const exports={};cache.set(file,exports);
   const customRequire=name=>{
+    if(name.endsWith("/partner-access.mjs")) return require("../../../packages/shared/partner-access.mjs");
     if(name==='next/link')return {__esModule:true,default:({children,...props})=>React.createElement('a',props,children)};
     if(name==='@/components/shared/useAsync')return {useAsync:()=>baseline?{...emptyResult,data:[]}:emptyResult};
     if(name==='@/components/shared/useDialogFocus')return {useDialogFocus(){}};
@@ -73,4 +74,10 @@ test('previous API capabilities cannot enable a silently ignored stable driver f
   emptyResult.data={vehicles:[],drivers:[{id:'00000000-0000-4000-8000-000000000001',name:'Sam Example'}],transactions:[],total:0};
   try {const html=renderToStaticMarkup(React.createElement(CompanyScreen,{pageKey:'transactions'}));assert.match(html,/Driver filtering is currently unavailable/);assert.match(html,/Driver[\s\S]*?<select[^>]*disabled=""/);}
   finally {emptyResult.data=original;}
+});
+
+test('company station locator labels gas prices using their recorded selling units',()=>{
+ const original=emptyResult.data;
+ try{for(const sellingUnit of ['kg','scm']){emptyResult.data={details:[{id:'gas-station',name:'Gas station',address:'Test road',city:'Uyo',lat:5,lng:7,hours:'24 hours',fuels:['CNG'],prices:[{fuel:'CNG',priceLabel:'₦200',sellingUnit}]}]};const html=renderToStaticMarkup(React.createElement(CompanyScreen,{pageKey:'stations'}));assert.match(html,new RegExp(sellingUnit==='kg'?'kg':'standard m³'));assert.doesNotMatch(html,/₦200 \/L/);}}
+ finally{emptyResult.data=original;}
 });

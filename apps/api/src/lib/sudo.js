@@ -84,6 +84,13 @@ export async function getSudoCard(cardId) {
   return sudoFetch(`/cards/${encodeURIComponent(cardId)}`);
 }
 
+/** Official balance lookup is separate from card metadata. */
+export async function getSudoCardBalance(cardId) {
+  if (!sudoEnabled()) throw serviceUnavailable("Sudo is not configured");
+  const result=await sudoFetch(`/cards/${encodeURIComponent(cardId)}/balance`);
+  return result.data??result;
+}
+
 export async function getSudoCardTransactions(cardId) {
   if (!sudoEnabled()) throw serviceUnavailable("Sudo is not configured");
   return sudoFetch(`/cards/${encodeURIComponent(cardId)}/transactions`);

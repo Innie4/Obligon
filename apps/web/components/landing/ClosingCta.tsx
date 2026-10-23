@@ -26,7 +26,7 @@ export function ClosingCta() {
           </div>
         </div>
 
-        <div className="mt-16 flex flex-col gap-8 border-t border-obligon-border pt-10 lg:flex-row lg:items-center lg:justify-between">
+        <div className="mt-16 flex flex-col gap-8 pt-10 lg:flex-row lg:items-center lg:justify-between">
           <p className="text-base font-medium leading-6 text-obligon-text">
             Ready to manage your fuel spending?
           </p>

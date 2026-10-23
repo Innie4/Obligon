@@ -110,7 +110,7 @@ export default function ForgotPasswordPage() {
         ) : (
           <form onSubmit={(e) => { e.preventDefault(); if (!submitting && email.trim()) handleSubmit(e); }} className="mt-8 space-y-5">
             <div className="relative">
-              <label htmlFor="forgot-email" className="text-[11px] font-bold uppercase tracking-[1.1px] text-obligon-text block mb-1">
+              <label htmlFor="forgot-email" className="text-sm font-semibold text-obligon-text block mb-1">
                 Work Email Address
               </label>
               <div className="relative">
@@ -174,11 +174,11 @@ export default function ForgotPasswordPage() {
           </form>
         )}
 
-        <Link href={routes.login} className="mt-8 inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[1.2px] text-obligon-green">
+        <Link href={routes.login} className="mt-8 inline-flex items-center gap-2 text-sm font-bold text-obligon-green">
           <ArrowLeft size={16} />
           Back to Login
         </Link>
-        <p className="mt-8 border-t border-obligon-border pt-6 text-center text-xs uppercase tracking-[1.2px] text-obligon-text">
+        <p className="mt-8 border-t border-obligon-border pt-6 text-center text-xs text-obligon-text">
           Trusted by 200+ fleet operators
         </p>
       </section>

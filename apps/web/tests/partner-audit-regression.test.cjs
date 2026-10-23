@@ -3,13 +3,14 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
+const partnerAccess = require('../../../packages/shared/partner-access.mjs');
 
 function load(path, dependencies = {}, expose = '') {
   const exports = {};
   const code = ts.transpileModule(fs.readFileSync(require.resolve(path), 'utf8') + expose, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true },
   }).outputText;
-  vm.runInNewContext(code, { exports, require: name => name === 'next/dynamic' ? { default: () => 'StationProfileForm', __esModule: true } : dependencies[name] ?? {}, window: { print() {} } });
+  vm.runInNewContext(code, { exports, require: name => name.endsWith('/partner-access.mjs') ? partnerAccess : name === '@/lib/partner-selling-unit' ? load('../lib/partner-selling-unit.ts',{'../../../packages/shared/partner-access.mjs':partnerAccess}) : name === '@/components/shared/AuthContext' ? {useSession:()=>({user:{role:'partner'}})} : name === 'next/dynamic' ? { default: () => 'StationProfileForm', __esModule: true } : dependencies[name] ?? {}, window: { print() {} } });
   return exports;
 }
 function nodes(node) {
@@ -56,6 +57,35 @@ test('partner subscription belongs to the common desktop, mobile and search navi
   assert.equal(subscription?.label, 'Subscription');
 });
 
+test('staff access cells have a matching header and preserve the status and action columns', () => {
+  const React = { createElement: (type, props, ...children) => ({ type, props: { ...props, children } }), useState: initial => [initial, () => {}] };
+  const staff = { id: 'staff-test', cells: ['ST-TEST', 'Test owner', 'Owner', 'Enabled'], status: 'ACTIVE' };
+  const { StaffPage, DataTable } = load('../components/dashboard/DashboardScreen.tsx', {
+    react: React,
+    '@/components/shared/useAsync': { useAsync: () => ({ status: 'success', data: { staff: [staff], stats: { active: 1, total: 1 } } }) }
+  }, '\nexport { StaffPage, DataTable };');
+  const table = nodes(StaffPage()).find(node => node.type === DataTable);
+  assert.deepEqual(Array.from(table.props.columns), ['Reference', 'Member', 'Role', 'Access']);
+  const rendered = nodes(DataTable(table.props));
+  assert.equal(rendered.filter(node => node.type === 'th').length, 6);
+  assert.equal(rendered.filter(node => node.type === 'td').length, 6);
+  assert.ok(rendered.some(node => node.type === 'button' && text(node).trim() === 'Details'));
+});
+
+test('settlement setup copy never promises automatic receipt before a destination is verified', () => {
+  const React = { createElement: (type, props, ...children) => ({ type, props: { ...props, children } }), useState: initial => [initial, () => {}] };
+  for (const accounts of [[], [{ id: 'bank-one', bankName: 'Test bank', accountName: 'Test company', accountMask: '••••1234', verified: false, isDefault: true }], [{ id: 'bank-one', bankName: 'Test bank', accountName: 'Test company', accountMask: '••••1234', verified: true, isDefault: false }], [{ id: 'bank-one', bankName: 'Test bank', accountName: 'Test company', accountMask: '••••1234', verified: true, isDefault: true }]]) {
+    const { SettlementsPage } = load('../components/dashboard/DashboardScreen.tsx', {
+      react: React,
+      '@/components/shared/Toast': { useToast: () => ({ success() {}, error() {} }) },
+      '@/components/shared/useAsync': { useAsync: () => ({ status: 'success', data: { bankAccounts: accounts, totals: { pendingLabel: '₦0', totalSettledLabel: '₦0' }, settlements: [], payouts: [] } }) }
+    }, '\nexport { SettlementsPage };');
+    const content = text(SettlementsPage({ version: 0, onPayoutRequested() {} }));
+    if (accounts[0]?.verified && accounts[0]?.isDefault) assert.match(content, /Eligible revenue is settled automatically/);
+    else { assert.match(content, /admin verification|Choose a default settlement account/); assert.doesNotMatch(content, /Your settlement account receives funds automatically|Flutterwave sends eligible fuel revenue to your bank account/); }
+  }
+});
+
 test('paid checkout needs the station and paid code, without wallet litres or published prices', async () => {
   const f = fixture({ response: { reference: 'FUEL-1', fuelType: 'Diesel', litres: 17.25, amountLabel: '₦20,700' } });
   f.control('pos-payment-type').props.onChange({ target: { value: 'checkout' } }); f.render();
@@ -85,13 +115,26 @@ test('wallet receipts use the recorded sale quantities instead of draft form val
   assert.doesNotMatch(f.text(), /Fleet Vehicle|Driver/);
 });
 
-test('wallet submission validates litres even when submitted without the button', async () => {
+for (const sellingUnit of ['kg','scm']) {
+  test(`gas wallet authorization submits approved ${sellingUnit} and displays the recorded quantity`, async () => {
+    const f = fixture({prices:[{stationId:'station-id',fuelType:'CNG',price:200,sellingUnit}],response:{reference:'GAS-1',fuelType:'CNG',litres:7.5,quantity:7.5,sellingUnit,amountLabel:'₦1,500'}});
+    f.control('pos-code').props.onChange({target:{value:'123456'}});f.control('pos-litres').props.onChange({target:{value:'5'}});f.render();await f.submit();
+    assert.equal(f.calls[0][1].sellingUnit,sellingUnit);assert.equal(f.calls[0][1].litres,5);assert.match(f.text(),new RegExp(`7\\.5 ${sellingUnit==='kg'?'kg':'standard m³'}`));
+  });
+}
+
+test('gas wallet authorization refuses a missing approved unit without sending a request', async () => {
+  const f=fixture({prices:[{stationId:'station-id',fuelType:'CNG',price:200}],response:{reference:'SHOULD-NOT-SEND'}});
+  f.control('pos-code').props.onChange({target:{value:'123456'}});f.control('pos-litres').props.onChange({target:{value:'5'}});f.render();await f.submit();assert.equal(f.calls.length,0);
+});
+
+test('wallet submission validates quantity even when submitted without the button', async () => {
   const f = fixture({ prices: [{ stationId: 'station-id', fuelType: 'Petrol', price: 1000 }] });
   f.control('pos-code').props.onChange({ target: { value: '123456' } });
   f.control('pos-litres').props.onChange({ target: { value: '0' } }); f.render();
   await f.submit();
   assert.equal(f.calls.length, 0);
-  assert.match(f.toasts[0][1], /litres/i);
+  assert.match(f.toasts[0][1], /quantity/i);
 });
 
 test('POS labels are programmatically associated with each editable input', () => {

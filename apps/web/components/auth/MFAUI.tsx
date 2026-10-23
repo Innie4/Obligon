@@ -174,7 +174,11 @@ export function MFASetupUI({ stage = "setup", redirect }: MFAUIProps) {
               Enable Two-Factor Authentication
             </h1>
             <p className="mt-4 text-center text-base leading-6 text-obligon-text">
-              Add an extra layer of security. Scan the QR code with Google Authenticator, Authy, or similar.
+              {qrCodeDataUrl
+                ? "Scan the QR code with your authenticator app."
+                : error
+                  ? "Setup could not be loaded. Review the message below, or return to sign in."
+                  : "Preparing your authenticator setup."}
             </p>
 
             <div className="mt-8 flex flex-col items-center gap-4">
@@ -193,15 +197,15 @@ export function MFASetupUI({ stage = "setup", redirect }: MFAUIProps) {
                   <p className="mt-2 text-center text-xs text-obligon-text">Enter this key manually if QR scan fails</p>
                 </> : null}
               </div>
-              <div className="rounded-xl border border-obligon-border bg-white p-4">
-                <p className="text-xs font-bold uppercase tracking-[1.1px] text-obligon-text">Setup Instructions</p>
+              {qrCodeDataUrl ? <div className="rounded-xl border border-obligon-border bg-white p-4">
+                <p className="text-xs font-bold text-obligon-text">Setup Instructions</p>
                 <ol className="mt-3 space-y-2 text-sm text-obligon-text list-decimal list-inside">
                   <li>Open Google Authenticator, Authy, or Microsoft Authenticator</li>
                   <li>Tap &quot;+&quot; to add a new account</li>
                   <li>Scan the QR code above or enter the secret key manually</li>
                   <li>Enter the 6-digit code from the app to verify</li>
                 </ol>
-              </div>
+              </div> : null}
             </div>
 
             <button
@@ -308,9 +312,9 @@ export function MFASetupUI({ stage = "setup", redirect }: MFAUIProps) {
                 Backup code
                 <input type="text" autoComplete="off" value={totpCode} onChange={event => setTotpCode(event.target.value)} disabled={submitting || !challengeAvailable} className="mt-2 h-12 w-full rounded-lg border border-obligon-border p-3 font-mono" />
               </label> : <TotpInput value={totpCode} onChange={setTotpCode} disabled={submitting || !challengeAvailable} />}
-              <button type="button" onClick={() => { setUseBackupCode(current => !current); setTotpCode(""); }} disabled={submitting || !challengeAvailable} className="text-sm font-bold text-obligon-green underline">{useBackupCode ? "Use an authenticator code" : "Use a backup code"}</button>
+              <button type="button" onClick={() => { setUseBackupCode(current => !current); setTotpCode(""); }} disabled={submitting || !challengeAvailable} className="min-h-11 text-sm font-bold text-obligon-green underline disabled:cursor-not-allowed disabled:opacity-50">{useBackupCode ? "Use an authenticator code" : "Use a backup code"}</button>
               {error ? <p role="alert" className="rounded-lg bg-[#ffe8e8] p-3 text-sm font-bold text-[#c1121f]">{error}</p> : null}
-              <button type="submit" className="h-12 w-full rounded-lg bg-obligon-green text-base font-bold text-white shadow-green" disabled={submitting || !challengeAvailable}>
+              <button type="submit" className="h-12 w-full rounded-lg bg-obligon-green text-base font-bold text-white shadow-green disabled:cursor-not-allowed disabled:opacity-50" disabled={submitting || !challengeAvailable}>
                 {submitting ? "Verifying..." : "Verify & Continue"}
               </button>
             </form>
@@ -318,7 +322,7 @@ export function MFASetupUI({ stage = "setup", redirect }: MFAUIProps) {
         )}
         <Link
           href={routes.login}
-          className="mt-8 inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[1.2px] text-obligon-green"
+          className="mt-8 inline-flex items-center gap-2 text-sm font-bold text-obligon-green"
         >
           <ArrowLeft size={16} />
           Back to Login

@@ -27,7 +27,7 @@ export function AuthShell({ children, compact = false }: AuthShellProps) {
             <Headset size={18} aria-hidden="true" />
             Support
           </Link>
-          {notificationPath ? <Link href={notificationPath} className="inline-flex size-9 items-center justify-center rounded-lg border border-obligon-border bg-white" aria-label="Notifications">
+          {notificationPath ? <Link href={notificationPath} className="inline-flex size-11 items-center justify-center rounded-lg border border-obligon-border bg-white" aria-label="Notifications">
             <Bell size={17} />
           </Link> : null}
         </div>
@@ -38,27 +38,26 @@ export function AuthShell({ children, compact = false }: AuthShellProps) {
           {children}
         </section>
       ) : (
-        <section className="grid min-h-[calc(100vh-64px)] lg:grid-cols-[426px_1fr]">
+        <section className="grid min-h-[calc(100vh-64px)] grid-cols-1 lg:grid-cols-[426px_minmax(0,1fr)]">
           <aside className="relative hidden overflow-hidden bg-obligon-blue px-12 py-14 text-white lg:flex lg:flex-col lg:justify-between">
             <Link href={routes.home} className="inline-flex items-center gap-2 text-sm text-white/70">
               <ArrowLeft size={16} />
               Back to home
             </Link>
             <div>
-              <h1 className="font-display text-5xl font-extrabold leading-[56px]">
-                Fueling Nigeria&apos;s Infrastructure.
+              <h1 className="font-display text-[44px] font-bold leading-[1.12] tracking-tight">
+                Your fuel, in one place.
               </h1>
               <p className="mt-5 text-base leading-6 text-white/70">
                 Manage personal fuel spending, organize your company fleet, or run your station
                 operations with Obligon.
               </p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-
-              <p className="mt-4 text-sm font-semibold text-white">Verified operators. Recorded transactions.</p>
+            <div className="pt-6">
+              <p className="text-sm leading-6 text-white/75">Verified operators. Recorded transactions.</p>
             </div>
           </aside>
-          <div className="bg-obligon-panel px-5 py-10 sm:px-8 lg:px-16">{children}</div>
+          <div className="min-w-0 bg-white px-5 py-10 sm:px-8 lg:px-16 lg:py-14">{children}</div>
         </section>
       )}
     </main>

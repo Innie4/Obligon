@@ -58,7 +58,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="pointer-events-none fixed bottom-4 right-4 z-[100] flex w-[min(92vw,360px)] flex-col gap-3">
+      <div className="pointer-events-none fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-4 z-[100] flex w-[min(92vw,360px)] flex-col gap-3 lg:bottom-4">
         {items.map((item) => {
           const config = toneConfig[item.tone];
           const Icon = config.icon;
@@ -69,12 +69,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               className={`pointer-events-auto flex items-start gap-3 rounded-xl border ${config.ring} ${config.bg} px-4 py-3 shadow-hero`}
             >
               <Icon size={20} className={`mt-0.5 shrink-0 ${config.text}`} />
-              <p className="flex-1 text-sm font-bold text-obligon-navy">{item.message}</p>
+              <p className="min-w-0 flex-1 break-words text-sm font-medium leading-6 text-obligon-navy">{item.message}</p>
               <button
                 type="button"
                 onClick={() => dismiss(item.id)}
                 aria-label="Dismiss notification"
-                className="grid size-6 shrink-0 place-items-center rounded-lg text-obligon-text hover:bg-obligon-panel"
+                className="grid size-11 shrink-0 place-items-center rounded-lg text-obligon-text hover:bg-obligon-panel"
               >
                 <X size={16} />
               </button>

@@ -124,7 +124,7 @@ export async function requireOrgMembership(req, _res, next) {
 
   const membership = await one(
     `SELECT m.id, m.role AS member_role, m.status AS member_status, m.permissions,
-            o.type AS org_type, o.name AS org_name, o.verification_status
+            o.type AS org_type, o.name AS org_name, o.verification_status, o.partner_type
      FROM memberships m
      JOIN organizations o ON o.id = m.organization_id
      WHERE m.organization_id = $1 AND m.user_id = $2`,
@@ -140,7 +140,7 @@ export async function requireOrgMembership(req, _res, next) {
       ),
     );
   }
-  const primaryTypeMatches = req.user.role === "partner" ? membership.org_type === "partner" :
+  const primaryTypeMatches = req.user.role === "partner" ? ["partner","mechanic"].includes(membership.org_type) :
     req.user.role === "mechanic" && ["mechanic", "partner"].includes(membership.org_type);
   if (!primaryTypeMatches || req.user.orgType !== membership.org_type) {
     return next(forbidden("Select your partner account before opening this area."));
@@ -150,6 +150,8 @@ export async function requireOrgMembership(req, _res, next) {
   }
 
   req.org = membership;
+  req.user.partnerType = membership.partner_type;
+  req.user.orgType = membership.org_type;
   // The membership's role is authoritative — not the token's — so a demotion takes
   // effect on the next request.
   req.orgRole = membership.member_role ?? "viewer";
