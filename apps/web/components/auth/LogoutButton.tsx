@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { StatusPopup } from "@/components/shared/StatusPopup";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/components/shared/AuthContext";
@@ -37,6 +38,8 @@ export function LogoutButton({ variant = "button", className = "" }: { variant?:
   };
 
   const confirmDialog = (
+    <>
+    {loggingOut ? <StatusPopup tone="pending" message="Signing out…" /> : null}
     <ConfirmModal
       open={showConfirm}
       onClose={() => setShowConfirm(false)}
@@ -47,6 +50,7 @@ export function LogoutButton({ variant = "button", className = "" }: { variant?:
       cancelLabel="Cancel"
       tone="red"
     />
+    </>
   );
 
   if (variant === "dropdown") {

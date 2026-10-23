@@ -1,0 +1,44 @@
+{
+  "verifiedAt": "2026-10-23T20:52:55.952453+00:00",
+  "webTests": {
+    "tests": 642,
+    "passed": 642,
+    "failed": 0,
+    "skipped": 0,
+    "exitCode": 0,
+    "log": "evidence/web-tests.txt"
+  },
+  "productionBuild": {
+    "exitCode": 0,
+    "log": "evidence/web-build.txt",
+    "warnings": [
+      "Existing unused-variable warnings",
+      "Local multiple-lockfile workspace-root warning"
+    ]
+  },
+  "secretScan": {
+    "scanner": "Trivy 0.71.2",
+    "findings": 0,
+    "scope": "apps, excluding node_modules, .next and real .env files",
+    "log": "evidence/source-secret-scan.txt"
+  },
+  "contracts": "request-contract-check.json",
+  "sourcePatchSha256": "fc0eb77d2c2093eaac0f2e741c55f999df0bb0fcdda3ec5c2df342ca52dfbfb5",
+  "apiAcceptanceReused": "../google-passkey-2026-10-23/evidence/api-final-receipt.json",
+  "browserLimits": [
+    "Synthetic isolated records, external provider fetches blocked",
+    "Generic admin form is inline, not a dialog",
+    "No complete screen-reader acceptance or physical passkey/provider acceptance"
+  ],
+  "artifacts": {
+    "web-build.txt": "33ca86e64cb9f58d1862727a0e31928106b36b02eb8b1e0b726f2d4cabf56cd8",
+    "admin-inline-form-error.png": "5470d67904b8720d16e928f02e079529ed7dcc194bc34bffcce7135896c12b85",
+    "admin-recovered-desktop.png": "adf75a9f39cdcf1bd56c7c17576f835d1a8d4fa17f14b53130f4485409c908a0",
+    "source-secret-scan.txt": "f3fe0debb8d2b2c375418a89710b01a4f214a46a7784eeaa92210761ebfb0695",
+    "admin-success-390.png": "e5fdc0469902adeedf358c36a59f08d59041ed328f16c2239b42a55a7d8fe88c",
+    "auth-pending-390.png": "25eb47402686f0a1c42c5d97450f90111e8c091385218bba44488570fb56d055",
+    "web-tests.txt": "ea55523d74932995add5e266c1f10d873e989224bf5ec5669bc19484bc8e838b",
+    "admin-error-390.png": "bdf828ad6ae1b7b4cf1645229cb192409f6da7886e5f47eea4fcfd5f591999ef",
+    "admin-loading-390.png": "97d0f15178c2bd94d3a543d765cee3f7059b915c7b2e1539e85d3c0e523e1bdc"
+  }
+}

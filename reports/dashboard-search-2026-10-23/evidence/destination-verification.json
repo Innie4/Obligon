@@ -1,0 +1,38 @@
+{
+  "task": "Dashboard search destination query consumption",
+  "verifiedAt": "2026-10-23T17:26:10.321491+00:00",
+  "focused": {
+    "tests": 12,
+    "passed": 12,
+    "failed": 0,
+    "log": "destination-focused.log"
+  },
+  "typescript": {
+    "exit": 0,
+    "incremental": false,
+    "log": "destination-typescript.log"
+  },
+  "properties": [
+    "Suspense-contained URL query reader handles changed same-page queries, clearing and history navigation without rerender resets",
+    "Customer transaction reference and station searches consume visible query; station server search preserves coordinates and reaches records outside initial list",
+    "Partner transaction server filtering and staff/dispute local filtering",
+    "Company vehicle/card/transaction server filtering, first-page reset and all-history transaction link behavior",
+    "Admin server filtering and first-page reset",
+    "Existing company station/team search controls tested",
+    "Ordinary manual filters remain editable; same-record explicit reselect handled by shared header owner"
+  ],
+  "limitations": [
+    "Header search intentionally covers selected bounded recent-record classes; not a global historical search",
+    "Company transaction CSV export has separate selected period/fleet filters; UI now states text search filters the table",
+    "Root final production build, full web suite and actual Chrome acceptance remain pending",
+    "Qualified human release review remains a root-level release requirement"
+  ],
+  "sourceSHA256": {
+    "apps/web/components/shared/DashboardSearchQuery.tsx": "819afc44394f338f975cf28040c24c180f0dd6d2923dfb8938183da8165e09c7",
+    "apps/web/components/customer-dashboard/CustomerScreen.tsx": "aac374e65f9252dd24eb4c416b9332d2fd93bd6d9ab86805c65987c7cbe0fd1a",
+    "apps/web/components/dashboard/DashboardScreen.tsx": "12c379a7d72d33418df52c4b032c11d8e3ef3605dbcc2c06847f1c5a05b6d840",
+    "apps/web/components/company-dashboard/CompanyScreen.tsx": "73873885511375a11208a64040b194d413cf20bc37af37b2b98412b6d07f7a4f",
+    "apps/web/components/admin-dashboard/AdminScreen.tsx": "25de6368781b9a896e5d108ba0ee81a75ed1df9e59610465a8a363d4bcadaf07",
+    "apps/web/tests/dashboard-search-destinations.test.cjs": "6df233b72d9e87b0e17346def44c23499852dcd0645de4ffebfc3181a9f125ac"
+  }
+}

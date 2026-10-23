@@ -1,0 +1,387 @@
+[
+  {
+    "file": "apps/web/components/company-dashboard/CompanyContextSelector.tsx",
+    "component": "CompanyContextSelector",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/company-dashboard/CompanyContextSelector.tsx",
+    "component": "ReturnToPrimaryAccount",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/company-dashboard/CompanyModals.tsx",
+    "component": "CompanyFleetModal",
+    "flags": [
+      "submitting"
+    ]
+  },
+  {
+    "file": "apps/web/components/company-dashboard/CompanyModals.tsx",
+    "component": "CompanyWalletFund",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/company-dashboard/CompanyModals.tsx",
+    "component": "CompanyWalletAllocate",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/company-dashboard/CompanyModals.tsx",
+    "component": "CompanyPosCode",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/company-dashboard/CompanyModals.tsx",
+    "component": "CompanySupportConversation",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/company-dashboard/CompanyModals.tsx",
+    "component": "CompanyMaintenanceStatus",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/company-dashboard/CompanyScreen.tsx",
+    "component": "CompanyWalletPanel",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/company-dashboard/CompanyScreen.tsx",
+    "component": "Notifications",
+    "flags": [
+      "saving"
+    ]
+  },
+  {
+    "file": "apps/web/components/company-dashboard/CompanyScreen.tsx",
+    "component": "SettingsPage",
+    "flags": [
+      "saving"
+    ]
+  },
+  {
+    "file": "apps/web/components/admin-dashboard/AdminModals.tsx",
+    "component": "EditStaffPermissionsModal",
+    "flags": [
+      "submitting"
+    ]
+  },
+  {
+    "file": "apps/web/components/admin-dashboard/AdminModals.tsx",
+    "component": "ProvisionFleetModal",
+    "flags": [
+      "submitting"
+    ]
+  },
+  {
+    "file": "apps/web/components/admin-dashboard/AdminModals.tsx",
+    "component": "ResolveDisputeModal",
+    "flags": [
+      "submitting"
+    ]
+  },
+  {
+    "file": "apps/web/components/admin-dashboard/AdminModals.tsx",
+    "component": "PartnerReviewModal",
+    "flags": [
+      "submitting"
+    ]
+  },
+  {
+    "file": "apps/web/components/admin-dashboard/AdminModals.tsx",
+    "component": "AddStaffModal",
+    "flags": [
+      "submitting"
+    ]
+  },
+  {
+    "file": "apps/web/components/admin-dashboard/AdminScreen.tsx",
+    "component": "AdminScreen",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/admin-dashboard/CardApprovalQueue.tsx",
+    "component": "CardApprovalQueue",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/admin-dashboard/CardApprovalQueue.tsx",
+    "component": "ReplacementReconciliation",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/admin-dashboard/DiscountApprovals.tsx",
+    "component": "DiscountApprovals",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/admin-dashboard/IntakeConsole.tsx",
+    "component": "IntakeConsole",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/admin-dashboard/OperationsInbox.tsx",
+    "component": "OperationsInbox",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/admin-dashboard/RecoveryReview.tsx",
+    "component": "IssuanceRecovery",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/admin-dashboard/RecoveryReview.tsx",
+    "component": "RecoveryReview",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/dashboard/DashboardScreen.tsx",
+    "component": "POSTerminalPage",
+    "flags": [
+      "verifying"
+    ]
+  },
+  {
+    "file": "apps/web/components/dashboard/DashboardScreen.tsx",
+    "component": "StationProfilePage",
+    "flags": [
+      "saving"
+    ]
+  },
+  {
+    "file": "apps/web/components/dashboard/DashboardScreen.tsx",
+    "component": "ExportButton",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/dashboard/DashboardScreen.tsx",
+    "component": "NotificationsPage",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/dashboard/DashboardScreen.tsx",
+    "component": "SettingsPage",
+    "flags": [
+      "saving"
+    ]
+  },
+  {
+    "file": "apps/web/components/dashboard/DashboardScreen.tsx",
+    "component": "AddBankAccountModal",
+    "flags": [
+      "submitting"
+    ]
+  },
+  {
+    "file": "apps/web/components/dashboard/DashboardScreen.tsx",
+    "component": "RetryPayoutModal",
+    "flags": [
+      "submitting"
+    ]
+  },
+  {
+    "file": "apps/web/components/dashboard/DashboardScreen.tsx",
+    "component": "StaffMemberModal",
+    "flags": [
+      "submitting"
+    ]
+  },
+  {
+    "file": "apps/web/components/dashboard/DashboardScreen.tsx",
+    "component": "DisputeDetailModal",
+    "flags": [
+      "submitting"
+    ]
+  },
+  {
+    "file": "apps/web/components/dashboard/DashboardScreen.tsx",
+    "component": "StationOperationsModal",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/dashboard/DashboardScreen.tsx",
+    "component": "PayoutModal",
+    "flags": [
+      "submitting"
+    ]
+  },
+  {
+    "file": "apps/web/components/dashboard/PartnerApiKeys.tsx",
+    "component": "PartnerApiKeys",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/dashboard/PartnerServiceRequests.tsx",
+    "component": "PartnerServiceRequests",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/dashboard/PartnerVerification.tsx",
+    "component": "PartnerVerificationUI",
+    "flags": [
+      "sending",
+      "sendingCode",
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/dashboard/StationDiscounts.tsx",
+    "component": "StationDiscounts",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/dashboard/StationLocationPicker.tsx",
+    "component": "StationLocationPicker",
+    "flags": [
+      "gpsBusy"
+    ]
+  },
+  {
+    "file": "apps/web/components/dashboard/WorkshopDashboard.tsx",
+    "component": "WorkshopEditor",
+    "flags": [
+      "saving"
+    ]
+  },
+  {
+    "file": "apps/web/components/customer-dashboard/CardRequestModals.tsx",
+    "component": "PendingPaymentModal",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/customer-dashboard/CustomerFuelCheckout.tsx",
+    "component": "CustomerFuelCheckout",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/customer-dashboard/CustomerModals.tsx",
+    "component": "SpendProjectionModal",
+    "flags": [
+      "submitting"
+    ]
+  },
+  {
+    "file": "apps/web/components/customer-dashboard/CustomerModals.tsx",
+    "component": "ChangePinModal",
+    "flags": [
+      "submitting"
+    ]
+  },
+  {
+    "file": "apps/web/components/customer-dashboard/CustomerModals.tsx",
+    "component": "ChangePasswordModal",
+    "flags": [
+      "submitting"
+    ]
+  },
+  {
+    "file": "apps/web/components/customer-dashboard/CustomerModals.tsx",
+    "component": "TwoFactorModal",
+    "flags": [
+      "busy"
+    ]
+  },
+  {
+    "file": "apps/web/components/customer-dashboard/CustomerModals.tsx",
+    "component": "TopUpModal",
+    "flags": [
+      "submitting"
+    ]
+  },
+  {
+    "file": "apps/web/components/customer-dashboard/CustomerModals.tsx",
+    "component": "ReportProblemModal",
+    "flags": [
+      "submitting"
+    ]
+  },
+  {
+    "file": "apps/web/components/customer-dashboard/CustomerModals.tsx",
+    "component": "ReplaceCardModal",
+    "flags": [
+      "submitting"
+    ]
+  },
+  {
+    "file": "apps/web/components/customer-dashboard/CustomerScreen.tsx",
+    "component": "CardPage",
+    "flags": [
+      "progressLoading",
+      "withdrawing",
+      "refundChecking"
+    ]
+  },
+  {
+    "file": "apps/web/components/customer-dashboard/CustomerScreen.tsx",
+    "component": "SupportPage",
+    "flags": [
+      "sending"
+    ]
+  },
+  {
+    "file": "apps/web/components/customer-dashboard/CustomerScreen.tsx",
+    "component": "ProfilePage",
+    "flags": [
+      "saving",
+      "prefsSaving",
+      "pushBusy",
+      "pushChecking"
+    ]
+  },
+  {
+    "file": "apps/web/components/customer-dashboard/CustomerScreen.tsx",
+    "component": "NotificationsPage",
+    "flags": [
+      "saving"
+    ]
+  }
+]

@@ -1,4 +1,5 @@
 "use client";
+import { StatusPopup } from "@/components/shared/StatusPopup";
 import * as React from "react";
 import Link from "next/link";
 import { api, authenticatedRequest, saveBlob } from "@/lib/services";
@@ -165,6 +166,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
   }
   return (
     <section className="mx-auto w-full min-w-0 max-w-[1600px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      {(busy) ? <StatusPopup tone="pending" message="Saving review…" /> : null}
       <DashboardSearchQuery onSearch={value => { setSearch(value); setPage(0); }} />
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-obligon-border pb-6">
         <div>
@@ -222,14 +224,10 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
         </div>
       </header>
       {error && (
-        <p role="alert" className="mt-4 text-red-800">
-          {error}
-        </p>
+        <StatusPopup tone="error" message={error} />
       )}
       {notice && (
-        <p role="status" className="mt-4 text-green-900">
-          {notice}
-        </p>
+        <StatusPopup tone="info" message={notice} />
       )}
       {!loading && !loadFailed && (
         <dl aria-label="Platform metrics" className={`my-6 grid grid-cols-2 gap-3 sm:gap-4 ${(data?.metrics.length ?? 0) > 3 ? "xl:grid-cols-4" : "lg:grid-cols-3"}`}>
@@ -270,9 +268,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
         </label>
       )}
       {loading ? (
-        <p role="status" className="mt-6">
-          Loading live records…
-        </p>
+        <StatusPopup tone="loading" message="Loading live records…" />
       ) : !loadFailed ? (
         <>
           <AdminRecords title={adminPageCopy[pageKey].title} columns={columns[pageKey]} rows={rows} busy={busy} onReview={pageKey === "reports" ? undefined : row => {

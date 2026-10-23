@@ -1,4 +1,5 @@
 "use client";
+import { StatusPopup } from "@/components/shared/StatusPopup";
 import * as React from 'react';
 import Link from 'next/link';
 import { priceSellingUnit } from "@/lib/partner-selling-unit";
@@ -68,10 +69,11 @@ export function CustomerFuelCheckout({subscriptionActive, embedded = false, refr
   }catch(e){setError(e instanceof Error?e.message:'Fuel checkout could not start');}finally{setBusy(false);}
  }
  return <section id="fuel" className={embedded ? "mt-8 space-y-6 scroll-mt-24" : "mx-auto max-w-5xl space-y-6 p-6 sm:p-10"}>
+      {(busy) ? <StatusPopup tone="pending" message="Processing fuel request…" /> : null}
   <div><h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">Pay for fuel at a station</h2><p className="mt-2 text-obligon-text">Choose a station and fuel quantity. After payment, present your fuel code at that station.</p>{!subscriptionActive&&<p className="mt-3 text-sm text-obligon-text">Choose or renew your subscription above to buy fuel or authorize your card. Previously paid fuel orders remain available below.</p>}</div>
-  {error&&<p role="alert" className="rounded-lg bg-red-50 p-4 text-red-700">{error}</p>}
-  {loadError&&<div role="alert" className="rounded-lg bg-amber-50 p-4 text-amber-900"><p>{loadError} Your latest card, prices or fuel orders could not be checked.</p><button type="button" disabled={loading} onClick={()=>void refresh()} className="mt-3 min-h-11 rounded-lg border border-current px-4 font-semibold disabled:opacity-50">Retry loading fuel details</button></div>}
-  {loading?<p role="status">Loading station prices and fuel orders…</p>:<form onSubmit={event=>void pay(event)} className="rounded-xl border bg-white p-6">
+  {error&&<StatusPopup tone="error" message={error} />}
+  {loadError&&<StatusPopup tone="error" message={[loadError, "Your latest card, prices or fuel orders could not be checked."].join(" ").trim()} action={<button type="button" disabled={loading} onClick={()=>void refresh()} className="mt-3 min-h-11 rounded-lg border border-current px-4 font-semibold disabled:opacity-50">Retry loading fuel details</button>} />}
+  {loading?<StatusPopup tone="loading" message="Loading station prices and fuel orders…" />:<form onSubmit={event=>void pay(event)} className="rounded-xl border bg-white p-6">
    <label htmlFor="fuel-station" className="block font-semibold">Station and fuel</label>
    <select id="fuel-station" value={selected} onChange={event=>{setSelected(event.target.value);requestKey.current=null;}} disabled={busy||!stations.length} className="mt-2 w-full rounded-lg border p-3">{stations.map(s=><option key={`${s.stationId}:${s.fuelType}`} value={`${s.stationId}:${s.fuelType}`}>{s.name} · {s.city} · {s.fuelType} ({money(s.unitPriceKobo)}/{sellingUnitLabel(priceSellingUnit(s.fuelType,s.sellingUnit))})</option>)}</select>
    {!stations.length&&!loadError&&<p className="mt-3 text-slate-600">No stations are available for direct fuel payment yet.</p>}

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { StatusPopup } from "./StatusPopup";
 
 export interface StationMapPoint { id?: string; name: string; lat: number; lng: number; }
 type MapState = "loading" | "ready" | "unverified" | "unavailable";
@@ -105,13 +106,15 @@ export function StationMap({ points, onSelect, height = "h-[280px] lg:h-[360px]"
   if (!validPoints.length) return <div className="rounded-xl bg-obligon-mist/60 p-5 text-sm leading-6 text-obligon-text"><p className="font-semibold text-obligon-navy">Map locations unavailable</p><p className="mt-1">Use the station addresses and Directions buttons in the list.</p></div>;
 
   return <div className="min-w-0">
-    <div className={`relative overflow-hidden rounded-xl border border-obligon-border bg-obligon-mist/60 ${height}`}>
+    {state === "loading" || state === "unavailable" ? <StatusPopup
+      tone={state === "loading" ? "loading" : "error"}
+      title={state === "loading" ? "Loading station map…" : "Map preview unavailable"}
+      message={state === "loading" ? "Station details and directions are available in the list." : "Use the station list or open the full map in a new tab."}
+      onRetry={state === "unavailable" ? () => setRevision(value => value + 1) : undefined}
+      retryLabel="Retry map preview"
+    /> : null}
+    <div className={`relative overflow-hidden rounded-xl border border-obligon-border bg-obligon-mist/60 ${height} ${state === "unavailable" ? "hidden" : ""}`}>
       {apiKey ? <div ref={mapRef} aria-label="Station map" className={`h-full w-full ${state === "unavailable" ? "invisible" : ""}`} /> : <iframe key={frameKey} title="Station map" src={embedUrl} referrerPolicy="no-referrer-when-downgrade" onLoad={() => { if (frameIdentity.current === frameKey) setState(current => current === "unavailable" ? current : "unverified"); }} onError={() => { if (frameIdentity.current === frameKey) setState("unavailable"); }} className={`h-full w-full border-0 ${state === "unavailable" ? "invisible" : ""}`} />}
-      {state === "loading" || state === "unavailable" ? <div role={state === "loading" ? "status" : "alert"} className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-obligon-mist px-5 text-center">
-        <p className="text-sm font-semibold text-obligon-navy">{state === "loading" ? "Loading station map…" : "Map preview unavailable"}</p>
-        <p className="max-w-xs text-sm leading-6 text-obligon-text">{state === "loading" ? "Station details and directions are available in the list." : "Use the station list or open the full map in a new tab."}</p>
-        {state === "unavailable" ? <button type="button" onClick={() => setRevision(value => value + 1)} className="min-h-11 rounded-xl border border-obligon-border bg-white px-4 text-sm font-semibold text-obligon-green">Retry map preview</button> : null}
-      </div> : null}
     </div>
     <div className="flex flex-wrap items-center justify-between gap-3 px-1 py-3 text-xs leading-5 text-obligon-text">
       <p className="max-w-md">{state === "unverified" ? "The map is supplied by an external provider. If its preview is blank, use the full map or the station list." : "Map preview is optional. Station details and directions stay available in the list."}</p>

@@ -1,5 +1,7 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
+
 import * as React from "react";
 import Link from "next/link";
 import { ArrowLeft, Fingerprint, KeyRound, Loader2 } from "lucide-react";
@@ -115,9 +117,10 @@ export function SignInOptions() {
   return <div className="w-full min-w-0 max-w-3xl space-y-6">
     <Link href={dashboardDestination(user?.role)} className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-obligon-green focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-obligon-green"><ArrowLeft size={18} aria-hidden="true" />Back to dashboard</Link>
     <header><h1 className="font-display text-3xl font-extrabold text-obligon-navy">Sign-in options</h1><p className="mt-3 text-base leading-6 text-obligon-text">Link Google or add a passkey to this existing account. Your password remains available.</p></header>
-    {error ? <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</div> : null}
-    {notice ? <p role="status" className="rounded-xl border border-obligon-border bg-white p-4 text-sm text-obligon-navy">{notice}</p> : null}
-    {loading && !data ? <p role="status" className="text-sm text-obligon-text">Loading sign-in options...</p> : !data ? <button type="button" className={actionClass} onClick={() => void reload()}>Retry loading sign-in options</button> : <>
+    {error ? <StatusPopup tone="error" message={error} /> : null}
+    {notice ? <StatusPopup tone="info" message={notice} /> : null}
+    {busy ? <StatusPopup tone="pending" message="Updating your sign-in options…" /> : null}
+    {loading && !data ? <StatusPopup tone="loading" message="Loading sign-in options…" /> : !data ? <button type="button" className={actionClass} onClick={() => void reload()}>Retry loading sign-in options</button> : <>
       <section aria-labelledby="confirm-password-title" className="rounded-2xl border border-obligon-border bg-white p-5 sm:p-6">
         <h2 id="confirm-password-title" className="flex items-center gap-2 text-lg font-bold"><KeyRound size={20} aria-hidden="true" />Confirm it is you</h2>
         <p id="method-password-help" className="mt-2 text-sm leading-6 text-obligon-text">Enter your current password before adding or removing a sign-in method. We clear this field after each request. Removing a method signs out your other sessions. This session stays signed in.</p>

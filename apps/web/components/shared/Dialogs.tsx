@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { AlertTriangle, CheckCircle2, Loader2, LockKeyhole, X } from "lucide-react";
+import { AlertTriangle, LockKeyhole, X } from "lucide-react";
 import { useDialogFocus } from "./useDialogFocus";
+import { StatusPopup } from "./StatusPopup";
 
 export type ActionState = "idle" | "loading" | "success" | "error";
 
@@ -19,30 +20,9 @@ export function ActionFeedback({
 }) {
   if (state === "idle") return null;
 
-  if (state === "loading") {
-    return (
-      <p className="mt-4 flex items-center gap-2 rounded-lg bg-[#eef3ff] px-3 py-2 text-sm font-semibold text-obligon-blue" role="status" aria-live="polite">
-        <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-        {loadingMessage}
-      </p>
-    );
-  }
-
-  if (state === "success") {
-    return (
-      <p className="mt-4 flex items-center gap-2 rounded-lg bg-[#eaf7db] px-3 py-2 text-sm font-semibold text-[#315d00]" role="status" aria-live="polite">
-        <CheckCircle2 size={16} aria-hidden="true" />
-        {successMessage ?? "Your changes have been saved."}
-      </p>
-    );
-  }
-
-  return (
-    <p className="mt-4 flex items-start gap-2 rounded-lg bg-[#ffecef] px-3 py-2 text-sm font-semibold text-[#9f1027]" role="alert">
-      <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
-      {errorMessage ?? "We could not complete that request. Please review the information and try again."}
-    </p>
-  );
+  if (state === "loading") return <StatusPopup tone="loading" message={loadingMessage} />;
+  if (state === "success") return <StatusPopup tone="success" message={successMessage ?? "Your changes have been saved."} />;
+  return <StatusPopup tone="error" message={errorMessage ?? "We could not complete that request. Please review the information and try again."} />;
 }
 
 export function DialogFrame({ children, onClose, ariaLabel = "Obligon LTD dialog" }: { children: React.ReactNode; onClose: () => void; ariaLabel?: string }) {

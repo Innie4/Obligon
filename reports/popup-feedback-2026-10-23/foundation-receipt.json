@@ -1,0 +1,71 @@
+{
+  "scope": "Popup feedback shared foundation",
+  "status": "frozen after concrete independent-review fixes; reviewer recheck pending",
+  "files": [
+    {
+      "path": "apps/web/components/shared/StatusPopup.tsx",
+      "sha256": "cd67565399cf69492c427bc2a4493237595f8a93997cb52132a6778542bda39c"
+    },
+    {
+      "path": "apps/web/components/shared/Toast.tsx",
+      "sha256": "68af6515aeac0c64e79c01b61aabf65b18f9781e3c21bc97ee92792707ab197f"
+    },
+    {
+      "path": "apps/web/components/shared/States.tsx",
+      "sha256": "18b4273fa030052d2b6807fcd9c616df2756d3c6cae90c420d3c14dd209f1d2b"
+    },
+    {
+      "path": "apps/web/components/shared/Dialogs.tsx",
+      "sha256": "f849b22548cbb767712b8e2a9594808d7c4a6023ca4f2fe570874a9c20c873eb"
+    },
+    {
+      "path": "apps/web/components/shared/ErrorBoundary.tsx",
+      "sha256": "890a12cbb847413ef6d7b11117ba8c2f2f3605a9513b98db3f612f301fc581da"
+    },
+    {
+      "path": "apps/web/tests/status-popup.test.cjs",
+      "sha256": "fbaf4d2a746984280520f09ffb9ad97e61d9a76743acb34c13cc90f710dbb283"
+    },
+    {
+      "path": "apps/web/tests/production-shared-state.test.cjs",
+      "sha256": "ae9ea042f86b8538c9ed0eb1a533407fd10342362bcac174698410033a131336"
+    },
+    {
+      "path": "apps/web/components/shared/Providers.tsx",
+      "sha256": "808a5fbeff6e291dd793a1b60ace2555411f5ae8e4251a6d14c5bf9c89bf38ac"
+    }
+  ],
+  "verified": {
+    "status-popup.test.cjs": {
+      "passed": 11,
+      "failed": 0
+    },
+    "production-shared-state.test.cjs": {
+      "passed": 7,
+      "failed": 0
+    },
+    "typescript": "pnpm --filter @obligon/web exec tsc --noEmit --incremental false: exit 0",
+    "diff_check": "exit 0"
+  },
+  "behavior": [
+    "Nonmodal floating feedback with no focus transfer or request mutation",
+    "Closest-dialog portals keep retry and dismiss within existing focus trap; otherwise portals to body",
+    "Standalone/server fallback supports root render errors outside provider",
+    "Lifecycle removes feedback on settlement or owner unmount",
+    "One visible progress card, two visible other statuses, error priority and duplicate grouping",
+    "Dismissal survives inline callback/action identity changes; actual status/message changes can present new feedback",
+    "Retry callbacks run only after explicit user action",
+    "Toast queue bound to four; duplicate renewal, persistent error/warning, cleanup of success/info timers on dismissal/eviction/unmount",
+    "AsyncBoundary retains previous records and truthful stale-data warning; empty states remain inline",
+    "Retry never implicitly dismisses an unresolved error; request lifecycle or explicit dismissal owns clearing",
+    "Per-host portal keys remain stable through unrelated host priority changes",
+    "ToastScope binds callback-generation tokens on first new-scope render; layout activation resets toast queue and timers on user/role/organization changes",
+    "Retained old-scope async callbacks are ignored; freshly bound current-scope callbacks work; same-scope profile refresh does not reset",
+    "Toast reset leaves the unkeyed owner-scoped StatusPopupProvider mounted"
+  ],
+  "not_verified": [
+    "Browser rendering and keyboard traversal delegated to root",
+    "Full suite/build/deployment delegated to root"
+  ],
+  "learn_note": "Root should include shared foundation in the single popup-task Edirae Learn breakdown; no separate subtask note created."
+}

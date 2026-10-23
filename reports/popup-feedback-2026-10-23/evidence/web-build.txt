@@ -1,0 +1,224 @@
+$ node scripts/build.mjs
+ ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of /home/inimfon-udoh/Obligon/pnpm-lock.yaml as the root directory.
+ To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+ Detected additional lockfiles: 
+   * /home/inimfon-udoh/Obligon/checkout/pnpm-lock.yaml
+
+   ▲ Next.js 15.5.28
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 12.0s
+   Linting and checking validity of types ...
+
+./app/auth/verify-phone/page.tsx
+2:10  Warning: 'VerificationUI' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./app/forgot-password/page.tsx
+8:58  Warning: 'CheckCircle2' is defined but never used.  @typescript-eslint/no-unused-vars
+11:10  Warning: 'Input' is defined but never used.  @typescript-eslint/no-unused-vars
+24:9  Warning: 'router' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+62:9  Warning: 'handleChange' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+68:9  Warning: 'isDisabled' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./app/support/page.tsx
+6:8  Warning: 'Link' is defined but never used.  @typescript-eslint/no-unused-vars
+7:61  Warning: 'ArrowRight' is defined but never used.  @typescript-eslint/no-unused-vars
+11:10  Warning: 'routes' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./components/admin-dashboard/AdminModals.tsx
+5:80  Warning: 'Building2' is defined but never used.  @typescript-eslint/no-unused-vars
+5:91  Warning: 'CheckCircle2' is defined but never used.  @typescript-eslint/no-unused-vars
+5:105  Warning: 'AlertTriangle' is defined but never used.  @typescript-eslint/no-unused-vars
+38:70  Warning: 'selectedDisputeId' is defined but never used.  @typescript-eslint/no-unused-vars
+49:41  Warning: 'toastError' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+53:10  Warning: 'notify' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+53:18  Warning: 'setNotify' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+168:23  Warning: 'setContactName' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./components/auth/AuthForms.tsx
+17:3  Warning: 'ChevronDown' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./components/auth/AuthGuard.tsx
+100:53  Warning: '_redirectTo' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./components/auth/LogoutButton.tsx
+10:18  Warning: 'Loader2' is defined but never used.  @typescript-eslint/no-unused-vars
+10:27  Warning: 'ShieldCheck' is defined but never used.  @typescript-eslint/no-unused-vars
+10:40  Warning: 'AlertTriangle' is defined but never used.  @typescript-eslint/no-unused-vars
+10:55  Warning: 'X' is defined but never used.  @typescript-eslint/no-unused-vars
+19:19  Warning: 'status' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+91:50  Warning: 'onLogout' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./components/auth/MFAUI.tsx
+8:10  Warning: 'CheckCircle2' is defined but never used.  @typescript-eslint/no-unused-vars
+8:24  Warning: 'AlertTriangle' is defined but never used.  @typescript-eslint/no-unused-vars
+8:63  Warning: 'Smartphone' is defined but never used.  @typescript-eslint/no-unused-vars
+8:75  Warning: 'QrCode' is defined but never used.  @typescript-eslint/no-unused-vars
+8:83  Warning: 'Key' is defined but never used.  @typescript-eslint/no-unused-vars
+8:101  Warning: 'AlertCircle' is defined but never used.  @typescript-eslint/no-unused-vars
+191:19  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/auth/SignInOptions.tsx
+43:6  Warning: React Hook React.useCallback has an unnecessary dependency: 'user.id'. Either exclude it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/careers/CareersPage.tsx
+7:8  Warning: 'Link' is defined but never used.  @typescript-eslint/no-unused-vars
+8:58  Warning: 'ShieldCheck' is defined but never used.  @typescript-eslint/no-unused-vars
+13:10  Warning: 'routes' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./components/customer-dashboard/CustomerFuelCheckout.tsx
+42:32  Warning: The ref value 'refreshGeneration.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'refreshGeneration.current' to a variable inside the effect, and use that variable in the cleanup function.  react-hooks/exhaustive-deps
+
+./components/customer-dashboard/CustomerModals.tsx
+5:15  Warning: 'ComponentType' is defined but never used.  @typescript-eslint/no-unused-vars
+6:10  Warning: 'AlertTriangle' is defined but never used.  @typescript-eslint/no-unused-vars
+6:68  Warning: 'Fingerprint' is defined but never used.  @typescript-eslint/no-unused-vars
+6:155  Warning: 'LucideProps' is defined but never used.  @typescript-eslint/no-unused-vars
+1404:3  Warning: 'blocked' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./components/customer-dashboard/CustomerScreen.tsx
+14:3  Warning: 'Building2' is defined but never used.  @typescript-eslint/no-unused-vars
+15:3  Warning: 'Check' is defined but never used.  @typescript-eslint/no-unused-vars
+16:3  Warning: 'ChevronDown' is defined but never used.  @typescript-eslint/no-unused-vars
+17:3  Warning: 'CircleHelp' is defined but never used.  @typescript-eslint/no-unused-vars
+22:3  Warning: 'Grid2X2' is defined but never used.  @typescript-eslint/no-unused-vars
+23:3  Warning: 'HeartHandshake' is defined but never used.  @typescript-eslint/no-unused-vars
+32:3  Warning: 'Upload' is defined but never used.  @typescript-eslint/no-unused-vars
+36:3  Warning: 'CheckCircle2' is defined but never used.  @typescript-eslint/no-unused-vars
+48:175  Warning: 'CustomerTransaction' is defined but never used.  @typescript-eslint/no-unused-vars
+60:24  Warning: 'PinModal' is defined but never used.  @typescript-eslint/no-unused-vars
+100:10  Warning: 'TrendChart' is defined but never used.  @typescript-eslint/no-unused-vars
+263:9  Warning: 'security' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+264:9  Warning: 'securityHelper' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+1645:10  Warning: 'buildMapUrl' is defined but never used.  @typescript-eslint/no-unused-vars
+1659:9  Warning: 'router' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+
+./components/dashboard/DashboardScreen.tsx
+28:39  Warning: 'authenticatedRequest' is defined but never used.  @typescript-eslint/no-unused-vars
+87:10  Warning: 'nairaLabel' is defined but never used.  @typescript-eslint/no-unused-vars
+1689:10  Warning: 'RetryPayoutModal' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./components/dashboard/PartnerVerification.tsx
+8:3  Warning: 'AlertTriangle' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./components/legal/LegalPage.tsx
+5:78  Warning: 'ToggleLeft' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./components/shared/AuthContext.tsx
+5:10  Warning: 'readPersistedSession' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./components/shared/StationMap.tsx
+104:6  Warning: React Hook React.useEffect has missing dependencies: 'displayPoints', 'first.lat', 'first.lng', and 'frameKey'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/site/CookieConsentBanner.tsx
+7:18  Warning: 'X' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./lib/services/client.ts
+75:3  Warning: 'PaymentFeeSchedule' is defined but never used.  @typescript-eslint/no-unused-vars
+84:3  Warning: 'CustomerTopUpSummary' is defined but never used.  @typescript-eslint/no-unused-vars
+88:3  Warning: 'VerificationChannelResult' is defined but never used.  @typescript-eslint/no-unused-vars
+842:21  Warning: 'location' is defined but never used.  @typescript-eslint/no-unused-vars
+951:27  Warning: 'stationId' is defined but never used.  @typescript-eslint/no-unused-vars
+973:20  Warning: '_path' is defined but never used.  @typescript-eslint/no-unused-vars
+973:35  Warning: '_init' is defined but never used.  @typescript-eslint/no-unused-vars
+1352:20  Warning: 'cardId' is defined but never used.  @typescript-eslint/no-unused-vars
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
+   Collecting page data ...
+   Generating static pages (0/79) ...
+   Generating static pages (19/79) 
+   Generating static pages (39/79) 
+   Generating static pages (59/79) 
+ ✓ Generating static pages (79/79)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+┌ ○ /                                    4.01 kB         116 kB
+├ ○ /_not-found                            145 B         103 kB
+├ ○ /admin                                 144 B         155 kB
+├ ○ /admin/companies                       145 B         103 kB
+├ ○ /admin/discount-approvals            1.41 kB         151 kB
+├ ○ /admin/disputes                        143 B         155 kB
+├ ○ /admin/intake                        4.13 kB         153 kB
+├ ○ /admin/login                          9.9 kB         142 kB
+├ ○ /admin/operations                     5.1 kB         154 kB
+├ ○ /admin/partner-applications            143 B         155 kB
+├ ○ /admin/reports                         143 B         155 kB
+├ ○ /admin/staff                           145 B         155 kB
+├ ƒ /auth/company-invitation             1.97 kB         142 kB
+├ ○ /auth/failure                          473 B         141 kB
+├ ○ /auth/in-progress                      775 B         141 kB
+├ ○ /auth/login                            138 B         157 kB
+├ ○ /auth/logout                         5.52 kB         138 kB
+├ ○ /auth/mfa/challenge                    138 B         145 kB
+├ ○ /auth/mfa/setup                        138 B         145 kB
+├ ○ /auth/session-expired                9.57 kB         142 kB
+├ ○ /auth/sign-in-options                7.05 kB         144 kB
+├ ƒ /auth/signup                           139 B         157 kB
+├ ○ /auth/success                        9.35 kB         142 kB
+├ ○ /auth/verify-email                   5.59 kB         146 kB
+├ ○ /auth/verify-phone                     145 B         103 kB
+├ ○ /careers                             6.39 kB         145 kB
+├ ○ /company                               145 B         175 kB
+├ ○ /company/billing                       146 B         175 kB
+├ ○ /company/cards                         146 B         175 kB
+├ ○ /company/maintenance                   145 B         175 kB
+├ ○ /company/notifications                 146 B         175 kB
+├ ○ /company/reports                       146 B         175 kB
+├ ○ /company/roadside                      146 B         175 kB
+├ ○ /company/settings                      147 B         175 kB
+├ ○ /company/stations                      146 B         175 kB
+├ ○ /company/support                       148 B         175 kB
+├ ○ /company/team                          147 B         175 kB
+├ ○ /company/transactions                  146 B         175 kB
+├ ○ /company/vehicles                      146 B         175 kB
+├ ○ /cookie-policy                         138 B         143 kB
+├ ○ /customer                              147 B         205 kB
+├ ○ /customer/card                         148 B         205 kB
+├ ƒ /customer/fuel-checkout                145 B         103 kB
+├ ○ /customer/notifications                148 B         205 kB
+├ ○ /customer/profile                      146 B         205 kB
+├ ○ /customer/report-problem               146 B         205 kB
+├ ○ /customer/stations                     147 B         205 kB
+├ ƒ /customer/subscription                 145 B         103 kB
+├ ○ /customer/support                      148 B         205 kB
+├ ○ /customer/transaction-detail           148 B         205 kB
+├ ○ /customer/transactions                 146 B         205 kB
+├ ○ /customer/wallet                       148 B         205 kB
+├ ○ /dashboard                             151 B         181 kB
+├ ○ /dashboard/billing                   2.27 kB         153 kB
+├ ○ /dashboard/card-verification           151 B         181 kB
+├ ○ /dashboard/disputes                    151 B         181 kB
+├ ○ /dashboard/fuel-pricing                151 B         181 kB
+├ ○ /dashboard/notifications               151 B         181 kB
+├ ○ /dashboard/reports                     151 B         181 kB
+├ ○ /dashboard/settings                    151 B         181 kB
+├ ○ /dashboard/settlements                 152 B         181 kB
+├ ○ /dashboard/staff                       150 B         181 kB
+├ ○ /dashboard/station-profile             151 B         181 kB
+├ ○ /dashboard/transactions                151 B         181 kB
+├ ○ /dashboard/verify                    6.68 kB         157 kB
+├ ○ /dashboard/workshop                  3.49 kB         156 kB
+├ ○ /forgot-password                      9.9 kB         142 kB
+├ ○ /icon.svg                                0 B            0 B
+├ ○ /login                                 145 B         103 kB
+├ ○ /mechanic                              151 B         181 kB
+├ ○ /privacy-policy                        138 B         143 kB
+├ ○ /reset-password                         6 kB         143 kB
+├ ○ /solutions/energyvista                 206 B         139 kB
+├ ○ /solutions/fuelvista                   206 B         139 kB
+├ ○ /solutions/genvista                    206 B         139 kB
+├ ○ /support                             3.78 kB         142 kB
+└ ○ /terms-of-service                      139 B         143 kB
++ First Load JS shared by all             103 kB
+  ├ chunks/1196-d9acbf68378fa2d9.js      46.6 kB
+  ├ chunks/5e8f0803-20bed6e6a7b0646a.js  54.2 kB
+  └ other shared chunks (total)           2.5 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

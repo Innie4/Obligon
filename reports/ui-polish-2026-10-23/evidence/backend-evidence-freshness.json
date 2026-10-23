@@ -1,0 +1,8 @@
+{
+  "checkedAt": "2026-10-23T19:59:23.626169+00:00",
+  "sourceSnapshotPatchSha256": "1d1db66f581611e284bf0f8d3c3ba9c09d4f6a695995475732f922c323aaed34",
+  "checkedFiles": 74,
+  "changedBackendDependencyFiles": [],
+  "apiEvidenceReusable": true,
+  "reusedEvidence": "reports/google-passkey-2026-10-23/evidence/api-final-receipt.json"
+}

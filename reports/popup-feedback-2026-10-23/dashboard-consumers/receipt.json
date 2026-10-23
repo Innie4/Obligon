@@ -1,0 +1,24 @@
+{
+  "recordedAt": "2026-10-23T20:47:21.341680+00:00",
+  "sourceFrozen": true,
+  "sourceFiles": 48,
+  "testFileCount": 24,
+  "totals": {
+    "tests": 361,
+    "pass": 361,
+    "fail": 0,
+    "skipped": 0
+  },
+  "contract": {
+    "criticalInputs": 74,
+    "criticalDrift": [],
+    "changedWeb": 41,
+    "requestDifferenceFiles": []
+  },
+  "limitations": [
+    "No live provider or browser checks by this agent",
+    "No full web suite or production build by this agent",
+    "No production deployment by this agent"
+  ],
+  "baseline": "/tmp/obligon-approved-source23"
+}

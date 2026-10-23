@@ -1,9 +1,11 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
+
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ArrowLeft, Check, Mail, Phone, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Check, Mail, Phone, ShieldCheck } from "lucide-react";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { routes } from "@/components/site/routes";
 import { useToast } from "@/components/shared/Toast";
@@ -38,7 +40,7 @@ export function VerificationUI() {
   const [returnPathReady, setReturnPathReady] = React.useState(false);
   React.useEffect(() => { setReturnPath(authReturnPath(window.location.search)); setReturnPathReady(true); }, []);
   const { user, status: sessionStatus, refresh: refreshSession } = useSession();
-  const { success: toastSuccess, error: toastError } = useToast();
+  const { success: toastSuccess } = useToast();
 
   // Read from the session rather than the URL. They used to arrive as
   // `?contact=` parameters, which put an email address and a phone number into
@@ -147,7 +149,6 @@ export function VerificationUI() {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not resend the code.";
       setError(message);
-      toastError(message);
     } finally {
       setSendingCode(false);
     }
@@ -251,25 +252,9 @@ export function VerificationUI() {
           ))}
         </div>
 
-        {sending ? (
-          <p className="mt-5 text-center text-sm font-semibold text-obligon-text">Sending your code…</p>
-        ) : null}
-
-        {notice && !error ? (
-          <p className="mt-5 rounded-lg border border-obligon-border bg-[#fff3d8] p-3 text-sm text-[#9a6300]" role="status">
-            {notice}
-          </p>
-        ) : null}
-
-        {error ? (
-          <div
-            className="mt-5 flex items-start gap-2 rounded-lg border border-[#fecaca] bg-[#fff0f0] p-3 text-sm text-[#93000a]"
-            role="alert"
-          >
-            <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
-            <span>{error}</span>
-          </div>
-        ) : null}
+        {sending || sendingCode || busy || sessionStatus === "loading" ? <StatusPopup tone={sending || sendingCode || busy ? "pending" : "loading"} message={busy ? "Verifying your code…" : sending || sendingCode ? "Sending your verification code…" : "Checking your account…"} /> : null}
+        {notice && !error ? <StatusPopup tone="info" message={notice} /> : null}
+        {error ? <StatusPopup tone="error" message={error} /> : null}
 
         {stage === "success" ? (
           <div className="mt-8 flex items-center justify-center gap-2 rounded-xl bg-obligon-lime/20 p-4 text-sm font-extrabold text-obligon-navy">

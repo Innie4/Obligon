@@ -1,5 +1,6 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
 import * as React from "react";
 import { Check, Grid2X2, ReceiptText, ShieldCheck, UserRoundCheck, X, Loader2, Building2, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/components/shared/Toast";
@@ -67,6 +68,7 @@ function EditStaffPermissionsModal({ onClose }: { onClose: () => void }) {
 
   return (
     <ModalShell onClose={onClose} label="Edit staff permissions">
+      {(submitting) ? <StatusPopup tone="pending" message="Processing request…" /> : null}
       {success ? (
         <div className="p-8 text-center">
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
@@ -191,6 +193,7 @@ function ProvisionFleetModal({ onClose, onSuccess }: { onClose: () => void; onSu
 
   return (
     <ModalShell onClose={onClose} label="Provision new fleet">
+      {(submitting) ? <StatusPopup tone="pending" message="Processing request…" /> : null}
       {success ? (
         <div className="p-8 text-center">
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
@@ -301,6 +304,7 @@ function ResolveDisputeModal({ onClose, onSuccess, disputeId }: { onClose: () =>
 
   return (
     <ModalShell onClose={onClose} label="Resolve dispute">
+      {(submitting) ? <StatusPopup tone="pending" message="Processing request…" /> : null}
       {success ? (
         <div className="p-8 text-center">
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
@@ -395,6 +399,7 @@ function PartnerReviewModal({ onClose, applicationId }: { onClose: () => void; a
 
   return (
     <ModalShell onClose={onClose} label="Review Partner Application">
+      {(submitting) ? <StatusPopup tone="pending" message="Processing request…" /> : null}
       <div className="p-6 sm:p-8 space-y-5">
         <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Partner Station Application</h2>
         <div className="rounded-xl bg-[#f7fbf8] p-4 border border-obligon-border space-y-2 text-sm">
@@ -449,6 +454,7 @@ function AddStaffModal({ onClose }: { onClose: () => void }) {
 
   return (
     <ModalShell onClose={onClose} label="Add Staff Member">
+      {(submitting) ? <StatusPopup tone="pending" message="Processing request…" /> : null}
       {success ? (
         <div className="p-8 text-center">
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
@@ -471,7 +477,7 @@ function AddStaffModal({ onClose }: { onClose: () => void }) {
             </button>
           </div>
           {formError ? (
-            <p role="alert" className="rounded-xl border border-[#f3c6cc] bg-[#fff4f4] px-4 py-3 text-sm font-bold text-[#9f1027]">{formError}</p>
+            <StatusPopup tone="error" message={formError} />
           ) : null}
           <label className="block">
             <span className="text-xs font-extrabold uppercase text-obligon-text">Full Name</span>

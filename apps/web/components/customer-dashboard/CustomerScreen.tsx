@@ -1,5 +1,6 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
 import React, { useState } from "react";
 import Link from "next/link";
 import { SubscriptionPanel } from "@/components/shared/SubscriptionPanel";
@@ -246,8 +247,7 @@ function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
     () => api.request<{ card: CustomerCard | null }>("/api/customer/card"), [balanceRefreshKey]
   );
   usePolling(refreshCard, { intervalMs: BALANCE_POLL_MS });
-  const cardSummary = cardLoadStatus === "loading" ? "Loading card status…"
-    : cardLoadStatus === "error" ? "Card status unavailable"
+  const cardSummary = cardLoadStatus === "loading" || cardLoadStatus === "error" ? ""
     : !cardData?.card ? "No card issued"
     : `Card ${cardData.card.status}`;
   const totalBalance = metricValue(metrics, "Total Account Balance", "₦0.00");
@@ -271,6 +271,8 @@ function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
   return (
     <Canvas>
       <div className="mb-6 lg:hidden"><h2 className="font-display text-2xl font-bold tracking-tight text-obligon-navy">Overview</h2><p className="mt-2 text-sm text-obligon-text">Your balance and recent activity.</p></div>
+      {cardLoadStatus === "loading" ? <StatusPopup tone="loading" message="Loading card status…" /> : null}
+      {cardLoadStatus === "error" ? <StatusPopup tone="error" message="Card status unavailable" onRetry={refreshCard} retryLabel="Retry card status" /> : null}
 
       <AsyncBoundary
         status={status}
@@ -1176,17 +1178,14 @@ function CardPage({
 
   return (
     <Canvas>
+      {(progressLoading || withdrawing || refundChecking) ? <StatusPopup tone="pending" message={withdrawing ? "Withdrawing card application…" : refundChecking ? "Checking refund status…" : "Loading verification status…"} /> : null}
       <div className="mb-8">
         <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Card Management</h2>
         <p className="mt-1 text-obligon-text">View your Fuelvista card status and manage your subscription.</p>
       </div>
 
-      {cardLoading ? <p role="status" className="mb-6 text-sm text-obligon-text">{hasCard === null ? "Loading your card and request status…" : "Refreshing your card and request status…"}</p> : null}
-      {cardLoadError || openRequestError ? <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
-        <p>{cardLoadError || openRequestError}</p>
-        <p className="mt-1">Your latest card or payment request status could not be checked.</p>
-        <button type="button" disabled={cardLoading} onClick={() => setCardLoadRevision((revision) => revision + 1)} className="mt-3 min-h-11 rounded-lg border border-current px-4 font-bold disabled:opacity-50">Retry loading card</button>
-      </div> : null}
+      {cardLoading ? <StatusPopup tone="loading" message={hasCard === null ? "Loading your card and request status…" : "Refreshing your card and request status…"} /> : null}
+      {cardLoadError || openRequestError ? <StatusPopup tone="error" message={[cardLoadError || openRequestError, "Your latest card or payment request status could not be checked."].join(" ").trim()} action={<button type="button" disabled={cardLoading} onClick={() => setCardLoadRevision((revision) => revision + 1)} className="mt-3 min-h-11 rounded-lg border border-current px-4 font-bold disabled:opacity-50">Retry loading card</button>} /> : null}
 
       {hasCard === false ? (
         <Card className="mb-8 border-obligon-green/30 bg-obligon-mist/60 p-6">
@@ -1234,7 +1233,7 @@ function CardPage({
                   {hasRefundRequest ? (
                     <>
                       <p role={refundReviewRequired ? "alert" : "status"} className="text-sm text-obligon-text">{refundMessage}</p>
-                      {refundCheckError ? <p role="alert" className="text-sm text-red-700">{refundCheckError}</p> : null}
+                      {refundCheckError ? <StatusPopup tone="error" message={refundCheckError} /> : null}
                       <button type="button" disabled={refundChecking} onClick={() => setRefundCheckRevision((revision) => revision + 1)} className="min-h-11 rounded-xl border border-obligon-border px-4 text-sm font-bold disabled:opacity-50">
                         {refundChecking ? "Checking refund status…" : "Check refund status"}
                       </button>
@@ -1483,8 +1482,7 @@ function WalletPage({
   // Taken from the wallet response rather than the overview metric: this is the
   // same number the ledger that produced it reports, so the figure on this page
   // and the entries beneath it cannot disagree.
-  const unknownBalanceLabel = walletStatus === "loading" ? "Loading balance…" : "Balance unavailable";
-  const totalBalance = wallet?.balanceLabel ?? unknownBalanceLabel;
+  const totalBalance = wallet?.balanceLabel ?? "";
   const lastTopUp = wallet?.lastTopUp ?? null;
   // The real budget limit, or nothing. Showing a badge only when there is an
   // actual limit avoids implying a facility that was never set.
@@ -1494,6 +1492,7 @@ function WalletPage({
 
   return (
     <Canvas>
+      {walletStatus === "loading" ? <StatusPopup tone="loading" message="Loading balance and payment history…" /> : null}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Wallet Management</h2>
@@ -1527,10 +1526,7 @@ function WalletPage({
         <p className="mt-3 text-sm font-bold text-obligon-green">
           {customerWalletHint(wallet?.balanceKobo)}
         </p>
-        {walletError ? <div role="alert" className="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-900">
-          <p>{wallet ? "Showing your last known balance. We could not refresh the latest balance." : "We could not load your balance. Check again before making a fuel payment."}{walletLoadedAt ? ` Last updated ${new Date(walletLoadedAt).toLocaleString("en-NG")}.` : ""}</p>
-          <button type="button" onClick={reloadWallet} className="mt-3 min-h-11 rounded-lg border border-current px-4 font-bold">Retry wallet balance</button>
-        </div> : null}
+        {walletError ? <StatusPopup tone="error" message={[wallet ? "Showing your last known balance. We could not refresh the latest balance." : "We could not load your balance. Check again before making a fuel payment.", walletLoadedAt ? ` Last updated ${new Date(walletLoadedAt).toLocaleString("en-NG")}.` : ""].join(" ").trim()} action={<button type="button" onClick={reloadWallet} className="mt-3 min-h-11 rounded-lg border border-current px-4 font-bold">Retry wallet balance</button>} /> : null}
         {/* What the processor says about the last payment, next to our figure.
             A customer who is told a transaction succeeded and sees nothing change
             has no way to tell a missed credit from a stale screen. Naming the
@@ -1549,10 +1545,10 @@ function WalletPage({
           <div className="rounded-xl border border-obligon-border bg-obligon-mist/60 p-4">
             <p className="text-xs font-semibold uppercase text-obligon-text">Settled with Flutterwave</p>
             <p className="mt-1 font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">
-              {wallet?.settledInLabel ?? (walletStatus === "loading" ? "Loading payments…" : "Payments unavailable")}
+              {wallet?.settledInLabel ?? ""}
             </p>
             <p className="mt-1 text-xs font-semibold text-obligon-text">
-              {!wallet ? "Confirmed payment history has not loaded." : wallet.settledCount
+              {!wallet ? "" : wallet.settledCount
                 ? `${wallet.settledCount} confirmed payment${wallet.settledCount === 1 ? "" : "s"}`
                 : "No confirmed payments yet"}
             </p>
@@ -1719,7 +1715,7 @@ function StationsPage() {
       <div className="mb-6"><h2 className="font-display text-2xl font-bold tracking-tight text-obligon-navy">Find a station</h2><p className="mt-2 text-sm text-obligon-text">Search locations, view fuel prices and get directions.</p></div>
       <DashboardSearchQuery onSearch={value => { setQuery(value); if (value) setSelectedFuels([]); }} />
       <div className="mb-4 rounded-xl border border-obligon-border bg-white p-4">
-        <p role="status" className="text-sm text-obligon-text">{locationMessage}</p>
+        {locationMessage === "Finding your location…" ? <StatusPopup tone="loading" message={locationMessage} /> : locationMessage.startsWith("Location is unavailable.") || locationMessage.startsWith("Location could not be obtained.") ? <StatusPopup tone="error" message={locationMessage} /> : <p role="status" className="text-sm text-obligon-text">{locationMessage}</p>}
         <button type="button" onClick={startLocation} className="mt-2 inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold text-obligon-green">Use my location</button>
         <details className="mt-2 text-sm">
           <summary className="min-h-11 cursor-pointer py-3 font-medium">Set location manually</summary>
@@ -1995,6 +1991,7 @@ function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void 
 
   return (
     <Canvas>
+      {(sending) ? <StatusPopup tone="pending" message="Sending support message…" /> : null}
       <div className="mb-8">
         <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Customer Support Center</h2>
         <p className="mt-1 text-obligon-text">Billing, card, and transaction assistance.</p>
@@ -2044,7 +2041,7 @@ function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void 
             {!services.services.some(service => service.available) ? <Link href="/customer/card#subscription" className="mt-2 inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold text-obligon-green underline">View plans in My Card</Link> : null}
           </> : null}
         </AsyncBoundary>
-        {serviceError ? <p role="alert" className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">{serviceError}</p> : null}
+        {serviceError ? <StatusPopup tone="error" message={serviceError} /> : null}
         {serviceReference ? <p role="status" className="mt-4 rounded-xl bg-obligon-mist p-4 text-sm text-obligon-green">Request {serviceReference} recorded. Use Open Support Messages above to follow the response.</p> : null}
       </section>
       {chatOpen ? (
@@ -2060,12 +2057,12 @@ function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void 
               <p className="mt-2 text-xs text-obligon-text">{ticketId ? `Request ${ticketStatus || "loading"}. Replies appear here when the team responds.` : "Your first message opens a support request. The team will reply here."}</p>
             </div>
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4" aria-live="polite">
-              {loadError ? <div role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800"><p>{loadError}</p><button type="button" disabled={loading} onClick={() => setTicketRevision(value => value + 1)} className="mt-1 min-h-11 rounded-lg px-2 font-semibold underline disabled:opacity-60">Retry loading requests</button></div> : null}
-              {messageError ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{messageError}</p> : null}
-              {sendError ? <p role="alert" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{sendError}</p> : null}
-              {sendNotice ? <p role="status" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{sendNotice}</p> : null}
-              {loading ? <p role="status" className="text-sm text-obligon-text">Loading requests…</p> : null}
-              {messageLoading ? <p role="status" className="text-sm text-obligon-text">Loading messages…</p> : null}
+              {loadError ? <StatusPopup tone="error" message={loadError} action={<button type="button" disabled={loading} onClick={() => setTicketRevision(value => value + 1)} className="mt-1 min-h-11 rounded-lg px-2 font-semibold underline disabled:opacity-60">Retry loading requests</button>} /> : null}
+              {messageError ? <StatusPopup tone="error" message={messageError} /> : null}
+              {sendError ? <StatusPopup tone="error" message={sendError} /> : null}
+              {sendNotice ? <StatusPopup tone="warning" message={sendNotice} /> : null}
+              {loading ? <StatusPopup tone="loading" message="Loading requests…" /> : null}
+              {messageLoading ? <StatusPopup tone="loading" message="Loading messages…" /> : null}
               {!loading && !messageLoading && !loadError && !messageError && !messages.length ? <p className="rounded-xl bg-obligon-mist/60 p-4 text-sm leading-6 text-obligon-text">{ticketId ? "There are no messages in this request yet." : tickets.length ? "Choose an existing request above, or send a message to start a new one." : "No support requests yet. Send your first message below."}</p> : null}
               {ticketId ? <button type="button" disabled={messageLoading || sending} onClick={() => setMessageRevision(value => value + 1)} className="min-h-11 rounded-lg px-2 text-sm font-semibold text-obligon-green underline disabled:opacity-60">Refresh messages</button> : null}
               {messages.map((message) => (
@@ -2150,7 +2147,7 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
   }, [pushCheckRevision, user?.id]);
 
   const pushDeviceStatus = pushChecking
-    ? "Checking push setup in this browser…"
+    ? ""
     : !pushState
       ? "Push setup is unknown in this browser."
       : pushState.permission === "unsupported"
@@ -2245,6 +2242,7 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
       onRetry={reload}
       loadingLabel="Loading your profile…"
     >
+      {(saving || prefsSaving || pushBusy || pushChecking) ? <StatusPopup tone="pending" message={pushChecking ? "Checking push setup in this browser…" : pushBusy ? "Contacting your browser…" : "Saving account preferences…"} /> : null}
       <Canvas>
         <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
         <Card className="p-6 sm:p-8">
@@ -2335,7 +2333,7 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
                     {row.key === "push" ? (
                       <div className="mt-3 border-t border-obligon-border pt-3">
                         <p role="status" aria-live="polite" className="text-xs leading-5 text-obligon-text">
-                          {pushBusy ? "Contacting your browser…" : pushDeviceStatus}
+                          {pushDeviceStatus}
                           {pushState?.reason ? ` ${pushState.reason}` : ""}
                         </p>
                         <div className="mt-2 flex flex-wrap gap-2">
@@ -2364,7 +2362,7 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
                 ))}
               </div>
 
-              {pushError ? <p role="alert" className="mt-3 text-sm text-red-700">{pushError}</p> : null}
+              {pushError ? <StatusPopup tone="error" message={pushError} /> : null}
               <div className="mt-4 rounded-xl border border-obligon-border bg-white p-3.5">
                 <p className="text-xs font-bold text-obligon-navy">Alert Categories</p>
                 <p className="mt-1 text-xs leading-4 text-obligon-text">
@@ -2529,6 +2527,7 @@ function NotificationsPage() {
 
   return (
     <Canvas>
+      {(saving) ? <StatusPopup tone="pending" message="Saving notification preferences…" /> : null}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
           <div>
             <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Notifications</h2>

@@ -1,5 +1,6 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
 import * as React from "react";
 import { priceSellingUnit } from "@/lib/partner-selling-unit";
 import { authenticatedRequest } from "@/lib/services";
@@ -73,12 +74,13 @@ export function StationDiscounts() {
   }
 
   return <section className="mt-8 min-w-0 rounded-2xl border border-obligon-border bg-white p-5 sm:p-6">
+      {(busy) ? <StatusPopup tone="pending" message="Submitting discount request…" /> : null}
     <h2 className="font-display text-xl font-bold tracking-tight text-obligon-navy">Scheduled station discounts</h2>
     <p className="mt-2 max-w-3xl text-sm leading-6 text-obligon-text">Admin approval is required before a discount applies. Adjust or extend a discount by submitting a new date range. Customers receive a price reduction; the same discount amount is paid to Obligon from your revenue.</p>
-    {error ? <p role="alert" className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">{error}</p> : null}
-    {notice ? <p role="status" className="mt-4 rounded-xl bg-obligon-mist p-4 text-sm text-obligon-green">{notice}</p> : null}
-    {loading ? <p role="status" className="mt-4 rounded-xl bg-obligon-mist/60 p-4 text-sm text-obligon-text">Loading station prices and discounts…</p> : null}
-    {loadError ? <div role="alert" className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900"><p>{loadError}{data ? " Showing the last loaded discounts." : ""}</p><button type="button" disabled={loading || busy} onClick={() => void load()} className="mt-2 min-h-11 rounded-lg px-2 font-semibold underline disabled:opacity-60">Retry loading discounts</button></div> : null}
+    {error ? <StatusPopup tone="error" message={error} /> : null}
+    {notice ? <StatusPopup tone="info" message={notice} /> : null}
+    {loading ? <StatusPopup tone="loading" message="Loading station prices and discounts…" /> : null}
+    {loadError ? <StatusPopup tone="error" message={[loadError, data ? " Showing the last loaded discounts." : ""].join(" ").trim()} action={<button type="button" disabled={loading || busy} onClick={() => void load()} className="mt-2 min-h-11 rounded-lg px-2 font-semibold underline disabled:opacity-60">Retry loading discounts</button>} /> : null}
     {data ? <>
       {!data.stations.length ? <p className="mt-5 rounded-xl bg-obligon-mist/60 p-4 text-sm text-obligon-text">Add a station in Station Profile before requesting a discount.</p> : <form onSubmit={submit} className="mt-6">
         <fieldset disabled={busy || loading || Boolean(loadError)} className="grid min-w-0 gap-5 sm:grid-cols-2">

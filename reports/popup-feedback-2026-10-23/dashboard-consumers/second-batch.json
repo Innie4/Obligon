@@ -1,0 +1,50 @@
+[
+  {
+    "file": "apps/web/components/company-dashboard/CompanyModals.tsx",
+    "replaced": 8
+  },
+  {
+    "file": "apps/web/components/company-dashboard/CompanyScreen.tsx",
+    "replaced": 1
+  },
+  {
+    "file": "apps/web/components/dashboard/DashboardScreen.tsx",
+    "replaced": 2
+  },
+  {
+    "file": "apps/web/components/dashboard/PartnerApiKeys.tsx",
+    "replaced": 1
+  },
+  {
+    "file": "apps/web/components/dashboard/PartnerServiceRequests.tsx",
+    "replaced": 1
+  },
+  {
+    "file": "apps/web/components/dashboard/PartnerVerification.tsx",
+    "replaced": 1
+  },
+  {
+    "file": "apps/web/components/dashboard/StationDiscounts.tsx",
+    "replaced": 1
+  },
+  {
+    "file": "apps/web/components/dashboard/StationLocationPicker.tsx",
+    "replaced": 2
+  },
+  {
+    "file": "apps/web/components/customer-dashboard/CardRequestModals.tsx",
+    "replaced": 1
+  },
+  {
+    "file": "apps/web/components/customer-dashboard/CustomerFuelCheckout.tsx",
+    "replaced": 1
+  },
+  {
+    "file": "apps/web/components/customer-dashboard/CustomerModals.tsx",
+    "replaced": 2
+  },
+  {
+    "file": "apps/web/components/customer-dashboard/CustomerScreen.tsx",
+    "replaced": 3
+  }
+]

@@ -1,0 +1,251 @@
+{
+  "fileCount": 24,
+  "totals": {
+    "tests": 361,
+    "pass": 361,
+    "fail": 0,
+    "skipped": 0
+  },
+  "files": [
+    {
+      "file": "apps/web/tests/admin-screen-loading.test.cjs",
+      "log": "logs/obligon-dashboard-popup-final-admin-screen-loading.test.cjs.log",
+      "counts": {
+        "tests": 5,
+        "pass": 5,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "apps/web/tests/partner-audit-regression.test.cjs",
+      "log": "logs/obligon-dashboard-popup-final-partner-audit-regression.test.cjs.log",
+      "counts": {
+        "tests": 11,
+        "pass": 11,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "apps/web/tests/admin-queue-states.test.cjs",
+      "log": "logs/obligon-dashboard-popup-final-admin-queue-states.test.cjs.log",
+      "counts": {
+        "tests": 4,
+        "pass": 4,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "apps/web/tests/customer-my-card.test.cjs",
+      "log": "logs/obligon-dashboard-popup-final-customer-my-card.test.cjs.log",
+      "counts": {
+        "tests": 17,
+        "pass": 17,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "apps/web/tests/ui-dashboard-polish.test.cjs",
+      "log": "logs/obligon-dashboard-popup-final-ui-dashboard-polish.test.cjs.log",
+      "counts": {
+        "tests": 26,
+        "pass": 26,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "apps/web/tests/admin-company-approval.test.cjs",
+      "log": "logs/obligon-dashboard-popup-final-admin-company-approval.test.cjs.log",
+      "counts": {
+        "tests": 6,
+        "pass": 6,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "apps/web/tests/customer-audit.test.cjs",
+      "log": "logs/obligon-dashboard-popup-final-customer-audit.test.cjs.log",
+      "counts": {
+        "tests": 9,
+        "pass": 9,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "apps/web/tests/production-partner-staff.test.cjs",
+      "log": "logs/obligon-dashboard-popup-final-production-partner-staff.test.cjs.log",
+      "counts": {
+        "tests": 3,
+        "pass": 3,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "apps/web/tests/test-report-company.test.cjs",
+      "log": "logs/obligon-dashboard-popup-final-test-report-company.test.cjs.log",
+      "counts": {
+        "tests": 16,
+        "pass": 16,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "apps/web/tests/production-customer-controls.test.cjs",
+      "log": "logs/obligon-dashboard-popup-final-production-customer-controls.test.cjs.log",
+      "counts": {
+        "tests": 34,
+        "pass": 34,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "apps/web/tests/company-empty-pages.test.cjs",
+      "log": "logs/obligon-dashboard-popup-final-company-empty-pages.test.cjs.log",
+      "counts": {
+        "tests": 13,
+        "pass": 13,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "apps/web/tests/production-company-workflows.test.cjs",
+      "log": "logs/obligon-dashboard-popup-final-production-company-workflows.test.cjs.log",
+      "counts": {
+        "tests": 11,
+        "pass": 11,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "apps/web/tests/company-admin-ui-polish.test.cjs",
+      "log": "logs/obligon-dashboard-popup-final-company-admin-ui-polish.test.cjs.log",
+      "counts": {
+        "tests": 13,
+        "pass": 13,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "apps/web/tests/admin-navigation.test.cjs",
+      "log": "logs/obligon-dashboard-popup-final-admin-navigation.test.cjs.log",
+      "counts": {
+        "tests": 2,
+        "pass": 2,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "apps/web/tests/station-profile-form.test.cjs",
+      "log": "logs/obligon-dashboard-popup-final-station-profile-form.test.cjs.log",
+      "counts": {
+        "tests": 22,
+        "pass": 22,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "apps/web/tests/production-company-invitations.test.cjs",
+      "log": "logs/obligon-dashboard-popup-final-production-company-invitations.test.cjs.log",
+      "counts": {
+        "tests": 37,
+        "pass": 37,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "apps/web/tests/station-profile-fields.test.cjs",
+      "log": "logs/obligon-dashboard-popup-final-station-profile-fields.test.cjs.log",
+      "counts": {
+        "tests": 30,
+        "pass": 30,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "apps/web/tests/partner-verification.test.cjs",
+      "log": "logs/obligon-dashboard-popup-final-partner-verification.test.cjs.log",
+      "counts": {
+        "tests": 20,
+        "pass": 20,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "apps/web/tests/partner-subtype-workshop.test.cjs",
+      "log": "logs/obligon-dashboard-popup-final-partner-subtype-workshop.test.cjs.log",
+      "counts": {
+        "tests": 13,
+        "pass": 13,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "apps/web/tests/partner-mobile-navigation.test.cjs",
+      "log": "logs/obligon-dashboard-popup-final-partner-mobile-navigation.test.cjs.log",
+      "counts": {
+        "tests": 23,
+        "pass": 23,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "apps/web/tests/dashboard-search-ui.test.cjs",
+      "log": "logs/obligon-dashboard-popup-final-dashboard-search-ui.test.cjs.log",
+      "counts": {
+        "tests": 15,
+        "pass": 15,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "apps/web/tests/dashboard-search-destinations.test.cjs",
+      "log": "logs/obligon-dashboard-popup-final-dashboard-search-destinations.test.cjs.log",
+      "counts": {
+        "tests": 12,
+        "pass": 12,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "apps/web/tests/station-location-picker.test.cjs",
+      "log": "logs/obligon-dashboard-popup-final-station-location-picker.test.cjs.log",
+      "counts": {
+        "tests": 16,
+        "pass": 16,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "apps/web/tests/dashboard-floating-feedback.test.cjs",
+      "log": "logs/obligon-dashboard-popup-final-dashboard-floating-feedback.test.cjs.log",
+      "counts": {
+        "tests": 3,
+        "pass": 3,
+        "fail": 0,
+        "skipped": 0
+      }
+    }
+  ]
+}

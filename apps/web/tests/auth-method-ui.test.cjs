@@ -5,8 +5,8 @@ const vm = require('node:vm');
 const ts = require('typescript');
 const flush = () => new Promise(resolve => setImmediate(resolve));
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
-const nodes = tree => Array.isArray(tree) ? tree.flatMap(nodes) : !tree || typeof tree !== 'object' ? [] : [tree, ...nodes(tree.props?.children)];
-const text = tree => Array.isArray(tree) ? tree.map(text).join(' ') : tree == null || typeof tree === 'boolean' ? '' : typeof tree === 'object' ? text(tree.props?.children) : String(tree);
+const nodes = tree => Array.isArray(tree) ? tree.flatMap(nodes) : !tree || typeof tree !== 'object' ? [] : [tree, ...nodes(tree.props?.children), ...nodes(tree.props?.action)];
+const text = tree => Array.isArray(tree) ? tree.map(text).join(' ') : tree == null || typeof tree === 'boolean' ? '' : typeof tree === 'object' ? (tree.type === 'StatusPopup' ? text(tree.props?.message) : '') + text(tree.props?.children) : String(tree);
 const config = { google: { enabled: true, clientId: 'synthetic-client' }, passkeys: { enabled: true, rpName: 'Obligon' } };
 const challenge = { challengeId: 'synthetic-challenge', clientId: 'synthetic-client', nonce: 'server-bound-nonce' };
 
@@ -23,7 +23,7 @@ function ui(file, exportName, dependencies, props = {}, globals = {}, expose = '
   };
   const exports = {};
   const code = ts.transpileModule(fs.readFileSync(require.resolve(file), 'utf8') + expose, { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }).outputText;
-  vm.runInNewContext(code, { exports, React, Error, DOMException, Promise, setTimeout, clearTimeout, ...globals, require: name => name === 'react' ? React : dependencies[name] ?? {} });
+  vm.runInNewContext(code, { exports, React, Error, DOMException, Promise, setTimeout, clearTimeout, ...globals, require: name => name === 'react' ? React : name === '@/components/shared/StatusPopup' ? { StatusPopup: 'StatusPopup' } : dependencies[name] ?? {} });
   const fixture = {
     render() { cursor = 0; tree = exports[exportName](props); return tree; },
     effects() { while (effects.length) effects.shift()(); },
@@ -78,7 +78,7 @@ test('passkey sign-in blocks duplicate prompts and completes only once', async (
 test('cancelled passkey sign-in announces an error without reporting success', async () => {
   const fixture = loginFixture({ signIn: async () => { throw new DOMException('Cancelled', 'NotAllowedError'); } });
   fixture.effects(); await flush(); fixture.render(); fixture.button('Sign in with a passkey').props.onClick(); await flush(); fixture.render();
-  assert.match(text(fixture.nodes().find(node => node.props?.role === 'alert')), /cancelled or timed out/);
+  assert.match(text(fixture.nodes().find(node => node.type === 'StatusPopup' && node.props?.tone === 'error')), /cancelled or timed out/);
   assert.equal(fixture.completed.length, 0);
   assert.equal(fixture.busy.at(-1), false);
 });
@@ -140,11 +140,11 @@ test('Google callback errors remain announced after the parent busy cycle until 
   callback({ credential: 'synthetic-id-token' }); fixture.render(); fixture.effects();
   pending.resolve(Promise.reject(new Error('Link this Google account after signing in with your password.')));
   await flush(); fixture.render(); fixture.effects(); fixture.render(); fixture.effects(); await flush(); fixture.render();
-  assert.match(text(fixture.nodes().find(node => node.props?.role === 'alert')), /Link this Google account/);
+  assert.match(text(fixture.nodes().find(node => node.type === 'StatusPopup' && node.props?.tone === 'error')), /Link this Google account/);
   assert.equal(prepares, 1);
   fixture.button('Reload Google sign-in').props.onClick(); fixture.render(); fixture.effects(); await flush(); fixture.render();
   assert.equal(prepares, 2);
-  assert.equal(fixture.nodes().some(node => node.props?.role === 'alert'), false);
+  assert.equal(fixture.nodes().some(node => node.type === 'StatusPopup' && node.props?.tone === 'error'), false);
 });
 
 function managementFixture({ methods = { google: { enabled: true, linked: false }, passkeys: [] }, methodsConfig = config, action, unsupported = null, user = { id: 'synthetic-owner', role: 'company' } } = {}) {
@@ -290,4 +290,26 @@ test('customer profile links to real Google and passkey management and preserves
   assert.match(text(link), /device may use fingerprint, face recognition, or its PIN/);
   assert.match(text(link), /Transaction approvals still use your password, card PIN, and two-factor authentication/);
   assert.doesNotMatch(fixture.text(), /Biometric Sign-In \(not available yet\)/);
+});
+
+
+test('login provider initialization uses floating loading feedback and no background status paragraph', () => {
+  const fixture = loginFixture();
+  const popup = fixture.nodes().find(node => node.type === 'StatusPopup');
+  assert.equal(popup.props.tone, 'loading');
+  assert.equal(popup.props.message, 'Checking sign-in options…');
+  assert.equal(fixture.nodes().some(node => node.type === 'p' && node.props?.role === 'status'), false);
+});
+
+test('passkey prompt exposes pending popup only while the existing login request is unresolved', async () => {
+  const task = deferred();
+  const fixture = loginFixture({ signIn: () => task.promise });
+  fixture.effects(); await flush(); fixture.render();
+  const running = fixture.button('Sign in with a passkey').props.onClick();
+  fixture.render();
+  assert.equal(fixture.nodes().find(node => node.type === 'StatusPopup').props.tone, 'pending');
+  assert.equal(fixture.button('Sign in with a passkey').props.disabled, true);
+  task.resolve({ mfaRequired: false }); await running; await flush(); fixture.render();
+  assert.equal(fixture.nodes().some(node => node.type === 'StatusPopup' && node.props.tone === 'pending'), false);
+  assert.equal(fixture.completed.length, 1);
 });

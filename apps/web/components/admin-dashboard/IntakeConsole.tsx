@@ -1,4 +1,5 @@
 "use client";
+import { StatusPopup } from "@/components/shared/StatusPopup";
 import * as React from "react";
 import { authenticatedRequest } from "@/lib/services";
 import { partnerFuelCode, fuelSellingUnits, sellingUnitLabel, type SellingUnit } from "../../../../packages/shared/partner-access.mjs";
@@ -165,6 +166,7 @@ export function IntakeConsole() {
   }
   return (
     <section className="mx-auto w-full min-w-0 max-w-[1600px] px-4 py-6 text-sm sm:px-6 sm:py-8 lg:px-8">
+      {(busy) ? <StatusPopup tone="pending" message="Saving application review…" /> : null}
       <p className="text-xs font-bold uppercase text-obligon-green">
         Obligon operations
       </p>
@@ -240,15 +242,10 @@ export function IntakeConsole() {
         </>
       )}
       {error && (
-        <p
-          role="alert"
-          className="mb-4 rounded border border-red-300 bg-red-50 p-4 text-red-800"
-        >
-          {error}
-        </p>
+        <StatusPopup tone="error" message={error} />
       )}
       {loading ? (
-        <p role="status">Loading records…</p>
+        <StatusPopup tone="loading" message="Loading records…" />
       ) : (
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
           <div className="min-w-0 overflow-hidden rounded-xl border border-obligon-border bg-white">

@@ -1,5 +1,6 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
 import * as React from "react";
 import type { ComponentType } from "react";
 import { AlertTriangle, Building2, Check, CreditCard, FileWarning, Fingerprint, LockKeyhole, ShieldCheck, Snowflake, Upload, X, Loader2, ArrowRight, type LucideProps } from "lucide-react";
@@ -250,6 +251,7 @@ function SpendProjectionModal({
 
   return (
     <ModalFrame title="Projected fuel spend" onClose={onClose}>
+      {(submitting) ? <StatusPopup tone="pending" message="Saving fuel budget…" /> : null}
       <form onSubmit={submit} className="p-6">
         <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">
           {isRevision ? "Change your projected spend" : "Set your projected spend"}
@@ -318,9 +320,7 @@ function SpendProjectionModal({
         ) : null}
 
         {error ? (
-          <p className="mt-4 rounded-lg border border-[#fecaca] bg-[#fff0f0] p-3 text-sm text-[#93000a]" role="alert">
-            {error}
-          </p>
+          <StatusPopup tone="error" message={error} />
         ) : null}
 
         <div className="mt-6 flex gap-3">
@@ -413,6 +413,7 @@ function ChangePinModal({ onClose }: { onClose: () => void }) {
 
   return (
     <ModalFrame title={card?.pinSet === false ? "Set transaction PIN" : "Change transaction PIN"} onClose={onClose}>
+      {(submitting) ? <StatusPopup tone="pending" message="Updating card PIN…" /> : null}
       {step === "form" ? (
         <form onSubmit={handleSubmit} className="p-6">
           <span className="grid size-12 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
@@ -423,8 +424,8 @@ function ChangePinModal({ onClose }: { onClose: () => void }) {
             {card?.pinSet === false ? "Create the 4-digit PIN used to approve your station payments." : "Update the 4-digit authorization PIN used to approve station payments."}
           </p>
 
-          {!card && !cardError ? <p className="mt-4 text-sm text-obligon-text" role="status">Loading card PIN status…</p> : null}
-          {cardError ? <div className="mt-4 rounded-lg bg-[#ffe8e8] p-3 text-sm text-[#c1121f]" role="alert"><p>{cardError}</p><button type="button" onClick={() => setLoadKey((key) => key + 1)} className="mt-2 font-bold underline">Retry card status</button></div> : null}
+          {!card && !cardError ? <StatusPopup tone="loading" message="Loading card PIN status…" /> : null}
+          {cardError ? <StatusPopup tone="error" message={cardError} action={<button type="button" onClick={() => setLoadKey((key) => key + 1)} className="mt-2 font-bold underline">Retry card status</button>} /> : null}
           {card?.pinSet ? <PinInput label="Current PIN" value={currentPin} onChange={setCurrentPin} placeholder="••••" autoFocus disabled={submitting} /> : null}
           <PinInput label="New 4-Digit PIN" value={newPin} onChange={setNewPin} placeholder="••••" disabled={!card || submitting} />
           <PinInput label="Confirm New PIN" value={confirmPin} onChange={setConfirmPin} placeholder="••••" disabled={!card || submitting} />
@@ -514,6 +515,7 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
 
   return (
     <ModalFrame title="Change password" onClose={onClose}>
+      {(submitting) ? <StatusPopup tone="pending" message="Updating password…" /> : null}
       {done ? (
         <div className="p-6 text-center">
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
@@ -580,12 +582,7 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
           </div>
 
           {error ? (
-            <p
-              className="mt-4 rounded-lg border border-[#fecaca] bg-[#fff0f0] p-3 text-sm text-[#93000a]"
-              role="alert"
-            >
-              {error}
-            </p>
+            <StatusPopup tone="error" message={error} />
           ) : null}
 
           <button
@@ -676,6 +673,7 @@ function TwoFactorModal({
 
   return (
     <ModalFrame title="Two-factor authentication" onClose={onClose}>
+      {(busy) ? <StatusPopup tone="pending" message="Processing two-factor request…" /> : null}
       {step === "choose" ? (
         <div className="p-6">
           <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">Two-Factor Authentication</h2>
@@ -701,12 +699,7 @@ function TwoFactorModal({
             </button>
           </div>
           {error ? (
-            <p
-              className="mt-4 rounded-lg border border-[#fecaca] bg-[#fff0f0] p-3 text-sm text-[#93000a]"
-              role="alert"
-            >
-              {error}
-            </p>
+            <StatusPopup tone="error" message={error} />
           ) : null}
         </div>
       ) : null}
@@ -751,12 +744,7 @@ function TwoFactorModal({
           </label>
 
           {error ? (
-            <p
-              className="mt-4 rounded-lg border border-[#fecaca] bg-[#fff0f0] p-3 text-sm text-[#93000a]"
-              role="alert"
-            >
-              {error}
-            </p>
+            <StatusPopup tone="error" message={error} />
           ) : null}
 
           <button
@@ -789,12 +777,7 @@ function TwoFactorModal({
             />
           </label>
           {error ? (
-            <p
-              className="mt-4 rounded-lg border border-[#fecaca] bg-[#fff0f0] p-3 text-sm text-[#93000a]"
-              role="alert"
-            >
-              {error}
-            </p>
+            <StatusPopup tone="error" message={error} />
           ) : null}
           <div className="mt-6 flex gap-3">
             <button
@@ -967,6 +950,7 @@ function TopUpModal({
 
   return (
     <ModalFrame title="Wallet funding" onClose={onClose}>
+      {(submitting) ? <StatusPopup tone="pending" message="Preparing wallet payment…" /> : null}
       {successData ? (
         <div className="p-8 text-center">
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
@@ -1034,7 +1018,7 @@ function TopUpModal({
               {/* Stated up front so a customer is not left guessing why the
                   button is disabled. */}
               <span className="text-xs font-bold text-obligon-text">
-                {minimumNaira === null ? (configLoading ? "Minimum loading…" : "Minimum unavailable") : `Minimum ₦${minimumNaira.toLocaleString("en-NG")}`}
+                {minimumNaira === null ? "Minimum" : `Minimum ₦${minimumNaira.toLocaleString("en-NG")}`}
               </span>
             </div>
             <div
@@ -1109,11 +1093,8 @@ function TopUpModal({
             </div>
           </div>
 
-          {configLoading ? <p role="status" className="mt-6 text-sm text-obligon-text">Loading payment settings…</p> : null}
-          {configError ? <div role="alert" className="mt-6 rounded-xl bg-red-50 p-4 text-sm text-red-700">
-            <p>{configError} Your fee and total are unavailable.</p>
-            <button type="button" onClick={() => setConfigRevision((revision) => revision + 1)} className="mt-3 min-h-11 rounded-lg border border-current px-4 font-bold">Retry payment settings</button>
-          </div> : null}
+          {configLoading ? <StatusPopup tone="loading" message="Loading payment settings…" /> : null}
+          {configError ? <StatusPopup tone="error" message={[configError, "Your fee and total are unavailable."].join(" ").trim()} action={<button type="button" onClick={() => setConfigRevision((revision) => revision + 1)} className="mt-3 min-h-11 rounded-lg border border-current px-4 font-bold">Retry payment settings</button>} /> : null}
           {quote ? <div className="mt-6 overflow-hidden rounded-xl bg-obligon-mist/60 text-sm">
             <div className="flex items-center justify-between px-4 py-3">
               <span className="font-bold text-obligon-text">Top-up amount</span>
@@ -1205,6 +1186,7 @@ function ReportProblemModal({ onClose }: { onClose: () => void }) {
 
   return (
     <ModalFrame title="Report a problem" onClose={onClose}>
+      {(submitting) ? <StatusPopup tone="pending" message="Sending issue report…" /> : null}
       {ticketResult ? (
         <div className="p-8 text-center">
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
@@ -1357,6 +1339,7 @@ function ReplaceCardModal({ onClose, blocked }: { onClose: () => void; blocked: 
 
   return (
     <ModalFrame title="Replace virtual card" onClose={onClose}>
+      {(submitting) ? <StatusPopup tone="pending" message="Submitting replacement request…" /> : null}
       {step === "form" ? (
         <form onSubmit={handleSubmit} className="p-6 sm:p-8">
           <span className="grid size-12 place-items-center rounded-full bg-[#e8fbd7] text-obligon-green">
@@ -1451,6 +1434,7 @@ function LostCardModal({
 
   return (
     <ModalFrame title="Report lost or stolen card" onClose={onClose}>
+      {blocking ? <StatusPopup tone="pending" message="Blocking your card…" /> : null}
       {step === "confirm" ? (
         <div className="p-6 sm:p-8">
           <span className="grid size-12 place-items-center rounded-full bg-[#ffe8e8] text-[#c1121f]">

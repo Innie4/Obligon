@@ -1,0 +1,77 @@
+[
+  {
+    "email": "workshop-owner@example.invalid",
+    "login": 200,
+    "partnerType": "mechanic",
+    "checks": [
+      {
+        "path": "/api/partner/workshop",
+        "status": 200
+      },
+      {
+        "path": "/api/partner/staff",
+        "status": 200
+      },
+      {
+        "path": "/api/partner/billing",
+        "status": 200
+      }
+    ]
+  },
+  {
+    "email": "workshop-viewer@example.invalid",
+    "login": 200,
+    "partnerType": "mechanic",
+    "checks": [
+      {
+        "path": "/api/partner/workshop",
+        "status": 200
+      }
+    ]
+  },
+  {
+    "email": "gas-owner@example.invalid",
+    "login": 200,
+    "partnerType": "gas_station",
+    "checks": [
+      {
+        "path": "/api/partner/station",
+        "status": 200
+      },
+      {
+        "path": "/api/partner/pricing",
+        "status": 200
+      }
+    ]
+  },
+  {
+    "email": "admin-ui@example.invalid",
+    "login": 200,
+    "partnerType": null,
+    "checks": [
+      {
+        "path": "/api/admin/company-card-issuances",
+        "status": 200
+      },
+      {
+        "path": "/api/admin/refunds",
+        "status": 200
+      },
+      {
+        "path": "/api/admin/intake",
+        "status": 404
+      }
+    ]
+  },
+  {
+    "email": "company-ui@example.invalid",
+    "login": 200,
+    "partnerType": null,
+    "checks": [
+      {
+        "path": "/api/company/stations",
+        "status": 200
+      }
+    ]
+  }
+]

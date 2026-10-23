@@ -1,5 +1,7 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
+
 import { CheckCircle2, ShieldCheck, Mail, Phone } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "@/components/shared/AuthContext";
@@ -18,11 +20,7 @@ export function SuccessHonesty() {
   const { user, status } = useSession();
 
   if (status === "loading") {
-    return (
-      <div className="w-full max-w-[480px] mx-auto rounded-3xl border border-obligon-border bg-white p-8 shadow-card text-center">
-        <p role="status" className="text-sm text-obligon-text">Checking your account…</p>
-      </div>
-    );
+    return <StatusPopup tone="loading" message="Checking your account…" />;
   }
 
   if (status !== "authenticated" || !user) {

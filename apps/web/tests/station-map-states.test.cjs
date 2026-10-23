@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const ts = require('typescript');
 
 const nodes = tree => Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === 'object' ? [tree, ...nodes(tree.props?.children)] : [];
-const text = tree => Array.isArray(tree) ? tree.map(text).join(' ') : tree && typeof tree === 'object' ? text(tree.props?.children) : tree == null || typeof tree === 'boolean' ? '' : String(tree);
+const text = tree => Array.isArray(tree) ? tree.map(text).join(' ') : tree && typeof tree === 'object' ? tree.type === 'StatusPopup' ? `${tree.props.title} ${tree.props.message}` : text(tree.props?.children) : tree == null || typeof tree === 'boolean' ? '' : String(tree);
 const point = { id: 'one', name: 'Test station', lat: 5, lng: 7 };
 
 function fixture({ apiKey, google, points = [point], onSelect } = {}) {
@@ -23,7 +23,7 @@ function fixture({ apiKey, google, points = [point], onSelect } = {}) {
     exports: exported, Error, window: browser, process: { env: { NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: apiKey } },
     setTimeout(fn) { const id = ++timerId; timers.set(id, fn); return id; }, clearTimeout: id => timers.delete(id),
     document: { createElement: () => ({ remove() { this.removed = true; } }), head: { appendChild: script => scripts.push(script) } },
-    require: id => { if (id === 'react') return React; throw new Error(`Unexpected import: ${id}`); }
+    require: id => { if (id === 'react') return React; if (id === './StatusPopup') return { StatusPopup: 'StatusPopup' }; throw new Error(`Unexpected import: ${id}`); }
   });
   const ui = {
     render() { cursor = 0; tree = exported.StationMap(props); const host = nodes(tree).find(node => node.props?.ref); if (host) host.props.ref.current = {}; return tree; },
@@ -33,6 +33,7 @@ function fixture({ apiKey, google, points = [point], onSelect } = {}) {
     replace(next) { props = { ...props, ...next }; ui.commit(); },
     unmount() { slots.forEach(value => value?.cleanup?.()); },
     nodes: () => nodes(tree), text: () => text(tree), frame: () => nodes(tree).find(node => node.type === 'iframe'),
+    popup: () => nodes(tree).find(node => node.type === 'StatusPopup')?.props,
     button: label => nodes(tree).find(node => node.type === 'button' && text(node).trim() === label),
     scripts, browser, timers, updates,
   };
@@ -50,8 +51,8 @@ function googleFixture({ failConstruction = false } = {}) {
 }
 
 test('OSM preview announces loading and bounded timeout keeps list guidance and a full-map link', () => {
-  const ui = fixture(); assert.match(ui.text(), /Loading station map/); assert.ok(ui.nodes().some(node => node.props?.role === 'status'));
-  ui.expire(); assert.match(ui.text(), /Map preview unavailable/); assert.ok(ui.button('Retry map preview'));
+  const ui = fixture(); assert.match(ui.text(), /Loading station map/); assert.equal(ui.popup().tone, 'loading');
+  ui.expire(); assert.match(ui.text(), /Map preview unavailable/); assert.equal(ui.popup().retryLabel, 'Retry map preview');
   assert.ok(ui.nodes().some(node => node.type === 'a' && node.props.href.startsWith('https://www.openstreetmap.org/')));
   assert.match(ui.text(), /Use the station list/);
 });
@@ -64,7 +65,7 @@ test('iframe load is explicitly unverified rather than proof of drawn map tiles'
 });
 
 test('retry isolates old iframe events and unmount clears timers and rejects late callbacks', () => {
-  const ui = fixture(); const old = ui.frame(); ui.expire(); ui.button('Retry map preview').props.onClick(); ui.commit();
+  const ui = fixture(); const old = ui.frame(); ui.expire(); ui.popup().onRetry(); ui.commit();
   assert.notEqual(ui.frame().props.key, old.props.key); old.props.onLoad(); ui.commit(); assert.match(ui.text(), /Loading station map/);
   const frame = ui.frame(), before = ui.updates.length; ui.unmount(); frame.props.onLoad(); frame.props.onError();
   assert.equal(ui.timers.size, 0); assert.equal(ui.updates.length, before);

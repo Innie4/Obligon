@@ -1,0 +1,36 @@
+{
+  "recordedAt": "2026-10-23T20:12:31.272670+00:00",
+  "reviewer": "company_admin_audit22",
+  "scope": "Last unit-label and table-scroll presentation correction",
+  "sourceHashes": {
+    "apps/web/components/dashboard/DashboardScreen.tsx": "657d3b420aaf9b248d3f7e23b4d1480456de9745c69f87b209fbf9de6f8ca935",
+    "apps/web/components/company-dashboard/CompanyScreen.tsx": "3fa0fea3053804188f7b75542fece70c87ae61108120d571e3c55406c80438ae",
+    "apps/web/tests/company-admin-ui-polish.test.cjs": "b3037a1f57dab6ca432e3c63eebc292b05071893f51937f2fc6216c647ce882c"
+  },
+  "exactPriorSourceComparison": {
+    "apps/web/components/dashboard/DashboardScreen.tsx": {
+      "reconstructedPriorSha256": "b12a189903b92e62068b3adc84b2b558c711d1df1c142413369edf717fc0ed08",
+      "expectedPriorSha256": "b12a189903b92e62068b3adc84b2b558c711d1df1c142413369edf717fc0ed08",
+      "matchesPriorReviewedSource": true
+    },
+    "apps/web/components/company-dashboard/CompanyScreen.tsx": {
+      "reconstructedPriorSha256": "6070f5df16fa72e93028b67ac681bf170fcb9bdcb4cfd84f14a9a042c778d2f9",
+      "expectedPriorSha256": "6070f5df16fa72e93028b67ac681bf170fcb9bdcb4cfd84f14a9a042c778d2f9",
+      "matchesPriorReviewedSource": true
+    }
+  },
+  "testCounts": {
+    "tests": 13,
+    "pass": 13,
+    "fail": 0,
+    "skipped": 0
+  },
+  "testExitCode": 0,
+  "testLog": "reports/ui-polish-2026-10-23/evidence/final-units-scroll-independent-review.log",
+  "findings": [],
+  "conclusion": "Only the reported presentation changes differ from the prior independently reviewed source. Unit text and record/action behavior are preserved.",
+  "limitations": [
+    "No browser geometry or provider operations.",
+    "Root owns final captures, complete web suite and build."
+  ]
+}

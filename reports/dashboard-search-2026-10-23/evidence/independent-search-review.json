@@ -1,0 +1,36 @@
+{
+  "task": "Bounded independent review of shared dashboard search and actual-record loader",
+  "reviewedAt": "2026-10-23T17:26:10.321870+00:00",
+  "scope": [
+    "Account/query/context freshness",
+    "Allowed navigation/partner subtypes and company contract gate",
+    "Keyboard/mobile dialog/modified click handling",
+    "Actual href selection, same-record reselection and destination API contract"
+  ],
+  "findings": [
+    {
+      "file": "apps/web/lib/dashboard-search.ts",
+      "issue": "Legacy partner staff name fallback could put email in URL",
+      "resolution": "Use visible membership ST reference as href token; destination searches all cells"
+    },
+    {
+      "file": "apps/web/lib/dashboard-search.ts",
+      "issue": "Admin company alias redirects and discards incoming search",
+      "resolution": "Use existing canonical /admin?search= destination; focused contract assertion added by loader owner"
+    }
+  ],
+  "remainingBlockingFindings": [],
+  "notVerified": [
+    "Actual Chrome layout and native focus behavior, owned by root",
+    "Production API/load/provider behavior"
+  ],
+  "sourceSHA256": {
+    "apps/web/components/shared/DashboardSearch.tsx": "5ba05b3b77b1067594c4ad313108471eb847429337e29c1b086105b0e2865ffb",
+    "apps/web/components/dashboard/DashboardHeader.tsx": "f102b3bac8f7876626bd788e34eb8727efdbb0f87040d9b0eef6e5b7edc7a4ce",
+    "apps/web/components/admin-dashboard/AdminHeader.tsx": "304aa83f820d8147ce2208d6a4c83623cf8fabd5c0d08df840c0f707cc0d1d46",
+    "apps/web/components/company-dashboard/CompanyShell.tsx": "6fda89a1a1b7cdc09969676b34fb9601d41ff56d2c2335cf8a3a8da10721bbd9",
+    "apps/web/components/customer-dashboard/CustomerShell.tsx": "7135ed4492a626f3ae1a3f322c03695585d1c5fc3b0cdd94271181bafad7a159",
+    "apps/web/lib/dashboard-search.ts": "1794faeb0e508337a2112d1b2c014483bf160ac69e648877d7fa962519837fba"
+  },
+  "loaderDestinationFollowupEvidence": "/tmp/obligon-search-reviewed23-receipt.json"
+}

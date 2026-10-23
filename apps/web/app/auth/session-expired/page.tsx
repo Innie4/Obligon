@@ -1,9 +1,11 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
+
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Clock, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Clock } from "lucide-react";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { routes } from "@/components/site/routes";
 import { useSession } from "@/components/shared/AuthContext";
@@ -14,7 +16,7 @@ import { dashboardDestination } from "@/lib/auth-routing";
 export default function SessionExpiredPage() {
   const router = useRouter();
   const { login } = useSession();
-  const { error: toastError, success: toastSuccess } = useToast();
+  const { success: toastSuccess } = useToast();
 
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -42,7 +44,6 @@ export default function SessionExpiredPage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Sign-in failed. Please try again.";
       setError(message);
-      toastError(message);
     } finally {
       setSubmitting(false);
     }
@@ -97,12 +98,8 @@ export default function SessionExpiredPage() {
             />
           </div>
 
-          {error && (
-            <div className="rounded-lg bg-[#fff0f0] border border-[#fecaca] p-3 text-sm text-[#93000a] flex items-start gap-2" role="alert">
-              <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
+          {error ? <StatusPopup tone="error" message={error} /> : null}
+          {submitting ? <StatusPopup tone="pending" message="Signing in…" /> : null}
 
           <button
             type="submit"

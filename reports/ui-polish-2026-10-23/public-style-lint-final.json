@@ -1,0 +1,29 @@
+{
+ "files": 22,
+ "findings": [
+  {
+   "level": "WARN",
+   "id": "cta-copy",
+   "file": "apps/web/components/site/SiteHeader.tsx",
+   "line": 59,
+   "match": ">Get started<",
+   "message": "Generic button label. Name the action or the thing (\"Book a table\", \"See the plans\")."
+  },
+  {
+   "level": "WARN",
+   "id": "h-screen",
+   "file": "apps/web/components/solutions/SolutionPage.tsx",
+   "line": 29,
+   "match": "h-screen",
+   "message": "100vh jumps on mobile. Use 100svh / 100dvh."
+  },
+  {
+   "level": "WARN",
+   "id": "h-screen",
+   "file": "apps/web/app/support/page.tsx",
+   "line": 45,
+   "match": "h-screen",
+   "message": "100vh jumps on mobile. Use 100svh / 100dvh."
+  }
+ ]
+}

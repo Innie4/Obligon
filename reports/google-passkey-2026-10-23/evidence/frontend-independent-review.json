@@ -1,0 +1,86 @@
+{
+  "task": "Independent bounded frontend auth review",
+  "reviewed_at": "2026-10-23T16:52:28.358309+00:00",
+  "head": "a27caac35d740a2dd4b8c53ea83c948a3163a400",
+  "scope": "Read-only review of added auth flow logic, relevant callers, all-role entrypoints and controlled local hook-harness proofs; root owns real browser/build/reports",
+  "resolved_findings": [
+    {
+      "finding": "Disabled Google iframe remained keyboard interactive",
+      "resolution": "Host uses native inert alongside disabled callback guards. Actual browser keyboard acceptance remains root-owned."
+    },
+    {
+      "finding": "Existing Google/passkey credentials could not be removed when provider configuration was disabled",
+      "resolution": "Removal is shown independently of provider enablement; additions/sign-in remain gated and removal still requires fresh password."
+    },
+    {
+      "finding": "User ID changes during an earlier management action left the new account stuck busy",
+      "red": "/tmp/obligon-frontend-account-review23.log: passwordDisabled=true",
+      "green": "/tmp/obligon-frontend-account-review23-final.log: passwordDisabled=false",
+      "resolution": "User-change effect resets busy/inFlight/password/label/confirmation/errors while generations reject stale completion."
+    },
+    {
+      "finding": "Admin desktop had no Sign-in options entry",
+      "resolution": "AdminSidebar now includes the shared link; mobile drawer already had it."
+    },
+    {
+      "finding": "New disabled-to-ready nonce refresh cleared own Google callback errors immediately",
+      "red": "/tmp/obligon-frontend-google-error-review23.log: errorVisible=false",
+      "green": "/tmp/obligon-frontend-google-error-review23-green.log: errorVisible=true",
+      "resolution": "Automatic refresh skips an existing Google error; explicit reload remains available."
+    }
+  ],
+  "current_blocking_findings": [],
+  "properties_reviewed": [
+    "Stale prepared Google callback rejected before resetting newer React/account state",
+    "Passkey result rejected after login/logout or session change",
+    "In-memory challenge scope/login/link ownership and single-use guards",
+    "Google SDK active/unmount guards, duplicate callback guard, official SDK URL and server nonce",
+    "Config failures preserve password fallback and do not invent working providers",
+    "MFA sessionStorage proof expiry, remembered-email preference and final role navigation",
+    "Current password cleared before enrollment/removal request and stale account action results ignored",
+    "Customer/partner/mechanic/company/admin entrypoints route to common authenticated settings"
+  ],
+  "fresh_independent_checks": [
+    {
+      "name": "Google callback error remains visible after own busy cycle",
+      "passed": 1,
+      "log": "/tmp/obligon-frontend-google-error-review23-green.log"
+    },
+    {
+      "name": "Account-switch action state resets",
+      "passed": 1,
+      "log": "/tmp/obligon-frontend-account-review23-final.log"
+    },
+    {
+      "name": "git diff --check on focused auth files",
+      "exit": 0
+    }
+  ],
+  "not_verified": [
+    "Real Google project/client and account callback acceptance",
+    "Physical device passkey/FaceID/fingerprint ceremonies",
+    "Actual browser iframe keyboard behavior or responsive screenshot acceptance (root-owned)",
+    "Final complete web suite/build (frontend/root-owned)"
+  ],
+  "mutations": "No frontend source edits, credential creation, commits or hosted changes by reviewer; /tmp proof/evidence only",
+  "source_sha256": {
+    "apps/web/components/auth/AuthForms.tsx": "ff98e2fa514e2f6b9a6b3e7b0c76b7f46e1b7c4acbcb4786a5eedd1bff538d09",
+    "apps/web/components/shared/AuthContext.tsx": "6c3ce1b997f9edc399267c08821c1547f4f05d4fcc5f9a8ae8bbb2114be95dab",
+    "apps/web/lib/services/client.ts": "bde0cde43859c4fcd5547d1d02b0efa8df885ba6086adac389c3318f1cc0ab5e",
+    "apps/web/lib/auth-methods.ts": "eeb0279c1f81c7ad1421a261220215a9dd44f467790e3d787c5e385ba07337aa",
+    "apps/web/components/auth/AdditionalSignInMethods.tsx": "d8895c9f26767c268f2bc7aa7224f6ff5e59bbd21a839f2c20f4b3fc1422a895",
+    "apps/web/components/auth/GoogleIdentityButton.tsx": "6818cc58c8655afbd1f4d1d0b48bfd3d0461b21f3b7e2a8473dd17c03ee62b57",
+    "apps/web/components/auth/SignInOptions.tsx": "6b7e4cf135f7c8ee5eb5ead6adb7957488495d5a1e266c7601c0b203f4ef304c",
+    "apps/web/components/auth/LogoutButton.tsx": "2a911df55e6d8eafc48f1fb1321a1d4e23e229844f1b5f370abef1db4c993ee5",
+    "apps/web/components/auth/AuthGuard.tsx": "7fb0c98abee4d48cc09a8b39d062b6dcffe3b1f9ffba201808a2be931ae2823f",
+    "apps/web/components/auth/MFAUI.tsx": "f594a75e8b6140211a0e58986254393331c712a1d3647413cca6a1d3a733dfef",
+    "apps/web/app/auth/sign-in-options/page.tsx": "2736bb0712ce25a1c33bcf644009913363a82a0627edd7bc31be0b3294ca09f9",
+    "apps/web/components/site/routes.ts": "3a4b47de1b6f34fdea14c10562194d2cda7bdb7adcdfd56f2162c6614b889410",
+    "apps/web/components/customer-dashboard/CustomerShell.tsx": "5ce0f9b6f90ac1c4340d7866de2e9e02e7fa69132c94e60d3a2fff19f59b4ccf",
+    "apps/web/components/dashboard/PartnershipSidebar.tsx": "20d0851528b041ccd111e1bf67290655fc117328a8d586fa0c7d9926835751e5",
+    "apps/web/components/dashboard/MobileDashboardNav.tsx": "eabe0ca75e2d58a26ec707cc96e51c5b3eeb42e6fe0d9e73d136f17879915bd9",
+    "apps/web/components/company-dashboard/CompanyShell.tsx": "d19947d63bdb704b379ef6567144f0f99bf1040212f106639b5362be64db08fe",
+    "apps/web/components/admin-dashboard/AdminShell.tsx": "c525ac5dd42308c3e792fc99ef039a687c4c4065b05a2a061d2471790635f013",
+    "apps/web/components/admin-dashboard/AdminSidebar.tsx": "64300533f3896e21a7173d9a00f4a468d21299f7374513115d1d155ec257ba09"
+  }
+}

@@ -1,0 +1,182 @@
+{
+  "schema_version": 1,
+  "reviewer": "ui_design_critic23",
+  "reviewed_at": "2026-10-23T20:39:58.032459+00:00",
+  "kind": "bounded_popup_correctness_accessibility_source_review",
+  "visual_review_round": null,
+  "status": "complete_all_three_findings_resolved_source_scope_only",
+  "scope": [
+    "apps/web/components/shared/StatusPopup.tsx",
+    "apps/web/components/shared/Toast.tsx",
+    "apps/web/components/shared/States.tsx",
+    "apps/web/components/shared/Dialogs.tsx",
+    "apps/web/components/shared/ErrorBoundary.tsx",
+    "apps/web/tests/status-popup.test.cjs"
+  ],
+  "adjacent_sources_read": [
+    "apps/web/components/shared/Providers.tsx",
+    "apps/web/components/shared/AuthContext.tsx",
+    "apps/web/components/shared/useDialogFocus.ts",
+    "apps/web/lib/services/useApiData.ts",
+    "apps/web/components/company-dashboard/CompanyContextSelector.tsx",
+    "apps/web/app/layout.tsx"
+  ],
+  "observed_initial_source_hashes": {
+    "apps/web/components/shared/StatusPopup.tsx": "bf380101a8d99b59956e3b3ccfc105cc35e1d6ebc3b68683ec41ac951f933128",
+    "apps/web/components/shared/Toast.tsx": "e22d1753b4b010af7ce34d1ea9310ba01daa740b52833778fed4cf3448a35e45",
+    "apps/web/components/shared/Providers.tsx": "3889aacf572bdc22bd2d59bd18ad224dc99ede204e57a100fc3ecb3323201d94"
+  },
+  "harness": {
+    "command": "node - <<JS (read-only cases reuse environment/popupFixture from tests/status-popup.test.cjs via vm, without editing application or test files)",
+    "working_directory": "apps/web",
+    "command_exit_code": 0,
+    "interpretation": "Harness completed and emitted actual vs required properties. Exit0 is execution success, not a passing acceptance verdict.",
+    "cases": [
+      {
+        "id": "retry-provider-no-transition",
+        "expected_remaining_cards": 1,
+        "actual_remaining_cards": 0,
+        "callback_invocations": 1,
+        "dismissible": false,
+        "result": "property_failed"
+      },
+      {
+        "id": "retry-providerless-no-transition",
+        "expected_remaining_cards": 1,
+        "actual_remaining_cards": 0,
+        "callback_invocations": 1,
+        "dismissible": false,
+        "result": "property_failed"
+      },
+      {
+        "id": "toast-provider-context-child-switch",
+        "expected_old_account_error_retained": false,
+        "actual_old_account_error_retained": true,
+        "active_timers": 0,
+        "result": "property_failed"
+      },
+      {
+        "id": "priority-change-dialog-portal-identity",
+        "before": "status-popup-0",
+        "after": "status-popup-1",
+        "expected_stable": true,
+        "result": "property_failed"
+      }
+    ]
+  },
+  "findings": [
+    {
+      "id": "POP-01",
+      "priority": "P2",
+      "status": "resolved_source_and_focused_verification",
+      "file": "apps/web/components/shared/StatusPopup.tsx",
+      "original_code": "onClick={() => { onDismiss(); popup.onRetry?.(); }}",
+      "problem": "Retry dismisses persistent feedback before owner transition, including non-dismissible fallback.",
+      "smallest_fix": "Retry invokes owner callback only; explicit dismissal and owner lifecycle handle removal.",
+      "boundary_limit": "No-op retry proven in provider/providerless modes; immediate ErrorBoundary rethrow not independently reproduced with real React commits.",
+      "resolution": "PopupCard retry now invokes onRetry directly. No-op/blocked retry remains visible; owner lifecycle controls removal."
+    },
+    {
+      "id": "POP-02",
+      "priority": "P2",
+      "status": "resolved_source_and_focused_verification",
+      "file": "apps/web/components/shared/Toast.tsx",
+      "original_code": "Only success/info schedule4500ms timeout; ToastProvider outlives AuthProvider user/org updates.",
+      "problem": "Undismissed error/warning from old account/company remains in new context.",
+      "smallest_fix": "UI-only stable identity/org scope reset clears queue/timers and invalidates old captured toast callbacks.",
+      "boundary_limit": "This is stale UI context, not proof of server data authorization bypass.",
+      "resolution": "SessionToastScope wraps page subtree under AuthProvider. ToastScope binds first-render callbacks to unique per-identity generation; layout activation clears queue/timers, stale callbacks rejected, same-scope refresh preserved. StatusPopupProvider is not reset."
+    },
+    {
+      "id": "POP-03",
+      "priority": "P2",
+      "status": "resolved_source_and_focused_verification",
+      "file": "apps/web/components/shared/StatusPopup.tsx",
+      "original_code": "createPortal(..., host, `status-popup-${hostIndex}`)",
+      "problem": "Priority-sorted host positions change keys for an unchanged dialog portal.",
+      "smallest_fix": "Assign stable portal identity per host; verify other-host insertion/removal does not rekey it.",
+      "boundary_limit": "Key instability proven; real browser focus target/announcement behavior not exercised.",
+      "resolution": "Provider-local WeakMap assigns stable per-host portal key; independent host priority changes preserve dialog key/container."
+    }
+  ],
+  "root_reported_baseline": {
+    "foundation_tests_passed": 14,
+    "typescript": "passed",
+    "independently_rerun": false
+  },
+  "source_review_coverage": {
+    "lifecycle": "Register/update/remove tied to owner effects; owner unmount cleanup is present.",
+    "dedupe": "Same notice/host/callback/action identity merges; independent retry functions remain distinct.",
+    "dismissal": "Fixed: Retry no longer acknowledges error. Explicit dismiss retains stable-notice acknowledgement; owner changes/unmount control feedback lifetime.",
+    "stale_callbacks": "StatusPopup handlers refresh on identity change. ToastScope generation binds on first render; old callbacks blocked after identity/org transition including returning to old account. Fresh first-render callback succeeds after activation.",
+    "host_cleanup": "Nearest dialog host and stable per-host key verified structurally. Owner unmount removes portal; higher-priority body insertion/removal does not rekey existing dialog portal.",
+    "priority": "Two nonprogress+oneprogress limit perhost remains, with priority and hidden count. Stable host WeakMap removes priority-driven remount.",
+    "focus": "No autofocus/modal semantics on nonmodal cards; nearest-dialog portal remains within dynamic focus query and retains container/key through unrelated errors. Browser keyboard/focus tests are root-owned and not claimed here.",
+    "ssr": "Document lookup is inside effect; providerless initial markup does not access document during render. Actual hydration/browser assistive-tech not exercised."
+  },
+  "not_checked": [
+    "Browser/real assistive-technology behavior",
+    "Real React ErrorBoundary retry-then-rethrow commit",
+    "Full application build/typecheck by reviewer",
+    "Backend/auth/money effects",
+    "Consumer completeness owned by other agents"
+  ],
+  "allowed_mutations": [
+    "reports/popup-feedback-2026-10-23/independent-review.md",
+    "reports/popup-feedback-2026-10-23/independent-review-receipt.json"
+  ],
+  "application_edits_by_reviewer": false,
+  "verdict": "Source review complete: no outstanding foundation finding after POP-01/02/03 corrections. Root owns browser, integration, critical-input contract checks and release.",
+  "final_source_hashes": {
+    "apps/web/components/shared/StatusPopup.tsx": "cd67565399cf69492c427bc2a4493237595f8a93997cb52132a6778542bda39c",
+    "apps/web/components/shared/Toast.tsx": "68af6515aeac0c64e79c01b61aabf65b18f9781e3c21bc97ee92792707ab197f",
+    "apps/web/components/shared/States.tsx": "18b4273fa030052d2b6807fcd9c616df2756d3c6cae90c420d3c14dd209f1d2b",
+    "apps/web/components/shared/Dialogs.tsx": "f849b22548cbb767712b8e2a9594808d7c4a6023ca4f2fe570874a9c20c873eb",
+    "apps/web/components/shared/ErrorBoundary.tsx": "890a12cbb847413ef6d7b11117ba8c2f2f3605a9513b98db3f612f301fc581da",
+    "apps/web/tests/status-popup.test.cjs": "fbaf4d2a746984280520f09ffb9ad97e61d9a76743acb34c13cc90f710dbb283",
+    "apps/web/components/shared/Providers.tsx": "808a5fbeff6e291dd793a1b60ace2555411f5ae8e4251a6d14c5bf9c89bf38ac"
+  },
+  "final_verification": {
+    "command": "node tests/status-popup.test.cjs",
+    "working_directory": "apps/web",
+    "node": "v24.21.0",
+    "exit_code": 0,
+    "tests": 11,
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "test_names": [
+      "progress is removed on settlement and owner unmount, including dialog scope",
+      "equivalent loaders dedupe, all progress is bounded, and errors take priority",
+      "dismiss does not cancel a request or reappear for identical rerenders",
+      "new callback and action identities refresh handlers without resurrecting dismissed feedback",
+      "independent retry actions never dedupe and retry only follows an explicit click",
+      "a blocked or failed retry keeps the unresolved error visible",
+      "another host gaining error priority preserves the existing dialog portal key",
+      "providerless recovery is a floating popup and preserves non-dismissible retry",
+      "toast notifications dedupe, bound the queue, retain errors, and clear all timers",
+      "toast scope changes clear queues and timers, reject old callbacks, and preserve first-render new callbacks",
+      "session scope keys change only for account, role, organization type or organization identity"
+    ],
+    "runner_note": "node --test reports one passing file in this environment; direct file execution exposed all11 case results. Direct output was read before claiming11passes.",
+    "additional_reviewer_cases": [
+      {
+        "id": "providerless_non_dismissible_noop_retry",
+        "callback_invocations": 1,
+        "remaining_cards": 1,
+        "result": "passed"
+      },
+      {
+        "id": "dialog_host_identity_cleanup_and_priority",
+        "host_is_dialog": true,
+        "stable_key": "status-popup-1",
+        "background_error_insertion_preserves_key": true,
+        "background_error_removal_preserves_key": true,
+        "owner_unmount_removes_portal": true,
+        "result": "passed"
+      }
+    ],
+    "structural_not_browser": "Portal container/key/cleanup checked in existing hook VM. Browser focus/announcement/hydration effects were not executed by this reviewer."
+  }
+}

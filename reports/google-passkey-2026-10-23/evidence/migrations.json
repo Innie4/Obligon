@@ -1,0 +1,263 @@
+{
+  "database": "task-owned disposable PostgreSQL18 localhost",
+  "localSupabaseAuthStandIn": true,
+  "firstApplied": 39,
+  "secondApplied": 0,
+  "migrationCount": 39,
+  "tables": [
+    {
+      "name": "account_auth_challenges",
+      "rls": true,
+      "anon_access": false,
+      "authenticated_access": false,
+      "policies": 0
+    },
+    {
+      "name": "account_google_identities",
+      "rls": true,
+      "anon_access": false,
+      "authenticated_access": false,
+      "policies": 0
+    },
+    {
+      "name": "account_passkeys",
+      "rls": true,
+      "anon_access": false,
+      "authenticated_access": false,
+      "policies": 0
+    }
+  ],
+  "constraints": [
+    {
+      "name": "account_auth_challenges",
+      "definition": "NOT NULL challenge",
+      "validated": true
+    },
+    {
+      "name": "account_auth_challenges",
+      "definition": "NOT NULL context",
+      "validated": true
+    },
+    {
+      "name": "account_auth_challenges",
+      "definition": "NOT NULL created_at",
+      "validated": true
+    },
+    {
+      "name": "account_auth_challenges",
+      "definition": "NOT NULL expires_at",
+      "validated": true
+    },
+    {
+      "name": "account_auth_challenges",
+      "definition": "NOT NULL id",
+      "validated": true
+    },
+    {
+      "name": "account_auth_challenges",
+      "definition": "NOT NULL origin",
+      "validated": true
+    },
+    {
+      "name": "account_auth_challenges",
+      "definition": "PRIMARY KEY (id)",
+      "validated": true
+    },
+    {
+      "name": "account_auth_challenges",
+      "definition": "CHECK ((purpose = ANY (ARRAY['google_login'::text, 'google_link'::text, 'passkey_login'::text, 'passkey_register'::text])))",
+      "validated": true
+    },
+    {
+      "name": "account_auth_challenges",
+      "definition": "NOT NULL purpose",
+      "validated": true
+    },
+    {
+      "name": "account_auth_challenges",
+      "definition": "FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE",
+      "validated": true
+    },
+    {
+      "name": "account_auth_challenges",
+      "definition": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+      "validated": true
+    },
+    {
+      "name": "account_google_identities",
+      "definition": "NOT NULL created_at",
+      "validated": true
+    },
+    {
+      "name": "account_google_identities",
+      "definition": "NOT NULL id",
+      "validated": true
+    },
+    {
+      "name": "account_google_identities",
+      "definition": "CHECK ((issuer = 'https://accounts.google.com'::text))",
+      "validated": true
+    },
+    {
+      "name": "account_google_identities",
+      "definition": "NOT NULL issuer",
+      "validated": true
+    },
+    {
+      "name": "account_google_identities",
+      "definition": "UNIQUE (issuer, subject)",
+      "validated": true
+    },
+    {
+      "name": "account_google_identities",
+      "definition": "PRIMARY KEY (id)",
+      "validated": true
+    },
+    {
+      "name": "account_google_identities",
+      "definition": "CHECK (((length(subject) >= 1) AND (length(subject) <= 255)))",
+      "validated": true
+    },
+    {
+      "name": "account_google_identities",
+      "definition": "NOT NULL subject",
+      "validated": true
+    },
+    {
+      "name": "account_google_identities",
+      "definition": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+      "validated": true
+    },
+    {
+      "name": "account_google_identities",
+      "definition": "UNIQUE (user_id)",
+      "validated": true
+    },
+    {
+      "name": "account_google_identities",
+      "definition": "NOT NULL user_id",
+      "validated": true
+    },
+    {
+      "name": "account_passkeys",
+      "definition": "NOT NULL backed_up",
+      "validated": true
+    },
+    {
+      "name": "account_passkeys",
+      "definition": "CHECK (((counter >= 0) AND (counter <= '4294967295'::bigint)))",
+      "validated": true
+    },
+    {
+      "name": "account_passkeys",
+      "definition": "NOT NULL counter",
+      "validated": true
+    },
+    {
+      "name": "account_passkeys",
+      "definition": "NOT NULL created_at",
+      "validated": true
+    },
+    {
+      "name": "account_passkeys",
+      "definition": "UNIQUE (credential_id)",
+      "validated": true
+    },
+    {
+      "name": "account_passkeys",
+      "definition": "NOT NULL credential_id",
+      "validated": true
+    },
+    {
+      "name": "account_passkeys",
+      "definition": "CHECK ((device_type = ANY (ARRAY['singleDevice'::text, 'multiDevice'::text])))",
+      "validated": true
+    },
+    {
+      "name": "account_passkeys",
+      "definition": "NOT NULL device_type",
+      "validated": true
+    },
+    {
+      "name": "account_passkeys",
+      "definition": "NOT NULL id",
+      "validated": true
+    },
+    {
+      "name": "account_passkeys",
+      "definition": "CHECK (((length(label) >= 1) AND (length(label) <= 100)))",
+      "validated": true
+    },
+    {
+      "name": "account_passkeys",
+      "definition": "NOT NULL label",
+      "validated": true
+    },
+    {
+      "name": "account_passkeys",
+      "definition": "PRIMARY KEY (id)",
+      "validated": true
+    },
+    {
+      "name": "account_passkeys",
+      "definition": "NOT NULL public_key",
+      "validated": true
+    },
+    {
+      "name": "account_passkeys",
+      "definition": "NOT NULL transports",
+      "validated": true
+    },
+    {
+      "name": "account_passkeys",
+      "definition": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+      "validated": true
+    },
+    {
+      "name": "account_passkeys",
+      "definition": "NOT NULL user_id",
+      "validated": true
+    }
+  ],
+  "migrationHashes": {
+    "001_init.sql": "afb063f5f7b29a90ba6287788ae88f51fa99ff7317090e477d2442edc2917407",
+    "002_staff_and_indexes.sql": "84a172191d832b6739245b318d3f7cf3177232c8339bf21c15634ae641d3caad",
+    "003_rls_policies.sql": "9285e0ff329e82779a4e1658f3afac0f05b96bcedc74a6b65b1764b28eadafd1",
+    "004_role_access.sql": "3da5b400b4dfe3fa2dda126809b0b6af231c138e00e4ce050ac13fc6d8d5ac25",
+    "005_card_requests.sql": "cf1885a33ebdb6f9f586d889705859e07cede8922dfc86c998d129258c3de0b8",
+    "006_vehicle_driver_relation.sql": "c1d760eb6b63175b112074085e1087af017ebfce63612fe5bd970ba464b0740b",
+    "007_card_request_plans.sql": "1191c95c6f3618ed7964389aebb501d8f7afe8676193aab4e8ca8a872db87395",
+    "008_retire_legacy_card_requests.sql": "7a4e0df88ba53dfe0e68538551fd28611230be28e8fd14d9b680c2d2ea3a6404",
+    "009_wallet_kinds.sql": "3e214151853e7738e5fca2729ee1040d9b3c5ea3fd241da4aacf8a9052eb1a8b",
+    "010_expand_plan_features.sql": "354ce385056c832f29c90491c64e60a12f03896be7b237f98e795f8d78b21f25",
+    "011_refunds_reconciliation_settlement.sql": "4533ca284ac38abcab337bc56f4ac2655d5a3c054ed1491a0e2496180b5391a1",
+    "012_transaction_unit_price.sql": "2daf4e05450b1669fbf207d1d73eac3730788b0ae8b55869b9c0ca072a9b7570",
+    "013_payment_fee_bearer.sql": "94385e69e3ee9f6106ad632bcdfa3b183c9b45f3dfcfb5f78d6a9a423a2cd47b",
+    "014_plan_not_wallet_funding.sql": "bffa9352eba04861eff7286ee1797cb20153663f23c28c03015675006bb15536",
+    "015_monthly_spend_projection.sql": "dd8b1c889b0d781ec99b797e6a2810f9d47578511d4cb65eb45f9910a29ca350",
+    "016_event_keys_and_ledger_reference.sql": "59bbd54b594f45ff5e9aa2626b44cbc237642d9c4b977acc3a073e0b8d3facf6",
+    "017_verification_code_attempts.sql": "8caa98f1867ac8915d92712734b951a491af6c555caaf47432a8fb83a0fb971b",
+    "018_flutterwave_processor.sql": "56bda681b3051e35d294fb1b14e1f5339d7f1a0ff4d1c81016afcb96c4bf2d00",
+    "019_settlement_accrual.sql": "bf722653304c8051fd0497b225f8ff65df9b046b17947c3cefb42fd4c1cac72d",
+    "020_settlement_accounting.sql": "65d9d5ac248a03af8f57578526249c556b7942043967d963147c04822e551985",
+    "021_card_approval.sql": "b02ca73aeb5ba25ab1e6d9cd46819ff390b5221354ecb681de5ddeca56bb8c93",
+    "022_dashboard_subscriptions_discounts.sql": "5eb3f94875fb9a13ff9a012ff612413270995616cd7e738884c35aead0eedab6",
+    "023_fuel_orders.sql": "e01d8c16539106854c86b74eeeec041d373604810c8290e3a55a38936e6ad79e",
+    "024_bank_settlement_binding.sql": "c7868062a855cb58f36c1d777e363048b740fa800275eae4f4df8e14cdf0db2a",
+    "025_station_coordinates.sql": "704e96c48fa3ed3714609f9bd183c43d32484d40eb784bfb258ded3f2cfd0b57",
+    "026_public_intake_and_activity.sql": "b47a7872bf73862a700f1fbb2510f6440b9e1e72ebdaaa206bdb3a3249a287c2",
+    "027_station_review.sql": "d2eb95d6bbf47ca6027b9fa884469c4859d48a7e847fa5593a4670179e24020a",
+    "028_activity_coverage.sql": "2f97fd331bbd90de1173e9e142d6f2f0f2c249c091644d4b235b1587f89ea4a6",
+    "029_partner_api_keys.sql": "ccccdc73845ad59f37f8a06062790397b5a02928cc7f5b1a1f0849dc850a1f39",
+    "030_admin_activity_coverage.sql": "6aa0c15ff3466a8d48d7d235e2c069e1a95786b7576cc555b4b3b23d0800b908",
+    "031_card_payment_provider_reference.sql": "7656655c74828b0ba2e311d9aa2dc9efcb101fcb3259769eafb7066167473503",
+    "032_private_database_access.sql": "e5b415c22997aa7f1bb6e6cd6bd66229257d259f134d91d795a7fc446e373f7b",
+    "033_account_access_expiry.sql": "ffd835e5fbc6b5fa9ee9295565f2a1f79177f34d6581e618fcb8ffdf336b5c52",
+    "034_contact_verification_provider.sql": "cf2c43fbb382ee65860c25b51d9c463ad4367c9cda20d5924859c414a6ceac3f",
+    "035_partner_scope_and_units.sql": "4ffa724c3b0f0de09c49d4c54f2a85c57b37de764b0f07f20e1a37c828613e3d",
+    "036_company_card_issuances.sql": "7e712148323e5cf3167902c6f63cf518504f45ba19111b2a1e89fa873c1c89c9",
+    "037_payout_reconciliation_claims.sql": "de2c0bfd795db6b7cac85c4f54a91ff4ff470aedff77f00566ce648f787ecc71",
+    "038_resupply_selling_unit.sql": "8be1ce1cde1d6c6f827dad435000d0b5d835d1087f3e9769de652c937079369a",
+    "039_account_signin_methods.sql": "d9b52cb2d7f061b5bf2cf3fd2c417d3755e1a92cbc9479ac533755cf38d5236d"
+  }
+}

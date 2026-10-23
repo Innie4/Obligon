@@ -1,4 +1,5 @@
 "use client";
+import { StatusPopup } from "@/components/shared/StatusPopup";
 import { sellingUnitLabel } from "../../../../packages/shared/partner-access.mjs";
 import * as React from "react";
 import Link from "next/link";
@@ -325,7 +326,7 @@ function Transactions({ onModal }: PageProps) {
 
     </div>
 
-    {choices.error ? <p role="alert" className="mt-3 text-sm text-red-700">Fleet filter choices could not load. <button className="underline" onClick={choices.reload}>Retry</button></p> : null}
+    {choices.error ? <StatusPopup tone="error" message={"Fleet filter choices could not load."} action={<button className="underline" onClick={choices.reload}>Retry</button>} /> : null}
 
     {!driverFilterReady && choices.status === "success" ? <p className="mt-3 text-sm text-obligon-text">Driver filtering is currently unavailable. Refresh this page to try again.</p> : null}
     <DataBoundary result={result}>
@@ -442,11 +443,12 @@ function Roadside({ onModal }: PageProps) {
     try { await mutationsApi.cancelRoadsideRequest(id); result.reload(); } catch (err) { setError(err instanceof Error ? err.message : "Could not cancel this request."); } finally { cancelling.current = false; setBusyId(null); }
   }
   return <Canvas>
+      {busyId ? <StatusPopup tone="pending" message="Cancelling roadside request…" /> : null}
 
     <Header pageKey="roadside" action={{ label: "Request Emergency Help", modal: "roadside" }} onModal={onModal} />
     <p className="mt-5 text-sm text-obligon-text">Requests record your location and issue. Assistance requires manual coordination; this screen does not confirm a dispatched provider or arrival time. Open Support and include the request ID for follow-up.</p>
     <Link href="/company/support" className="mt-2 inline-flex min-h-11 items-center font-bold text-obligon-green">Follow up with Support →</Link>
-    {error ? <p role="alert" className="mt-3 text-sm text-red-700">{error}</p> : null}
+    {error ? <StatusPopup tone="error" message={error} /> : null}
 
     <DataBoundary result={result}>
 
@@ -499,6 +501,7 @@ function CompanyWalletPanel({ onModal }: PageProps) {
     } catch (err) { setError(err instanceof Error ? err.message : "Payment is unconfirmed. Keep this reference and try again."); } finally { checking.current = false; setBusy(false); }
   }
   return <section className="mt-6 rounded-xl border border-[#dfe5ec] bg-white p-5">
+      {(busy) ? <StatusPopup tone="pending" message="Checking company wallet request…" /> : null}
     <h2 className="text-xl font-extrabold">Company fuel wallet</h2>
     <p className="mt-3 text-sm text-obligon-text">Fleet cards spend directly from the company wallet. Member allocations transfer funds to personal wallets.</p>
     <DataBoundary result={result}>
@@ -507,7 +510,7 @@ function CompanyWalletPanel({ onModal }: PageProps) {
       {result.data?.recent?.length ? <ul className="mt-5 divide-y divide-[#dfe5ec]">{result.data.recent.map(entry => <li key={entry.id} className="py-3 text-sm"><p className="font-bold">{entry.direction === "credit" ? "+" : "−"}{entry.amountLabel} · {entry.description}</p><p className="mt-1 break-all text-xs text-obligon-text">{entry.reference} · {entry.date}</p></li>)}</ul> : <p className="mt-4 text-sm text-obligon-text">No recorded company wallet movements.</p>}
     </DataBoundary>
     <div className="mt-5 border-t border-[#dfe5ec] pt-4"><label className="block text-sm font-bold">Check a pending funding reference<input value={reference} disabled={busy} onChange={event => { setReference(event.target.value); setConfirmed(null); }} className={`${controlClass} mt-1 w-full`} /></label><button type="button" className={`${controlClass} mt-3 disabled:opacity-50`} disabled={busy || !reference.trim()} onClick={confirm}>{busy ? "Checking payment…" : "Check payment"}</button></div>
-    {error ? <p role="alert" className="mt-3 text-sm text-red-700">{error}</p> : null}{confirmed ? <p role="status" className="mt-3 text-sm">{confirmed}</p> : null}
+    {error ? <StatusPopup tone="error" message={error} /> : null}{confirmed ? <p role="status" className="mt-3 text-sm">{confirmed}</p> : null}
   </section>;
 }
 function Billing({ onModal }: PageProps) {
@@ -603,6 +606,7 @@ function Notifications({ onModal }: PageProps) {
     }
   }
   return <Canvas>
+      {(saving) ? <StatusPopup tone="pending" message="Processing request…" /> : null}
 
     <Header pageKey="notifications" onModal={onModal} />
 
@@ -703,6 +707,7 @@ function SettingsPage({ onModal }: PageProps) {
     }
   }
   return <Canvas>
+      {(saving) ? <StatusPopup tone="pending" message="Saving account settings…" /> : null}
 
     <Header pageKey="settings" onModal={onModal} />
 

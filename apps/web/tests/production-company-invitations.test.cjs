@@ -1,14 +1,14 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const vm = require('node:vm');
+const vm = require('./helpers/status-popup.cjs').withStatusPopups(require('node:vm'));
 const ts = require('typescript');
 const token = 'ab'.repeat(24), destination = `/auth/company-invitation?invite=${token}`;
 const invitation = {organizationId:'fleet-fixture',companyName:'Test Fleet',role:'manager',status:'pending',expiresAt:'2030-01-01'};
 const signedUser = {id:'synthetic-user',email:'invitee@example.invalid',role:'customer',emailVerified:true,organizationType:null,organizationId:null};
 const transpile = (path, extra='') => ts.transpileModule(fs.readFileSync(require.resolve(path),'utf8')+extra,{fileName:path,compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.React,esModuleInterop:true}}).outputText;
 function nodes(tree) { if(Array.isArray(tree))return tree.flatMap(nodes);if(!tree||typeof tree!=='object')return [];return [tree,...nodes(tree.props?.children)]; }
-function textOf(tree) { if(Array.isArray(tree))return tree.map(textOf).join('');if(tree==null||typeof tree==='boolean')return '';return typeof tree==='object'?textOf(tree.props?.children):String(tree); }
+function textOf(tree) { if(Array.isArray(tree))return tree.map(textOf).join('');if(tree==null||typeof tree==='boolean')return '';return typeof tree==='object'?(tree.type==='StatusPopup'?textOf(tree.props?.message):'')+textOf(tree.props?.children):String(tree); }
 const flush = () => new Promise(resolve=>setImmediate(resolve));
 function fixture(path,componentName,{user=signedUser,status='authenticated',search='',mfa=false,invite=invitation,readError,selectError,verifyResult={emailVerified:true,phoneVerified:false,allVerified:false,remaining:['phone']}}={}) {
   const states=[],effectStates=[],pending=[],events=[],storage=new Map(),timers=[];
@@ -97,7 +97,7 @@ for(const status of ['expired','revoked'])test(`${status} invitation exposes no 
   const ui=fixture('../components/auth/CompanyInvitation.tsx','CompanyInvitation',{invite:{...invitation,status}});await ui.settle();assert.equal(ui.nodes().some(n=>n.type==='button'&&/^(Accept invitation|Open company dashboard)$/.test(textOf(n))),false);assert.ok(ui.text().includes(status));
 });
 test('wrong-account errors expose account switching while never accepting',async()=>{
-  const ui=fixture('../components/auth/CompanyInvitation.tsx','CompanyInvitation',{readError:'Sign in with the invited email'});await ui.settle();assert.ok(ui.nodes().some(n=>n.props.role==='alert'));await ui.click('Sign in with another account');assert.deepEqual(ui.events.slice(-2).map(([kind])=>kind),['logout','push']);assert.equal(ui.events.at(-1)[1],`/auth/login?returnUrl=${encodeURIComponent(destination)}`);
+  const ui=fixture('../components/auth/CompanyInvitation.tsx','CompanyInvitation',{readError:'Sign in with the invited email'});await ui.settle();assert.ok(ui.nodes().some(n=>n.type==='StatusPopup'&&n.props.tone==='error'));await ui.click('Sign in with another account');assert.deepEqual(ui.events.slice(-2).map(([kind])=>kind),['logout','push']);assert.equal(ui.events.at(-1)[1],`/auth/login?returnUrl=${encodeURIComponent(destination)}`);
 });
 for(const mfa of [false,true])test(`login preserves invitation through ${mfa?'password MFA':'successful sign-in'}`,async()=>{
   const ui=fixture('../components/auth/AuthForms.tsx','LoginForm',{status:'unauthenticated',user:null,search:`?returnUrl=${encodeURIComponent(destination)}`,mfa});await ui.settle();ui.change('login-email','invitee@example.invalid');ui.change('login-password','synthetic-password');await ui.submit();assert.equal(ui.events.at(-1)[1],mfa?`/auth/mfa/challenge?returnUrl=${encodeURIComponent(destination)}`:destination);

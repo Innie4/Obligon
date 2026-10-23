@@ -1,0 +1,122 @@
+[
+  {
+    "file": "apps/api/src/lib/company-card-issuance.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/lib/descope-verification.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/lib/discounts.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/lib/flutterwave.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/lib/fuel-checkout.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/lib/fuel-quantity.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/lib/fuel-sale.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/lib/http.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/lib/payments.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/lib/paystack.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/lib/pdf.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/lib/scheduler.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/lib/settlements.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/lib/sse.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/lib/station-approval.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/lib/station-prices.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/lib/subscriptions.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/lib/sudo.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/lib/transfer-recovery.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/middleware/auth.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/routes/admin.routes.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/routes/auth.routes.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/routes/company-card-issuances-admin.routes.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/routes/company.routes.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/routes/customer.routes.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/routes/fuel-checkout.routes.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/routes/intake-admin.routes.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/routes/partner.routes.js",
+    "passed": true
+  },
+  {
+    "file": "apps/api/src/routes/webhooks.routes.js",
+    "passed": true
+  },
+  {
+    "file": "packages/shared/partner-access.mjs",
+    "passed": true
+  }
+]

@@ -1,0 +1,49 @@
+{
+  "date": "2026-10-23",
+  "sourceManifest": "customer-partner-round3-source.json",
+  "checks": [
+    {
+      "command": "node tests/station-map-states.test.cjs",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0
+    },
+    {
+      "command": "node tests/ui-dashboard-polish.test.cjs",
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0
+    },
+    {
+      "command": "node tests/partner-audit-regression.test.cjs",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0
+    },
+    {
+      "command": "node tests/partner-verification.test.cjs",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0,
+      "evidence": "Fresh run after explicit Other/fuel/gas wording regressions; 20 passed, 0 failed/skipped. Before correction the Other regression alone failed (19 passed, 1 failed)."
+    },
+    {
+      "command": "pnpm exec tsc --noEmit --incremental false",
+      "exitCode": 0
+    }
+  ],
+  "cwd": "apps/web",
+  "totalFocusedTests": 64,
+  "externalEffects": false,
+  "independentReview": "Independent reviewer completed the noun delta and reran all 20 partner verification tests; see independent-review.md and evidence/independent-review.json.",
+  "limits": [
+    "OSM iframe load does not prove cross-origin tiles were drawn",
+    "Live map provider availability not verified",
+    "No browser layout verification performed by this worker"
+  ],
+  "evidenceReuse": "The 7 map, 26 dashboard polish and 11 partner regression tests retain their prior passing evidence because their source/test hashes are unchanged. Partner verification has a fresh 20-test run. The recorded TypeScript check predates the bounded noun-only correction; root owns final build/typecheck."
+}

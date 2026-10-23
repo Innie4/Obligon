@@ -1,0 +1,16 @@
+[
+  {
+    "path": "/api/admin/stations/review",
+    "status": 200,
+    "count": 1
+  },
+  {
+    "path": "/api/admin/intake/applications",
+    "status": 200
+  },
+  {
+    "path": "/api/admin/company-card-issuances",
+    "status": 200,
+    "count": 1
+  }
+]

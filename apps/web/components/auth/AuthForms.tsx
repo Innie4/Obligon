@@ -1,5 +1,7 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -12,7 +14,6 @@ import {
   AlertCircle,
   Mail,
   Lock,
-  AlertTriangle,
   ChevronDown,
   Building2,
   User,
@@ -25,7 +26,6 @@ import {
 } from "lucide-react";
 import { routes } from "@/components/site/routes";
 import { useToast } from "@/components/shared/Toast";
-import { DialogFrame } from "@/components/shared/Dialogs";
 import { useSession } from "@/components/shared/AuthContext";
 import { DemoAccountPanel } from "@/components/auth/DemoAccountPanel";
 import { AdditionalSignInMethods } from "@/components/auth/AdditionalSignInMethods";
@@ -204,34 +204,12 @@ function friendlyAuthError(error: unknown, action: "sign in" | "create your acco
   return `We couldn't ${action}. Please check your details and try again.`;
 }
 
-function AuthErrorDialog({ message, onClose }: { message: string | null; onClose: () => void }) {
-  if (!message) return null;
-  return (
-    <DialogFrame onClose={onClose} ariaLabel="Sign-in problem">
-      <div className="p-6 text-center sm:p-8">
-        <div className="mx-auto grid size-12 place-items-center rounded-full bg-[#fff0f0] text-[#c1121f]">
-          <AlertTriangle size={24} aria-hidden="true" />
-        </div>
-        <h2 className="mt-4 font-display text-2xl font-extrabold text-obligon-navy">Something went wrong</h2>
-        <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-obligon-text">{message}</p>
-        <button
-          type="button"
-          onClick={onClose}
-          className="mt-6 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white shadow-green hover:bg-obligon-green/90"
-        >
-          Close
-        </button>
-      </div>
-    </DialogFrame>
-  );
-}
-
 function LoginForm() {
   const router = useRouter();
   const [returnPath, setReturnPath] = React.useState<string | null>(null);
   React.useEffect(() => { setReturnPath(authReturnPath(window.location.search)); }, []);
   const { login, status, user } = useSession();
-  const { error: toastError, success: toastSuccess } = useToast();
+  const { success: toastSuccess } = useToast();
 
   const [loginForm, setLoginForm] = React.useState({
     email: "",
@@ -243,7 +221,6 @@ function LoginForm() {
   const [additionalBusy, setAdditionalBusy] = React.useState(false);
   const loginInFlight = React.useRef(false);
   const [loginServerError, setLoginServerError] = React.useState<string | null>(null);
-  const [loginDialogError, setLoginDialogError] = React.useState<string | null>(null);
   const [showPassword, setShowPassword] = React.useState(false);
 
   React.useEffect(() => {
@@ -332,8 +309,6 @@ function LoginForm() {
     } catch (err) {
       const message = friendlyAuthError(err, "sign in");
       setLoginServerError(message);
-      setLoginDialogError(message);
-      toastError(message);
     } finally {
       loginInFlight.current = false;
       setLoginSubmitting(false);
@@ -350,7 +325,7 @@ function LoginForm() {
 
   return (
     <>
-      <AuthErrorDialog message={loginDialogError} onClose={() => setLoginDialogError(null)} />
+      {loginSubmitting ? <StatusPopup tone="pending" message="Signing in…" /> : null}
       <form onSubmit={handleLoginSubmit} className="mx-auto min-w-0 w-full max-w-[480px] rounded-2xl border border-obligon-border bg-white p-6 sm:p-8 shadow-card" noValidate>
       <div className="flex items-center justify-between">
         <div>
@@ -380,12 +355,7 @@ function LoginForm() {
         </div>
       ) : null}
 
-      {loginServerError && (
-        <div className="mt-4 rounded-xl bg-[#fff0f0] border border-[#fecaca] p-3.5 text-sm text-[#93000a] flex items-start gap-2" role="alert">
-          <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
-          <span>{loginServerError}</span>
-        </div>
-      )}
+      {loginServerError ? <StatusPopup tone="error" message={loginServerError} /> : null}
 
       <div className="mt-6 space-y-4">
         <div className="relative">
@@ -520,7 +490,7 @@ function SignupForm() {
   const [returnPath, setReturnPath] = React.useState<string | null>(null);
   React.useEffect(() => { setReturnPath(authReturnPath(window.location.search)); }, []);
   const { login, setUser } = useSession();
-  const { error: toastError, success: toastSuccess } = useToast();
+  const { success: toastSuccess } = useToast();
 
   const [topRole, setTopRole] = React.useState<TopRole>("customer");
   React.useEffect(() => {const params=new URLSearchParams(window.location.search);const role=params.get("role");if(role==="customer"||role==="partner"||role==="company")setTopRole(role);const plan=params.get("plan");if(plan&&/^[a-z0-9_-]{1,40}$/i.test(plan))sessionStorage.setItem("obligon_selected_plan",plan);},[]);
@@ -531,7 +501,6 @@ function SignupForm() {
   const [signupErrors, setSignupErrors] = React.useState<Record<string, string>>({});
   const [signupSubmitting, setSignupSubmitting] = React.useState(false);
   const [signupServerError, setSignupServerError] = React.useState<string | null>(null);
-  const [signupDialogError, setSignupDialogError] = React.useState<string | null>(null);
 
   const [selectedCapabilities, setSelectedCapabilities] = React.useState<string[]>([
     "PMS Petrol",
@@ -688,8 +657,6 @@ function SignupForm() {
     } catch (err) {
       const message = friendlyAuthError(err, "create your account");
       setSignupServerError(message);
-      setSignupDialogError(message);
-      toastError(message);
     } finally {
       setSignupSubmitting(false);
     }
@@ -697,7 +664,7 @@ function SignupForm() {
 
   return (
     <>
-      <AuthErrorDialog message={signupDialogError} onClose={() => setSignupDialogError(null)} />
+      {signupSubmitting ? <StatusPopup tone="pending" message="Creating your account…" /> : null}
       <form id="signup" onSubmit={handleSignupSubmit} className="mx-auto w-full max-w-[680px] rounded-2xl border border-obligon-border bg-white p-4 shadow-card sm:p-8" noValidate>
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -707,12 +674,7 @@ function SignupForm() {
         <ShieldCheck className="text-obligon-green" size={28} />
       </div>
 
-      {signupServerError && (
-        <div className="mt-4 rounded-xl bg-[#fff0f0] border border-[#fecaca] p-3.5 text-sm text-[#93000a] flex items-start gap-2" role="alert">
-          <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
-          <span>{signupServerError}</span>
-        </div>
-      )}
+      {signupServerError ? <StatusPopup tone="error" message={signupServerError} /> : null}
 
       {/* Top Level Role Selector */}
       <div className="mt-6">

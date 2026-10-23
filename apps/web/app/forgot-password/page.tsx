@@ -1,5 +1,7 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -20,7 +22,7 @@ function validateEmail(email: string): string | null {
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
-  const { error: toastError, success: toastSuccess } = useToast();
+  const { success: toastSuccess } = useToast();
 
   const [email, setEmail] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
@@ -52,7 +54,6 @@ export default function ForgotPasswordPage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to send reset link. Please try again.";
       setServerError(message);
-      toastError(message);
     } finally {
       setSubmitting(false);
     }
@@ -128,32 +129,28 @@ export default function ForgotPasswordPage() {
                     if (serverError) setServerError(null);
                   }}
                   className={`h-12 w-full rounded-lg border px-4 pl-10 pr-4 text-sm text-obligon-navy outline-none transition placeholder:text-[#92929c] focus:border-obligon-green focus:ring-2 focus:ring-obligon-green/20 ${
-                    error || serverError ? "border-[#fecaca] bg-[#fff0f0]" : "border-obligon-border bg-white"
+                    error ? "border-[#fecaca] bg-[#fff0f0]" : "border-obligon-border bg-white"
                   }`}
                   disabled={submitting}
                   autoComplete="email"
-                  aria-invalid={!!error || !!serverError}
-                  aria-describedby={error || serverError ? "forgot-email-error" : undefined}
+                  aria-invalid={!!error}
+                  aria-describedby={error ? "forgot-email-error" : undefined}
                 />
-                {error || serverError ? (
+                {error ? (
                   <AlertTriangle className="absolute right-3 top-1/2 -translate-y-1/2 size-5 text-[#fca5a5]" aria-hidden="true" />
                 ) : (
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-obligon-text/50" aria-hidden="true" />
                 )}
               </div>
-              {(error || serverError) && (
+              {error && (
                 <p id="forgot-email-error" className="mt-1 text-xs font-medium text-[#93000a]" role="alert">
-                  {error ?? serverError}
+                  {error}
                 </p>
               )}
             </div>
 
-            {serverError && (
-              <div className="rounded-lg bg-[#fff0f0] border border-[#fecaca] p-3 text-sm text-[#93000a] flex items-start gap-2" role="alert">
-                <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
-                <span>{serverError}</span>
-              </div>
-            )}
+            {serverError ? <StatusPopup tone="error" message={serverError} /> : null}
+          {submitting ? <StatusPopup tone="pending" message="Requesting your reset code…" /> : null}
 
             <button
               type="submit"

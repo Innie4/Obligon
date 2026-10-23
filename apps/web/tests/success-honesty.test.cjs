@@ -14,6 +14,7 @@ function render(status, user) {
     require(name) {
       if (name === 'lucide-react') return require('lucide-react');
       if (name === 'next/link') return { __esModule: true, default: props => React.createElement('a', props) };
+      if (name === '@/components/shared/StatusPopup') return { StatusPopup: props => React.createElement('aside', { role: 'status', 'data-feedback': 'popup', 'data-tone': props.tone }, props.message) };
       if (name === '@/components/shared/AuthContext') return { useSession: () => ({ status, user }) };
       if (name === '@/components/site/routes') return { routes: { login: '/auth/login' } };
       throw new Error(`Unexpected import: ${name}`);
@@ -24,7 +25,7 @@ function render(status, user) {
 
 test('success summary announces account loading without claiming sign-in or creation', () => {
   const html = render('loading', null);
-  assert.match(html, /role="status"/); assert.match(html, /Checking your account/);
+  assert.match(html, /role="status"/); assert.match(html, /data-feedback="popup"/); assert.match(html, /data-tone="loading"/); assert.match(html, /Checking your account/);
   assert.doesNotMatch(html, /You are signed in|Account Created|Account Verified|fuel wallet/);
 });
 

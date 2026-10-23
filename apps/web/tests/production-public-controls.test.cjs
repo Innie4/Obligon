@@ -37,6 +37,7 @@ function fixture(file, overrides = {}) {
     window: { location: { search: '' } }, URLSearchParams,
     require(name) {
       if (name === 'react') return hooks;
+      if (name === '@/components/shared/StatusPopup') return { StatusPopup: 'StatusPopup' };
       if (name === '@/lib/services') return { publicApi: services };
       if (name.endsWith('/useDialogFocus')) return { useDialogFocus: (ref, close, open) => dialogCalls.push({ ref, close, open }) };
       if (name.endsWith('/Toast')) return { useToast: () => ({ success: message => notices.push({ kind: 'success', message }), error: message => notices.push({ kind: 'error', message }) }) };
@@ -56,7 +57,7 @@ function fixture(file, overrides = {}) {
   };
 }
 const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
-const text = node => node == null ? '' : Array.isArray(node) ? node.map(text).join('') : typeof node === 'object' ? text(node.props?.children) : String(node);
+const text = node => node == null ? '' : Array.isArray(node) ? node.map(text).join('') : typeof node === 'object' ? (node.type === 'StatusPopup' ? text(node.props?.message) : '') + text(node.props?.children) : String(node);
 const button = label => node => node.type === 'button' && text(node).includes(label);
 
 test('landing navigation remains reachable between mobile and desktop breakpoints', () => {
@@ -105,6 +106,7 @@ test('career submission cannot be dismissed or repeated before the response arri
   f.one(node => node.type === 'div' && /fixed inset-0/.test(node.props.className ?? '')).props.onMouseDown();
   f.render();
   assert.equal(calls, 1, 'only one API submission');
+  assert.equal(f.one(node => node.type === 'StatusPopup').props.tone, 'pending');
   assert.ok(f.one(node => node.props?.role === 'dialog'), 'busy dialog remains open');
   finish({ ok: true }); await pending; f.render();
   assert.match(text(f.one(node => node.props?.role === 'dialog')), /Application Received/);
@@ -118,7 +120,9 @@ test('career drafts survive failure, can retry, and reset only after dismissal',
     f.one(node => node.type === 'label' && text(node).includes(label)).props.children[1].props.onChange({ target: { value } }); f.render();
   }
   await f.one(node => node.type === 'form').props.onSubmit({ preventDefault() {} }); f.render();
-  assert.match(text(f.one(node => node.props?.role === 'alert')), /Fixture failure/);
+  const feedback = f.one(node => node.type === 'StatusPopup' && node.props.tone === 'error');
+  assert.match(feedback.props.message, /Fixture failure/);
+  assert.equal(f.all(node => node.type === 'p' && node.props?.role === 'alert').length, 0);
   assert.equal(f.one(node => node.type === 'input' && node.props.type === 'email').props.value, 'applicant@example.invalid');
   assert.equal(f.one(button('Submit Application')).props.disabled, false);
   await f.one(node => node.type === 'form').props.onSubmit({ preventDefault() {} }); f.render();
@@ -219,4 +223,20 @@ test('reduced motion disables smooth scroll and running animations in the styles
   });
   assert.ok(declarations.some(decl => decl.selector === 'html' && decl.property === 'scroll-behavior' && decl.value === 'auto'));
   assert.ok(declarations.some(decl => decl.selector.includes('*') && decl.property === 'animation' && decl.value === 'none' && decl.important));
+});
+
+
+test('public careers loading and retryable request failure use popup feedback', async () => {
+  let calls = 0;
+  const f = fixture('../components/careers/CareersPage.tsx', { getJobs: async () => { if (++calls === 1) throw new Error('Roles are unavailable.'); return []; } });
+  f.render();
+  assert.equal(f.one(node => node.type === 'StatusPopup').props.tone, 'loading');
+  assert.equal(f.all(node => node.type === 'p' && node.props?.role === 'status').length, 0);
+  await flush(); f.render();
+  const failure = f.one(node => node.type === 'StatusPopup');
+  assert.equal(failure.props.tone, 'error');
+  assert.equal(failure.props.message, 'Roles are unavailable.');
+  failure.props.onRetry(); await flush(); f.render();
+  assert.equal(calls, 2);
+  assert.equal(f.all(node => node.type === 'StatusPopup').length, 0);
 });

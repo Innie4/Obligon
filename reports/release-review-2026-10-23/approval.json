@@ -1,0 +1,23 @@
+{
+  "approvedAt": "2026-10-23T20:28:54.262453+00:00",
+  "userConfirmation": "Qualified reviewer approved this exact patch; push and deploy",
+  "sourceBase": "a27caac35d740a2dd4b8c53ea83c948a3163a400",
+  "approvedSourceFiles": 188,
+  "approvedPatchSha256": "446d9a44acc544b22b271caefa7cd15bd06f234f3ab818e3bb339baa0be7a775",
+  "subsequentUserRequest": "Use popup feedback for error/loading/pending states, then push and deploy",
+  "subsequentScope": "Presentation-only web changes; critical backend/shared/dependency inputs must remain unchanged. Existing financial/authentication decisions remain required.",
+  "configurationPrepared": {
+    "serviceId": "srv-daj4mrtg1s2s739dicr0",
+    "publicKeys": [
+      "GOOGLE_CLIENT_ID",
+      "WEBAUTHN_RP_ID",
+      "WEBAUTHN_RP_NAME",
+      "WEBAUTHN_ENABLED",
+      "CORS_ORIGINS"
+    ],
+    "appOrigin": "https://obligon.vercel.app",
+    "rpId": "obligon.vercel.app",
+    "saveOnly": true
+  },
+  "releaseStatus": "Awaiting popup increment freeze and verification; not pushed"
+}

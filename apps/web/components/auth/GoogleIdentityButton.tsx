@@ -1,5 +1,7 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
+
 import * as React from "react";
 import { authMethodError, loadGoogleIdentity, type GoogleChallenge } from "@/lib/auth-methods";
 
@@ -69,8 +71,8 @@ export function GoogleIdentityButton({ prepare, onCredential, disabled = false, 
   }, [disabled, error]);
 
   return <div className="min-w-0 space-y-2">
-    {loading ? <p role="status" className="text-sm text-obligon-text">Loading Google sign-in...</p> : null}
+    {loading ? <StatusPopup tone="loading" message="Loading Google sign-in…" /> : null}
     <div ref={container} inert={disabled} aria-label="Google sign-in" aria-disabled={disabled} className={`flex min-h-11 w-full min-w-0 justify-center ${disabled ? "pointer-events-none opacity-50" : ""}`} />
-    {error ? <div className="space-y-2 text-sm"><p role="alert" className="text-red-700">{error}</p><button type="button" disabled={disabled} onClick={() => setRetry(value => value + 1)} className="min-h-11 font-bold text-obligon-green underline disabled:opacity-50">Reload Google sign-in</button></div> : null}
+    {error ? <StatusPopup tone="error" message={error} action={<button type="button" disabled={disabled} onClick={() => setRetry(value => value + 1)} className="min-h-11 font-bold text-obligon-green underline disabled:opacity-50">Reload Google sign-in</button>} /> : null}
   </div>;
 }

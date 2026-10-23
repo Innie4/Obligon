@@ -1,5 +1,6 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
 import * as React from "react";
 import type { Map as LeafletMap, Marker, TileLayer } from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -247,19 +248,20 @@ export function StationLocationPicker({ value, onChange, disabled = false }: {
 
   const selected = validLocation(value) ? value : null;
   return <section className="min-w-0 space-y-3" aria-label="Station location picker">
+      {(gpsBusy) ? <StatusPopup tone="pending" message="Finding GPS location…" /> : null}
     <p className="text-xs font-semibold uppercase text-obligon-text">Exact station location</p>
     <p className="text-sm text-obligon-text">Stand at your station and use GPS, or zoom in and place the pin on its exact position. Pan the map with touch or arrow keys.</p>
     <button type="button" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-obligon-green bg-obligon-green px-4 py-2 text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-obligon-green focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" disabled={disabled || gpsBusy} aria-busy={gpsBusy} onClick={locate}>
       {gpsBusy ? "Finding GPS location…" : "Use my GPS location"}
     </button>
-    {gpsError && <p role="alert" className="text-sm font-semibold text-red-700">{gpsError}</p>}
+    {gpsError && <StatusPopup tone="error" message={gpsError} />}
     <div className="relative isolate z-0 overflow-hidden rounded-xl border border-obligon-border">
       <div ref={container} tabIndex={0} role="region" aria-label="Adjustable station map" onKeyDown={handleMapKeyDown} className="h-[320px] w-full bg-obligon-mist focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-obligon-green" />
-      {!mapReady && !mapError && <p role="status" className="p-3 text-sm text-obligon-text">Loading station map…</p>}
-      {mapReady && !tilesLoaded && !tileError && <p role="status" className="p-3 text-sm text-obligon-text">Loading map tiles before pin placement…</p>}
+      {!mapReady && !mapError && <StatusPopup tone="loading" message="Loading station map…" />}
+      {mapReady && !tilesLoaded && !tileError && <StatusPopup tone="loading" message="Loading map tiles before pin placement…" />}
     </div>
-    {mapError && <div role="alert" className="space-y-2 text-sm text-red-700"><p>{mapError}</p><button type="button" className={buttonClass} disabled={disabled} onClick={() => setMapAttempt((attempt) => attempt + 1)}>Retry map</button></div>}
-    {tileError && <div role="alert" className="space-y-2 text-sm text-red-700"><p>Map tiles could not load. GPS still works; retry the map before placing a pin manually.</p><button type="button" className={buttonClass} disabled={disabled} onClick={() => { tileFailed.current = false; tilesReady.current = false; setTileError(false); setTilesLoaded(false); tiles.current?.redraw(); }}>Retry map tiles</button></div>}
+    {mapError && <StatusPopup tone="error" message={mapError} action={<button type="button" className={buttonClass} disabled={disabled} onClick={() => setMapAttempt((attempt) => attempt + 1)}>Retry map</button>} />}
+    {tileError && <StatusPopup tone="error" message={"Map tiles could not load. GPS still works; retry the map before placing a pin manually."} action={<button type="button" className={buttonClass} disabled={disabled} onClick={() => { tileFailed.current = false; tilesReady.current = false; setTileError(false); setTilesLoaded(false); tiles.current?.redraw(); }}>Retry map tiles</button>} />}
     <div className="flex flex-wrap gap-2">
       <button type="button" className={buttonClass} disabled={disabled || !mapReady || zoom >= 19} onClick={() => map.current?.zoomIn(1, { animate: false })}>Zoom in</button>
       <button type="button" className={buttonClass} disabled={disabled || !mapReady || zoom <= 3} onClick={() => map.current?.zoomOut(1, { animate: false })}>Zoom out</button>
@@ -270,7 +272,7 @@ export function StationLocationPicker({ value, onChange, disabled = false }: {
       {Number.isFinite(selected.accuracyMeters) && selected.accuracyMeters! >= 0 && <p>Approximate GPS accuracy: ±{Math.ceil(selected.accuracyMeters!)} metres. Adjust the pin if needed.</p>}
       <p className="mt-1">Save Profile to apply this location. Changes require admin approval.</p></div>
       : <p className="text-sm font-semibold text-obligon-text">No station position selected yet.</p>}
-    {notice && <p role="status" className="text-sm font-semibold text-obligon-green">{notice}</p>}
+    {notice && <StatusPopup tone="info" message={notice} />}
     <a className="inline-flex min-h-11 items-center text-sm font-semibold text-obligon-green underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-obligon-green focus-visible:ring-offset-2" href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noreferrer">Report a map issue</a>
   </section>;
 }

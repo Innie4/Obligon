@@ -1,0 +1,73 @@
+{
+  "date": "2026-10-23",
+  "sourceBaseRevision": "a27caac",
+  "sourceState": "integrated uncommitted payments and partner-access patch",
+  "nodeVersion": "24.21.0",
+  "nextVersion": "15.5.28",
+  "environment": "sanitized explicit local environment; no real environment file",
+  "api": "http://127.0.0.1:4419",
+  "web": "http://127.0.0.1:4310",
+  "build": {
+    "command": "node node_modules/next/dist/bin/next build",
+    "exitCode": 0,
+    "compiledSeconds": 7.5,
+    "generatedStaticPages": 78,
+    "log": "frontend-gas-responsive-build.log",
+    "warningsRemain": true
+  },
+  "webTests": {
+    "command": "node --test --experimental-test-isolation=none apps/web/tests/*.test.cjs",
+    "exitCode": 0,
+    "tests": 485,
+    "pass": 485,
+    "fail": 0,
+    "skipped": 0,
+    "log": "frontend-final-patched-web.log",
+    "phase": "after patched Next.js update; before the subsequent CSS-only price-suffix correction"
+  },
+  "focusedFollowUpTests": {
+    "command": "node --test --experimental-test-isolation=none apps/web/tests/partner-subtype-workshop.test.cjs",
+    "exitCode": 0,
+    "tests": 13,
+    "pass": 13,
+    "fail": 0,
+    "skipped": 0,
+    "log": "frontend-gas-responsive-tests.log",
+    "phase": "after the CSS-only price-suffix and mobile grid corrections"
+  },
+  "typescript": {
+    "command": "./apps/web/node_modules/.bin/tsc --project apps/web/tsconfig.json --noEmit --incremental false",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "log": "frontend-gas-responsive-typescript.log"
+  },
+  "htmlRouteChecks": {
+    "count": 7,
+    "allStatus200": true,
+    "receipt": "frontend-production-local-routes.json"
+  },
+  "browserAcceptanceOwner": "root agent using its distinct working CUA in-app browser",
+  "hostedReleaseVerifiedByTheseChecks": false,
+  "productionWrites": false,
+  "externalProviderDispatches": false,
+  "visualFollowUp": "Root screenshots exposed a wrapped standard cubic meter suffix and a mobile implicit grid track wider than the viewport. DashboardScreen now allows price inputs and product selects to shrink, keeps the suffix on one line, and explicitly constrains the mobile pricing grid and its cards. Root completed actual CUA width assertions and screenshots; the frontend agent also viewed the final 320px screenshot.",
+  "rootBrowserChecks": {
+    "pricingWidths": [
+      {"viewport": 320, "document": 305, "body": 305, "client": 305},
+      {"viewport": 390, "document": 375, "body": 375, "client": 375},
+      {"viewport": 1440, "document": 1425, "body": 1425, "client": 1425}
+    ],
+    "consoleErrors": 0,
+    "workshopOwnerAndViewer": "passed",
+    "gasProfileAndPos": "passed",
+    "adminAndCompany": "passed",
+    "pricingScreenshots": ["gas-pricing-320.jpg", "gas-pricing-mobile.jpg", "gas-pricing-desktop.jpg"]
+  },
+  "fixtureCleanup": {
+    "taskWebAndApiStopped": true,
+    "disposableSchemaRemaining": 0,
+    "finalProductionBuildPreserved": true,
+    "customDevOutputRemaining": false
+  },
+  "testSetupIncident": "Programmatic dev configuration did not isolate .next and collided with an overlapping build. Dev was stopped. The successful final build was rerun alone, and normal next start now serves its production output. No application source edit was needed."
+}

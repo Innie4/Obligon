@@ -1,4 +1,5 @@
 "use client";
+import { StatusPopup } from "@/components/shared/StatusPopup";
 import * as React from "react";
 import { authenticatedRequest } from "@/lib/services";
 type Key = {
@@ -37,6 +38,7 @@ export function PartnerApiKeys() {
   }, [load]);
   return (
     <section className="mt-6 min-w-0 rounded-2xl border border-obligon-border bg-white p-5 sm:p-6">
+      {(busy) ? <StatusPopup tone="pending" message="Processing API access request…" /> : null}
       <h2 className="font-display text-xl font-bold tracking-tight text-obligon-navy">Read-only API access</h2>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-obligon-text">
         Owners and admins on a plan with API access can create up to five keys.
@@ -44,12 +46,10 @@ export function PartnerApiKeys() {
         creator loses access.
       </p>
       {error && (
-        <p role="alert" className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">
-          {error}
-        </p>
+        <StatusPopup tone="error" message={error} />
       )}
-      {loading ? <p role="status" className="mt-4 rounded-xl bg-obligon-mist/60 p-4 text-sm text-obligon-text">Loading API access…</p> : null}
-      {loadError ? <div role="alert" className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900"><p>{loadError}</p><button type="button" disabled={loading} onClick={() => void load()} className="mt-2 min-h-11 rounded-lg px-2 font-semibold underline disabled:opacity-60">Retry loading API access</button></div> : null}
+      {loading ? <StatusPopup tone="loading" message="Loading API access…" /> : null}
+      {loadError ? <StatusPopup tone="error" message={loadError} action={<button type="button" disabled={loading} onClick={() => void load()} className="mt-2 min-h-11 rounded-lg px-2 font-semibold underline disabled:opacity-60">Retry loading API access</button>} /> : null}
       {available && !loadError ? (
         <form
           className="mt-4 space-y-3"

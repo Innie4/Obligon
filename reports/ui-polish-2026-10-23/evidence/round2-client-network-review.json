@@ -1,0 +1,28 @@
+{
+  "task": "Independent review of client network TypeError feedback",
+  "reviewedAt": "2026-10-23T19:21:14.474828+00:00",
+  "findings": [],
+  "line": "apps/web/lib/services/client.ts:364",
+  "assessment": [
+    "Converts an un-aborted fetch TypeError into an actionable ApiError with status0",
+    "Existing timeout and caller cancellation branches remain distinct",
+    "Makes no retry, token mutation or provider-success assertion",
+    "http only enters refresh/retry after an actual401 response; this thrown status0 error exits before that branch"
+  ],
+  "freshTests": {
+    "tests": 10,
+    "pass": 10,
+    "fail": 0,
+    "log": "round2-network-review.log",
+    "includes": [
+      "GET network failure fetches once and retains same tokens",
+      "POST network failure fetches once and retains same tokens",
+      "caller cancellation",
+      "timeout and cold API write remains single request"
+    ]
+  },
+  "sourceSHA256": {
+    "apps/web/lib/services/client.ts": "0ac5da4c5a9053c56048542c81738a39607f4186db85b40506574ecf1720641f",
+    "apps/web/tests/transport-regression.test.cjs": "19e28f7acefb090cef8c5a3fcfba34b84af0a23c66bea63b14137d35166718b0"
+  }
+}

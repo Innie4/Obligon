@@ -1,0 +1,144 @@
+{
+  "company": [
+    {
+      "route": "/company",
+      "component": "Overview",
+      "coverage": "Metric hierarchy; responsive recent transactions; export action",
+      "states": "Existing populated/loading/error/empty and relevant dialog/disabled states; root browser confirmation pending"
+    },
+    {
+      "route": "/company/vehicles",
+      "component": "Vehicles",
+      "coverage": "Search; pagination; Add/Edit/Driver/Assignment/Export actions; responsive vehicle records",
+      "states": "Existing populated/loading/error/empty and relevant dialog/disabled states; root browser confirmation pending"
+    },
+    {
+      "route": "/company/cards",
+      "component": "Cards",
+      "coverage": "Search; pagination; card actions; responsive card records; issuer-unavailable dialog state",
+      "states": "Existing populated/loading/error/empty and relevant dialog/disabled states; root browser confirmation pending"
+    },
+    {
+      "route": "/company/transactions",
+      "component": "Transactions",
+      "coverage": "Existing URL/manual search and filters; modern date field preserved; responsive transaction records",
+      "states": "Existing populated/loading/error/empty and relevant dialog/disabled states; root browser confirmation pending"
+    },
+    {
+      "route": "/company/reports",
+      "component": "Reports",
+      "coverage": "Metrics; responsive spend rows; station usage list; export action",
+      "states": "Existing populated/loading/error/empty and relevant dialog/disabled states; root browser confirmation pending"
+    },
+    {
+      "route": "/company/stations",
+      "component": "Stations",
+      "coverage": "Search, fuel price cards, directions; server station query preserved",
+      "states": "Existing populated/loading/error/empty and relevant dialog/disabled states; root browser confirmation pending"
+    },
+    {
+      "route": "/company/roadside",
+      "component": "Roadside",
+      "coverage": "Active request cards, pending/cancelling state, responsive request history",
+      "states": "Existing populated/loading/error/empty and relevant dialog/disabled states; root browser confirmation pending"
+    },
+    {
+      "route": "/company/billing",
+      "component": "Billing",
+      "coverage": "Wallet panel, pending confirmation, funding/allocation dialogs, contract details, responsive invoices",
+      "states": "Existing populated/loading/error/empty and relevant dialog/disabled states; root browser confirmation pending"
+    },
+    {
+      "route": "/company/team",
+      "component": "Team",
+      "coverage": "Search and responsive member records; invitation dialog",
+      "states": "Existing populated/loading/error/empty and relevant dialog/disabled states; root browser confirmation pending"
+    },
+    {
+      "route": "/company/notifications",
+      "component": "Notifications",
+      "coverage": "Read/unread states retain text contrast; mark-all busy state; empty/error state",
+      "states": "Existing populated/loading/error/empty and relevant dialog/disabled states; root browser confirmation pending"
+    },
+    {
+      "route": "/company/support",
+      "component": "Support",
+      "coverage": "FAQ and responsive ticket records; conversation dialog and reply state",
+      "states": "Existing populated/loading/error/empty and relevant dialog/disabled states; root browser confirmation pending"
+    },
+    {
+      "route": "/company/settings",
+      "component": "Settings",
+      "coverage": "Profile form, saving state, account status, safe narrow grid tracks",
+      "states": "Existing populated/loading/error/empty and relevant dialog/disabled states; root browser confirmation pending"
+    },
+    {
+      "route": "/company/maintenance",
+      "component": "Maintenance",
+      "coverage": "Metrics and responsive schedule rows; existing calendar, scheduling and status dialogs",
+      "states": "Existing populated/loading/error/empty and relevant dialog/disabled states; root browser confirmation pending"
+    }
+  ],
+  "admin": [
+    {
+      "route": "/admin",
+      "component": "AdminScreen companies",
+      "coverage": "Metrics, search, responsive records, creation/review form, customer card approvals and issuer recovery states",
+      "states": "Existing state paths preserved; root browser confirmation pending"
+    },
+    {
+      "route": "/admin/companies",
+      "component": "Redirect to /admin",
+      "coverage": "Alias unchanged; canonical record search destination is /admin",
+      "states": "Existing state paths preserved; root browser confirmation pending"
+    },
+    {
+      "route": "/admin/partner-applications",
+      "component": "AdminScreen applications",
+      "coverage": "Metrics, search, responsive records, inline review decision form",
+      "states": "Existing state paths preserved; root browser confirmation pending"
+    },
+    {
+      "route": "/admin/reports",
+      "component": "AdminScreen reports",
+      "coverage": "Metrics, range selection, responsive report records, PDF busy/error state",
+      "states": "Existing state paths preserved; root browser confirmation pending"
+    },
+    {
+      "route": "/admin/disputes",
+      "component": "AdminScreen disputes",
+      "coverage": "Metrics, search, responsive records, inline dispute review form",
+      "states": "Existing state paths preserved; root browser confirmation pending"
+    },
+    {
+      "route": "/admin/staff",
+      "component": "AdminScreen staff",
+      "coverage": "Metrics, search, responsive records, creation/review form",
+      "states": "Existing state paths preserved; root browser confirmation pending"
+    },
+    {
+      "route": "/admin/discount-approvals",
+      "component": "DiscountApprovals",
+      "coverage": "Pending/approved/rejected/empty/loading/error states; consistent reason field and44px controls",
+      "states": "Existing state paths preserved; root browser confirmation pending"
+    },
+    {
+      "route": "/admin/intake",
+      "component": "IntakeConsole",
+      "coverage": "Review queue tabs, list/detail layout, metadata expansion, approval forms, loading/error/empty and pagination",
+      "states": "Existing state paths preserved; root browser confirmation pending"
+    },
+    {
+      "route": "/admin/operations",
+      "component": "OperationsInbox + RecoveryReview",
+      "coverage": "Support, attachments, replies, paid/settlement exceptions, bank verification, interrupted issuance, refunds and reconciliation states",
+      "states": "Existing state paths preserved; root browser confirmation pending"
+    },
+    {
+      "route": "/admin/login",
+      "component": "Auth page owned by root",
+      "coverage": "No changes by this agent; root shared auth polish and browser coverage required",
+      "states": "Existing state paths preserved; root browser confirmation pending"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-23",
+  "files": {
+    "apps/web/components/customer-dashboard/CardRequestModals.tsx": "7d0800fef7bb735658c6e3cbc13786d6f14832fd67a498de6ef0d05b7647a8ca",
+    "apps/web/components/customer-dashboard/CustomerFuelCheckout.tsx": "189120542a522e4ebe9bb2b84c0fdedd3ea7fe4e8f898b35ea3de0846febd35e",
+    "apps/web/components/customer-dashboard/CustomerModals.tsx": "05ca421041145dbade1ee28d26c2ac5679cd7a49f6acfb928cf5747963fdf424",
+    "apps/web/components/customer-dashboard/CustomerScreen.tsx": "ecc70f463777d3474c185d014c7cb3232d2d97463fe2425e82d432e1c00272e8",
+    "apps/web/components/customer-dashboard/CustomerShell.tsx": "a89cb046aba9f37006ce1e46e074feb0cbdaa88abd27dbde716420fc09e5700f",
+    "apps/web/components/dashboard/DashboardScreen.tsx": "7d9255f5a8e0d1c089eb577756845a40ce65517ac41428e4f68e90c015cf1fdc",
+    "apps/web/components/dashboard/PartnerApiKeys.tsx": "a76e47d8d3fa69f613cac1510929ab9a9e045b9b87f501fd9b675c42df08d26f",
+    "apps/web/components/dashboard/PartnerServiceRequests.tsx": "ffbaf7af9af58d2920b7e3de067f913151ab4a33bfe71efcfe1a5aab0a74c586",
+    "apps/web/components/dashboard/PartnerSubscriptionGate.tsx": "ed1a396249ccbddf575f8ea869eba14869aa810e3a346309c13026d0f1c84dcc",
+    "apps/web/components/dashboard/PartnerVerification.tsx": "a4a7b09b2cf66b928b035c8fa94dd74dbc4afaa0b525fbf918a97343a37ea532",
+    "apps/web/components/dashboard/StationDiscounts.tsx": "ce450f9b45a7baa4000020e57ee00097a23102434a3c45a53b6195b28ed711c8",
+    "apps/web/components/dashboard/StationLocationPicker.tsx": "5189db337c7a0dfd25928945ff5db88193751c44f89b16377d8773b00125e6de",
+    "apps/web/components/dashboard/StationProfileFields.tsx": "65521c321f934f41bbdfa07066294e19c384498d671960666057ad2a353405fe",
+    "apps/web/components/dashboard/StationProfileForm.tsx": "7110f90eece8b2c3b2f81eb99289ea149735a776d68c6aa0aa15641a0c254c73",
+    "apps/web/components/dashboard/WorkshopDashboard.tsx": "f2ba59177d17865a0a7440c8cd76f51a8d0caf487eb7565a12314536983047c7",
+    "apps/web/tests/customer-audit.test.cjs": "efe9f48c68be81a5fe5759c13adc57b35c7122cebfeb3df7aae44a71fac7f7ff",
+    "apps/web/tests/ui-dashboard-polish.test.cjs": "44501120dcac29d1582005efe3cb0cad0f982bac554eb536f82427529045dc7b"
+  },
+  "scope": "customer-partner UI increment",
+  "aggregateSha256": "a88aa7066ca7bb8cf8bbd0860d07d004fc600722da1a9354d9a97b1c6957a4d0"
+}

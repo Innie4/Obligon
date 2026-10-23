@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-23",
+  "sourceManifest": "customer-partner-source.json",
+  "checks": [
+    {
+      "command": "node tests/ui-dashboard-polish.test.cjs",
+      "cwd": "apps/web",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0
+    },
+    {
+      "command": "node tests/customer-audit.test.cjs",
+      "cwd": "apps/web",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0
+    },
+    {
+      "command": "node tests/dashboard-search-ui.test.cjs",
+      "cwd": "apps/web",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0
+    },
+    {
+      "command": "node --test tests/customer-my-card.test.cjs tests/production-customer-controls.test.cjs tests/customer-audit.test.cjs tests/dashboard-search-ui.test.cjs tests/partner-subtype-workshop.test.cjs tests/partner-audit-regression.test.cjs tests/station-profile-form.test.cjs",
+      "cwd": "apps/web",
+      "passedFiles": 7,
+      "failedFiles": 0,
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm exec tsc --noEmit --incremental false",
+      "cwd": "apps/web",
+      "exitCode": 0
+    }
+  ],
+  "independentReview": {
+    "agent": "support_state_review23",
+    "confirmedFindings": 1,
+    "addressedFindings": 1,
+    "details": "Removed comparison with impossible idle status, then fresh tsc passed. No other concrete bounded findings."
+  },
+  "notVerifiedHere": [
+    "Root production build",
+    "Desktop/mobile browser render",
+    "Hosted deployment",
+    "Provider delivery or real-fund effects"
+  ]
+}

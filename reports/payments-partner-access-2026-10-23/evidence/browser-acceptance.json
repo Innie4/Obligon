@@ -1,0 +1,33 @@
+{
+  "browser": "Codex in-app browser",
+  "environment": "Isolated local API and patched production web build; synthetic accounts; providers disabled",
+  "chrome": "Blocked by request-header policy",
+  "financialSubmissions": 0,
+  "pricingWidths": {
+    "320": {
+      "body": 305,
+      "document": 305,
+      "viewport": 305
+    },
+    "390": {
+      "body": 375,
+      "document": 375,
+      "viewport": 375
+    },
+    "1440": {
+      "body": 1425,
+      "document": 1425,
+      "viewport": 1425
+    }
+  },
+  "scenarios": [
+    "Workshop owner desktop and mobile profile",
+    "Workshop mobile Account options and fuel route redirect",
+    "Workshop viewer fields disabled",
+    "Gas requested and approved units",
+    "Gas-only pricing and POS",
+    "Admin recovery form and unit approval fields",
+    "Company locator approved gas prices"
+  ],
+  "consoleErrors": []
+}

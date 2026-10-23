@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-23",
+  "baseRevision": "a27caac",
+  "environment": "local acceptance attempt",
+  "tool": "Chrome through CUA",
+  "status": "blocked",
+  "error": "Unable to load browser request-header policy. Retry the browser command.",
+  "attempts": [
+    {"operation": "inventory", "result": "both Chrome profiles failed policy loading"},
+    {"operation": "name local acceptance session", "result": "same policy failure"},
+    {"operation": "create local browser tab", "target": "http://127.0.0.1:4310", "result": "same policy failure"}
+  ],
+  "applicationTabReached": false,
+  "desktopVisualAcceptance": false,
+  "mobile390VisualAcceptance": false,
+  "screenshotsCreated": 0,
+  "viewportChanged": false,
+  "productionWrites": false,
+  "paymentOrOtpProviderSends": false
+}

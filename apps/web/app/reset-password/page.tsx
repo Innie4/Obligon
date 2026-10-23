@@ -1,9 +1,11 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
-import { ArrowLeft, KeyRound, Loader2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, KeyRound, Loader2, CheckCircle2 } from "lucide-react";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { routes } from "@/components/site/routes";
 import { useToast } from "@/components/shared/Toast";
@@ -15,7 +17,7 @@ import { authApi } from "@/lib/services";
  */
 export default function ResetPasswordPage() {
   const router = useRouter();
-  const { success: toastSuccess, error: toastError } = useToast();
+  const { success: toastSuccess } = useToast();
 
   const [email, setEmail] = React.useState("");
   const [code, setCode] = React.useState("");
@@ -57,7 +59,6 @@ export default function ResetPasswordPage() {
       setSubmitting(false);
       const message = err instanceof Error ? err.message : "Could not reset the password. Please try again.";
       setError(message);
-      toastError(message);
     }
   }
 
@@ -186,12 +187,8 @@ export default function ResetPasswordPage() {
               Show passwords
             </label>
 
-            {error ? (
-              <div className="rounded-lg bg-[#fff0f0] border border-[#fecaca] p-3 text-sm text-[#93000a] flex items-start gap-2" role="alert">
-                <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
-                <span>{error}</span>
-              </div>
-            ) : null}
+            {error ? <StatusPopup tone="error" message={error} /> : null}
+          {submitting ? <StatusPopup tone="pending" message="Updating your password…" /> : null}
 
             <button
               type="submit"

@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-23",
+  "files": {
+    "apps/web/components/customer-dashboard/CustomerScreen.tsx": "e49b3db62f82d4802abd61a7c0b5f16dfeaafb09c412911bf938c2df36882075",
+    "apps/web/components/dashboard/DashboardScreen.tsx": "b12a189903b92e62068b3adc84b2b558c711d1df1c142413369edf717fc0ed08",
+    "apps/web/components/dashboard/PartnerVerification.tsx": "dfb68b740a717697616361e5825c524c1d8b3f7afede797dd6dd3879f3051144",
+    "apps/web/components/shared/StationMap.tsx": "b9942979163d60449bd245e369fc1414912f11d8b85a0cd73633d75e34c4c42d",
+    "apps/web/tests/partner-audit-regression.test.cjs": "69d84fb2e134906c02dd5f7392fe0a63167028cc82f811aacf456edebd07e6ad",
+    "apps/web/tests/partner-verification.test.cjs": "dd7c7d70b28b5fe9157ea73f48aea81548523e1553a6c15d0b6029c85e4915fa",
+    "apps/web/tests/station-map-states.test.cjs": "c0f22adb6b5224af26ea6ba87a47c42ba46d0b66a2f8545a46913c72cc24c2c1",
+    "apps/web/tests/ui-dashboard-polish.test.cjs": "740b4bede6761c9bc6aa8898e81737e1f19aadaecfaa51df05529c1333fee63b"
+  },
+  "aggregateSha256": "0a09687e4ed6b75fc8ac3521bc845b79419260263c1506104e2babdf14f2b613",
+  "aggregateFormat": "SHA256 of UTF-8 Python json.dumps(files, sort_keys=True) using default separators",
+  "followup": "Other partner verification uses partner; fuel and gas remain station; mechanic remains workshop. Only PartnerVerification.tsx and its focused test changed after original round3 freeze."
+}

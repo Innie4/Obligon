@@ -1,0 +1,26 @@
+{
+  "reviewed_at": "2026-10-23T17:02:19.145766+00:00",
+  "scope": "Only AuthShell grid minimum sizing and LoginForm min-width correction; no auth logic review expansion or repeated test runs",
+  "prior_auth_review": "/tmp/obligon-frontend-auth-independent-review23.json",
+  "findings": [],
+  "assessment": "The explicit mobile minmax(0,1fr) track, zero-minimum desktop content track and min-w-0 grid/form items allow the existing responsive Google host to shrink to its container instead of setting an intrinsic minimum width. Desktop aside remains426px, form max480px and compact path unchanged. No blocking code issue found in this bounded change.",
+  "login_form_matches_prior_review_after_reverting_only_min_w_0": true,
+  "frontend_reported_checks": {
+    "targetedTests": 66,
+    "passed": 66,
+    "failed": 0,
+    "typescriptExit": 0
+  },
+  "reported_check_inputs_match_current": {
+    "apps/web/components/auth/AuthShell.tsx": true,
+    "apps/web/components/auth/AuthForms.tsx": true,
+    "apps/web/tests/auth-method-ui.test.cjs": true
+  },
+  "tests_rerun_by_reviewer": false,
+  "browser_after": "Root owns production rebuild and actual Chrome390/320 retest; no claim of browser acceptance from source review",
+  "source_sha256": {
+    "apps/web/components/auth/AuthShell.tsx": "612951908d52fe17d2a45768757e20cce59be844b8c9e707d97a9af93f6a2652",
+    "apps/web/components/auth/AuthForms.tsx": "8de9e0d4562f6319be1e11b4e85f969503e980de614052a910face5ef51a9b42",
+    "apps/web/tests/auth-method-ui.test.cjs": "7c9c3a9b2419f5014ee85c6c7a9ec28797502a3bb923f394d65b8a92ff828742"
+  }
+}

@@ -11,7 +11,7 @@ function load(file, react = React) {
   const code = ts.transpileModule(fs.readFileSync(require.resolve(file), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
   }).outputText;
-  vm.runInNewContext(code, { exports, require: name => name === 'react' ? react : require(name) });
+  vm.runInNewContext(code, { exports, require: name => name === 'react' ? react : name === './StatusPopup' ? load('../components/shared/StatusPopup.tsx', react) : require(name) });
   return exports;
 }
 const { AsyncBoundary } = load('../components/shared/States.tsx');

@@ -1,0 +1,23 @@
+{
+  "task": "Browser-found mobile login overflow correction",
+  "verifiedAt": "2026-10-23T16:58:31.853438+00:00",
+  "browserEvidenceFromRoot": {
+    "viewportWidth": 390,
+    "scrollWidthBefore": 489,
+    "screenshot": "/tmp/obligon-auth-login390-initial23.jpg"
+  },
+  "change": "Give mobile and desktop content grid tracks zero minimum width, allow content pane and login form to shrink so Google widget ResizeObserver can size to available width. Desktop aside remains 426px.",
+  "checks": {
+    "targetedTests": 66,
+    "passed": 66,
+    "failed": 0,
+    "typescriptExit": 0
+  },
+  "browserAfter": "Root to verify after production rebuild at 390px and 320px.",
+  "fullSuiteContext": "512/512 passed before this bounded CSS layout correction. The affected auth/customer suites were rerun after it.",
+  "sourceSHA256": {
+    "apps/web/components/auth/AuthShell.tsx": "612951908d52fe17d2a45768757e20cce59be844b8c9e707d97a9af93f6a2652",
+    "apps/web/components/auth/AuthForms.tsx": "8de9e0d4562f6319be1e11b4e85f969503e980de614052a910face5ef51a9b42",
+    "apps/web/tests/auth-method-ui.test.cjs": "7c9c3a9b2419f5014ee85c6c7a9ec28797502a3bb923f394d65b8a92ff828742"
+  }
+}

@@ -1,4 +1,5 @@
 "use client";
+import { StatusPopup } from "@/components/shared/StatusPopup";
 import * as React from "react";
 import { Check, Loader2, X } from "lucide-react";
 import type { CompanyModalKey } from "@/lib/mock/company-data";
@@ -237,6 +238,7 @@ const field = (label: string, key: keyof typeof form, type = "text", required = 
     if (event.target === event.currentTarget && !submitting)
       onClose();
   }}>
+      {(submitting) ? <StatusPopup tone="pending" message="Processing company request…" /> : null}
 
 
     <section ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="company-dialog-title" className="max-h-[92dvh] w-full min-w-0 max-w-[620px] overflow-y-auto rounded-2xl border border-obligon-border bg-white shadow-lg outline-none">
@@ -269,12 +271,12 @@ const field = (label: string, key: keyof typeof form, type = "text", required = 
         <form onSubmit={submit} className="space-y-4 p-5 sm:p-7">
 
 
-          {loadingChoices ? <p role="status" className="text-sm">Loading fleet choices…</p> : null}
+          {loadingChoices ? <StatusPopup tone="loading" message="Loading fleet choices…" /> : null}
 
 
-          {choicesError ? <p role="alert" className="text-sm text-red-700">{choicesError} Close and reopen to retry.</p> : null}
-          {modal === "assign" && selectedCard && assignmentUnavailable ? <p role="alert" className="text-sm text-red-700">Card assignment details are unavailable. Reopen this form before saving.</p> : null}
-          {vehicleDetailsUnavailable ? <p role="alert" className="text-sm text-red-700">Vehicle details are unavailable. Refresh the fleet page before editing.</p> : null}
+          {choicesError ? <StatusPopup tone="error" message={[choicesError, "Close and reopen to retry."].join(" ").trim()} /> : null}
+          {modal === "assign" && selectedCard && assignmentUnavailable ? <StatusPopup tone="error" message={"Card assignment details are unavailable. Reopen this form before saving."} /> : null}
+          {vehicleDetailsUnavailable ? <StatusPopup tone="error" message={"Vehicle details are unavailable. Refresh the fleet page before editing."} /> : null}
           {issuerUnavailable && !loadingChoices && !choicesError ? <p role="status" className="text-sm text-obligon-text">Card issuing is currently unavailable. Contact Support to confirm when issuer setup is complete. Identity details are only requested when card issuing is available.</p> : null}
 
 
@@ -539,14 +541,15 @@ function CompanyWalletFund({ onClose }: Props) {
     } finally { if (!redirecting) { submitting.current = false; setBusy(false); } }
   }
   return <CompanyOperationDialog title="Fund company wallet" busy={busy} onClose={onClose}>
+      {(busy) ? <StatusPopup tone="pending" message="Preparing company wallet payment…" /> : null}
     <p className="text-sm text-obligon-text">Fuel cards spend from this company wallet. Checkout is pending until the payment provider confirms it.</p>
-    {settingsError ? <p role="alert" className="text-sm text-red-700">{settingsError} <button type="button" className="min-h-11 underline" onClick={() => setAttempt(value => value + 1)}>Retry payment settings</button></p> : !config ? <p role="status">Loading payment settings…</p> : null}
+    {settingsError ? <StatusPopup tone="error" message={settingsError} action={<button type="button" className="min-h-11 underline" onClick={() => setAttempt(value => value + 1)}>Retry payment settings</button>} /> : !config ? <StatusPopup tone="loading" message="Loading payment settings…" /> : null}
     <form onSubmit={submit} className="space-y-4">
       <Field label="Amount to credit (₦, whole naira)"><input type="text" inputMode="decimal" required disabled={busy} value={amount} onChange={event => setAmount(event.target.value)} className={inputClass} /></Field>
       <Field label="Payment method"><select value={method} onChange={event => setMethod(event.target.value)} disabled={busy} className={inputClass}><option>Card / Bank</option><option>Direct Bank Transfer</option><option>USSD</option></select></Field>
       {validation ? <p role="alert" className="text-sm text-red-700">{validation}</p> : null}
       {quote ? <dl className="space-y-2 rounded-xl bg-[#f2f6fa] p-4 text-sm"><div className="flex justify-between gap-3"><dt>Company wallet credit</dt><dd>{fundingMoney(quote.baseKobo)}</dd></div><div className="flex justify-between gap-3"><dt>Fee {quote.bearer === "platform" ? "paid by Obligon" : "including whole-naira rounding"}</dt><dd>{fundingMoney(quote.feeKobo)}</dd></div><div className="flex justify-between gap-3 font-bold"><dt>Total payment</dt><dd>{fundingMoney(quote.totalKobo)}</dd></div></dl> : null}
-      {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
+      {error ? <StatusPopup tone="error" message={error} /> : null}
       <button type="submit" disabled={busy || !quote || !user} className={operationButton}>{busy ? "Opening payment…" : `Continue to payment${quote ? ` · ${fundingMoney(quote.totalKobo)}` : ""}`}</button>
     </form>
   </CompanyOperationDialog>;
@@ -590,16 +593,17 @@ function CompanyWalletAllocate({ onClose, onSaved }: Props) {
     } finally { submitting.current = false; setBusy(false); }
   }
   return <CompanyOperationDialog title="Allocate to a member wallet" busy={busy} onClose={onClose}>
+      {(busy) ? <StatusPopup tone="pending" message="Submitting wallet allocation…" /> : null}
     {completed ? <><p role="status">{completed}</p><button type="button" className={operationButton} onClick={onClose}>Done</button></> : <>
       <p className="text-sm text-obligon-text">This transfers company funds to an active member’s personal wallet. Fleet cards continue to use the company wallet.</p>
-      {loadError ? <p role="alert" className="text-sm text-red-700">{loadError} <button type="button" className="min-h-11 underline" onClick={() => setAttempt(value => value + 1)}>Retry members</button></p> : !wallet ? <p role="status">Loading wallet and members…</p> : <p className="text-sm">Company balance: {wallet.company.balanceLabel}</p>}
-      {pending ? <p role="status" className="text-sm">An allocation is awaiting confirmation. Retry preserves the same member, amount, and request key.</p> : null}
+      {loadError ? <StatusPopup tone="error" message={loadError} action={<button type="button" className="min-h-11 underline" onClick={() => setAttempt(value => value + 1)}>Retry members</button>} /> : !wallet ? <StatusPopup tone="loading" message="Loading wallet and members…" /> : <p className="text-sm">Company balance: {wallet.company.balanceLabel}</p>}
+      {pending ? <StatusPopup tone="pending" message="An allocation is awaiting confirmation. Retry preserves the same member, amount, and request key." /> : null}
       <form onSubmit={submit} className="space-y-4">
         <Field label="Member"><select required disabled={busy || Boolean(pending)} className={inputClass} value={member} onChange={event => setMember(event.target.value)}><option value="">Choose an active member</option>{wallet?.members.map(value => <option key={value.userId} value={value.userId}>{value.name} · {value.email}</option>)}</select></Field>
         <Field label="Amount (₦, whole naira)"><input required disabled={busy || Boolean(pending)} type="text" inputMode="decimal" value={amount} onChange={event => setAmount(event.target.value)} className={inputClass} /></Field>
         <Field label="Note (optional)"><input maxLength={140} disabled={busy || Boolean(pending)} value={note} onChange={event => setNote(event.target.value)} className={inputClass} /></Field>
         {amount && !kobo ? <p role="alert" className="text-sm text-red-700">Enter whole naira up to ₦5,000,000.</p> : null}
-        {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
+        {error ? <StatusPopup tone="error" message={error} /> : null}
         <button type="submit" disabled={busy || !wallet || !kobo || !wallet.members.some(value => value.userId === member)} className={operationButton}>{busy ? "Checking allocation…" : pending ? "Retry same allocation" : "Confirm allocation"}</button>
       </form>
     </>}
@@ -630,9 +634,10 @@ function CompanyPosCode({ context = {}, onClose }: Props) {
     } catch (err) { setError(operationError(err, "Could not issue a fuel code.")); } finally { submitting.current = false; setBusy(false); }
   }
   return <CompanyOperationDialog title="Single-use fleet fuel code" busy={busy} onClose={onClose}>
+      {(busy) ? <StatusPopup tone="pending" message="Generating single-use fuel code…" /> : null}
     <p className="text-sm text-obligon-text">Share this code only with the driver or attendant for this fuel purchase. It debits the company wallet after the partner authorizes the sale and respects the card’s spend limits.</p>
-    {loading ? <p role="status">Loading active cards…</p> : null}
-    {error ? <p role="alert" className="text-sm text-red-700">{error} <button type="button" className="min-h-11 underline" onClick={() => setAttempt(value => value + 1)}>Retry card choices</button></p> : null}
+    {loading ? <StatusPopup tone="loading" message="Loading active cards…" /> : null}
+    {error ? <StatusPopup tone="error" message={error} action={<button type="button" className="min-h-11 underline" onClick={() => setAttempt(value => value + 1)}>Retry card choices</button>} /> : null}
     {result ? <div className="space-y-3 rounded-xl bg-[#f2f6fa] p-5"><p>{result.maskedPan}</p><p role="status" className="font-mono text-4xl font-bold tracking-widest">{result.code}</p><p className="text-sm">Expires: <time dateTime={result.expiresAt}>{new Date(result.expiresAt).toLocaleString("en-NG")}</time></p><p className="text-sm font-bold">Single-use. Generating another code replaces this one. A code alone does not confirm payment or fuel delivery.</p><button type="button" onClick={onClose} className={operationButton}>Done</button></div> : <form onSubmit={submit} className="space-y-4"><Field label="Active fuel card"><select required value={cardId} disabled={busy || loading} onChange={event => setCardId(event.target.value)} className={inputClass}><option value="">Choose a card</option>{cards.map(card => <option key={card.id} value={card.id}>{card.label} · {card.masked_pan}</option>)}</select></Field><button type="submit" disabled={busy || loading || !cards.some(card => card.id === cardId)} className={operationButton}>{busy ? "Issuing code…" : "Generate single-use code"}</button></form>}
   </CompanyOperationDialog>;
 }
@@ -658,9 +663,10 @@ function CompanySupportConversation({ context = {}, onClose, onSaved }: Props) {
     try { await mutationsApi.replyCompanyTicket(context.ticketId, body.trim()); setBody(""); setAttempt(value => value + 1); onSaved(); } catch (err) { setReplyError(operationError(err, "Could not send your reply.")); } finally { submitting.current = false; setBusy(false); }
   }
   return <CompanyOperationDialog title={`Support conversation${context.reference ? ` · ${context.reference}` : ""}`} busy={busy} onClose={onClose}>
-    {loading ? <p role="status">Loading conversation…</p> : null}
-    {loadError ? <p role="alert" className="text-sm text-red-700">{loadError} <button type="button" className="min-h-11 underline" onClick={() => setAttempt(value => value + 1)}>Retry conversation</button></p> : null}
-    {thread ? <><p className="text-sm">Status: <span className="font-bold">{thread.status}</span>{thread.status === "closed" ? " · A reply reopens this ticket." : ""}</p><ol className="space-y-3">{thread.messages.map(message => <li key={message.id} className="rounded-xl border border-[#dfe5ec] p-4"><p className="text-xs font-bold">{message.sender} · {message.time}</p><p className="mt-2 whitespace-pre-wrap break-words text-sm">{message.body}</p></li>)}</ol><form onSubmit={submit} className="space-y-3"><Field label="Reply"><textarea required rows={4} maxLength={5000} disabled={busy} value={body} onChange={event => setBody(event.target.value)} className={inputClass} /></Field>{replyError ? <p role="alert" className="text-sm text-red-700">{replyError}</p> : null}<button type="submit" disabled={busy || loading || Boolean(loadError) || !body.trim()} className={operationButton}>{busy ? "Sending…" : "Send reply"}</button></form></> : null}
+      {(busy) ? <StatusPopup tone="pending" message="Sending reply…" /> : null}
+    {loading ? <StatusPopup tone="loading" message="Loading conversation…" /> : null}
+    {loadError ? <StatusPopup tone="error" message={loadError} action={<button type="button" className="min-h-11 underline" onClick={() => setAttempt(value => value + 1)}>Retry conversation</button>} /> : null}
+    {thread ? <><p className="text-sm">Status: <span className="font-bold">{thread.status}</span>{thread.status === "closed" ? " · A reply reopens this ticket." : ""}</p><ol className="space-y-3">{thread.messages.map(message => <li key={message.id} className="rounded-xl border border-[#dfe5ec] p-4"><p className="text-xs font-bold">{message.sender} · {message.time}</p><p className="mt-2 whitespace-pre-wrap break-words text-sm">{message.body}</p></li>)}</ol><form onSubmit={submit} className="space-y-3"><Field label="Reply"><textarea required rows={4} maxLength={5000} disabled={busy} value={body} onChange={event => setBody(event.target.value)} className={inputClass} /></Field>{replyError ? <StatusPopup tone="error" message={replyError} /> : null}<button type="submit" disabled={busy || loading || Boolean(loadError) || !body.trim()} className={operationButton}>{busy ? "Sending…" : "Send reply"}</button></form></> : null}
   </CompanyOperationDialog>;
 }
 
@@ -674,7 +680,8 @@ function CompanyMaintenanceStatus({ context = {}, onClose, onSaved }: Props) {
     submitting.current = true; setBusy(true); setError(null);
     try { await mutationsApi.updateMaintenance(context.maintenanceId, status); onSaved(); onClose(); } catch (err) { setError(operationError(err, "Could not update this maintenance record.")); } finally { submitting.current = false; setBusy(false); }
   }
-  return <CompanyOperationDialog title="Update maintenance record" busy={busy} onClose={onClose}><p className="text-sm text-obligon-text">Record only a status confirmed with your service provider. Saving a schedule does not book or dispatch a provider automatically.</p><form onSubmit={submit} className="space-y-4"><Field label="Confirmed status"><select value={status} onChange={event => setStatus(event.target.value)} disabled={busy} className={inputClass}>{context.status === "overdue" ? <option value="overdue" disabled>Overdue (recorded)</option> : null}{["scheduled", "in_progress", "completed", "cancelled"].map(value => <option key={value} value={value}>{value.replaceAll("_", " ")}</option>)}</select></Field>{error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}<button type="submit" disabled={busy || !context.maintenanceId || !["scheduled", "in_progress", "completed", "cancelled"].includes(status)} className={operationButton}>{busy ? "Saving…" : "Save confirmed status"}</button></form></CompanyOperationDialog>;
+  return <CompanyOperationDialog title="Update maintenance record" busy={busy} onClose={onClose}>
+      {(busy) ? <StatusPopup tone="pending" message="Saving maintenance status…" /> : null}<p className="text-sm text-obligon-text">Record only a status confirmed with your service provider. Saving a schedule does not book or dispatch a provider automatically.</p><form onSubmit={submit} className="space-y-4"><Field label="Confirmed status"><select value={status} onChange={event => setStatus(event.target.value)} disabled={busy} className={inputClass}>{context.status === "overdue" ? <option value="overdue" disabled>Overdue (recorded)</option> : null}{["scheduled", "in_progress", "completed", "cancelled"].map(value => <option key={value} value={value}>{value.replaceAll("_", " ")}</option>)}</select></Field>{error ? <StatusPopup tone="error" message={error} /> : null}<button type="submit" disabled={busy || !context.maintenanceId || !["scheduled", "in_progress", "completed", "cancelled"].includes(status)} className={operationButton}>{busy ? "Saving…" : "Save confirmed status"}</button></form></CompanyOperationDialog>;
 }
 
 export function CompanyModals(props: Props) {

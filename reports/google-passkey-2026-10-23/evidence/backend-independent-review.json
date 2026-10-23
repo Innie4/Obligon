@@ -1,0 +1,65 @@
+{
+  "task": "Independent Google/passkey auth review",
+  "reviewed_at": "2026-10-23T16:38:07.403671+00:00",
+  "head": "a27caac35d740a2dd4b8c53ea83c948a3163a400",
+  "scope": "Pure Google verifier + test authenticator implementation; independent read-only backend review with isolated local proofs",
+  "findings_resolved": [
+    {
+      "finding": "Removing a linked method left previous sessions active",
+      "fix": "Backend revokes other sessions, pending MFA and authenticated enrollment/link challenges while preserving current reauthenticated session. Anonymous login challenges are excluded to preserve lock order."
+    },
+    {
+      "finding": "Challenge could expire while completion waited on user lock",
+      "red": "/tmp/obligon-auth-expiry-review23.log: status200,sessions1 after deadline",
+      "green": "/tmp/obligon-auth-expiry-review23-green.log: status401,sessions0",
+      "fix": "Final conditional consumption with expiry check throws outside caught callback and rolls back all effects."
+    },
+    {
+      "finding": "Password reauthentication could outlive session during Supabase response wait",
+      "green": "/tmp/obligon-auth-reauth-expiry-review23.log: status401,linkedIdentities1",
+      "fix": "Backend repeats currentAuthenticatedUser after password verification. The fix landed before independent proof execution; no red run claimed."
+    }
+  ],
+  "current_blocking_findings": [],
+  "checked_properties": [
+    "Cryptographic Google issuer+subject identity; no email matching or local account/contact adoption",
+    "RS256, signature, issuer, audience, mandatory expiry/nonce, authorized party, subject shape",
+    "Fixed Google JWKS URL, cached/cooldown resolution and bounded providerFetch",
+    "ES256 native registration/assertion protocol accepted by actual SimpleWebAuthn14",
+    "Single-use durable challenge locking and transaction rollback",
+    "Current password, stable Supabase subject and active-session gates",
+    "RP/origin/UP/UV/challenge/userHandle/counter verification",
+    "Method/org-bound pending MFA and revoked method rejection",
+    "User-first order for authenticated changes/MFA; anonymous challenge rows excluded from revocation updates"
+  ],
+  "test_evidence": {
+    "pure_google": {
+      "passed": 12,
+      "log": "/tmp/obligon-google-verifier23-direct.log"
+    },
+    "pure_software_passkey": {
+      "passed": 4,
+      "log": "/tmp/obligon-software-passkey23-green.log"
+    },
+    "backend_native_http": "Backend reported22/22 with genuine helper before final added regressions; root/backend own fresh final suite"
+  },
+  "not_checked": [
+    "Live Google client/account callback acceptance",
+    "Physical FaceID/fingerprint/passkey device ceremony",
+    "Hosted secrets/origin configuration or production migrations",
+    "Qualified human release review"
+  ],
+  "mutations": "Only assigned verifier/test files plus /tmp evidence; no commits, pushes, hosted account writes or production deployment",
+  "learn": "Root owns one collective feature breakdown/index entry; source/template read by this agent",
+  "sha256": {
+    "apps/api/src/routes/auth-methods.routes.js": "61c6e6a2effff3dfc1eff8acf43d919279802df1c0d1c1b45e91030bcc6759df",
+    "apps/api/src/lib/passkeys.js": "d6dacc8c076eeb2e6bf197484c3768c47916a88315a910611ab03e7fcfc73bac",
+    "apps/api/src/lib/auth-method-proof.js": "44648865d72107e1f83589875673844fa334c8819540b78b459368cc8ddad73c",
+    "apps/api/src/routes/auth.routes.js": "581161e794f7e2fc188703136ba08d09bca7e863918e8cfc4f041c0b82e1542b",
+    "apps/api/src/lib/google-identity.js": "35df37c38020493f107e268ad177b6177f314ad64f086cb0e70e07247a1a1765",
+    "apps/api/src/migrations/039_account_signin_methods.sql": "d9b52cb2d7f061b5bf2cf3fd2c417d3755e1a92cbc9479ac533755cf38d5236d",
+    "apps/api/tests/helpers/software-passkey.mjs": "6fe4213c22099c3fbcd9d702f22ff8c78f9be7ab1623f01762d8802a9914bbdb",
+    "apps/api/tests/google-identity.test.mjs": "3727bca37352a65a1fdb0f7157fcaac0c19b32b00757b70118e491addd279c40",
+    "apps/api/tests/software-passkey.test.mjs": "5546fdcb8b2794dee009364b7414a913bd3998cb92c1f48ca2fc215a807ca313"
+  }
+}

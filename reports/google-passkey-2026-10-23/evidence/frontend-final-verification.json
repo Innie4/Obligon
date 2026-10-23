@@ -1,0 +1,61 @@
+{
+  "task": "Google and passkey frontend acceptance",
+  "verifiedAt": "2026-10-23T16:54:36.626874+00:00",
+  "base": "a27caac35d740a2dd4b8c53ea83c948a3163a400",
+  "focused": {
+    "tests": 27,
+    "passed": 27,
+    "failed": 0,
+    "log": "frontend-focused-final.log"
+  },
+  "web": {
+    "tests": 512,
+    "passed": 512,
+    "failed": 0,
+    "skipped": 0,
+    "log": "frontend-web-final.log"
+  },
+  "typescript": {
+    "exit": 0,
+    "incremental": false,
+    "log": "frontend-typescript-final.log"
+  },
+  "initialFailure": {
+    "tests": 512,
+    "passed": 507,
+    "failed": 5,
+    "reason": "ProfilePage hook fixture did not provide newly used next/link and shared routes; fixture updated only.",
+    "excerpt": "frontend-initial-fixture-failure.log"
+  },
+  "independentReview": "frontend-independent-review.json",
+  "notVerifiedHere": [
+    "Production build and actual Chrome responsive acceptance are root-owned.",
+    "Real Google account callback approval and physical-device passkey creation require separate user/provider ceremony."
+  ],
+  "sourceSHA256": {
+    "apps/web/lib/auth-methods.ts": "eeb0279c1f81c7ad1421a261220215a9dd44f467790e3d787c5e385ba07337aa",
+    "apps/web/lib/services/client.ts": "bde0cde43859c4fcd5547d1d02b0efa8df885ba6086adac389c3318f1cc0ab5e",
+    "apps/web/components/shared/AuthContext.tsx": "6c3ce1b997f9edc399267c08821c1547f4f05d4fcc5f9a8ae8bbb2114be95dab",
+    "apps/web/components/auth/AdditionalSignInMethods.tsx": "d8895c9f26767c268f2bc7aa7224f6ff5e59bbd21a839f2c20f4b3fc1422a895",
+    "apps/web/components/auth/GoogleIdentityButton.tsx": "6818cc58c8655afbd1f4d1d0b48bfd3d0461b21f3b7e2a8473dd17c03ee62b57",
+    "apps/web/components/auth/SignInOptions.tsx": "6b7e4cf135f7c8ee5eb5ead6adb7957488495d5a1e266c7601c0b203f4ef304c",
+    "apps/web/components/auth/AuthForms.tsx": "ff98e2fa514e2f6b9a6b3e7b0c76b7f46e1b7c4acbcb4786a5eedd1bff538d09",
+    "apps/web/components/auth/LogoutButton.tsx": "2a911df55e6d8eafc48f1fb1321a1d4e23e229844f1b5f370abef1db4c993ee5",
+    "apps/web/components/auth/AuthGuard.tsx": "7fb0c98abee4d48cc09a8b39d062b6dcffe3b1f9ffba201808a2be931ae2823f",
+    "apps/web/components/auth/MFAUI.tsx": "f594a75e8b6140211a0e58986254393331c712a1d3647413cca6a1d3a733dfef",
+    "apps/web/app/auth/sign-in-options/page.tsx": "2736bb0712ce25a1c33bcf644009913363a82a0627edd7bc31be0b3294ca09f9",
+    "apps/web/app/admin/login/page.tsx": "904f8666ab9eec9dc115c0f178c935be5807dfdff6434f41e982f17a7445f121",
+    "apps/web/components/site/routes.ts": "3a4b47de1b6f34fdea14c10562194d2cda7bdb7adcdfd56f2162c6614b889410",
+    "apps/web/components/customer-dashboard/CustomerShell.tsx": "5ce0f9b6f90ac1c4340d7866de2e9e02e7fa69132c94e60d3a2fff19f59b4ccf",
+    "apps/web/components/customer-dashboard/CustomerScreen.tsx": "0ce494f9a8a4bedcbf26e90e55c771945a5ea500e506ec9b9e071fb43181ca7a",
+    "apps/web/components/company-dashboard/CompanyShell.tsx": "d19947d63bdb704b379ef6567144f0f99bf1040212f106639b5362be64db08fe",
+    "apps/web/components/dashboard/PartnershipSidebar.tsx": "20d0851528b041ccd111e1bf67290655fc117328a8d586fa0c7d9926835751e5",
+    "apps/web/components/dashboard/MobileDashboardNav.tsx": "eabe0ca75e2d58a26ec707cc96e51c5b3eeb42e6fe0d9e73d136f17879915bd9",
+    "apps/web/components/admin-dashboard/AdminShell.tsx": "c525ac5dd42308c3e792fc99ef039a687c4c4065b05a2a061d2471790635f013",
+    "apps/web/components/admin-dashboard/AdminSidebar.tsx": "64300533f3896e21a7173d9a00f4a468d21299f7374513115d1d155ec257ba09",
+    "apps/web/tests/auth-method-ui.test.cjs": "89e413fa7cf4af1e209d19f50420c1968149669c3b31557a7009cd728645b7d5",
+    "apps/web/tests/additional-auth-methods.test.cjs": "a19d3b8f3cb027d41314bc1d35e01c8715bb4628235d2be3a92bb6a36ef4762a",
+    "apps/web/tests/production-customer-controls.test.cjs": "477d87a0ac00ea970597479bcedabd1ff804b255c169911ebd173485b5eb94ed",
+    "apps/web/package.json": "a4b5e76d13bec715d4222c03387219da7377b316d3b805c24c918b4566638a26"
+  }
+}

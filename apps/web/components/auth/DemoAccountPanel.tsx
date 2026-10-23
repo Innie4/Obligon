@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { StatusPopup } from "@/components/shared/StatusPopup";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Loader2, LogIn, ShieldCheck } from "lucide-react";
 import { useSession } from "@/components/shared/AuthContext";
@@ -72,6 +73,7 @@ function DemoAccountPanelBody() {
       aria-labelledby="demo-accounts-heading"
       className="mx-auto mt-6 w-full max-w-[480px] rounded-2xl border border-dashed border-obligon-green/50 bg-[#f7fbf8] p-5"
     >
+      {busy ? <StatusPopup tone="pending" message="Opening the demo account…" /> : null}
       <div className="flex items-start gap-2.5">
         <ShieldCheck size={18} className="mt-0.5 shrink-0 text-obligon-green" />
         <div className="min-w-0">

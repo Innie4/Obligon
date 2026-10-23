@@ -1,0 +1,133 @@
+{
+ "files": 22,
+ "findings": [
+  {
+   "level": "FAIL",
+   "id": "hairline",
+   "file": "apps/web/components/landing/ClosingCta.tsx",
+   "line": 29,
+   "match": "border-t",
+   "message": "Thin rule / divider line. Separate with space, tone or scale; lines belong to real tables and form fields."
+  },
+  {
+   "level": "FAIL",
+   "id": "hairline",
+   "file": "apps/web/components/landing/Footer.tsx",
+   "line": 72,
+   "match": "border-t",
+   "message": "Thin rule / divider line. Separate with space, tone or scale; lines belong to real tables and form fields."
+  },
+  {
+   "level": "FAIL",
+   "id": "hairline",
+   "file": "apps/web/components/landing/Header.tsx",
+   "line": 69,
+   "match": "border-b",
+   "message": "Thin rule / divider line. Separate with space, tone or scale; lines belong to real tables and form fields."
+  },
+  {
+   "level": "FAIL",
+   "id": "shadow",
+   "file": "apps/web/components/landing/Pricing.tsx",
+   "line": 211,
+   "match": "shadow-[0_1px_1px_rgba(0,0,0,0.05)]",
+   "message": "Shadow. Elements at rest carry none; only real overlays (menu, dialog, sticky bar) may."
+  },
+  {
+   "level": "FAIL",
+   "id": "shadow",
+   "file": "apps/web/components/landing/Pricing.tsx",
+   "line": 223,
+   "match": "shadow-[0_1px_1px_rgba(0,0,0,0.05)]",
+   "message": "Shadow. Elements at rest carry none; only real overlays (menu, dialog, sticky bar) may."
+  },
+  {
+   "level": "FAIL",
+   "id": "hairline",
+   "file": "apps/web/components/site/SiteFooter.tsx",
+   "line": 65,
+   "match": "border-t",
+   "message": "Thin rule / divider line. Separate with space, tone or scale; lines belong to real tables and form fields."
+  },
+  {
+   "level": "FAIL",
+   "id": "hairline",
+   "file": "apps/web/components/site/SiteFooter.tsx",
+   "line": 121,
+   "match": "border-t",
+   "message": "Thin rule / divider line. Separate with space, tone or scale; lines belong to real tables and form fields."
+  },
+  {
+   "level": "FAIL",
+   "id": "gradient",
+   "file": "apps/web/components/site/SiteFooter.tsx",
+   "line": 125,
+   "match": "bg-gradient-",
+   "message": "Gradient fill. Use a flat colour or a real image (a neutral scrim over a photo is the one exception)."
+  },
+  {
+   "level": "FAIL",
+   "id": "hairline",
+   "file": "apps/web/components/site/SiteFooter.tsx",
+   "line": 125,
+   "match": "h-px",
+   "message": "Thin rule / divider line. Separate with space, tone or scale; lines belong to real tables and form fields."
+  },
+  {
+   "level": "FAIL",
+   "id": "hairline",
+   "file": "apps/web/components/site/SiteHeader.tsx",
+   "line": 19,
+   "match": "border-b",
+   "message": "Thin rule / divider line. Separate with space, tone or scale; lines belong to real tables and form fields."
+  },
+  {
+   "level": "FAIL",
+   "id": "hairline",
+   "file": "apps/web/components/site/SiteHeader.tsx",
+   "line": 55,
+   "match": "border-t",
+   "message": "Thin rule / divider line. Separate with space, tone or scale; lines belong to real tables and form fields."
+  },
+  {
+   "level": "WARN",
+   "id": "cta-copy",
+   "file": "apps/web/components/site/SiteHeader.tsx",
+   "line": 59,
+   "match": ">Get started<",
+   "message": "Generic button label. Name the action or the thing (\"Book a table\", \"See the plans\")."
+  },
+  {
+   "level": "WARN",
+   "id": "h-screen",
+   "file": "apps/web/components/solutions/SolutionPage.tsx",
+   "line": 29,
+   "match": "h-screen",
+   "message": "100vh jumps on mobile. Use 100svh / 100dvh."
+  },
+  {
+   "level": "WARN",
+   "id": "h-screen",
+   "file": "apps/web/app/support/page.tsx",
+   "line": 45,
+   "match": "h-screen",
+   "message": "100vh jumps on mobile. Use 100svh / 100dvh."
+  },
+  {
+   "level": "FAIL",
+   "id": "mono",
+   "file": "apps/web/app/support/page.tsx",
+   "line": 73,
+   "match": "font-mono",
+   "message": "Monospace type. Only literal code may be monospace."
+  },
+  {
+   "level": "FAIL",
+   "id": "mono",
+   "file": "apps/web/app/support/page.tsx",
+   "line": 84,
+   "match": "font-mono",
+   "message": "Monospace type. Only literal code may be monospace."
+  }
+ ]
+}

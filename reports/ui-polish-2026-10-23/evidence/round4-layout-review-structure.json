@@ -1,0 +1,14 @@
+{
+  "apps/web/app/support/page.tsx": {
+    "setupLogicIdentical": true,
+    "nonClassAttributesIdentical": true,
+    "visibleTextPreserved": true,
+    "comparedTo": "HEAD"
+  },
+  "apps/web/app/auth/session-expired/page.tsx": {
+    "setupLogicIdentical": true,
+    "nonClassAttributesIdentical": true,
+    "visibleTextPreserved": true,
+    "comparedTo": "HEAD"
+  }
+}

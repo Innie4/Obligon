@@ -1,0 +1,79 @@
+{
+  "date": "2026-10-23",
+  "browser": "user Chrome, profile Inimfon",
+  "application": "production Next.js build, isolated local API and PostgreSQL schema",
+  "sourceSnapshot": "../application-snapshot.json",
+  "google": {
+    "officialButtonRendered": true,
+    "frameOrigin": "https://accounts.google.com",
+    "popupRecognizesApplication": "Obligon",
+    "popupAccountChooserReached": true,
+    "accountSelected": false,
+    "completedIdentityLinkOrLogin": false
+  },
+  "loginLayout": {
+    "beforeFix390": {
+      "innerWidth": 390,
+      "scrollWidth": 489
+    },
+    "afterFix390": {
+      "innerWidth": 390,
+      "clientWidth": 390,
+      "scrollWidth": 390
+    },
+    "afterFix320": {
+      "innerWidth": 320,
+      "clientWidth": 305,
+      "scrollWidth": 305
+    }
+  },
+  "managementLayout": {
+    "390": {
+      "innerWidth": 390,
+      "clientWidth": 375,
+      "scrollWidth": 375
+    },
+    "320": {
+      "innerWidth": 320,
+      "clientWidth": 305,
+      "scrollWidth": 305
+    }
+  },
+  "managementActions": {
+    "wrongPasswordShowsError": true,
+    "currentPasswordFieldCleared": true,
+    "correctPasswordPreparesOfficialGoogleLinkButton": true,
+    "cancelRemovesPreparedLinkButton": true
+  },
+  "dashboardNavigation": {
+    "customer": {
+      "desktopSettings": true,
+      "returnTo": "/customer"
+    },
+    "gasPartner": {
+      "desktopSettings": true,
+      "mobileAccountSettings": true,
+      "returnTo": "/dashboard"
+    },
+    "mechanic": {
+      "desktopSettings": true,
+      "returnTo": "/dashboard",
+      "fuelNavigationAbsent": true
+    },
+    "company": {
+      "desktopSettings": true,
+      "mobileMenuSettings": true,
+      "returnTo": "/company"
+    },
+    "admin": {
+      "desktopSettings": true,
+      "mobileMenuSettings": true,
+      "returnTo": "/admin"
+    }
+  },
+  "physicalPasskeyCeremony": "not performed",
+  "liveVercelRenderAcceptance": "not performed; new patch not released",
+  "applicationBuildExitCode": 0,
+  "applicationBuildLog": "production-build-final.log",
+  "viewportMethod": "Chrome viewport for initial login; tab-scoped CDP emulation for final layouts"
+}

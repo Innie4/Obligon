@@ -1,0 +1,71 @@
+{
+  "completed_at": "2026-10-23T15:23:16.095127+00:00",
+  "base": "a27caac35d740a2dd4b8c53ea83c948a3163a400",
+  "manifest_changes": {
+    "dependencies.next": [
+      "^15.5.27",
+      "^15.5.28"
+    ],
+    "devDependencies.eslint-config-next": [
+      "^15.5.27",
+      "^15.5.28"
+    ]
+  },
+  "lock_changed_families": [
+    "@next/env",
+    "@next/eslint-plugin-next",
+    "@next/swc-darwin-arm64",
+    "@next/swc-darwin-x64",
+    "@next/swc-linux-arm64-gnu",
+    "@next/swc-linux-arm64-musl",
+    "@next/swc-linux-x64-gnu",
+    "@next/swc-linux-x64-musl",
+    "@next/swc-win32-arm64-msvc",
+    "@next/swc-win32-x64-msvc",
+    "eslint-config-next",
+    "next"
+  ],
+  "other_version_changes": [],
+  "production_audit_before": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 1,
+      "critical": 1
+    },
+    "dependencies": 236,
+    "devDependencies": 0,
+    "optionalDependencies": 43,
+    "totalDependencies": 279
+  },
+  "production_audit_after": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0
+    },
+    "dependencies": 236,
+    "devDependencies": 0,
+    "optionalDependencies": 43,
+    "totalDependencies": 279
+  },
+  "install_exit": 0,
+  "install_scripts_disabled": true,
+  "pnpm_version": "11.25.0",
+  "expected_repo_pnpm_version": "11.19.0",
+  "first_attempt": "tarball timeout,exit1",
+  "bounded_retry": "success in5m35.5s",
+  "logs": [
+    "/tmp/obligon-next15528-update23.log",
+    "/tmp/obligon-next15528-update23-retry.log",
+    "/tmp/obligon-prod-dependencies23-after.json"
+  ],
+  "sha256": {
+    "apps/web/package.json": "de73819b905313c4d86771e0982c579868f36e84f8333dbbc37f2dace63e2424",
+    "pnpm-lock.yaml": "4a75493bf298d4fe77060ad2bce76d94a9832d7d35c9176a4130ccedc7004fd4",
+    "/tmp/obligon-prod-dependencies23-after.json": "97ec3cc865c7f505206270666c6515f5eb0375ff4a7d7a9d544a1f7ff8bcd14b"
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "recordedAt": "2026-10-23T20:02:52.679302+00:00",
+  "reviewer": "company_admin_audit22",
+  "scope": "Read-only Support and session-expired final layout review",
+  "sourceHashes": {
+    "apps/web/app/support/page.tsx": "1a7e18827b0e5d9920ff5f164a580034327e370b46968cd2cbdea3acc82e2ecd",
+    "apps/web/app/auth/session-expired/page.tsx": "f5b812269b83c46c41e81ed0577aab7245d61fc98687a4b8e15a40b36de738d1"
+  },
+  "checks": [
+    {
+      "check": "public-controls",
+      "counts": {
+        "tests": 12,
+        "pass": 12,
+        "fail": 0,
+        "skipped": 0
+      },
+      "exitCode": 0,
+      "log": "reports/ui-polish-2026-10-23/evidence/round4-layout-review-public-controls.log"
+    },
+    {
+      "check": "auth-navigation",
+      "counts": {
+        "tests": 40,
+        "pass": 40,
+        "fail": 0,
+        "skipped": 0
+      },
+      "exitCode": 0,
+      "log": "reports/ui-polish-2026-10-23/evidence/round4-layout-review-auth-navigation.log"
+    }
+  ],
+  "logicComparison": {
+    "apps/web/app/support/page.tsx": {
+      "setupLogicIdentical": true,
+      "nonClassAttributesIdentical": true,
+      "visibleTextPreserved": true,
+      "comparedTo": "HEAD"
+    },
+    "apps/web/app/auth/session-expired/page.tsx": {
+      "setupLogicIdentical": true,
+      "nonClassAttributesIdentical": true,
+      "visibleTextPreserved": true,
+      "comparedTo": "HEAD"
+    }
+  },
+  "findings": [],
+  "conclusion": "No additional source changes required by this bounded review.",
+  "limitations": [
+    "Source-level layout review only; root owns browser geometry and visual acceptance.",
+    "Root owns final build; no backend, providers, deploy or source edits by reviewer."
+  ]
+}

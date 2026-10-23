@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { RotateCcw, TriangleAlert, type LucideProps } from "lucide-react";
+import { TriangleAlert, type LucideProps } from "lucide-react";
+import { StatusPopup } from "./StatusPopup";
 
 export function ErrorFallback({
   title = "Something went wrong",
@@ -16,27 +17,7 @@ export function ErrorFallback({
   onReset?: () => void;
   icon?: React.ComponentType<LucideProps>;
 }) {
-  return (
-    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 text-center">
-      <span className="grid size-14 place-items-center rounded-full bg-[#ffe8e8] text-[#c1121f]">
-        <Icon size={26} />
-      </span>
-      <h1 className="font-display text-2xl font-extrabold text-obligon-navy">{title}</h1>
-      <p className="max-w-md text-sm text-obligon-text">{message}</p>
-      {error?.message ? (
-        <p className="max-w-md break-words rounded-lg bg-obligon-panel px-3 py-2 text-xs font-medium text-obligon-text">{error.message}</p>
-      ) : null}
-      {onReset ? (
-        <button
-          type="button"
-          onClick={onReset}
-          className="mt-2 inline-flex h-12 items-center gap-2 rounded-lg bg-obligon-green px-6 font-extrabold text-white"
-        >
-          <RotateCcw size={18} /> Try again
-        </button>
-      ) : null}
-    </div>
-  );
+  return <StatusPopup tone="error" title={title} message={error?.message ? `${message}\n${error.message}` : message} onRetry={onReset} icon={Icon} dismissible={false} />;
 }
 
 interface ErrorBoundaryState {

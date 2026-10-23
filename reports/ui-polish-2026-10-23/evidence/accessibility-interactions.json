@@ -1,0 +1,41 @@
+{
+  "representativeContrast": {
+    "page": "/company/cards",
+    "method": "read-only computed RGB text and nearest opaque ancestor background; standard WCAG relative luminance calculation",
+    "activeSamples": [
+      {
+        "pair": "primary green / white",
+        "ratio": 6.44
+      },
+      {
+        "pair": "secondary text / white",
+        "ratio": 9.35
+      },
+      {
+        "pair": "secondary text / light canvas",
+        "ratio": 8.94
+      },
+      {
+        "pair": "primary text / white",
+        "ratio": 20.8
+      }
+    ],
+    "limits": "Disabled controls and translucent foregrounds excluded; not an all-element/iframe contrast audit."
+  },
+  "zoom": {
+    "attempt": "Chrome Ctrl+plus under device emulation",
+    "observed": "CSS viewport did not change; reset Ctrl+0",
+    "verified200Percent": false
+  },
+  "actualInteractions": [
+    "Admin navigation Escape closes dialog and restores Open admin menu focus",
+    "Admin offline Refresh displays useful error and online Refresh restores actual records without session loss",
+    "Anonymous MFA challenge submit isEnabled false",
+    "Customer history named region keyboard scrollLeft changed 0 to 13.8 with scrollbar-width:none (prior source unchanged)"
+  ],
+  "deviceAndAssistiveTechnologyLimits": [
+    "No complete screen-reader walkthrough",
+    "No physical passkey/biometric ceremony",
+    "Narrow viewports tested independently of actual browser zoom"
+  ]
+}

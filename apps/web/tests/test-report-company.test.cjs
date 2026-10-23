@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const vm = require('node:vm');
+const vm = require('./helpers/status-popup.cjs').withStatusPopups(require('node:vm'));
 const ts = require('typescript');
 
 const nodes = tree => Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === 'object' ? [tree, ...nodes(tree.props?.children)] : [];
@@ -21,6 +21,7 @@ function fixture(file, component, { choices = fleet, user = { organization: 'Exa
     vm.runInNewContext(ts.transpileModule(fs.readFileSync(require.resolve(path), 'utf8') + extra, { fileName: path, compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true, target: ts.ScriptTarget.ES2020 } }).outputText, {
       exports, React, Error, Object, Number, URLSearchParams, require: name => {
         if (name === 'react') return React;
+        if (name === '@/components/shared/StatusPopup') return require('./helpers/status-popup.cjs').statusPopupMock(React);
         if (name === 'next/link') return { __esModule: true, default: 'Link' };
         if (name === 'next/navigation') return { usePathname: () => '/company' };
         if (name === '@/components/shared/AuthContext') return { useSession: () => ({ user }) };

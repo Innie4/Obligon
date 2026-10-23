@@ -1,0 +1,49 @@
+{
+  "task": "Design critic Round2 company/admin fixes",
+  "verifiedAt": "2026-10-23T19:21:14.472361+00:00",
+  "changes": [
+    "Compact two-column phone metric summaries use semantic labels/values, restrained padding and responsive numbers",
+    "Disabled Previous/Next buttons have muted text, subdued surfaces and a disabled cursor; native disabled conditions and page handlers preserved",
+    "Partner bank verification distinguishes pending requests, failed loading and a successful empty account list using existing flags",
+    "Discount review reason is deferred until loaded pending request context exists and is disabled during saving"
+  ],
+  "focused": {
+    "tests": 46,
+    "pass": 46,
+    "fail": 0,
+    "suites": {
+      "company-admin-ui-polish": 10,
+      "admin-screen-loading": 5,
+      "admin-company-approval": 6,
+      "company-empty-pages": 13,
+      "dashboard-search-destinations": 12
+    }
+  },
+  "typescript": {
+    "exit": 0,
+    "log": "evidence/round2-typescript.log"
+  },
+  "newStateProof": {
+    "redLog": "evidence/round2-new-state-red.log",
+    "greenLog": "evidence/round2-company-admin-ui-polish.log",
+    "cases": [
+      "bank loading/failed/empty distinction",
+      "discount reason pending-context and saving state",
+      "metric labels/values preserved",
+      "empty/single-record pagination boundaries remain disabled"
+    ]
+  },
+  "sourceSHA256": {
+    "apps/web/components/company-dashboard/CompanyScreen.tsx": "6bf45846209d29024d430a73f6d5deefaeace28934c1bb9d4f9202d6bf23eaac",
+    "apps/web/components/admin-dashboard/AdminScreen.tsx": "051a9c0b12a2a819bed8446bae74daf4cc7f5bbf73a6fd317c67898570f1167d",
+    "apps/web/components/admin-dashboard/OperationsInbox.tsx": "accf56ab8ac340f22ba547ad96e2fcc15f5d8e6426187ffca101478f47954722",
+    "apps/web/components/admin-dashboard/DiscountApprovals.tsx": "5ef84920bea2906a6f2de2549ea0c363d4813c599ca3f112d90f53fee30ac18c",
+    "apps/web/tests/company-admin-ui-polish.test.cjs": "cb7115091f6fabbe0e2afe6a23baa7a3cd3ffe685936ecb09f0856cbda026836",
+    "apps/web/tests/admin-screen-loading.test.cjs": "e5e1a06542fdacac5991295ac6418b872a094649a45258f7c701d9bf9b41419f"
+  },
+  "pending": [
+    "Root final full suite/build",
+    "Root browser recheck at320/390 and wider widths",
+    "Final independent critic score; no score claimed from source tests"
+  ]
+}

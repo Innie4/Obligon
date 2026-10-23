@@ -1,5 +1,6 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
 import * as React from "react";
 import { AlertTriangle, Check, CircleDashed, CircleSlash, Clock, CreditCard, Loader2, ShieldCheck, X } from "lucide-react";
 import { useToast } from "@/components/shared/Toast";
@@ -72,14 +73,10 @@ export function CardPlanModal({
           complete the purchase, then we will verify your details before your card is issued.
         </p>
 
+        {busyPlan ? <StatusPopup tone="pending" message="Opening plan checkout…" /> : null}
         {loading ? (
-          <div role="status" className="mt-8 flex items-center justify-center gap-2 py-8 text-sm font-medium text-obligon-text">
-            <Loader2 size={18} className="animate-spin" /> Loading plans…
-          </div>
-        ) : error ? <div role="alert" className="mt-6 rounded-xl bg-red-50 p-4 text-sm text-red-800">
-          <p className="font-semibold">Plans could not be loaded.</p><p className="mt-1 leading-6">{error}</p>
-          {onRetry ? <button type="button" onClick={onRetry} className="mt-3 min-h-11 rounded-lg border border-current px-4 font-semibold">Retry loading plans</button> : null}
-        </div> : !plans.length ? <p className="mt-6 rounded-xl bg-obligon-mist/60 p-5 text-sm leading-6 text-obligon-text">No card plans are available right now. Please check again later or contact Support.</p> : (
+          <StatusPopup tone="loading" message="Loading plans…" />
+        ) : error ? <StatusPopup tone="error" message={["Plans could not be loaded.", error].join(" ").trim()} action={onRetry ? <button type="button" onClick={onRetry} className="mt-3 min-h-11 rounded-lg border border-current px-4 font-semibold">Retry loading plans</button> : null} /> : !plans.length ? <p className="mt-6 rounded-xl bg-obligon-mist/60 p-5 text-sm leading-6 text-obligon-text">No card plans are available right now. Please check again later or contact Support.</p> : (
           <div className="mt-6 grid items-stretch gap-4 md:grid-cols-3">
             {plans.map((plan) => {
               const busy = busyPlan === plan.code;
@@ -204,6 +201,7 @@ export function CardDetailsModal({
 
   return (
     <ModalFrame title="Card verification details" onClose={onClose}>
+      {busy ? <StatusPopup tone="pending" message="Submitting card details for verification…" /> : null}
       <form onSubmit={handleSubmit} className="p-6">
         <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">Verify your details</h2>
         <p className="mt-2 text-sm leading-6 text-obligon-text">
@@ -291,9 +289,7 @@ export function CardDetailsModal({
         </div>
 
         {error ? (
-          <p className="mt-4 rounded-lg border border-[#fecaca] bg-[#fff0f0] p-3 text-sm text-[#93000a]" role="alert">
-            {error}
-          </p>
+          <StatusPopup tone="error" message={error} />
         ) : null}
 
         <button
@@ -424,6 +420,7 @@ export function CardVerificationProgressModal({
 
   return (
     <ModalFrame title="Card verification progress" onClose={onClose} size="wide">
+      {loading ? <StatusPopup tone="loading" message="Loading verification status…" /> : null}
       <div className="p-6 text-center sm:p-8">
         <span className={`mx-auto grid size-16 place-items-center rounded-full ${tone[outcome ?? "in_progress"]}`}>
           {outcome === "complete" ? (
@@ -436,7 +433,7 @@ export function CardVerificationProgressModal({
         </span>
 
         <h2 className="mt-5 font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">
-          {loading ? "Loading status…" : (headline[outcome ?? "in_progress"] ?? "Verification status")}
+          {loading ? "Verification status" : (headline[outcome ?? "in_progress"] ?? "Verification status")}
         </h2>
         {progress?.planName ? (
           <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-obligon-text">
@@ -594,6 +591,7 @@ export function PendingPaymentModal({
 
   return (
     <ModalFrame title="Pending card payment" onClose={busy ? () => undefined : onClose}>
+      {(busy) ? <StatusPopup tone="pending" message={resuming ? "Opening payment…" : "Cancelling recorded request…"} /> : null}
       <div className="p-6 text-center">
         <span className="mx-auto grid size-16 place-items-center rounded-full bg-obligon-lime/30 text-obligon-navy">
           <CreditCard size={28} />

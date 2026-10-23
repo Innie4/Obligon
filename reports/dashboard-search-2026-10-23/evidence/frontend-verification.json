@@ -1,0 +1,41 @@
+{
+  "task": "Shared dashboard search UI and header integration",
+  "verifiedAt": "2026-10-23T17:21:25.552700+00:00",
+  "focused": {
+    "tests": 70,
+    "passed": 70,
+    "failed": 0,
+    "skipped": 0,
+    "log": "frontend-focused.log"
+  },
+  "typescript": {
+    "exit": 0,
+    "incremental": false,
+    "log": "frontend-typescript.log"
+  },
+  "properties": [
+    "Permitted navigation plus bounded real recent-record lookup",
+    "Debounced queries; one-character input sends no record requests",
+    "Arrow, Enter and Escape keyboard handling",
+    "Links select actual destinations; same-record selection reapplies its query; modifier clicks keep browser behavior",
+    "Stale queries, account/organization changes and partial errors cannot show previous-context hits",
+    "Contract and partner subtype navigation filters preserved",
+    "Mobile dialog labels, focus trap and 44px controls"
+  ],
+  "pending": [
+    "Independent bounded code review",
+    "Root production build and actual Chrome responsive/keyboard acceptance",
+    "Root final full web suite after other search agents freeze"
+  ],
+  "sourceSHA256": {
+    "apps/web/components/shared/DashboardSearch.tsx": "5ba05b3b77b1067594c4ad313108471eb847429337e29c1b086105b0e2865ffb",
+    "apps/web/components/dashboard/DashboardHeader.tsx": "f102b3bac8f7876626bd788e34eb8727efdbb0f87040d9b0eef6e5b7edc7a4ce",
+    "apps/web/components/admin-dashboard/AdminHeader.tsx": "304aa83f820d8147ce2208d6a4c83623cf8fabd5c0d08df840c0f707cc0d1d46",
+    "apps/web/components/company-dashboard/CompanyShell.tsx": "6fda89a1a1b7cdc09969676b34fb9601d41ff56d2c2335cf8a3a8da10721bbd9",
+    "apps/web/components/customer-dashboard/CustomerShell.tsx": "7135ed4492a626f3ae1a3f322c03695585d1c5fc3b0cdd94271181bafad7a159",
+    "apps/web/tests/dashboard-search-ui.test.cjs": "9d141f34dadeccaa0a9e319e7023678a2a5bb9f77b52d38366b2eecfeffaeb5d",
+    "apps/web/tests/admin-navigation.test.cjs": "ba9a2cbff8abe324452dfeced77349bcb2802a7829c8b45bf7c1a039520d9bdd",
+    "apps/web/tests/production-company-invitations.test.cjs": "9a2b95cdb65cd879c0414d9da04ce2934ba04b43fb271ea206da3eea95a1d3b1",
+    "apps/web/lib/dashboard-search.ts": "e9bb3c045c032bad5bc0777cb958a7e643c197f81c6f8ffe7fc5e74af38ad6fd"
+  }
+}

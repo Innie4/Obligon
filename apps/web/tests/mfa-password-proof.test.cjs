@@ -13,7 +13,7 @@ function nodes(tree) {
 function textOf(tree) {
   if (tree == null || typeof tree === "boolean") return "";
   if (typeof tree !== "object") return String(tree);
-  return [tree.props?.children].flat(Infinity).map(textOf).join("");
+  return (tree.type === "StatusPopup" ? textOf(tree.props?.message) : "") + [tree.props?.children].flat(Infinity).map(textOf).join("");
 }
 function loadUi({ stage = "challenge", role = "customer", pending = true, setupError, challenge } = {}) {
   const states = [], effects = [], events = [];
@@ -38,6 +38,7 @@ function loadUi({ stage = "challenge", role = "customer", pending = true, setupE
     exports, Error, window: { location: { search: "" } }, require: name => {
       if (name.includes("company-invitation-routing")) return { authReturnPath: () => null };
       if (name === "react") return React;
+      if (name === "@/components/shared/StatusPopup") return { StatusPopup: "StatusPopup" };
       if (name === "next/navigation") return { useRouter: () => ({ push: path => events.push(["push", path]) }) };
       if (name.includes("routes")) return { routes };
       if (name.includes("AuthContext")) return { useSession: () => ({ user, setUser: value => events.push(["session", value]) }) };
@@ -57,6 +58,8 @@ test("failed live authenticator setup displays its real error and cannot show or
   await flush();
   const tree = ui.render();
   assert.ok(textOf(tree).includes("Two-factor authentication is already enabled."));
+  assert.equal(nodes(tree).find(node => node.type === "StatusPopup").props.tone, "error");
+  assert.equal(nodes(tree).some(node => node.props?.role === "alert"), false);
   assert.equal(nodes(tree).filter(node => node.type === "img").length, 0);
   assert.equal(textOf(tree).includes("MOCK"), false);
   assert.equal(textOf(tree).includes("Setup Instructions"), false);

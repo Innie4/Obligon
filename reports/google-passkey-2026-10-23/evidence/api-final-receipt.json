@@ -1,0 +1,33 @@
+{
+  "counts": {
+    "tests": 1264,
+    "pass": 1251,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 13,
+    "todo": 0
+  },
+  "skipped": [
+    "health endpoint reports provider status",
+    "login rejects bad credentials with 401",
+    "login succeeds for seeded customer and session works",
+    "card requests require a paid plan, and staff can still open one directly",
+    "refresh and logout preserve and revoke the authenticated session",
+    "MFA challenge rejects invalid codes",
+    "customer endpoint requires auth",
+    "role guard blocks customer from admin area",
+    "company login sees fleet overview and partner login sees POS area",
+    "every dashboard read returns the shape its table declares",
+    "a partner's search filters on the server, not in the browser",
+    "no figure on the partner dashboard is invented",
+    "public endpoints are open"
+  ],
+  "inputFiles": 242,
+  "inputHash": "72b4eb51f50db4995c08fa6769f33194a2edf326f85cbeaf2ae892aae8cc16e9",
+  "inputsChanged": [],
+  "rawLog": "/tmp/obligon-api-auth-final23.log",
+  "rawLogSha256": "93af6550a75faaa35b110737b38ee40e211b61eb94959a275a281eb73c6b9c24",
+  "database": "task-owned disposable PostgreSQL18, clean migrations001–039",
+  "isolation": "default Node child processes; concurrency2",
+  "providers": "isolated provider responses; liveAPI opt-in checks skipped"
+}

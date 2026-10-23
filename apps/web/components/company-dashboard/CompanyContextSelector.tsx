@@ -1,5 +1,6 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { dashboardDestination } from "@/lib/auth-routing";
@@ -30,8 +31,9 @@ export function CompanyContextSelector({ compact = false }: { compact?: boolean 
     catch (cause) { setError(cause instanceof Error ? cause.message : "This company could not be opened."); }
     finally { setBusy(false); }
   }
-  if (loading) return <p className="text-sm" role="status">Loading your companies…</p>;
+  if (loading) return <StatusPopup tone="loading" message="Loading your companies…" />;
   return <form onSubmit={selectCompany} className={compact ? "space-y-2" : "space-y-4"}>
+      {(busy) ? <StatusPopup tone="pending" message="Opening company…" /> : null}
     {organizations.length ? <>
       <label htmlFor={selectId} className="block text-sm font-bold">Company workspace</label>
       <select id={selectId} value={selected} onChange={event => setSelected(event.target.value)} disabled={busy} className="min-h-12 w-full rounded-lg border border-obligon-border bg-white px-3 text-sm">
@@ -40,7 +42,7 @@ export function CompanyContextSelector({ compact = false }: { compact?: boolean 
       </select>
       <button type="submit" disabled={busy || !selected || selected === user?.organizationId} className="min-h-12 w-full rounded-lg bg-obligon-green px-3 text-sm font-bold text-white disabled:opacity-60">{busy ? "Opening company…" : "Open company"}</button>
     </> : !error ? <p className="text-sm leading-6">You do not have an active company membership. Open the invitation sent by your company owner to join a fleet.</p> : null}
-    {error ? <p className="text-sm text-[#93000a]" role="alert">{error}</p> : null}
+    {error ? <StatusPopup tone="error" message={error} /> : null}
   </form>;
 }
 
@@ -55,5 +57,6 @@ export function ReturnToPrimaryAccount() {
     catch (cause) { setError(cause instanceof Error ? cause.message : "Your account could not be opened."); }
     finally { setBusy(false); }
   }
-  return <div><button type="button" disabled={busy} onClick={() => void returnToAccount()} className="min-h-12 text-sm font-bold text-obligon-green underline disabled:opacity-60">{busy ? "Opening account…" : `Return to ${user?.role === "customer" ? "personal" : user?.role ?? "your"} account`}</button>{error ? <p className="text-sm text-[#93000a]" role="alert">{error}</p> : null}</div>;
+  return <div>
+      {(busy) ? <StatusPopup tone="pending" message="Opening your account…" /> : null}<button type="button" disabled={busy} onClick={() => void returnToAccount()} className="min-h-12 text-sm font-bold text-obligon-green underline disabled:opacity-60">{busy ? "Opening account…" : `Return to ${user?.role === "customer" ? "personal" : user?.role ?? "your"} account`}</button>{error ? <StatusPopup tone="error" message={error} /> : null}</div>;
 }

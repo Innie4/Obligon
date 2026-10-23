@@ -1,5 +1,6 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
 import Link from "next/link";
 import * as React from "react";
 import { useSession } from "@/components/shared/AuthContext";
@@ -40,6 +41,7 @@ function WorkshopEditor({ profile, canEdit, onSaved }: { profile: WorkshopProfil
   }
 
   return <form onSubmit={submit} className="mt-6 max-w-4xl space-y-6 rounded-2xl border border-obligon-border bg-white p-5 sm:p-8">
+      {(saving) ? <StatusPopup tone="pending" message="Saving workshop profile…" /> : null}
     {!canEdit ? <p className="rounded-lg bg-obligon-mist p-4 text-sm text-obligon-text">Your team can view this profile. An owner or administrator can update it.</p> : null}
     <fieldset disabled={!canEdit || saving} className="grid gap-5 sm:grid-cols-2">
       <legend className="font-display text-lg font-bold tracking-tight sm:text-xl text-obligon-navy">Workshop details</legend>
@@ -58,7 +60,7 @@ function WorkshopEditor({ profile, canEdit, onSaved }: { profile: WorkshopProfil
         </label>)}</div>
       </fieldset>
     </fieldset>
-    {error ? <p role="alert" className="rounded-lg bg-red-50 p-4 text-sm text-red-800">{error}</p> : null}
+    {error ? <StatusPopup tone="error" message={error} /> : null}
     {saved ? <p role="status" className="rounded-lg bg-obligon-mist p-4 text-sm font-bold text-obligon-green">Workshop profile saved.</p> : null}
     {canEdit ? <button type="submit" disabled={saving} className="min-h-12 rounded-xl bg-obligon-green px-5 font-bold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-obligon-green disabled:opacity-60">{saving ? "Saving…" : "Save workshop profile"}</button> : null}
   </form>;

@@ -1,0 +1,80 @@
+{
+  "verifiedAt": "2026-10-23T20:14:47.577698+00:00",
+  "webTests": {
+    "command": "node --test --test-reporter=tap tests/*.test.cjs",
+    "counts": {
+      "tests": 623,
+      "pass": 623,
+      "fail": 0,
+      "skipped": 0,
+      "cancelled": 0
+    },
+    "exitCode": 0,
+    "log": "web-final-tests.log",
+    "sha256": "00facf2e0775fac2f35b1698cb8d156daff9d70ad18bce90c1e0176dabf90c96",
+    "environmentNote": "Initial sandbox run could not bind localhost; full suite rerun with allowed disposable localhost server access passed."
+  },
+  "productionBuild": {
+    "command": "NEXT_PUBLIC_API_URL=http://127.0.0.1:4419 NODE_ENV=production pnpm --filter @obligon/web build",
+    "exitCode": 0,
+    "log": "web-final-build.log",
+    "sha256": "a788b4062e2e9a4402417aa9ee3b1f9d2a85799e6543583e385dceddad613db1",
+    "warnings": [
+      "Existing unused-variable warnings",
+      "Local multiple-lockfile workspace-root warning"
+    ]
+  },
+  "sourceSecrets": {
+    "scanner": "Trivy 0.71.2",
+    "exitCode": 0,
+    "findings": 0,
+    "scope": "apps, excluding dependencies/builds/git/real env files"
+  },
+  "apiEvidence": {
+    "checkedAt": "2026-10-23T19:59:23.626169+00:00",
+    "sourceSnapshotPatchSha256": "1d1db66f581611e284bf0f8d3c3ba9c09d4f6a695995475732f922c323aaed34",
+    "checkedFiles": 74,
+    "changedBackendDependencyFiles": [],
+    "apiEvidenceReusable": true,
+    "reusedEvidence": "reports/google-passkey-2026-10-23/evidence/api-final-receipt.json"
+  },
+  "browser": {
+    "finalDashboardFrames": 216,
+    "viewports": [
+      1440,
+      768,
+      390,
+      320
+    ],
+    "roles": [
+      "admin",
+      "company",
+      "customer",
+      "gas-partner",
+      "public-auth",
+      "workshop"
+    ],
+    "pageOverflowFrames": [],
+    "evidence": "final-browser-frames.json",
+    "limits": [
+      "Synthetic local roles with provider calls blocked at fixture API",
+      "Screenshots do not prove every state transition",
+      "Actual 200% zoom not demonstrated under device emulation",
+      "No complete screen-reader or all-element contrast audit",
+      "No physical biometric or live provider/payment acceptance"
+    ],
+    "finalPublicAuthCorrectionFrames": 16,
+    "finalFrames": 232
+  },
+  "release": "Uncommitted; unpushed; undeployed; exact consequential patch requires qualified human approval.",
+  "finalCorrectionScope": [
+    "Public Support form order without handler/payload changes",
+    "Session-expired recovery link spacing",
+    "MFA setup/challenge presentation only; existing guards retained",
+    "Partner metric unit phrases preserve exact text in nonbreaking spans",
+    "Partner and company table scroll guidance remains available at wider widths"
+  ],
+  "sourcePatchSha256": "446d9a44acc544b22b271caefa7cd15bd06f234f3ab818e3bb339baa0be7a775",
+  "sourceFileCount": 188,
+  "sourceManifest": "reports/release-review-2026-10-23/source-manifest.json"
+}

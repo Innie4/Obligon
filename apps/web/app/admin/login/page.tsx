@@ -1,9 +1,11 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
+
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
-import { ShieldCheck, Loader2, Mail, Lock, AlertTriangle } from "lucide-react";
+import { ShieldCheck, Loader2, Mail, Lock } from "lucide-react";
 import { useSession } from "@/components/shared/AuthContext";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { routes } from "@/components/site/routes";
@@ -13,7 +15,7 @@ import { api } from "@/lib/services";
 export default function AdminLoginPage() {
   const router = useRouter();
   const { login, logout } = useSession();
-  const { success: toastSuccess, error: toastError } = useToast();
+  const { success: toastSuccess } = useToast();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -52,7 +54,6 @@ export default function AdminLoginPage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Invalid credentials. Please try again.";
       setError(message);
-      toastError(message);
     } finally {
       setSubmitting(false);
     }
@@ -76,12 +77,8 @@ export default function AdminLoginPage() {
             Enter your internal administrative credentials to access the oversight system.
           </p>
 
-          {error && (
-            <div className="mt-5 rounded-lg bg-[#fff0f0] border border-[#fecaca] p-3 text-sm text-[#93000a] flex items-start gap-2" role="alert">
-              <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
+          {error ? <StatusPopup tone="error" message={error} /> : null}
+          {submitting ? <StatusPopup tone="pending" message="Signing in…" /> : null}
 
           <form className="mt-6 space-y-4" onSubmit={handleLogin}>
             <div>

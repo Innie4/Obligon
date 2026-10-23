@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const vm = require('node:vm');
+const vm = require('./helpers/status-popup.cjs').withStatusPopups(require('node:vm'));
 const ts = require('typescript');
 const partnerAccess = require('../../../packages/shared/partner-access.mjs');
 const element = (type, props, ...children) => ({ type, props: { ...props, children } });

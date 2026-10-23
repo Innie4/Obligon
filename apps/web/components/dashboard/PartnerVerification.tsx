@@ -1,5 +1,6 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -253,6 +254,7 @@ export function PartnerVerificationUI() {
 
   return (
     <div className="mx-auto w-full max-w-[440px] px-5 py-10 sm:py-16">
+      {(sending || sendingCode || busy) ? <StatusPopup tone="pending" message={busy ? "Verifying your code…" : "Sending verification codes…"} /> : null}
       {/* Top left. At the bottom of the card it sat below the form, so someone who
           mistyped a code had to scroll past their own mistake to leave. */}
       <Link
@@ -312,24 +314,12 @@ export function PartnerVerificationUI() {
         </p>
       ) : null}
 
-      {sending ? (
-        <p className="mt-5 text-center text-sm font-semibold text-obligon-text">Sending your code…</p>
-      ) : null}
-
       {notice && !error ? (
-        <p className="mt-5 rounded-lg border border-obligon-border bg-[#fff3d8] p-3 text-sm text-[#9a6300]" role="status">
-          {notice}
-        </p>
+        <StatusPopup tone="info" message={notice} />
       ) : null}
 
       {error ? (
-        <div
-          className="mt-5 flex items-start gap-2 rounded-lg border border-[#fecaca] bg-[#fff0f0] p-3 text-sm text-[#93000a]"
-          role="alert"
-        >
-          <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
-          <span>{error}</span>
-        </div>
+        <StatusPopup tone="error" message={error} />
       ) : null}
 
       {stage === "success" ? (

@@ -1,0 +1,37 @@
+[
+  {
+    "path": "/auth/login",
+    "status": 200,
+    "bytes": 18299
+  },
+  {
+    "path": "/dashboard/workshop",
+    "status": 200,
+    "bytes": 9414
+  },
+  {
+    "path": "/dashboard/station-profile",
+    "status": 200,
+    "bytes": 9866
+  },
+  {
+    "path": "/dashboard/fuel-pricing",
+    "status": 200,
+    "bytes": 9848
+  },
+  {
+    "path": "/dashboard/card-verification",
+    "status": 200,
+    "bytes": 9883
+  },
+  {
+    "path": "/admin/operations",
+    "status": 200,
+    "bytes": 9446
+  },
+  {
+    "path": "/company/stations",
+    "status": 200,
+    "bytes": 9630
+  }
+]

@@ -1,4 +1,5 @@
 "use client";
+import { StatusPopup } from "@/components/shared/StatusPopup";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import type { StationProfileSubmission } from "@/lib/station-profile";
@@ -48,7 +49,7 @@ import { priceSellingUnit } from "@/lib/partner-selling-unit";
 import { WorkshopDashboard, PartnerAccountOverview } from "./WorkshopDashboard";
 
 const StationProfileForm = dynamic(() => import("./StationProfileForm").then(module => module.StationProfileForm), {
-  loading: () => <p className="p-5 text-sm text-obligon-text" role="status">Loading station editor…</p>
+  loading: () => <StatusPopup tone="loading" message="Loading station editor…" />
 });
 
 const toneStyles: Record<PartnerTone, string> = {
@@ -544,6 +545,7 @@ function POSTerminalPage() {
 
   return (
     <DashboardCanvas>
+      {(verifying) ? <StatusPopup tone="pending" message="Checking fuel authorization…" /> : null}
       <div className="mb-5 grid min-w-0 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="pos-payment-type" className="mb-2 block text-sm font-bold">Payment type</label>
@@ -556,43 +558,7 @@ function POSTerminalPage() {
       </div>
       <div className="max-w-2xl mx-auto">
 {pricesLoading || pricesFailed ? (
-          <div
-            role="status"
-            className={`mb-5 flex items-start gap-3 rounded-xl border px-4 py-3 text-sm font-bold ${
-              pricesFailed
-                ? "border-[#f3c6cc] bg-[#fff4f4] text-[#9f1027]"
-                : "border-obligon-border bg-[#f7f7fd] text-obligon-text"
-            }`}
-          >
-            {pricesLoading ? (
-              <Loader2 size={16} className="mt-0.5 animate-spin shrink-0" />
-            ) : (
-              <Clock3 size={16} className="mt-0.5 shrink-0" />
-            )}
-            <div>
-              {pricesLoading ? (
-                <p>{mode === "wallet" ? "Loading your published prices…" : "Loading your stations…"}</p>
-              ) : (
-                <>
-                  <p>{mode === "wallet" ? "Prices could not be loaded" : "Stations could not be loaded"}: {pricingError?.message ?? "the request failed"}</p>
-                  {/*
-                    A retry, and wording that does not blame the operator. Without this
-                    the page said "Publish a price on Fuel Pricing first", which sends
-                    someone to re-enter prices that were already saved and are still
-                    saved — the one conclusion the page must not draw from a failed
-                    read.
-                  */}
-                  <button
-                    type="button"
-                    onClick={reloadPricing}
-                    className="mt-2 text-xs font-extrabold text-[#9f1027] underline"
-                  >
-                    Try again
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
+          <StatusPopup tone={pricesLoading ? "loading" : "error"} message={pricesLoading ? (mode === "wallet" ? "Loading your published prices…" : "Loading your stations…") : `${mode === "wallet" ? "Prices could not be loaded" : "Stations could not be loaded"}: ${pricingError?.message ?? "the request failed"}`} onRetry={pricesFailed ? reloadPricing : undefined} retryLabel="Try again" />
         ) : null}
         {mode === "wallet" && pricingStatus === "success" && !fuelTypes.length ? (
           <p className="mb-5 rounded-xl border border-obligon-border bg-[#f7f7fd] px-4 py-3 text-sm font-bold text-obligon-text">
@@ -777,6 +743,7 @@ function SettlementsPage({
 
   return (
     <DashboardCanvas>
+      {choosingDefault ? <StatusPopup tone="pending" message="Updating settlement destination…" /> : null}
       <h1 className="mb-8 font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Settlements and payouts</h1>
       <AsyncBoundary
         status={status}
@@ -964,6 +931,7 @@ function StationProfilePage() {
 
   return (
     <DashboardCanvas>
+      {(saving) ? <StatusPopup tone="pending" message="Saving station profile…" /> : null}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div><h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Station Profile</h1><p className="mt-2 text-sm text-obligon-text">The details customers see in the station locator.</p></div>
         {station && !creating ? <button type="button" disabled={saving} onClick={() => setOperationsOpen(true)} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-obligon-border bg-white px-5 text-sm font-extrabold text-obligon-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-obligon-green disabled:opacity-50"><Fuel size={16} aria-hidden="true" />Station Operations</button> : null}
@@ -977,7 +945,7 @@ function StationProfilePage() {
         </label>
         <button type="button" disabled={saving || creating} className="min-h-12 rounded-xl bg-obligon-green px-5 text-sm font-bold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-obligon-green disabled:opacity-50" onClick={() => { setCreating(true); setOperationsOpen(false); }}>Add station</button>
       </div>
-      {listError ? <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-obligon-border bg-white p-4 text-sm" role="alert"><span>The station list could not load: {listError.message}</span><button type="button" onClick={reloadList} className="min-h-11 rounded-lg border border-obligon-border px-3 font-bold">Retry station list</button></div> : null}
+      {listError ? <StatusPopup tone="error" message={["The station list could not load:", listError.message].join(" ").trim()} action={<button type="button" onClick={reloadList} className="min-h-11 rounded-lg border border-obligon-border px-3 font-bold">Retry station list</button>} /> : null}
       {!creating && stationList?.stations.find(item => item.id === stationId)?.review_note ? <p className="mb-4 rounded-xl border border-obligon-border bg-white p-4 text-sm" role="status">Admin review: {stationList.stations.find(item => item.id === stationId)?.review_note}</p> : null}
       {creating ? editor : <AsyncBoundary status={status === "error" ? "error" : profileReady ? status : "loading"} error={error?.message ?? null} onRetry={reload} loadingLabel="Loading station…">{data && profileReady ? editor : null}</AsyncBoundary>}
       {operationsOpen && station && !creating ? <StationOperationsModal key={stationId} stationId={stationId} station={station} onClose={() => setOperationsOpen(false)} onDone={() => { reload(); setOperationsOpen(false); }} /> : null}
@@ -1029,7 +997,7 @@ function ExportButton({
   }
 
   return (
-    <button
+    <>{(busy) ? <StatusPopup tone="pending" message="Preparing export…" /> : null}<button
       type="button"
       onClick={run}
       disabled={busy}
@@ -1038,7 +1006,7 @@ function ExportButton({
     >
       {busy ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
       {busy ? pendingLabel : label}
-    </button>
+    </button></>
   );
 }
 
@@ -1276,6 +1244,7 @@ function NotificationsPage() {
 
   return (
     <DashboardCanvas>
+      {(busy) ? <StatusPopup tone="pending" message="Saving notification preferences…" /> : null}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
           <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Notifications</h1>
@@ -1416,6 +1385,7 @@ function SettingsPage() {
 
   return (
     <DashboardCanvas>
+      {(saving) ? <StatusPopup tone="pending" message="Saving account settings…" /> : null}
       <div className="mb-8">
         <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Organisation Settings</h1>
         <p className="mt-1 text-sm text-obligon-text">Your registered details and account security.</p>
@@ -1559,9 +1529,7 @@ function Modal({
 function FormError({ message }: { message: string | null }) {
   if (!message) return null;
   return (
-    <p role="alert" className="mt-4 rounded-xl border border-[#f3c6cc] bg-[#fff4f4] px-4 py-3 text-sm font-bold text-[#9f1027]">
-      {message}
-    </p>
+    <StatusPopup tone="error" message={message} />
   );
 }
 
@@ -1619,14 +1587,16 @@ function AddBankAccountModal({ onClose, onSaved }: { onClose: () => void; onSave
       description="Fuel revenue is settled directly to your verified Nigerian bank account."
       onClose={onClose}
     >
+      {banksStatus === "loading" ? <StatusPopup tone="loading" message="Loading bank directory…" /> : null}
+      {(submitting) ? <StatusPopup tone="pending" message="Saving settlement account…" /> : null}
       <form onSubmit={submit}>
         <FormError message={formError} />
         <label className={`mt-5 ${labelClass}`}>Bank
           <select className={fieldClass} required disabled={banksStatus!=="success"} value={form.bankCode} onChange={event=>{const bank=banks?.banks.find(bank=>bank.code===event.target.value);setForm(previous=>({...previous,bankCode:bank?.code??"",bankName:bank?.name??""}));}}>
-            <option value="">{banksStatus==="loading"?"Loading banks…":"Select your bank"}</option>{banks?.banks.map(bank=><option key={bank.code} value={bank.code}>{bank.name}</option>)}
+            <option value="">Select your bank</option>{banks?.banks.map(bank=><option key={bank.code} value={bank.code}>{bank.name}</option>)}
           </select>
         </label>
-        {banksError?<div role="alert" className="mt-2 text-sm text-red-700">{banksError.message}<button type="button" onClick={reloadBanks} className="ml-2 underline">Retry bank directory</button></div>:null}
+        {banksError?<StatusPopup tone="error" message={banksError.message} action={<button type="button" onClick={reloadBanks} className="ml-2 underline">Retry bank directory</button>} />:null}
         <label className={`mt-4 block ${labelClass}`}>
           Account number
           <input
@@ -1749,6 +1719,7 @@ function RetryPayoutModal({
 
   return (
     <Modal title="Retry Payout" description={payout.reference} onClose={onClose}>
+      {(submitting) ? <StatusPopup tone="pending" message="Processing payout request…" /> : null}
       <FormError message={formError} />
       <p className="mt-4 text-sm font-medium text-obligon-text">
         This submits the transfer to the processor again. If the previous attempt failed because the bank account is no
@@ -1875,6 +1846,8 @@ function StaffMemberModal({
       description={editing ? member?.cells[0] : "Add a colleague with access based on their role."}
       onClose={onClose}
     >
+      {removing ? <StatusPopup tone="pending" message="Removing team member…" /> : null}
+      {(submitting) ? <StatusPopup tone="pending" message="Saving team member…" /> : null}
       <form onSubmit={submit}>
         <FormError message={formError} />
         {editing ? (
@@ -1993,6 +1966,7 @@ function DisputeDetailModal({
 
   return (
     <Modal title={dispute.reference ?? "Dispute"} description={dispute.subject} onClose={onClose}>
+      {(submitting) ? <StatusPopup tone="pending" message="Submitting dispute response…" /> : null}
       <form onSubmit={submit}>
         <FormError message={formError} />
         <dl className="mt-4 space-y-2 rounded-xl bg-[#f7f7fd] p-4 text-sm">
@@ -2126,6 +2100,7 @@ function StationOperationsModal({
 
   return (
     <Modal title="Station Operations" description="Site records and requests for this station." onClose={onClose}>
+      {(busy) ? <StatusPopup tone="pending" message="Saving station settings…" /> : null}
       <section className="mt-5">
         <h3 className={labelClass}>Site asset</h3>
         <p className="mt-1 text-xs font-medium text-obligon-text">
@@ -2265,6 +2240,7 @@ toastSuccess(`Payout ${result.reference} submitted and is being processed.`);
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[#071853]/65 px-5 backdrop-blur-sm">
+      {(submitting) ? <StatusPopup tone="pending" message="Submitting payout request…" /> : null}
       <form onSubmit={submit} className="w-full max-w-md rounded-2xl bg-white p-6 shadow-lg">
         <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">Request Settlement Payout</h2>
         <p className="mt-1 text-sm font-medium text-obligon-text">
@@ -2274,9 +2250,7 @@ toastSuccess(`Payout ${result.reference} submitted and is being processed.`);
         </p>
 
         {formError ? (
-          <p role="alert" className="mt-4 rounded-xl border border-[#f3c6cc] bg-[#fff4f4] px-4 py-3 text-sm font-bold text-[#9f1027]">
-            {formError}
-          </p>
+          <StatusPopup tone="error" message={formError} />
         ) : null}
 
         <label className="mt-5 block">

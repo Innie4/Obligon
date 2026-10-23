@@ -1,3 +1,8 @@
+- [2026-10-23] [Floating operation feedback](2026-10-23-popup-operation-feedback.md): Keep request feedback visible in shared popups with dialog-aware placement and account-scoped notification cleanup.
+- [2026-10-23] [Clear dashboards and truthful interface states](2026-10-23-ui-polish-and-states.md): Share visual patterns while preserving scoped actions, usable scrolling and accurate feedback.
+- [2026-10-23] [Dashboard search that opens useful destinations](2026-10-23-dashboard-search.md): Search permitted pages and recent records, reject stale responses and apply filters at the destination.
+- [2026-10-23] [Google and passkey sign-in](2026-10-23-google-and-passkey-sign-in.md): Explicit enrollment, single-use proofs and existing MFA for additional sign-in methods.
+- [2026-10-23] [Payments and partner access](2026-10-23-payments-and-partner-access.md): Preserve durable financial effects, enforce partner subtypes and retain approved selling units.
 - [2026-10-20] [Verify either contact](2026-10-20-either-contact-verification.md): Send both signup codes, accept either proof, and preserve contact-specific requirements.
 - [2026-10-19] [Reliable dashboard states and Company signup](2026-10-19-dashboard-state-and-signup.md): Keep search focus, distinguish independent request outcomes, and describe company invitation delivery accurately.
 - [2026-10-18] [Calendars, copy and reliable requests](2026-10-18-calendars-copy-and-readiness.md): Share validated date controls, preserve request semantics, and distinguish tested repairs from hosted release requirements.

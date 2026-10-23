@@ -58,7 +58,7 @@ function fixture(path, { status = 'authenticated', role = 'customer', loginResul
   const exports = load(path);
   const render = props => {
     stateIndex = 0; effectIndex = 0;
-    tree = (exports.default ?? exports.SuccessAutoRedirect ?? exports.PartnershipShell)(props ?? { children: 'Dashboard content' });
+    tree = (exports.default ?? exports.SuccessAutoRedirect ?? exports.PartnershipShell ?? exports.AuthStatus)(props ?? { children: 'Dashboard content', ...(exports.AuthStatus ? { status: 'progress' } : {}) });
     while (pending.length) pending.shift()();
     return tree;
   };
@@ -111,7 +111,9 @@ test('admin sign-in checks verified role and clears a non-admin session', async 
   await ui.submit();
   assert.equal(ui.events.some(([event]) => event === 'success' || event === 'push'), false);
   assert.ok(ui.events.some(([event]) => event === 'logout'));
-  assert.match(ui.events.find(([event]) => event === 'error')?.[1], /admin.*access/i);
+  const feedback = ui.nodes().find(node => node.type === 'StatusPopup' && node.props.tone === 'error');
+  assert.match(feedback.props.message, /admin.*access/i);
+  assert.equal(ui.nodes().some(node => node.type === 'div' && node.props.role === 'alert'), false);
 });
 test('admin MFA navigation keeps credentials and password proof out of the URL', async () => {
   const ui = fixture('../app/admin/login/page.tsx', { role: 'admin', loginResult: { mfaRequired: true } });
@@ -230,3 +232,25 @@ for (const pathname of ['/dashboard/fuel-pricing', '/dashboard/station-profile',
     assert.equal(ui.nodes().find(node => node.type === 'AuthGuard').props.allowedRoles.length, 0);
   });
 }
+
+
+test('auth failure is a popup with the supplied retry and recovery destinations', () => {
+  const ui = fixture('../components/auth/AuthStatus.tsx');
+  const retry = () => {};
+  ui.render({ status: 'failure', serverError: 'The sign-in request failed.', onRetry: retry });
+  const popup = ui.nodes().find(node => node.type === 'StatusPopup');
+  assert.equal(popup.props.tone, 'error');
+  assert.equal(popup.props.message, 'The sign-in request failed.');
+  assert.equal(popup.props.onRetry, retry);
+  assert.deepEqual(nodes(popup.props.action).filter(node => node.type === 'Link').map(node => node.props.href), ['/auth/login', '/support']);
+  assert.equal(ui.nodes().some(node => node.type === 'p'), false);
+});
+
+test('auth progress uses a loading popup with a real cancellation destination', () => {
+  const ui = fixture('../components/auth/AuthStatus.tsx');
+  ui.render({ status: 'progress' });
+  const popup = ui.nodes().find(node => node.type === 'StatusPopup');
+  assert.equal(popup.props.tone, 'loading');
+  assert.match(popup.props.message, /Checking your sign-in session/);
+  assert.equal(popup.props.action.props.href, '/auth/login');
+});

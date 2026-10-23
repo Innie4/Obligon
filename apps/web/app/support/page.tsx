@@ -1,5 +1,7 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
+
 import React, { useState } from "react";
 import Link from "next/link";
 import { Mail, MapPin, Phone, Send, Loader2, Check, Upload, ArrowRight } from "lucide-react";
@@ -44,6 +46,7 @@ export default function SupportPage() {
   return (
     <main className="min-h-screen bg-obligon-mist text-obligon-navy">
       <SiteHeader />
+      {submitting ? <StatusPopup tone="pending" message="Sending your support request…" /> : null}
       <section className="mx-auto grid max-w-[1280px] gap-x-10 gap-y-6 px-5 py-16 sm:px-8 lg:grid-cols-[1fr_480px] lg:grid-rows-[auto_1fr] lg:items-start lg:px-16 lg:py-24">
         <div className="lg:col-start-1 lg:row-start-1">
           <PageIntro

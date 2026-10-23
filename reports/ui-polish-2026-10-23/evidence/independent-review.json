@@ -1,0 +1,94 @@
+{
+  "recordedAt": "2026-10-23T19:52:10.536646+00:00",
+  "reviewer": "company_admin_audit22",
+  "scope": "Frozen customer/partner UI critic Round 3 plus reviewed noun correction",
+  "baselineManifest": "reports/ui-polish-2026-10-23/evidence/customer-partner-round3-source.json",
+  "baselineAggregateSha256": "0a09687e4ed6b75fc8ac3521bc845b79419260263c1506104e2babdf14f2b613",
+  "reviewedFiles": {
+    "apps/web/components/customer-dashboard/CustomerScreen.tsx": "e49b3db62f82d4802abd61a7c0b5f16dfeaafb09c412911bf938c2df36882075",
+    "apps/web/components/dashboard/DashboardScreen.tsx": "b12a189903b92e62068b3adc84b2b558c711d1df1c142413369edf717fc0ed08",
+    "apps/web/components/dashboard/PartnerVerification.tsx": "dfb68b740a717697616361e5825c524c1d8b3f7afede797dd6dd3879f3051144",
+    "apps/web/components/shared/StationMap.tsx": "b9942979163d60449bd245e369fc1414912f11d8b85a0cd73633d75e34c4c42d",
+    "apps/web/tests/partner-audit-regression.test.cjs": "69d84fb2e134906c02dd5f7392fe0a63167028cc82f811aacf456edebd07e6ad",
+    "apps/web/tests/partner-verification.test.cjs": "dd7c7d70b28b5fe9157ea73f48aea81548523e1553a6c15d0b6029c85e4915fa",
+    "apps/web/tests/station-map-states.test.cjs": "c0f22adb6b5224af26ea6ba87a47c42ba46d0b66a2f8545a46913c72cc24c2c1",
+    "apps/web/tests/ui-dashboard-polish.test.cjs": "740b4bede6761c9bc6aa8898e81737e1f19aadaecfaa51df05529c1333fee63b"
+  },
+  "reviewedCorrectionHashes": {
+    "apps/web/components/dashboard/PartnerVerification.tsx": "dfb68b740a717697616361e5825c524c1d8b3f7afede797dd6dd3879f3051144",
+    "apps/web/tests/partner-verification.test.cjs": "dd7c7d70b28b5fe9157ea73f48aea81548523e1553a6c15d0b6029c85e4915fa"
+  },
+  "checks": [
+    {
+      "check": "station-map",
+      "counts": {
+        "tests": 7,
+        "pass": 7,
+        "fail": 0,
+        "skipped": 0
+      },
+      "exitCode": 0,
+      "log": "reports/ui-polish-2026-10-23/evidence/independent-review-station-map.log"
+    },
+    {
+      "check": "dashboard-ui",
+      "counts": {
+        "tests": 26,
+        "pass": 26,
+        "fail": 0,
+        "skipped": 0
+      },
+      "exitCode": 0,
+      "log": "reports/ui-polish-2026-10-23/evidence/independent-review-dashboard-ui.log"
+    },
+    {
+      "check": "partner-audit",
+      "counts": {
+        "tests": 11,
+        "pass": 11,
+        "fail": 0,
+        "skipped": 0
+      },
+      "exitCode": 0,
+      "log": "reports/ui-polish-2026-10-23/evidence/independent-review-partner-audit.log"
+    },
+    {
+      "check": "partner-verification",
+      "counts": {
+        "tests": 20,
+        "pass": 20,
+        "fail": 0,
+        "skipped": 0
+      },
+      "exitCode": 0,
+      "log": "reports/ui-polish-2026-10-23/evidence/independent-review-partner-verification.log"
+    }
+  ],
+  "extraMapAssertions": {
+    "pendingSdkUnmount": "passed",
+    "sdkTimeoutRetryAndLateCallback": "passed",
+    "sdkNetworkFailureCleanup": "passed"
+  },
+  "findings": [
+    {
+      "severity": "P2",
+      "file": "apps/web/components/dashboard/PartnerVerification.tsx",
+      "line": 59,
+      "status": "resolved and independently verified",
+      "issue": "Other partners were incorrectly called station accounts.",
+      "resolution": "Explicit other specialization now uses partner, preserving workshop for mechanics and station for fuel/gas partners. Verification decisions remain unchanged.",
+      "evidence": [
+        "apps/web/lib/services/types.ts:34 supports other",
+        "apps/api/src/routes/auth.routes.js:542 accepts other",
+        "apps/web/components/dashboard/DashboardScreen.tsx:1465 renders PartnerAccountOverview for other"
+      ]
+    }
+  ],
+  "remainingRequiredSourceChanges": [],
+  "notChecked": [
+    "Live external map availability and drawn provider tiles",
+    "Browser geometry and visual scoring",
+    "Provider delivery, production deploy and complete project readiness",
+    "Unchanged backend/authentication/payment behavior; root owns combined checks"
+  ]
+}

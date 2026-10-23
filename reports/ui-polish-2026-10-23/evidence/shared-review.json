@@ -1,0 +1,73 @@
+{
+  "task": "Independent bounded review of shared/public UI changes",
+  "reviewedAt": "2026-10-23T19:08:01.298933+00:00",
+  "findings": [],
+  "resolvedDuringReview": [
+    {
+      "file": "apps/web/components/site/SiteHeader.tsx",
+      "line": 19,
+      "issue": "Escape dismissal must return keyboard focus to the disclosure trigger",
+      "resolution": "Root added trigger lookup/focus and focused assertions; menu5/5 pass"
+    },
+    {
+      "file": "apps/web/components/landing/Header.tsx",
+      "line": 22,
+      "issue": "Same Escape focus-restoration requirement",
+      "resolution": "Root added trigger lookup/focus and focused assertions; menu5/5 pass"
+    }
+  ],
+  "evidence": {
+    "menu": {
+      "tests": 5,
+      "pass": 5,
+      "fail": 0,
+      "log": "shared-review-menu.log"
+    },
+    "publicControls": {
+      "tests": 12,
+      "pass": 12,
+      "fail": 0,
+      "log": "shared-review-public.log"
+    },
+    "authForms": {
+      "baseline": "reports/google-passkey-2026-10-23/application-snapshot.json + application-snapshot.diff",
+      "baselineReconstructedSHA256": "8de9e0d4562f6319be1e11b4e85f969503e980de614052a910face5ef51a9b42",
+      "normalizedASTAfterClassAttributeRemovalEqual": true
+    }
+  },
+  "connectedCallers": [
+    "FuelVista, EnergyVista and GenVista public pages",
+    "AuthShell compact and full modes; AuthStatus failure and progress pages",
+    "Sign-in error dialog; shared dialog focus helper",
+    "AsyncBoundary existing error/success-with-background-error paths",
+    "Public footer/cookie controls and existing destination routes"
+  ],
+  "limitations": [
+    "No browser control or screenshot judgment in this subagent review",
+    "Root owns final build/full web suite, actual responsive/keyboard/contrast checks and all-state visual acceptance",
+    "Hidden scrollbar styling still requires actual keyboard/wheel/touch acceptance on nested overflow regions",
+    "No security/readiness/perfection claim from source or focused tests"
+  ],
+  "sourceSHA256": {
+    "apps/web/app/globals.css": "21aa4bd8217c70d4af847e9347df2bf6561e05409beb7deb253a6202d2a1b8b5",
+    "apps/web/tailwind.config.js": "e86d44a34acc6a8d8bd356b5e1cec230ab6e166ef0f60200d9991f5f185e7839",
+    "apps/web/components/landing/Button.tsx": "d7315f51d886b1f4978805b29da649faea2a35c7840aef9767e5ad5ddf6b3c6d",
+    "apps/web/components/landing/Footer.tsx": "92630e8eca413a7dadc0b2a7494c5ba7a8256526a26f3bdc279aea55bba65b43",
+    "apps/web/components/landing/Header.tsx": "c2c3b98c0e42e8b54fdf2d39e4618ffa94d32c03f4e9aa96c0a374131de21c33",
+    "apps/web/components/landing/Hero.tsx": "b395a8a8972363bba39d877eedfa364e71be6667fdd322e547e48994b66e5bbd",
+    "apps/web/components/landing/Pricing.tsx": "ee0914c13e9f9927e2174573e4f84f07d925c7bf881560372dca203b1e51f17c",
+    "apps/web/components/landing/Story.tsx": "86129ad8ef49e11a7dc871b1a026f59c0b8475ac9035a3f2898373781d1b7264",
+    "apps/web/components/site/SiteHeader.tsx": "417fdc1d742a466e99acc9b8404e1df7a9e83f19314362990ce67244909184c8",
+    "apps/web/components/site/PageIntro.tsx": "319b3fc047c069de0ace6e62f70add9e0f282534c30aac4fbb3ba343baad9dc1",
+    "apps/web/components/site/Input.tsx": "71330dfc2e242ff2a794da0323c39f1461c5b9fe1544bad5971b0d58f1345e41",
+    "apps/web/components/site/SiteFooter.tsx": "f43bf45a7cab1b4285a723eb8789b1ac96db73fc9b0c113c44c4b2ac72b1ebdc",
+    "apps/web/components/site/CookieConsentBanner.tsx": "499e3ff1fa1705c42503436bcf7baffddadecc7dc5fd5356355722802be6e571",
+    "apps/web/components/solutions/SolutionPage.tsx": "aac86080753fa9dd0c59fdb10c705354a55309fed23f2c1cb098be53933b2d08",
+    "apps/web/components/auth/AuthShell.tsx": "2d763a7e2da2e813d4427a5d3abe0c905fdbd009d587238de192f2d9544f46a0",
+    "apps/web/components/auth/AuthForms.tsx": "499e690f5da8b51ed9eec503234d955172f1a24a8dc6c41ab21f34c5beee59a8",
+    "apps/web/components/auth/AuthStatus.tsx": "1d321199df683ebcfe113dbd02b6518c66b47884e28f9bd5489b14919f25687b",
+    "apps/web/components/shared/States.tsx": "6c6cc5b80236e4ef2a956f27d45aed3e788bdb5e1aa6107f857b02fb82d18c18",
+    "apps/web/components/shared/Dialogs.tsx": "1528c3532c3ca7947db961b6d93ae9937b2c305095b3147cb29a8d5416e34ea6",
+    "apps/web/components/shared/Toast.tsx": "80627007e5c5ff9f4555a6724f282117f09e54976848230b439c77b96739b379"
+  }
+}

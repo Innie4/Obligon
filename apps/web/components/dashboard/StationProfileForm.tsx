@@ -1,5 +1,6 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
 import * as React from "react";
 import { Loader2, MapPin, Save } from "lucide-react";
 import type { PartnerStation } from "@/lib/services/types";
@@ -66,7 +67,7 @@ export function StationProfileForm({ station, creating, saving, fuelChoices, onS
         <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-obligon-mist text-obligon-green"><MapPin size={22} aria-hidden="true" /></span>
         <div><h2 className="font-display text-lg font-bold tracking-tight sm:text-xl text-obligon-navy">{creating ? "Add a fuel station" : "Location details"}</h2><p className="mt-1 text-sm text-obligon-text">Keep your station’s customer-facing details accurate.</p></div>
       </div>
-      {serverError ? <p role="alert" className="mb-5 rounded-xl bg-[#ffecef] p-4 text-sm text-[#9f1027]">{serverError}</p> : null}
+      {serverError ? <StatusPopup tone="error" message={serverError} /> : null}
       <fieldset disabled={saving} className="min-w-0 space-y-6">
         <legend className="sr-only">Station profile</legend>
         <div>

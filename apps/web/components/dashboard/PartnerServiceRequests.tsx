@@ -1,4 +1,5 @@
 "use client";
+import { StatusPopup } from "@/components/shared/StatusPopup";
 import * as React from "react";
 import { authenticatedRequest } from "@/lib/services";
 interface Ticket {
@@ -65,20 +66,17 @@ export function PartnerServiceRequests() {
   }
   return (
     <section className="mt-6 min-w-0 rounded-2xl border border-obligon-border bg-white p-5 sm:p-6">
+      {(busy) ? <StatusPopup tone="pending" message="Sending support request…" /> : null}
       <h2 className="font-display text-xl font-bold tracking-tight text-obligon-navy">Support and plan services</h2>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-obligon-text">
         Requests reach Obligon’s operations team. Service availability, timing
         and any quote are confirmed before booking.
       </p>
       {error && (
-        <p role="alert" className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">
-          {error}
-        </p>
+        <StatusPopup tone="error" message={error} />
       )}
       {notice && (
-        <p role="status" className="mt-4 rounded-xl bg-obligon-mist p-4 text-sm text-obligon-green">
-          {notice}
-        </p>
+        <StatusPopup tone="info" message={notice} />
       )}
       <form
         className="mt-5 space-y-4"
@@ -142,8 +140,8 @@ export function PartnerServiceRequests() {
       <div className="mt-8 grid gap-6 border-t border-obligon-border pt-6 md:grid-cols-2">
         <div className="min-w-0">
           <h3 className="mb-3 text-sm font-semibold text-obligon-navy">Your requests</h3>
-          {loading ? <p role="status" className="py-4 text-sm text-obligon-text">Loading your requests…</p> : null}
-          {loadError ? <div role="alert" className="mb-3 rounded-xl bg-amber-50 p-4 text-sm text-amber-900"><p>{loadError}</p><button type="button" disabled={loading} onClick={() => void load()} className="mt-2 min-h-11 rounded-lg px-2 font-semibold underline disabled:opacity-60">Retry loading requests</button></div> : null}
+          {loading ? <StatusPopup tone="loading" message="Loading your requests…" /> : null}
+          {loadError ? <StatusPopup tone="error" message={loadError} action={<button type="button" disabled={loading} onClick={() => void load()} className="mt-2 min-h-11 rounded-lg px-2 font-semibold underline disabled:opacity-60">Retry loading requests</button>} /> : null}
           {!loading && !loadError && tickets.length === 0 ? <p className="rounded-xl bg-obligon-mist/60 p-4 text-sm leading-6 text-obligon-text">No requests yet. Send a request above and follow its progress here.</p> : null}
           {tickets.map((ticket) => (
             <button
@@ -168,8 +166,8 @@ export function PartnerServiceRequests() {
             >
               Refresh replies
             </button>
-            {loadingMessages ? <p role="status" className="py-3 text-sm text-obligon-text">Loading replies…</p> : null}
-            {messageError ? <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">{messageError}</p> : null}
+            {loadingMessages ? <StatusPopup tone="loading" message="Loading replies…" /> : null}
+            {messageError ? <StatusPopup tone="error" message={messageError} /> : null}
             {!loadingMessages && !messageError && messages.length === 0 ? <p className="py-3 text-sm text-obligon-text">There are no replies to this request yet.</p> : null}
             {messages.map((message) => (
               <p

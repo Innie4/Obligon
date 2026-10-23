@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const vm = require('node:vm');
+const vm = require('./helpers/status-popup.cjs').withStatusPopups(require('node:vm'));
 const ts = require('typescript');
 const partnerAccess = require('../../../packages/shared/partner-access.mjs');
 const element = (type, props, ...children) => ({ type, props: { ...props, children } });
@@ -190,7 +190,7 @@ test('unknown wallet balances never claim zero or no confirmed payments', () => 
  for (const status of ['loading', 'error']) {
   const fixture = screenFixture('WalletPage', { '@/components/shared/useAsync': { useAsync: () => ({ status, data: undefined, error: status === 'error' ? Error('Wallet unavailable') : null, refresh() {}, reload() {} }) } });
   const output = text(fixture.render(fixture.component, { onModal() {}, balanceRefreshKey: 0 }));
-  assert.ok(!output.includes('₦0.00'), output); assert.ok(!output.includes('No confirmed payments yet'), output); assert.match(output, status === 'loading' ? /Loading balance/ : /Balance unavailable/);
+  assert.ok(!output.includes('₦0.00'), output); assert.ok(!output.includes('No confirmed payments yet'), output); assert.match(output, status === 'loading' ? /Loading balance/ : /We could not load your balance/);
  }
 });
 test('failed wallet refresh retains known balance with warning', () => {

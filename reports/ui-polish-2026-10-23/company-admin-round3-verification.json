@@ -1,0 +1,97 @@
+{
+  "recordedAt": "2026-10-23T19:35:02.586028+00:00",
+  "scope": "Company dashboard presentation fixes from design critic Round 3",
+  "sourceFrozen": true,
+  "sourceHashes": {
+    "apps/web/components/company-dashboard/CompanyScreen.tsx": "6070f5df16fa72e93028b67ac681bf170fcb9bdcb4cfd84f14a9a042c778d2f9",
+    "apps/web/tests/company-admin-ui-polish.test.cjs": "db1dc762c5b08a3fb730f437782b7170467d5add4bd1ec4f37528231b5de5c52"
+  },
+  "changes": [
+    "Explicit driver and vehicle card labels preserve raw API row data, IDs and existing card-confirm actions.",
+    "Quantity unit phrases stay together with smaller type while text content preserves the exact API value.",
+    "Three summary metrics use three tablet columns and a full-width last phone metric; four metrics use four tablet columns.",
+    "Settings account status aligns to the top beside the profile form."
+  ],
+  "checks": [
+    {
+      "check": "red",
+      "log": "reports/ui-polish-2026-10-23/evidence/round3-company-admin-red.log",
+      "summary": [
+        "ℹ tests 12",
+        "ℹ pass 10",
+        "ℹ fail 2",
+        "ℹ skipped 0"
+      ],
+      "emptyOutput": false,
+      "exitCode": 1,
+      "counts": {
+        "tests": 12,
+        "pass": 10,
+        "fail": 2
+      }
+    },
+    {
+      "check": "ui",
+      "log": "reports/ui-polish-2026-10-23/evidence/round3-company-admin-ui.log",
+      "summary": [
+        "ℹ tests 12",
+        "ℹ pass 12",
+        "ℹ fail 0",
+        "ℹ skipped 0"
+      ],
+      "emptyOutput": false,
+      "exitCode": 0,
+      "counts": {
+        "tests": 12,
+        "pass": 12,
+        "fail": 0
+      }
+    },
+    {
+      "check": "empty",
+      "log": "reports/ui-polish-2026-10-23/evidence/round3-company-admin-empty.log",
+      "summary": [
+        "ℹ tests 13",
+        "ℹ pass 13",
+        "ℹ fail 0",
+        "ℹ skipped 0"
+      ],
+      "emptyOutput": false,
+      "exitCode": 0,
+      "counts": {
+        "tests": 13,
+        "pass": 13,
+        "fail": 0
+      }
+    },
+    {
+      "check": "search",
+      "log": "reports/ui-polish-2026-10-23/evidence/round3-company-admin-search.log",
+      "summary": [
+        "ℹ tests 12",
+        "ℹ pass 12",
+        "ℹ fail 0",
+        "ℹ skipped 0"
+      ],
+      "emptyOutput": false,
+      "exitCode": 0,
+      "counts": {
+        "tests": 12,
+        "pass": 12,
+        "fail": 0
+      }
+    },
+    {
+      "check": "typescript",
+      "log": "reports/ui-polish-2026-10-23/evidence/round3-company-admin-typescript.log",
+      "summary": [],
+      "emptyOutput": true,
+      "exitCode": 0
+    }
+  ],
+  "limitations": [
+    "Browser, screenshot and visual acceptance are owned by the root agent.",
+    "No backend, authorization, financial calculation or provider changes were made in this increment.",
+    "Full suite/build and release decisions remain with root."
+  ]
+}

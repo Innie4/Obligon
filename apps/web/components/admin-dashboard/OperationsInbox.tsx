@@ -1,4 +1,5 @@
 "use client";
+import { StatusPopup } from "@/components/shared/StatusPopup";
 import * as React from "react";
 import { authenticatedRequest } from "@/lib/services";
 interface Ticket {
@@ -48,8 +49,8 @@ interface Review {
   failure_reason?: string;
 }
 function BankVerificationStatus({ loading, failed, empty }: { loading: boolean; failed: boolean; empty: boolean }) {
-  if (loading) return <p role="status" className="mt-3 text-obligon-text">Loading partner bank accounts…</p>;
-  if (failed) return <p role="status" className="mt-3 text-obligon-text">Bank accounts could not be loaded. Refresh operational records to try again.</p>;
+  if (loading) return <StatusPopup tone="loading" message="Loading partner bank accounts…" />;
+  if (failed) return <StatusPopup tone="error" message="Bank accounts could not be loaded. Refresh operational records to try again." />;
   if (empty) return <p role="status" className="mt-3 text-obligon-text">No partner bank accounts are available for verification.</p>;
   return null;
 }
@@ -139,21 +140,18 @@ export function OperationsInbox() {
       <section className="mx-auto w-full min-w-0 max-w-[1600px] px-4 py-6 text-sm sm:px-6 sm:py-8 lg:px-8 [&_button]:min-h-11 [&_button]:rounded-lg [&_button]:px-4 [&_button]:font-semibold [&_textarea]:min-h-28 [&_textarea]:rounded-xl [&_p]:break-words">
         <h1 className="border-b border-obligon-border pb-6 text-2xl font-bold tracking-tight sm:text-3xl">Support and Settlement Review</h1>
         <button type="button" disabled={loading || busy} onClick={() => void load()} className="mt-4 min-h-12 rounded border px-4">Refresh</button>
-        {loading ? <p role="status" className="mt-4">
-          Loading operational records…
-        </p> : <p role="alert" className="mt-4 text-red-700">{error}</p>}
+        {loading ? <StatusPopup tone="loading" message="Loading operational records…" /> : <StatusPopup tone="error" message={error} />}
         <h2 className="mt-8 text-xl font-bold">Partner bank verification</h2>
         <BankVerificationStatus loading={loading} failed={loadFailed} empty={banks.length === 0} />
       </section>
     );
   return (
     <section className="mx-auto w-full min-w-0 max-w-[1600px] px-4 py-6 text-sm sm:px-6 sm:py-8 lg:px-8 [&_button]:min-h-11 [&_button]:rounded-lg [&_button]:px-4 [&_button]:font-semibold [&_textarea]:min-h-28 [&_textarea]:rounded-xl [&_p]:break-words">
+      {(busy) ? <StatusPopup tone="pending" message="Saving operational review…" /> : null}
       <h1 className="border-b border-obligon-border pb-6 text-2xl font-bold tracking-tight sm:text-3xl">Support and Settlement Review</h1>
       <button type="button" disabled={loading || busy} onClick={() => void load()} className="mt-4 min-h-12 rounded border px-4">Refresh</button>
       {error && (
-        <p role="alert" className="my-4 text-red-700">
-          {error}
-        </p>
+        <StatusPopup tone="error" message={error} />
       )}
       <h2 className="mt-6 text-xl font-bold">Customer support</h2>
       <div className="my-5 grid min-w-0 items-start gap-5 xl:grid-cols-2">

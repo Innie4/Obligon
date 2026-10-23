@@ -1,5 +1,7 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
+
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSession } from "@/components/shared/AuthContext";
@@ -69,9 +71,7 @@ export function AuthGuard({
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-obligon-green border-t-transparent" />
-      </div>
+      <StatusPopup tone="loading" message="Checking your sign-in session…" />
     );
   }
 
@@ -102,9 +102,7 @@ export function RequireAuth({ children, redirectTo: _redirectTo }: { children: R
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-obligon-green border-t-transparent" />
-      </div>
+      <StatusPopup tone="loading" message="Checking your sign-in session…" />
     );
   }
 
@@ -143,9 +141,7 @@ export function RoleGuard({
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-obligon-green border-t-transparent" />
-      </div>
+      <StatusPopup tone="loading" message="Checking your sign-in session…" />
     );
   }
 

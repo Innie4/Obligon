@@ -1,5 +1,7 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
+
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -71,7 +73,6 @@ export function CareersPage() {
       if (applicationVersion.current !== version) return;
       const message = err instanceof Error ? err.message : "Could not submit the application. Please try again.";
       setApplicationError(message);
-      toastError(message);
     } finally {
       if (applicationVersion.current === version) {
         submittingRef.current = false;
@@ -214,8 +215,8 @@ export function CareersPage() {
         </div>
 
         <div className="mt-8 space-y-4">
-          {loading&&<p role="status">Loading open roles…</p>}
-          {jobsError&&<div role="alert"><p>{jobsError}</p><button onClick={()=>void loadJobs()}>Retry</button></div>}
+          {loading ? <StatusPopup tone="loading" message="Loading open roles…" /> : null}
+          {jobsError ? <StatusPopup tone="error" message={jobsError} onRetry={() => void loadJobs()} /> : null}
           {!loading&&!jobsError&&!filteredRoles.length&&<p>No open roles in this department. Check back later.</p>}
           {filteredRoles.map((role) => (
             <article
@@ -367,7 +368,8 @@ export function CareersPage() {
                   </button>
                 </div>
 
-                {applicationError ? <p className="text-sm font-bold text-[#c1121f]" role="alert">{applicationError}</p> : null}
+                {applicationError ? <StatusPopup tone="error" message={applicationError} /> : null}
+                {submitting ? <StatusPopup tone="pending" message="Submitting your application…" /> : null}
 
                 <div className="flex justify-end gap-3 pt-4 border-t border-obligon-border">
                   <button type="button" disabled={submitting} onClick={handleCloseModal} className="h-12 px-6 rounded-xl border border-obligon-navy text-sm font-extrabold disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-obligon-green focus:ring-offset-2">

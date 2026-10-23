@@ -1,9 +1,11 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
+
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, CheckCircle2, AlertTriangle, ArrowLeft, ShieldCheck, Smartphone, QrCode, Key, Copy, Check, AlertCircle } from "lucide-react";
+import { CheckCircle2, AlertTriangle, ArrowLeft, ShieldCheck, Smartphone, QrCode, Key, Copy, Check, AlertCircle } from "lucide-react";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { routes } from "@/components/site/routes";
 import { useToast } from "@/components/shared/Toast";
@@ -164,6 +166,8 @@ export function MFASetupUI({ stage = "setup", redirect }: MFAUIProps) {
 
   return (
     <AuthShell compact>
+      {submitting || (currentStage === "setup" && !qrCodeDataUrl && !error) ? <StatusPopup tone={submitting ? "pending" : "loading"} message={submitting ? "Verifying your authenticator…" : "Preparing your authenticator setup…"} /> : null}
+      {error ? <StatusPopup tone="error" message={error} /> : null}
       <div className="w-full max-w-[440px] mx-auto">
         {currentStage === "setup" && (
           <div>
@@ -177,21 +181,15 @@ export function MFASetupUI({ stage = "setup", redirect }: MFAUIProps) {
               {qrCodeDataUrl
                 ? "Scan the QR code with your authenticator app."
                 : error
-                  ? "Setup could not be loaded. Review the message below, or return to sign in."
-                  : "Preparing your authenticator setup."}
+                  ? "Return to sign in to start setup again."
+                  : "Add an authenticator app to protect your account."}
             </p>
 
             <div className="mt-8 flex flex-col items-center gap-4">
               <div className="rounded-xl border border-obligon-border bg-white p-6">
                 {qrCodeDataUrl ? (
                   <img src={qrCodeDataUrl} alt="QR Code for TOTP setup" className="mx-auto w-48 h-48" />
-                ) : error ? (
-                  <p role="alert" className="text-center text-sm font-bold text-[#c1121f]">{error}</p>
-                ) : (
-                  <div className="mx-auto grid h-48 w-48 place-items-center rounded-lg bg-obligon-mist text-xs font-bold text-obligon-text">
-                    <Loader2 size={24} className="animate-spin" />
-                  </div>
-                )}
+                ) : null}
                 {secretKey ? <>
                   <p className="mt-4 text-center text-sm font-bold text-obligon-navy">{secretKey}</p>
                   <p className="mt-2 text-center text-xs text-obligon-text">Enter this key manually if QR scan fails</p>
@@ -230,7 +228,6 @@ export function MFASetupUI({ stage = "setup", redirect }: MFAUIProps) {
             </p>
             <form onSubmit={(e) => { e.preventDefault(); if (totpCode.length === 6) handleVerifyTOTP(); }} className="mt-6 space-y-4">
               <TotpInput value={totpCode} onChange={setTotpCode} disabled={submitting} />
-              {error ? <p className="rounded-lg bg-[#ffe8e8] p-3 text-sm font-bold text-[#c1121f]">{error}</p> : null}
               <button type="submit" className="h-12 w-full rounded-lg bg-obligon-green text-base font-bold text-white shadow-green" disabled={submitting}>
                 {submitting ? "Verifying..." : "Verify & Continue"}
               </button>
@@ -313,7 +310,6 @@ export function MFASetupUI({ stage = "setup", redirect }: MFAUIProps) {
                 <input type="text" autoComplete="off" value={totpCode} onChange={event => setTotpCode(event.target.value)} disabled={submitting || !challengeAvailable} className="mt-2 h-12 w-full rounded-lg border border-obligon-border p-3 font-mono" />
               </label> : <TotpInput value={totpCode} onChange={setTotpCode} disabled={submitting || !challengeAvailable} />}
               <button type="button" onClick={() => { setUseBackupCode(current => !current); setTotpCode(""); }} disabled={submitting || !challengeAvailable} className="min-h-11 text-sm font-bold text-obligon-green underline disabled:cursor-not-allowed disabled:opacity-50">{useBackupCode ? "Use an authenticator code" : "Use a backup code"}</button>
-              {error ? <p role="alert" className="rounded-lg bg-[#ffe8e8] p-3 text-sm font-bold text-[#c1121f]">{error}</p> : null}
               <button type="submit" className="h-12 w-full rounded-lg bg-obligon-green text-base font-bold text-white shadow-green disabled:cursor-not-allowed disabled:opacity-50" disabled={submitting || !challengeAvailable}>
                 {submitting ? "Verifying..." : "Verify & Continue"}
               </button>

@@ -1,5 +1,7 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
+
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Cookie, X } from "lucide-react";
@@ -39,7 +41,8 @@ export function CookieConsentBanner() {
       aria-label="Cookie Consent"
       className="fixed bottom-4 left-4 right-4 z-40 mx-auto max-w-3xl rounded-2xl border border-obligon-border bg-white p-5 shadow-hero  animate-in fade-in slide-in-from-bottom-4 duration-300"
     >
-      {error&&<p role="alert" className="mb-3 text-sm text-red-800">{error}</p>}
+      {error ? <StatusPopup tone="error" message={error} /> : null}
+      {saving ? <StatusPopup tone="pending" message="Saving your privacy choices…" /> : null}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3.5">
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-obligon-lime/20 text-obligon-green">

@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-23",
+  "projectId": "feisty-gasket-469408-u4",
+  "clientName": "Obligon web sign-in",
+  "clientIdStoredIn": "ignored root .env",
+  "javascriptOrigins": [
+    "https://obligon.vercel.app",
+    "http://localhost:4310"
+  ],
+  "redirectUris": [],
+  "publishingStatus": "In production",
+  "applicationHome": "https://obligon.vercel.app",
+  "privacyPolicy": "https://obligon.vercel.app/privacy-policy",
+  "termsOfService": "https://obligon.vercel.app/terms-of-service",
+  "clientSecretRetained": false,
+  "applicationDeployed": false,
+  "physicalAuthenticatorAcceptance": "pending"
+}

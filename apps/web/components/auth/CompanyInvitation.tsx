@@ -1,5 +1,7 @@
 "use client";
 
+import { StatusPopup } from "@/components/shared/StatusPopup";
+
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -48,7 +50,7 @@ export function CompanyInvitation({ token }: { token: string | null }) {
   return <AuthShell compact><section aria-labelledby="company-invitation-title" className="w-full max-w-lg rounded-2xl border border-obligon-border bg-white p-6 shadow-card sm:p-8">
     <h1 id="company-invitation-title" className="font-display text-3xl font-extrabold text-obligon-navy">Join your company team</h1>
     <p className="mt-3 text-sm leading-6 text-obligon-text">Join an existing fleet with your account. Your account type stays the same.</p>
-    {!destination ? <p className="mt-5 text-sm font-semibold text-[#93000a]" role="alert">This invitation link is invalid. Ask the company owner for a new invitation.</p> : waiting ? <p className="mt-6 text-sm" role="status">Checking your invitation…</p> : status === "unauthenticated" ? <div className="mt-6 space-y-4">
+    {!destination ? <StatusPopup tone="error" message="This invitation link is invalid. Ask the company owner for a new invitation." /> : waiting ? <StatusPopup tone="loading" message="Checking your invitation…" /> : status === "unauthenticated" ? <div className="mt-6 space-y-4">
       <p className="text-sm leading-6">Sign in with the email address that received the invitation.</p>
       <Link className="inline-flex min-h-12 items-center justify-center rounded-lg bg-obligon-green px-6 font-bold text-white" href={withAuthReturn(routes.login,destination)}>Sign in to join</Link>
       <p className="text-sm">New to Obligon? <Link href={withAuthReturn(routes.signup,destination)} className="font-bold text-obligon-green underline">Create an account</Link></p>
@@ -60,6 +62,7 @@ export function CompanyInvitation({ token }: { token: string | null }) {
       </> : null}
       <button type="button" disabled={busy} onClick={() => void changeAccount()} className="min-h-12 text-sm font-bold text-obligon-green underline disabled:opacity-60">Sign in with another account</button>
     </div>}
-    {error ? <p className="mt-5 text-sm font-semibold text-[#93000a]" role="alert">{error}</p> : null}
+    {error ? <StatusPopup tone="error" message={error} /> : null}
+    {busy ? <StatusPopup tone="pending" message="Opening your company account…" /> : null}
   </section></AuthShell>;
 }
