@@ -30,6 +30,7 @@ export function CardApprovalQueue() {
   const [providerIds, setProviderIds] = useState<Record<string, string>>({});
   const [identities, setIdentities] = useState<Record<string, string>>({});
   const [bvnReferences, setBvnReferences] = useState<Record<string, string>>({});
+  const [successTone, setSuccessTone] = useState<"info" | "success">("success");
   const load = useCallback(async () => {
     setLoading(true); setLoadFailed(false); setError("");
     try { const result = await api.request<{ requests: Application[] }>("/api/admin/card-requests"); setRows(result.requests); }
@@ -47,6 +48,7 @@ export function CardApprovalQueue() {
       await api.request(`/api/admin/card-requests/${row.id}/${bvn ? "bvn" : action}`, { method: "POST", body: JSON.stringify(body) });
       setIdentities({});
       await load();
+      setSuccessTone(bvn ? "info" : "success");
       setSuccess(bvn ? "BVN check updated. Review the recorded result below." : action === "reject" ? "Application rejected." : action === "reconcile" ? "Issued card reconciled." : "Card approved and issued.");
     } catch (err) { setError(err instanceof Error ? err.message : "Unable to complete this review."); }
     finally { setBusy(""); }
@@ -65,7 +67,7 @@ export function CardApprovalQueue() {
     {busy ? <StatusPopup tone="pending" message="Processing card identity review…" /> : null}
     {loading ? <StatusPopup tone="loading" message="Loading card applications…" /> : null}
     {error ? <StatusPopup tone="error" message={error} /> : null}
-    {success ? <StatusPopup tone="success" message={success} /> : null}
+    {success ? <StatusPopup tone={successTone} message={success} /> : null}
     <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-wider text-obligon-green">Customer verification</p><h2 className="mt-2 font-display text-2xl font-bold tracking-tight text-obligon-navy">Card applications</h2></div><button type="button" className={actionClass} disabled={loading || Boolean(busy)} onClick={() => void load()}><RefreshCw size={16} aria-hidden="true" />Refresh</button></div>
     <p className="mt-3 max-w-2xl text-sm leading-6 text-obligon-text">Review the customer’s email confirmation, BVN result and name matches before issuing a virtual card.</p>
     {!loading && !loadFailed && !rows.length ? <p className="py-8 text-sm text-obligon-text">No pending applications.</p> : null}
