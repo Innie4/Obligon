@@ -6,19 +6,6 @@ import { AlertTriangle, Check, CircleDashed, CircleSlash, Clock, CreditCard, Loa
 import { useToast } from "@/components/shared/Toast";
 import type { CardPlan, CardRequest, CardRequestProgress, ProgressStepState } from "@/lib/services";
 import { ModalFrame } from "./CustomerModals";
-import { DateField } from "@/components/shared/Calendar/DateField";
-import { calendarDateValue } from "@/lib/calendar-date";
-
-/** Nigerian BVN: 11 digits beginning with 2. */
-const BVN_RE = /^2\d{10}$/;
-
-const NIGERIAN_STATES = [
-  "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue", "Borno",
-  "Cross River", "Delta", "Ebonyi", "Edo", "Ekiti", "Enugu", "FCT - Abuja", "Gombe",
-  "Imo", "Jigawa", "Kaduna", "Kano", "Katsina", "Kebbi", "Kogi", "Kwara", "Lagos",
-  "Nasarawa", "Niger", "Ogun", "Ondo", "Osun", "Oyo", "Plateau", "Rivers", "Sokoto",
-  "Taraba", "Yobe", "Zamfara"
-];
 
 function PlanBadge({ state }: { state: string }) {
   if (state === "unavailable") {
@@ -147,164 +134,8 @@ export function CardPlanModal({
 }
 
 /** Step 2 — identity details, collected only after payment is confirmed. */
-export function CardDetailsModal({
-  defaultName,
-  defaultPhone,
-  busy,
-  onSubmit,
-  onClose
-}: {
-  defaultName: string;
-  defaultPhone: string;
-  busy: boolean;
-  onSubmit: (details: { fullName: string; bvn: string; address: string; city: string; state: string; dateOfBirth:string;postalCode:string;phone:string }) => void;
-  onClose: () => void;
-}) {
-  const [fullName, setFullName] = React.useState(defaultName);
-  const [dateOfBirth,setDateOfBirth]=React.useState("");
-  const [postalCode,setPostalCode]=React.useState("");
-  const [bvn, setBvn] = React.useState("");
-  const [address, setAddress] = React.useState("");
-  const [city, setCity] = React.useState("");
-  const [state, setState] = React.useState("");
-  const [phone, setPhone] = React.useState(defaultPhone);
-  const [error, setError] = React.useState("");
+export { CardDetailsModal } from "./CardIdentityModal";
 
-  const field =
-    "mt-1.5 h-12 w-full rounded-lg border border-obligon-border px-4 text-sm text-obligon-navy outline-none focus:border-obligon-green";
-
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (fullName.trim().length < 2) {
-      setError("Enter your full legal name exactly as it appears on your ID.");
-      return;
-    }
-    if (!BVN_RE.test(bvn)) {
-      setError("BVN must be 11 digits starting with 2.");
-      return;
-    }
-    if (!address.trim()) {
-      setError("Enter your residential address for identity review.");
-      return;
-    }
-    if (!city.trim()) {
-      setError("Enter your city.");
-      return;
-    }
-    if (!state) {
-      setError("Select your state.");
-      return;
-    }
-    setError("");
-    onSubmit({ fullName: fullName.trim(), bvn, address: address.trim(), city: city.trim(), state,dateOfBirth,postalCode,phone });
-  }
-
-  return (
-    <ModalFrame title="Card verification details" onClose={onClose}>
-      {busy ? <StatusPopup tone="pending" message="Submitting card details for verification…" /> : null}
-      <form onSubmit={handleSubmit} className="p-6">
-        <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">Verify your details</h2>
-        <p className="mt-2 text-sm leading-6 text-obligon-text">
-          We are required to confirm your identity before a fuel card is issued. Your BVN is checked against
-          your submitted details and stored securely. Authorized administrators can review it.
-        </p>
-
-        <div className="mt-6 space-y-4">
-          <label className="block">
-            <span className="text-xs font-bold uppercase tracking-[1.1px] text-obligon-text">Full legal name</span>
-            <input
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              autoComplete="name"
-              className={field}
-              placeholder="As shown on your ID"
-              required
-            />
-          </label>
-
-          <DateField label="Date of birth" labelClassName="text-xs uppercase tracking-[1.1px]" required value={dateOfBirth} onChange={setDateOfBirth} max={calendarDateValue(new Date())} autoComplete="bday" />
-          <label className="block"><span className="text-xs font-bold uppercase tracking-[1.1px] text-obligon-text">Postal code</span><input className={field} required inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={postalCode} onChange={e=>setPostalCode(e.target.value.replace(/\D/g,""))}/></label>
-          <label className="block">
-            <span className="text-xs font-bold uppercase tracking-[1.1px] text-obligon-text">BVN</span>
-            <input
-              value={bvn}
-              onChange={(e) => setBvn(e.target.value.replace(/\D/g, "").slice(0, 11))}
-              inputMode="numeric"
-              autoComplete="off"
-              className={field}
-              placeholder="11 digits, starting with 2"
-              required
-            />
-            <span className="mt-1 block text-xs text-obligon-text">
-              You can find this on your Bank Verification Number slip or in your bank app.
-            </span>
-          </label>
-
-          <label className="block">
-            <span className="text-xs font-bold uppercase tracking-[1.1px] text-obligon-text">Residential address</span>
-            <input
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              autoComplete="street-address"
-              className={field}
-              placeholder="Street, area, city"
-              required
-            />
-          </label>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block">
-              <span className="text-xs font-bold uppercase tracking-[1.1px] text-obligon-text">City</span>
-              <input value={city} onChange={(e) => setCity(e.target.value)} className={field} required />
-            </label>
-            <label className="block">
-              <span className="text-xs font-bold uppercase tracking-[1.1px] text-obligon-text">State</span>
-              <select value={state} onChange={(e) => setState(e.target.value)} className={field} required>
-                <option value="">Select state</option>
-                {NIGERIAN_STATES.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <label className="block">
-            <span className="text-xs font-bold uppercase tracking-[1.1px] text-obligon-text">Phone number</span>
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              type="tel"
-              pattern="[+]234[0-9]{10}"
-              required
-              autoComplete="tel"
-              className={field}
-              placeholder="+234 801 000 0000"
-            />
-            <span className="mt-1 block text-xs text-obligon-text">
-              Required by the issuer for card OTPs; use +234 followed by ten digits.
-            </span>
-          </label>
-        </div>
-
-        {error ? (
-          <StatusPopup tone="error" message={error} />
-        ) : null}
-
-        <button
-          type="submit"
-          disabled={busy}
-          className="mt-6 h-12 w-full rounded-lg bg-obligon-green font-extrabold text-white disabled:opacity-60"
-        >
-          {busy ? "Submitting for verification…" : "Submit for verification"}
-        </button>
-      </form>
-    </ModalFrame>
-  );
-}
-
-/** Step 3 — confirmation that verification takes 1-3 business days. */
 export function CardSubmittedModal({
   request,
   eta,
@@ -346,7 +177,7 @@ export function CardSubmittedModal({
               <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-obligon-green text-xs font-extrabold text-white">
                 1
               </span>
-              An Obligon administrator reviews your submitted identity details.
+              An admin checks your BVN, name and date of birth. Complete provider consent from My Card if requested.
             </li>
             <li className="flex gap-2.5">
               <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-obligon-green text-xs font-extrabold text-white">

@@ -102,6 +102,14 @@ export interface CardRequest {
   paidAt: string | null;
   fullName: string | null;
   bvnLastFour: string | null;
+  identityRevision?: string | null;
+  identityStale?: boolean;
+  emailConfirmationStatus?: "not_started" | "pending" | "verified";
+  identityEmailMasked?: string | null;
+  bvnStatus?: string;
+  bvnConsentUrl?: string | null;
+  bvnCheckedAt?: string | null;
+  identityDetails?: { fullName: string; address: string; city: string; state: string; dateOfBirth: string; postalCode: string; phone: string } | null;
   rejectionReason?: string | null;
   issuanceState?: string;
   verificationStatus: "not_started" | "pending" | "verified" | "rejected";

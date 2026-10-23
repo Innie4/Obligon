@@ -3,10 +3,13 @@ import { env } from '../config/env.js';
 import { one, q, tx } from '../db.js';
 import { conflict, notFound, badRequest, misconfigured } from './errors.js';
 import { createSudoCustomer, issueSudoCard, sudoEnabled } from './sudo.js';
+import { normalizedIdentityName } from './bvn-verification.js';
 
 export function validateApproval(request) {
   if (request.payment_status !== 'paid') throw conflict('A paid plan is required before approval');
   if (request.verification_status !== 'pending') throw conflict('Identity details must be submitted for approval');
+  if (!request.identity_revision || !request.identity_email_verified_at) throw conflict('The customer must confirm their submitted identity details by email before approval');
+  if (request.bvn_status !== 'matched' || request.bvn_checked_revision !== request.identity_revision || request.bvn_name_match !== true || request.bvn_account_name_match !== true || request.bvn_dob_match !== true) throw conflict('A completed BVN check must match the submitted name, account name and date of birth before approval');
 }
 export function providerCardDetails(card) {
   const providerId = card?.id ?? card?._id;
@@ -37,6 +40,9 @@ export async function approveCardRequest(id, actorId, reconciledCard = null, iss
     if (!request) throw notFound('Card request not found');
     if (request.issued_card_id) return request;
     validateApproval(request);
+    const account = await t.one('SELECT email,full_name FROM users WHERE id=$1 FOR UPDATE', [request.user_id]);
+    if (!account || account.email !== request.identity_email || normalizedIdentityName(account.full_name) !== normalizedIdentityName(request.identity_account_name)) throw conflict('Account details changed. Fresh identity confirmation and BVN verification are required');
+    if (!request.postal_code) throw conflict('The card issuer requires an accurate postal code before issuance. Ask the customer to update and reconfirm their details.');
     if (request.issuance_state === 'refund_pending') throw conflict('This application is being withdrawn for a refund');
     if (!reconciledCard && ['creating', 'review_required'].includes(request.issuance_state)) throw conflict('Issuer reconciliation is required before continuing');
     if (reconciledCard && request.issuance_state !== 'review_required' && !(request.issuance_state === 'creating' && Date.now()-new Date(request.updated_at).getTime()>120000)) throw conflict('Only an uncertain or abandoned issuance can be reconciled after two minutes');

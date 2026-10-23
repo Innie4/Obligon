@@ -1467,6 +1467,7 @@ export const mutationsApi = {
     });
   },
   async submitCardRequestDetails(payload: {
+    identityRevision?: string;
     reference: string;
     fullName: string;
     bvn: string;
@@ -1474,6 +1475,7 @@ export const mutationsApi = {
     city: string;
     state: string;
     dateOfBirth:string;postalCode:string;phone:string;
+    identityConsent: boolean;
   }): Promise<{ ok: boolean; request: CardRequest; verificationEta?: string }> {
     if (!LIVE_MODE) {
       await simulate({}, 700);
@@ -1492,6 +1494,16 @@ export const mutationsApi = {
     return http<{ ok: boolean; request: CardRequest; verificationEta?: string }>("/api/customer/card-request/details", {
       method: "POST",
       body: JSON.stringify(payload)
+    });
+  },
+  async sendCardIdentityEmailCode(reference: string, identityRevision: string) {
+    return http<{ ok: boolean; maskedEmail: string; resendAfterSeconds: number; request: CardRequest }>("/api/customer/card-request/email-code", {
+      method: "POST", body: JSON.stringify({ reference, identityRevision })
+    });
+  },
+  async confirmCardIdentityEmail(reference: string, identityRevision: string, code: string) {
+    return http<{ ok: boolean; request: CardRequest }>("/api/customer/card-request/confirm-email", {
+      method: "POST", body: JSON.stringify({ reference, identityRevision, code })
     });
   },
   async requestCard(payload: { label?: string } = {}) {

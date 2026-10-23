@@ -18,6 +18,9 @@ import { getSudoCard, getSudoCustomer } from "../lib/sudo.js";
 import { integerKobo, nairaToKobo } from "../lib/money-amounts.js";
 import { createWalletForAccount } from "../lib/wallets.js";
 
+import { identityRequestFields, runCardBvnCheck } from "../lib/card-identity.js";
+import { sensitiveLimiter } from "../middleware/security.js";
+
 const router = Router();
 for(const name of ['id','orgId','memberId'])router.param(name,(req,_res,next,value)=>{
  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value))return next(badRequest('Invalid record ID'));
@@ -36,10 +39,14 @@ router.use(companyCardIssuancesAdminRouter);
 
 // Card identity review is explicitly restricted by the admin middleware above.
 router.get("/card-requests", asyncHandler(async (_req,res) => {
-  const requests = await q(`SELECT r.id,r.user_id,r.full_name,r.bvn_last_four,r.date_of_birth,r.postal_code,r.identity_phone,r.address,r.city,r.state,r.plan_code,r.status,r.payment_status,r.verification_status,r.issuance_state,r.rejection_reason,r.created_at,u.email
+  const requests = await q(`SELECT r.id,r.user_id,r.full_name,r.bvn_last_four,to_char(r.date_of_birth,'YYYY-MM-DD') AS date_of_birth,r.postal_code,r.identity_phone,r.address,r.city,r.state,r.plan_code,r.status,r.payment_status,r.verification_status,r.issuance_state,r.rejection_reason,r.created_at,u.email,u.full_name AS current_account_name,u.email AS current_email,r.identity_revision,r.identity_account_name,r.identity_email,r.identity_email_verified_at,r.bvn_status,r.bvn_checked_revision,r.bvn_checked_at,r.bvn_name_match,r.bvn_account_name_match,r.bvn_dob_match,r.bvn_archived_at,(r.bvn_reference IS NOT NULL) AS bvn_reference_available
     FROM card_requests r JOIN users u ON u.id=r.user_id
-    WHERE r.verification_status IN ('pending','rejected') OR r.issuance_state IN ('review_required','provider_created') ORDER BY r.created_at ASC LIMIT 200`);
-  res.json({requests});
+    WHERE (r.identity_revision IS NOT NULL AND r.status IN ('pending','pending_verification')) OR r.verification_status IN ('pending','rejected') OR r.issuance_state IN ('review_required','provider_created') ORDER BY r.created_at ASC LIMIT 200`);
+  res.set("Cache-Control","no-store").json({requests:requests.map(request=>({...request,...identityRequestFields(request,{admin:true}),accountName:request.current_account_name}))});
+}));
+router.post("/card-requests/:id/bvn",sensitiveLimiter,asyncHandler(async(req,res)=>{
+ const request=await runCardBvnCheck(req.params.id,req.user.id,req.body??{});
+ res.set("Cache-Control","no-store").json({ok:true,request:{id:request.id,...identityRequestFields(request,{admin:true})}});
 }));
 router.get("/card-requests/:id/identity",asyncHandler(async(req,res)=>{
  const request=await one("SELECT bvn_encrypted FROM card_requests WHERE id=$1",[req.params.id]);

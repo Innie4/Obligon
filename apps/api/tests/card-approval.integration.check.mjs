@@ -13,10 +13,11 @@ try {
  process.env.DATABASE_URL=url.toString();process.env.NODE_ENV='test';
  const {getPool,q,one} = await import('../src/db.js');
  const migration=await readFile(new URL('../src/migrations/021_card_approval.sql',import.meta.url),'utf8');await q(migration);
+ await q(await readFile(new URL('../src/migrations/041_card_identity_verification.sql',import.meta.url),'utf8'));
  process.env.CARD_IDENTITY_KEY="12".repeat(32);
  const {approveCardRequest,finishReplacement,encryptIdentity}=await import('../src/lib/card-approval.js');
  const admin=await one("INSERT INTO users(email,password_hash,role) VALUES('admin@test.invalid','unused','admin') RETURNING id");
- const fixture=async name=>{const user=await one("INSERT INTO users(email,password_hash,role,full_name) VALUES($1,'unused','customer','Test Customer') RETURNING id",[`${name}@test.invalid`]);return one("INSERT INTO card_requests(user_id,label,full_name,plan_code,payment_reference,payment_status,verification_status,status,fee_kobo,charged_kobo) VALUES($1,'Fuel Card','Test Customer','gold',$2,'paid','pending','pending_verification',0,350000) RETURNING *",[user.id,randomUUID()]);};
+ const fixture=async name=>{const user=await one("INSERT INTO users(email,password_hash,role,full_name) VALUES($1,'unused','customer','Test Customer') RETURNING id",[`${name}@test.invalid`]);return one("INSERT INTO card_requests(user_id,label,full_name,plan_code,payment_reference,payment_status,verification_status,status,fee_kobo,charged_kobo,identity_revision,bvn_checked_revision,identity_account_name,identity_email,identity_consent_at,identity_email_verified_at,bvn_status,bvn_name_match,bvn_account_name_match,bvn_dob_match,postal_code) VALUES($1,'Fuel Card','Test Customer','gold',$2,'paid','pending','pending_verification',0,350000,$3,$3,'Test Customer',$4,now(),now(),'matched',true,true,true,'100001') RETURNING *",[user.id,randomUUID(),randomUUID(),`${name}@test.invalid`]);};
  let calls=0;
  const issuer={enabled:()=>true,createCustomer:async()=>({id:'customer'}),issueCard:async()=>{calls++;await new Promise(r=>setTimeout(r,25));return {id:`card-${calls}`,maskedPan:'****1234',expiryMonth:9,expiryYear:2030};}};
  const first=await fixture('concurrent');await q('UPDATE card_requests SET bvn_encrypted=$2 WHERE id=$1',[first.id,encryptIdentity('21234567890')]);

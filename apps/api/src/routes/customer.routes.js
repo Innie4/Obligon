@@ -22,11 +22,14 @@ import { uploadFile, signedUrl } from "../lib/storage.js";
 import { env } from "../config/env.js";
 import { emitToUser } from "../lib/sse.js";
 import multer from "multer";
-import { encryptIdentity, providerCardDetails, replacementFunding, finishReplacement } from "../lib/card-approval.js";
+import { providerCardDetails, replacementFunding, finishReplacement } from "../lib/card-approval.js";
 import { subscriptionRouter } from "./subscription.routes.js";
 import { requireCustomerPlan, customerSubscription } from "../lib/subscriptions.js";
 import { nairaToKobo, integerKobo } from "../lib/money-amounts.js";
 import { isTerminalPaymentFailure } from "../lib/flutterwave.js";
+
+import { identityRequestFields, submitCardIdentity, sendCardIdentityCode, confirmCardIdentityCode } from "../lib/card-identity.js";
+import { sensitiveLimiter } from "../middleware/security.js";
 
 const router = Router();
 for(const name of ['id','orgId','memberId'])router.param(name,(req,_res,next,value)=>{
@@ -758,10 +761,7 @@ router.post("/payment-methods/:id/default", asyncHandler(async (req, res) => {
 // ============ CARDS ============
 const VERIFICATION_ETA = "1-3 business days";
 
-/** Nigerian BVN: 11 digits beginning with 2. */
-const BVN_RE = /^2\d{10}$/;
-
-function serializeCardRequest(row) {
+function serializeCardRequest(row, currentUser) {
   if (!row) return null;
   return {
     id: row.id,
@@ -779,7 +779,8 @@ function serializeCardRequest(row) {
     issuanceState: row.issuance_state ?? "not_started",
     verificationStatus: row.verification_status ?? "not_started",
     verificationEta: row.verification_eta ?? null,
-    requestedAt: row.created_at
+    requestedAt: row.created_at,
+    ...identityRequestFields({ ...row, current_email: currentUser?.email, current_account_name: currentUser?.full_name })
   };
 }
 
@@ -809,7 +810,7 @@ router.get("/card-request", asyncHandler(async (req, res) => {
      WHERE r.user_id = $1 ORDER BY r.created_at DESC LIMIT 1`,
     [req.user.id]
   );
-  res.json({ request: serializeCardRequest(request) });
+  res.json({ request: serializeCardRequest(request, req.user) });
 }));
 
 /** Shared guard: only a customer without an existing card may request one. */
@@ -889,7 +890,7 @@ router.post("/card-request/checkout", asyncHandler(async (req, res) => {
 
   res.status(201).json({
     ok: true,
-    request: serializeCardRequest(request),
+    request: serializeCardRequest(request, req.user),
     reference: ref,
     provider,
     paymentUrl: init.authorization_url ?? null,
@@ -1027,7 +1028,7 @@ router.get("/card-request/progress", asyncHandler(async (req, res) => {
   else if (request.verification_status === "not_started" && request.payment_status !== "paid") outcome = "awaiting_payment";
 
   res.json({
-    request: serializeCardRequest(request),
+    request: serializeCardRequest(request, req.user),
     planName: request.plan_name ?? null,
     planAmountLabel: request.plan_amount_kobo != null ? naira(request.plan_amount_kobo) : null,
     steps,
@@ -1075,7 +1076,7 @@ router.get("/card-request/open", asyncHandler(async (req, res) => {
   // withdrawn for a refund, which is a different action with a different outcome.
   const unpaid = open.payment_status !== "paid" && ["awaiting_payment", "pending"].includes(open.status);
   res.json({
-    request: serializeCardRequest(open),
+    request: serializeCardRequest(open, req.user),
     reference: open.payment_reference,
     canResume: unpaid,
     canCancel: unpaid,
@@ -1150,7 +1151,7 @@ router.post("/card-request/resume", asyncHandler(async (req, res) => {
 
   res.json({
     ok: true,
-    request: serializeCardRequest({ ...request, plan_name: plan.name, plan_amount_kobo: plan.amount_kobo }),
+    request: serializeCardRequest({ ...request, plan_name: plan.name, plan_amount_kobo: plan.amount_kobo }, req.user),
     reference: request.payment_reference,
     provider,
     paymentUrl: init.authorization_url ?? null,
@@ -1217,7 +1218,7 @@ router.post("/card-request/withdraw", asyncHandler(async (req, res) => {
   if (!intent.alreadyWithdrawn) await notify({ userId: req.user.id, title: "Plan withdrawn", body: message, category: "transactions", link: "/customer/card" });
   res.json({ ok: true, alreadyWithdrawn: intent.alreadyWithdrawn, clawbackKobo: intent.clawbackKobo,
     refundStatus: refund?.status ?? "pending", reviewRequired, message, refund,
-    request: serializeCardRequest(intent.request) });
+    request: serializeCardRequest(intent.request, req.user) });
 }));
 
 /** Status of a refund, so the UI can show settlement progress. */
@@ -1267,7 +1268,7 @@ router.post("/card-request/cancel", asyncHandler(async (req, res) => {
     entityId: request.id,
     ip: req.ip
   });
-  res.json({ ok: true, request: serializeCardRequest(updated) });
+  res.json({ ok: true, request: serializeCardRequest(updated, req.user) });
 }));
 
 /** Step 2 - confirm the payment actually went through before anything else. */
@@ -1278,7 +1279,7 @@ router.post("/card-request/verify-payment", asyncHandler(async (req, res) => {
   const request = await one("SELECT * FROM card_requests WHERE payment_reference = $1 AND user_id = $2", [ref, req.user.id]);
   if (!request) throw notFound("Card request not found");
   if (request.payment_status === "paid") {
-    return res.json({ ok: true, paid: true, alreadyPaid: true, request: serializeCardRequest(request) });
+    return res.json({ ok: true, paid: true, alreadyPaid: true, request: serializeCardRequest(request, req.user) });
   }
   if (request.status !== "awaiting_payment") {
     throw conflict("This card request is no longer awaiting payment");
@@ -1374,68 +1375,21 @@ router.post("/card-request/verify-payment", asyncHandler(async (req, res) => {
     link: "/customer/card"
   });
 
-  res.json({ ok: true, paid: true, excessRefundKobo, request: serializeCardRequest(updated) });
+  res.json({ ok: true, paid: true, excessRefundKobo, request: serializeCardRequest(updated, req.user) });
 }));
 
-/** Step 3 - identity details, submitted for verification. */
-router.post("/card-request/details", asyncHandler(async (req, res) => {
-  const ref = String(req.body?.reference ?? "").trim();
-  const fullName = String(req.body?.fullName ?? "").trim();
-  const bvn = String(req.body?.bvn ?? "").replace(/\s/g, "");
-  const address = String(req.body?.address ?? "").trim();
-  const city = String(req.body?.city ?? "").trim();
-  const state = String(req.body?.state ?? "").trim();
-
-  const dob=String(req.body?.dateOfBirth??"").trim();
-  const postalCode=String(req.body?.postalCode??"").trim();
-  const phone=String(req.body?.phone??req.user.phone??"").trim().replace(/\s/g,"");
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(dob) || !Number.isFinite(Date.parse(dob)) || new Date(dob).toISOString().slice(0,10)!==dob || new Date(dob)>=new Date()) throw badRequest("Enter a valid date of birth");
-  if(!/^\d{6}$/.test(postalCode)) throw badRequest("Enter your six-digit postal code");
-  if(!/^\+234\d{10}$/.test(phone)) throw badRequest("Enter a valid Nigerian phone number starting +234");
-  if (!ref) throw badRequest("reference is required");
-  if (fullName.length < 2) throw badRequest("Enter your full legal name as it appears on your ID");
-  if (!BVN_RE.test(bvn)) throw badRequest("BVN must be 11 digits starting with 2");
-  if (!address) throw badRequest("Enter your residential address");
-  if (!city) throw badRequest("Enter your city");
-  if (!state) throw badRequest("Enter your state");
-
-  const request = await one("SELECT * FROM card_requests WHERE payment_reference = $1 AND user_id = $2", [ref, req.user.id]);
-  if (!request) throw notFound("Card request not found");
-  if (request.payment_status !== "paid") throw conflict("Confirm your plan payment before submitting your details");
-  if (request.verification_status === "pending") {
-    return res.json({ ok: true, alreadySubmitted: true, request: serializeCardRequest(request) });
-  }
-  if (["approved","rejected","withdrawn","cancelled"].includes(request.status) || request.issuance_state !== "not_started") throw conflict("This identity application cannot be resubmitted; contact support or request a refund");
-
-  const updated = await one(
-    `UPDATE card_requests SET
-       full_name = $2, bvn = NULL, bvn_encrypted = $3, bvn_last_four = $8, address = $4, city = $5, state = $6,
-       verification_status = 'pending', status = 'pending_verification', date_of_birth=$9,postal_code=$10,identity_phone=$11,
-       verification_eta = COALESCE(verification_eta, $7), updated_at = now()
-     WHERE id = $1 AND issuance_state = 'not_started' AND status NOT IN ('approved','rejected','withdrawn','cancelled') RETURNING *`,
-    [request.id, fullName.slice(0, 120), encryptIdentity(bvn), address.slice(0, 200), city.slice(0, 80), state.slice(0, 80), VERIFICATION_ETA, bvn.slice(-4),dob,postalCode,phone]
-  );
-
-  if (!updated) throw conflict("This identity application is already under review or being refunded");
-  await audit({
-    actorUserId: req.user.id,
-    actorRole: req.user.role,
-    action: "card_request.verification_submitted",
-    entityType: "card_request",
-    entityId: request.id,
-    ip: req.ip,
-    metadata: { planCode: request.plan_code, verificationEta: VERIFICATION_ETA }
-  });
-  await notify({
-    userId: req.user.id,
-    title: "Verification submitted",
-    body: `Thanks ${fullName.split(/\s+/)[0]} - we are verifying your details. Your fuel card will be verified within ${VERIFICATION_ETA}.`,
-    category: "security",
-    link: "/customer/card"
-  });
-
-  await notify({ title: "Card verification approval requested", body: `${fullName} submitted a paid fuel-card application. Review identity details before approving issuance.`, category: "security", actionRequired: true, link: "/admin/applications", eventKey: `card-review:${request.id}` });
-  res.json({ ok: true, request: serializeCardRequest(updated), verificationEta: VERIFICATION_ETA });
+/** Save identity details first; purpose-bound email confirmation submits them for admin review. */
+router.post("/card-request/details", sensitiveLimiter, asyncHandler(async (req, res) => {
+  const request = await submitCardIdentity(req.user.id, req.body ?? {}, VERIFICATION_ETA);
+  res.set("Cache-Control", "no-store").json({ ok: true, request: serializeCardRequest(request, req.user), verificationEta: VERIFICATION_ETA });
+}));
+router.post("/card-request/email-code", sensitiveLimiter, asyncHandler(async (req, res) => {
+  const result = await sendCardIdentityCode(req.user.id, req.body ?? {});
+  res.set("Cache-Control", "no-store").json({ ok: true, maskedEmail: result.maskedEmail, resendAfterSeconds: result.resendAfterSeconds, request: serializeCardRequest(result.request, req.user) });
+}));
+router.post("/card-request/confirm-email", sensitiveLimiter, asyncHandler(async (req, res) => {
+  const request = await confirmCardIdentityCode(req.user.id, req.body ?? {});
+  res.set("Cache-Control", "no-store").json({ ok: true, request: serializeCardRequest(request, req.user) });
 }));
 
 /**
@@ -1466,7 +1420,7 @@ router.post("/card-request", asyncHandler(async (req, res) => {
     entityId: request.id,
     ip: req.ip
   });
-  res.status(201).json({ ok: true, request: serializeCardRequest(request) });
+  res.status(201).json({ ok: true, request: serializeCardRequest(request, req.user) });
 }));
 
 router.get("/card", asyncHandler(async (req, res) => {

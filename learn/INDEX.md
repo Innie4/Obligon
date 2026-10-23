@@ -1,3 +1,4 @@
+- [2026-10-24] [Card identity verification](2026-10-24-card-identity-verification.md): Bind email and BVN evidence to submitted card details, with dependent addresses and audited recovery.
 - [2026-10-23] [Floating operation feedback](2026-10-23-popup-operation-feedback.md): Keep request feedback visible in shared popups with dialog-aware placement and account-scoped notification cleanup.
 - [2026-10-23] [Clear dashboards and truthful interface states](2026-10-23-ui-polish-and-states.md): Share visual patterns while preserving scoped actions, usable scrolling and accurate feedback.
 - [2026-10-23] [Dashboard search that opens useful destinations](2026-10-23-dashboard-search.md): Search permitted pages and recent records, reject stale responses and apply filters at the destination.

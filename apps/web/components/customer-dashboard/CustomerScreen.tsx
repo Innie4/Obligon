@@ -56,6 +56,8 @@ import { useToast } from "@/components/shared/Toast";
 import { Toggle } from "@/components/shared/Toggle";
 import { currentPushState, disableWebPush, enableWebPush, type PushState } from "@/lib/push-subscription";
 import { CustomerModals, ModalFrame, type CustomerModalType } from "./CustomerModals";
+import { canEditCardIdentity } from "@/lib/card-identity";
+import { CardIdentityReviewStatus } from "./CardIdentityReviewStatus";
 import { CardDetailsModal, CardPlanModal, CardSubmittedModal, PendingPaymentModal, CardVerificationProgressModal } from "./CardRequestModals";
 import { ConfirmModal, PinModal } from "../shared/Dialogs";
 import { StationMap } from "../shared/StationMap";
@@ -781,7 +783,7 @@ function CardPage({
   }
   function requestNeedsDetails(request: CardRequest | null) {
     return Boolean(request && !requestClosed(request) && request.paymentStatus === "paid" &&
-      request.verificationStatus === "not_started" && (!request.issuanceState || request.issuanceState === "not_started"));
+      (request.verificationStatus === "not_started" || (request.identityStale && canEditCardIdentity(request))) && (!request.issuanceState || request.issuanceState === "not_started"));
   }
   const [hasCard, setHasCard] = React.useState<boolean | null>(null);
   const [card, setCard] = React.useState<CustomerCard | null>(null);
@@ -1093,15 +1095,8 @@ function CardPage({
     }
   }
 
-  async function handleSubmitDetails(details: {
-    fullName: string;
-    bvn: string;
-    address: string;
-    city: string;
-    state: string;
-    dateOfBirth:string;postalCode:string;phone:string;
-  }) {
-    if (requestClosed(cardRequest) || (!checkout?.reference && !cardRequest?.paymentReference)) return;
+  async function handleSubmitDetails(details: import("@/lib/card-identity").CardIdentityDetails): Promise<CardRequest | null> {
+    if (requestClosed(cardRequest) || (!checkout?.reference && !cardRequest?.paymentReference)) return null;
     setSubmittingDetails(true);
     try {
       const result = await mutationsApi.submitCardRequestDetails({
@@ -1109,10 +1104,10 @@ function CardPage({
         ...details
       });
       setCardRequest(result.request);
-      setDetailsModalOpen(false);
-      setSubmittedModalOpen(true);
+      return result.request;
     } catch (err) {
       toastError(err instanceof Error ? err.message : "Could not submit your details.");
+      return null;
     } finally {
       setSubmittingDetails(false);
     }
@@ -1261,14 +1256,14 @@ function CardPage({
               ) : requestNeedsDetails(cardRequest) ? (
                 <>
                   <p className="text-sm font-bold text-obligon-navy">
-                    Payment received. Tell us who the card belongs to so we can verify you.
+                    {cardRequest.identityStale ? "Your account details changed. Update your card details and confirm them again." : cardRequest.identityRevision ? "Your details are saved. Confirm your email to send them for review." : "Payment received. Tell us who the card belongs to so we can verify you."}
                   </p>
                   <button
                     type="button"
                     onClick={() => setDetailsModalOpen(true)}
                     className="h-11 rounded-xl bg-obligon-green px-5 text-sm font-extrabold text-white"
                   >
-                    Enter verification details
+                    {cardRequest.identityStale ? "Update verification details" : cardRequest.identityRevision ? "Confirm verification email" : "Enter verification details"}
                   </button>
                 </>
               ) : cardRequest.verificationStatus === "rejected" ? (
@@ -1295,6 +1290,7 @@ function CardPage({
                   </button>
                 </>
               )}
+              {cardRequest.identityRevision && !requestClosed(cardRequest) ? <CardIdentityReviewStatus request={cardRequest} onChange={setCardRequest} onEdit={() => setDetailsModalOpen(true)} /> : null}
             </div>
           ) : (
             <button
@@ -1345,8 +1341,11 @@ function CardPage({
         <CardDetailsModal
           defaultName={user?.name ?? ""}
           defaultPhone={user?.phone ?? ""}
+          accountEmail={user?.email ?? "your account email"}
+          request={cardRequest}
           busy={submittingDetails}
-          onSubmit={(details) => void handleSubmitDetails(details)}
+          onSubmit={handleSubmitDetails}
+          onConfirmed={(updated) => { setCardRequest(updated); setDetailsModalOpen(false); setSubmittedModalOpen(true); }}
           onClose={() => setDetailsModalOpen(false)}
         />
       ) : null}
