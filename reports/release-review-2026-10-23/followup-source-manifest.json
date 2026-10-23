@@ -1,0 +1,858 @@
+{
+  "baseRevision": "0121bf255dbe52d326cdb6a42ab116c8dff86430",
+  "followupPatchSha256": "b6f219b7ed5bb0759873daa4accb31235e06e0425a47499c34acba8e67b23b7c",
+  "followupFiles": [
+    {
+      "path": "apps/api/package.json",
+      "sha256": "78d9b834ec769f1ee5099ae5bb89def7fbd60dc5b693fa031d02e782186a9007"
+    },
+    {
+      "path": "apps/api/tests/partner-dashboard-wiring.test.mjs",
+      "sha256": "1d995f878f713c43b2cd50d19f96bb3d1f5ac64f50562e6a7b2896f68d5dfb22"
+    },
+    {
+      "path": "apps/api/tests/partner-production-readiness.test.mjs",
+      "sha256": "f58c20f111874691bc4b607d53fbef2754933c46bf487f2b47a8780124827db4"
+    },
+    {
+      "path": "apps/web/components/shared/DashboardSearch.tsx",
+      "sha256": "af8f60556e66d6d40315bdcc697667d687c8b9f3eec3fcb692684cfdc26a9cae"
+    },
+    {
+      "path": "apps/web/tests/dashboard-search-ui.test.cjs",
+      "sha256": "1629076c90551772d3abc534180e8e8f00434672959b04881bdbd936fa2714e5"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "sha256": "62ea80d9bac12a3761ac50580bba3b6dda4ac8865ec13b4a7fd8ae0a799c25b0"
+    }
+  ],
+  "finalApplicationFileCount": 206,
+  "finalApplicationFiles": [
+    {
+      "path": "apps/api/.env.example",
+      "sha256": "5ba979329955b917747897fe33a5d6d03316494f9e9c7aaba867b1d5f8d4d758"
+    },
+    {
+      "path": "apps/api/package.json",
+      "sha256": "78d9b834ec769f1ee5099ae5bb89def7fbd60dc5b693fa031d02e782186a9007"
+    },
+    {
+      "path": "apps/api/src/config/env.js",
+      "sha256": "21d168ca533e56164b13891447716cb94ff33902d87418fe724758d3b234e139"
+    },
+    {
+      "path": "apps/api/src/lib/auth-method-proof.js",
+      "sha256": "44648865d72107e1f83589875673844fa334c8819540b78b459368cc8ddad73c"
+    },
+    {
+      "path": "apps/api/src/lib/company-card-issuance.js",
+      "sha256": "6b8a8033b2f96471c9a0635b0a44f9b7e629a337fcb902ae724b1e242431abda"
+    },
+    {
+      "path": "apps/api/src/lib/descope-verification.js",
+      "sha256": "c8efd62560e5466a133e76f3182d0e21edd0242af00956db36ea0b82063750e7"
+    },
+    {
+      "path": "apps/api/src/lib/discounts.js",
+      "sha256": "1c12df6b2e123ed7df2a695d2e2ff6d1b204bf12f3570c54749ca7fbed12fdee"
+    },
+    {
+      "path": "apps/api/src/lib/flutterwave.js",
+      "sha256": "8b89422dee9a61c85f1c863fe1285d0959145b14808dbc4a8562f13af53de1c6"
+    },
+    {
+      "path": "apps/api/src/lib/fuel-checkout.js",
+      "sha256": "8ccf176bb86919602fe646dfeaa55a0e1431440a48b3156639c80017d637626e"
+    },
+    {
+      "path": "apps/api/src/lib/fuel-quantity.js",
+      "sha256": "56c77ddd55e9eda6ff65e3ff93aa035b10e69c934142c334c33327b0f23af907"
+    },
+    {
+      "path": "apps/api/src/lib/fuel-sale.js",
+      "sha256": "50edcb1e5d57e90a4eb22cbdb822a0aebf50eb1f4b4fb50eaa6850191834f8fa"
+    },
+    {
+      "path": "apps/api/src/lib/google-identity.js",
+      "sha256": "35df37c38020493f107e268ad177b6177f314ad64f086cb0e70e07247a1a1765"
+    },
+    {
+      "path": "apps/api/src/lib/http.js",
+      "sha256": "4072c3cb07b7132c6dc49da270883be40bbb08c2c6880535e8309cc245bcf1c1"
+    },
+    {
+      "path": "apps/api/src/lib/passkeys.js",
+      "sha256": "d6dacc8c076eeb2e6bf197484c3768c47916a88315a910611ab03e7fcfc73bac"
+    },
+    {
+      "path": "apps/api/src/lib/payments.js",
+      "sha256": "a1be4c34cf69681e49ddf56e7c1a9955d1487af02c6930e829802346807c0b33"
+    },
+    {
+      "path": "apps/api/src/lib/paystack.js",
+      "sha256": "f7da6eaab4226fdcf07df808d9c60149c0ebe60e655345a0335046ae1899d46a"
+    },
+    {
+      "path": "apps/api/src/lib/pdf.js",
+      "sha256": "9dc6c2076a87d670703f50f29a764a514fd59290384e14f172ad067bd6ea918a"
+    },
+    {
+      "path": "apps/api/src/lib/scheduler.js",
+      "sha256": "483ce7cc27265cf7d8f20a0faad44787eaa922f9fe2ff751756a0ee14920b270"
+    },
+    {
+      "path": "apps/api/src/lib/settlements.js",
+      "sha256": "0b8ae8a3f913ea9c018f8757dbaf4700c1f0ca5f879c5dc90d7607cb07d8d208"
+    },
+    {
+      "path": "apps/api/src/lib/sse.js",
+      "sha256": "17dadde589ff0887f2be15ce9d81ed6b67ff99c5d5c13189599f8c554bc1961a"
+    },
+    {
+      "path": "apps/api/src/lib/station-approval.js",
+      "sha256": "745e40f8ebb61b2d50955becd7d889c77dde1867c6bbe4769e28f0d9e4db69ad"
+    },
+    {
+      "path": "apps/api/src/lib/station-prices.js",
+      "sha256": "a25b97aae5d27055832cb8e07b37fe2b79b9927bc6c727634953850a3e79703a"
+    },
+    {
+      "path": "apps/api/src/lib/subscriptions.js",
+      "sha256": "d65d357433c940eec7007c3daa40b611bf4215f0bcad9e3744d39de4153d5799"
+    },
+    {
+      "path": "apps/api/src/lib/sudo.js",
+      "sha256": "d054c5ead541da4a417c958f50a5791ac382f8c849a64ec2f36912ca8cbd4830"
+    },
+    {
+      "path": "apps/api/src/lib/transfer-recovery.js",
+      "sha256": "cd068b884cba614349f44f074ec51c507a8256c3b18f501bd6bdf0c4afe49c17"
+    },
+    {
+      "path": "apps/api/src/middleware/auth.js",
+      "sha256": "6d9936d73e8798ea4574041a8b0ef40dad10c2b0287d12e60db5c585260db17c"
+    },
+    {
+      "path": "apps/api/src/migrations/035_partner_scope_and_units.sql",
+      "sha256": "4ffa724c3b0f0de09c49d4c54f2a85c57b37de764b0f07f20e1a37c828613e3d"
+    },
+    {
+      "path": "apps/api/src/migrations/036_company_card_issuances.sql",
+      "sha256": "7e712148323e5cf3167902c6f63cf518504f45ba19111b2a1e89fa873c1c89c9"
+    },
+    {
+      "path": "apps/api/src/migrations/037_payout_reconciliation_claims.sql",
+      "sha256": "de2c0bfd795db6b7cac85c4f54a91ff4ff470aedff77f00566ce648f787ecc71"
+    },
+    {
+      "path": "apps/api/src/migrations/038_resupply_selling_unit.sql",
+      "sha256": "8be1ce1cde1d6c6f827dad435000d0b5d835d1087f3e9769de652c937079369a"
+    },
+    {
+      "path": "apps/api/src/migrations/039_account_signin_methods.sql",
+      "sha256": "d9b52cb2d7f061b5bf2cf3fd2c417d3755e1a92cbc9479ac533755cf38d5236d"
+    },
+    {
+      "path": "apps/api/src/routes/admin.routes.js",
+      "sha256": "05f5f781cc984beee4f13d248f9dfd6a4be6e7ce8080b0db43eb8d51b8957485"
+    },
+    {
+      "path": "apps/api/src/routes/auth-methods.routes.js",
+      "sha256": "61c6e6a2effff3dfc1eff8acf43d919279802df1c0d1c1b45e91030bcc6759df"
+    },
+    {
+      "path": "apps/api/src/routes/auth.routes.js",
+      "sha256": "581161e794f7e2fc188703136ba08d09bca7e863918e8cfc4f041c0b82e1542b"
+    },
+    {
+      "path": "apps/api/src/routes/company-card-issuances-admin.routes.js",
+      "sha256": "8a7c59912a79965a6215e862a5521af3b9874b8affd84f434f6c2f51aa44b29e"
+    },
+    {
+      "path": "apps/api/src/routes/company.routes.js",
+      "sha256": "412be019b2e029d0558cbd64cd3227eeb28c67d6700d5a3ffcc3345be270b839"
+    },
+    {
+      "path": "apps/api/src/routes/customer.routes.js",
+      "sha256": "47c07b9ec88a0f1475985d7f6d0eea12652a17aef0107945308a44c207b42c43"
+    },
+    {
+      "path": "apps/api/src/routes/fuel-checkout.routes.js",
+      "sha256": "422af7b14cba957e78bd1d129c80baa17d8cd2aecab131f774c80f098d21b914"
+    },
+    {
+      "path": "apps/api/src/routes/intake-admin.routes.js",
+      "sha256": "cb5bd10a3323569ef48bd8489787f3d0491817703946c475a4f366228bee196d"
+    },
+    {
+      "path": "apps/api/src/routes/partner.routes.js",
+      "sha256": "91c2e8e5feda28c9fcaf010a0273fccbf1878d4b01cfbd57a640ed7437382b34"
+    },
+    {
+      "path": "apps/api/src/routes/webhooks.routes.js",
+      "sha256": "febbe4165c18abfb26efbcdc50d4c515e1cff7b05b39de144e85c0ffddc74a92"
+    },
+    {
+      "path": "apps/api/tests/admin-support.integration.test.mjs",
+      "sha256": "0956b3e6f7115556a8111dfb14740c57844cfb441cdbbd9ba6bc7a80659bc6de"
+    },
+    {
+      "path": "apps/api/tests/auth-method-settings.test.mjs",
+      "sha256": "45e5315f3191cec699b2f0f267af03cac2147230286071237bfee0cf672d825a"
+    },
+    {
+      "path": "apps/api/tests/auth-methods.integration.test.mjs",
+      "sha256": "bac11557d75422abc15d715204e4a6f50a63cfeb61b13e35458313464f0997d8"
+    },
+    {
+      "path": "apps/api/tests/company-card-issuance.integration.test.mjs",
+      "sha256": "fe0f61d20961e41a5d5e3520273dc290fd1661dec383764eaa6660133b2483f8"
+    },
+    {
+      "path": "apps/api/tests/company-dashboard.integration.test.mjs",
+      "sha256": "e7cfe4b67c302c7d493ab487b93ff5d68486f24387d0b9b5b04ba59cbcbf0274"
+    },
+    {
+      "path": "apps/api/tests/customer-audit.integration.test.mjs",
+      "sha256": "6c7e081fbac145639077598b72f9a79c91caba5d547937d8bbcf83854db6f007"
+    },
+    {
+      "path": "apps/api/tests/database-private-access.integration.test.mjs",
+      "sha256": "62887883e2fa1be8adc75e6fb3673d55e3e8000e12f23677fe704af890740471"
+    },
+    {
+      "path": "apps/api/tests/flutterwave-processor.test.mjs",
+      "sha256": "60cb7daa8c4687906740764e2a1a0e418cb4c83aa34e38cca2a4d6585430da6e"
+    },
+    {
+      "path": "apps/api/tests/flutterwave-units.test.mjs",
+      "sha256": "234ea295caacb8ef5510197f2b34561867b5cb4b80f8fc6de08a5f699a1e1bbb"
+    },
+    {
+      "path": "apps/api/tests/fuel-checkout.integration.test.mjs",
+      "sha256": "24d2ff3d7ac667ce83967a9235032d513dc1ab74ee934d2c699b230efa670b7e"
+    },
+    {
+      "path": "apps/api/tests/fuel-quantity.test.mjs",
+      "sha256": "a08b80123ae205abc356de66fff093db5ec8f9efe3e3c8635cface0099d017c6"
+    },
+    {
+      "path": "apps/api/tests/fuel-sale.integration.test.mjs",
+      "sha256": "e850d1beac28ba42c592b067588a8d66483faf58ad2f789519d2f1ab3208aa76"
+    },
+    {
+      "path": "apps/api/tests/fuel-unit-projections.integration.test.mjs",
+      "sha256": "4ba91544e663af0c0b5c5394fe95d8b2796380bf5893a25c8df97ef73819ffec"
+    },
+    {
+      "path": "apps/api/tests/google-identity.test.mjs",
+      "sha256": "3727bca37352a65a1fdb0f7157fcaac0c19b32b00757b70118e491addd279c40"
+    },
+    {
+      "path": "apps/api/tests/helpers/software-passkey.mjs",
+      "sha256": "6fe4213c22099c3fbcd9d702f22ff8c78f9be7ab1623f01762d8802a9914bbdb"
+    },
+    {
+      "path": "apps/api/tests/history-settlement-and-scheduler.test.mjs",
+      "sha256": "5f53ea4f94a8d4fc76b5ea699ffec1fd9f0bd9601d624968f8634770c06dbdb2"
+    },
+    {
+      "path": "apps/api/tests/legacy-payout-accounting.integration.test.mjs",
+      "sha256": "d234bc83c712df3b4007ac549fe63ef6549da01547fa2c7a6a6e175d6337bd0f"
+    },
+    {
+      "path": "apps/api/tests/nearest-stations.integration.test.mjs",
+      "sha256": "2847766188dfcadf9d9927e4b25eacf872a1b8bd333702278ddfa38433297d80"
+    },
+    {
+      "path": "apps/api/tests/partner-dashboard-wiring.test.mjs",
+      "sha256": "1d995f878f713c43b2cd50d19f96bb3d1f5ac64f50562e6a7b2896f68d5dfb22"
+    },
+    {
+      "path": "apps/api/tests/partner-production-readiness.test.mjs",
+      "sha256": "f58c20f111874691bc4b607d53fbef2754933c46bf487f2b47a8780124827db4"
+    },
+    {
+      "path": "apps/api/tests/partner-scope-policy.test.mjs",
+      "sha256": "7df117db446a87fea20ba1c29b98b9e7e8ce6a67be71c78981fec27d3b35f32b"
+    },
+    {
+      "path": "apps/api/tests/partner-scope.integration.test.mjs",
+      "sha256": "7ae11fe3de0e2137acf1bd649b399617630d19c07ed54db968f4caace44e7c57"
+    },
+    {
+      "path": "apps/api/tests/partner-staff-atomic-access.integration.test.mjs",
+      "sha256": "8f136862a73c8712f90e7aef61f50087fdb16ebe1278eedca82ace4f70383c38"
+    },
+    {
+      "path": "apps/api/tests/provider-response-lifetime.test.mjs",
+      "sha256": "47b0320c01f5ec76997107a24aa9bbee38d96e9ed04ed4d95cf9b21d895964ac"
+    },
+    {
+      "path": "apps/api/tests/reconciliation-fallback.integration.test.mjs",
+      "sha256": "3825d16ee71b96cc758916d884d44ad2f8b32c56c03af329bbf59ad44ebcd805"
+    },
+    {
+      "path": "apps/api/tests/refund-recovery.integration.test.mjs",
+      "sha256": "fca3481fd0b71ee3b4c2d0b916e23eb4d80115233407932b6c6ed231dd0ff64e"
+    },
+    {
+      "path": "apps/api/tests/settlement-accounting.integration.test.mjs",
+      "sha256": "96c310cd58464134afbe253765c3a70e3749f645c9e7d7ba92bede9832d3161d"
+    },
+    {
+      "path": "apps/api/tests/software-passkey.test.mjs",
+      "sha256": "5546fdcb8b2794dee009364b7414a913bd3998cb92c1f48ca2fc215a807ca313"
+    },
+    {
+      "path": "apps/api/tests/station-approval.test.mjs",
+      "sha256": "80c2a4aec32b4c5f7c0c0cb637f6b22c594a64d3357e50656b0cc509e72569c3"
+    },
+    {
+      "path": "apps/web/app/admin/login/page.tsx",
+      "sha256": "5a4c966d8c42031a26fd927a985dea27bd63854d66c752bcd664c359976ff90a"
+    },
+    {
+      "path": "apps/web/app/admin/operations/page.tsx",
+      "sha256": "b96fbcb39eec2a80bbda6dd855caa853f784540853ab6b654950ae859e75baed"
+    },
+    {
+      "path": "apps/web/app/auth/session-expired/page.tsx",
+      "sha256": "ee908177a118d1b4347fa4ec9980695199e8d5fcc28d54ad7bb86832315a20cf"
+    },
+    {
+      "path": "apps/web/app/auth/sign-in-options/page.tsx",
+      "sha256": "2736bb0712ce25a1c33bcf644009913363a82a0627edd7bc31be0b3294ca09f9"
+    },
+    {
+      "path": "apps/web/app/dashboard/workshop/page.tsx",
+      "sha256": "d21e260178941a21e727951fd854f190f16082371c2316f05344285392213c51"
+    },
+    {
+      "path": "apps/web/app/forgot-password/page.tsx",
+      "sha256": "f6f39aeb130f3d3346673678470c2cae3feaa0a573e0f9b1c237b48a1925bea3"
+    },
+    {
+      "path": "apps/web/app/globals.css",
+      "sha256": "21aa4bd8217c70d4af847e9347df2bf6561e05409beb7deb253a6202d2a1b8b5"
+    },
+    {
+      "path": "apps/web/app/mechanic/page.tsx",
+      "sha256": "17bdda8b543e86238fe9103bf430564776689ca5904e304958fb3e20b2111028"
+    },
+    {
+      "path": "apps/web/app/reset-password/page.tsx",
+      "sha256": "79762293a31416b3485cf7fbe43a4b7b02efdd307dc22913f2a30b31b3c8ce29"
+    },
+    {
+      "path": "apps/web/app/support/page.tsx",
+      "sha256": "f0262169193e8f0bf65effb0ca466c4430c6b768840ee0bece5c55f9e948c3ec"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/AdminHeader.tsx",
+      "sha256": "7dd56e11de8a3334a0ba5584dfbf819eca65d6c3cb1d6e808f95b0d69f360ff5"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/AdminModals.tsx",
+      "sha256": "ae1db061b06f2804a992e3e6211bce93c86b3f4b34a6080aa5d1ac2964927049"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/AdminRecords.tsx",
+      "sha256": "ca2cf831780c8c5fa4317a66c1de0b262d414a85d6f45ef108439a0d1f6497c6"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/AdminScreen.tsx",
+      "sha256": "928765c1a09e3d9fa15751627e76691da8ab52933da9e3babd5f2ced21f4fa5c"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/AdminShell.tsx",
+      "sha256": "8128c6b6aae21a76dc2243bc6e275b5b3ef1fcc3cc6f4c96c17f00250cd9714c"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/AdminSidebar.tsx",
+      "sha256": "4e1704011d9a19fa578ab9c46fb25a69f5b32543d9ea635c443288727b885582"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/CardApprovalQueue.tsx",
+      "sha256": "95ad33bab94cfdf628f79bee72a5012d883a6b3687ae2f4f2dd48115cea45f53"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/DiscountApprovals.tsx",
+      "sha256": "60c2997e20e69c0fae7d7f95c75deb76058b67cfda7af8d208c4fbee469db2c4"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/IntakeConsole.tsx",
+      "sha256": "72958c256c25eed59875dda2ba583093251f1e0e38d11156512ff605b5391a2f"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/OperationsInbox.tsx",
+      "sha256": "f74ead6716dd9027d6d7cd7ca9219c884709bc04332cb20a03f01b61659f365c"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/RecoveryReview.tsx",
+      "sha256": "1914b1c07264df0aae9b4acd2cf0a296767c42cc6768c0daa52f0da5b9eba0b6"
+    },
+    {
+      "path": "apps/web/components/auth/AdditionalSignInMethods.tsx",
+      "sha256": "2898c994b03335b9c12eb05b519d92a652f9ecaf31ddbeb80266323ff1a5721c"
+    },
+    {
+      "path": "apps/web/components/auth/AuthForms.tsx",
+      "sha256": "28d0d779c3cabef3183c91c15bb1a52410bc73199357b0885cf9e97ddb9abf9b"
+    },
+    {
+      "path": "apps/web/components/auth/AuthGuard.tsx",
+      "sha256": "3f41bf3f3bb25798429483d3fd9cc542fccc38aace5235d4b5e390445c0c6333"
+    },
+    {
+      "path": "apps/web/components/auth/AuthShell.tsx",
+      "sha256": "2d763a7e2da2e813d4427a5d3abe0c905fdbd009d587238de192f2d9544f46a0"
+    },
+    {
+      "path": "apps/web/components/auth/AuthStatus.tsx",
+      "sha256": "297e9b46201eaec64657674f661912abdb5247ce46f8958464ab79d0cb6f0413"
+    },
+    {
+      "path": "apps/web/components/auth/CompanyInvitation.tsx",
+      "sha256": "c61a430686eadda7f25c9fe454c7ac715331d97ef2b9ac150b64c276cec32fce"
+    },
+    {
+      "path": "apps/web/components/auth/DemoAccountPanel.tsx",
+      "sha256": "e2b8bc63405843638b9f2975332a06d63a5b98cda9c29ccaa750706d9ffcf1f2"
+    },
+    {
+      "path": "apps/web/components/auth/GoogleIdentityButton.tsx",
+      "sha256": "cb1071e99f7d71b39504a033e9c3ac6f1ed64af756ca117c3985fef6c11a2189"
+    },
+    {
+      "path": "apps/web/components/auth/LogoutButton.tsx",
+      "sha256": "3c67b3052737fe8c45b43a15aa49cf7478a9fa0e1d6892a697ae875805ec0d1b"
+    },
+    {
+      "path": "apps/web/components/auth/MFAUI.tsx",
+      "sha256": "01c67b869486e9b4f8321dbddde384b05baa6a4ee32db07e7ec0d3eb9e802c26"
+    },
+    {
+      "path": "apps/web/components/auth/SignInOptions.tsx",
+      "sha256": "cff166b1cc238ba462ccca75e74b471542db326a11fa4cec32aa73b381b6f3fb"
+    },
+    {
+      "path": "apps/web/components/auth/SuccessAutoRedirect.tsx",
+      "sha256": "7671497ea7f1d3295e86b67f4672a1efb41b582e776bda3bed135b45d47b546d"
+    },
+    {
+      "path": "apps/web/components/auth/SuccessHonesty.tsx",
+      "sha256": "9103ad967c24378aa2e017ca1b8507651db1a4bd3b980897104c8888d6ae2651"
+    },
+    {
+      "path": "apps/web/components/auth/VerificationUI.tsx",
+      "sha256": "4f8207481b18f45bc344bb5b7644a50b9477fc94789e1358e08cc25b71a4de84"
+    },
+    {
+      "path": "apps/web/components/careers/CareersPage.tsx",
+      "sha256": "24f43aa093e77fdc08b74354db4ccbd49770212a2053b111e3ca043c99e18bf4"
+    },
+    {
+      "path": "apps/web/components/company-dashboard/CompanyContextSelector.tsx",
+      "sha256": "b1b835dc1fb72aa3f111018b00269cb182a03becaeacc5d1dafbfc619b543b9a"
+    },
+    {
+      "path": "apps/web/components/company-dashboard/CompanyModals.tsx",
+      "sha256": "532e0e6e2866f9e0c999d3a9f7e6c533447a9295707a46b3487e6688c12c3c9f"
+    },
+    {
+      "path": "apps/web/components/company-dashboard/CompanyScreen.tsx",
+      "sha256": "69afad3f0d1c04b5b056415183d9439805c8b078ddb540d6091af88e36ff5006"
+    },
+    {
+      "path": "apps/web/components/company-dashboard/CompanyShell.tsx",
+      "sha256": "1bb1b83751fbcff2fed98cc8b0cf6696b472be5ca68a342b2098c411a0a45d18"
+    },
+    {
+      "path": "apps/web/components/customer-dashboard/CardRequestModals.tsx",
+      "sha256": "5430c94c32bf3e27b67cab6190c257ba983b3312f7590bd56c600365587163e0"
+    },
+    {
+      "path": "apps/web/components/customer-dashboard/CustomerFuelCheckout.tsx",
+      "sha256": "b99635e98443ffbc765d5a7c4109efca980dc1e97d3ae3b10597172c1599c128"
+    },
+    {
+      "path": "apps/web/components/customer-dashboard/CustomerModals.tsx",
+      "sha256": "0c8a2e11d5780aa6b1e5729214cd83698f4c7900f94267da21f812f61cb9f51c"
+    },
+    {
+      "path": "apps/web/components/customer-dashboard/CustomerScreen.tsx",
+      "sha256": "b01a0983973818eea4b4d8c6914cc5d51a3ca550bd58995289c09e8acfa972c7"
+    },
+    {
+      "path": "apps/web/components/customer-dashboard/CustomerShell.tsx",
+      "sha256": "a89cb046aba9f37006ce1e46e074feb0cbdaa88abd27dbde716420fc09e5700f"
+    },
+    {
+      "path": "apps/web/components/dashboard/DashboardHeader.tsx",
+      "sha256": "e30ea31dbd3a21e5dba5300793f58ed451b22425fa82cde70a995ee9760427a1"
+    },
+    {
+      "path": "apps/web/components/dashboard/DashboardScreen.tsx",
+      "sha256": "4c7b65d4c4aae7955da8070ac31eeb218b00784b87d1e80c43a19084362ad9f7"
+    },
+    {
+      "path": "apps/web/components/dashboard/MobileDashboardNav.tsx",
+      "sha256": "eabe0ca75e2d58a26ec707cc96e51c5b3eeb42e6fe0d9e73d136f17879915bd9"
+    },
+    {
+      "path": "apps/web/components/dashboard/PartnerApiKeys.tsx",
+      "sha256": "269539320230e8b2309603b48ffe6cb6fd473792034acab0e609d569ac75ded1"
+    },
+    {
+      "path": "apps/web/components/dashboard/PartnerServiceRequests.tsx",
+      "sha256": "8d3c0bb79b802a4bf268b8c3053d7b46671644387f08bfc33b4b8c11b689e946"
+    },
+    {
+      "path": "apps/web/components/dashboard/PartnerSubscriptionGate.tsx",
+      "sha256": "1ffc467a4653adeafc00c3a7de32faa7585753eec5441cbabb0d54fbb158df0f"
+    },
+    {
+      "path": "apps/web/components/dashboard/PartnerVerification.tsx",
+      "sha256": "c268eb0bf04a863700a777c6fe9dec76b5d2c0fe2516e7d8ec7cd0bec9892de1"
+    },
+    {
+      "path": "apps/web/components/dashboard/PartnershipShell.tsx",
+      "sha256": "ea365c67c2489eb38991b975c430514a34ec03fb58abb0fa0db055c607c7dbb7"
+    },
+    {
+      "path": "apps/web/components/dashboard/PartnershipSidebar.tsx",
+      "sha256": "977b72f07abebc60f08952a2c9f4466e78ec6d4cf46a749fbbe60f82f5da6002"
+    },
+    {
+      "path": "apps/web/components/dashboard/StationDiscounts.tsx",
+      "sha256": "d322616907df2ad80798ea249761350ede8a46cadd0616b1070523da8dd7b7e3"
+    },
+    {
+      "path": "apps/web/components/dashboard/StationLocationPicker.tsx",
+      "sha256": "8f874ae3261dbe6ab651817bee034ec2fc6c2ba9450098505e0e395b6edf541a"
+    },
+    {
+      "path": "apps/web/components/dashboard/StationProfileFields.tsx",
+      "sha256": "65521c321f934f41bbdfa07066294e19c384498d671960666057ad2a353405fe"
+    },
+    {
+      "path": "apps/web/components/dashboard/StationProfileForm.tsx",
+      "sha256": "a3b2d5ba16e53df705f013877a808c493ac43c7f95ed3a4b9ed8aa9872e33110"
+    },
+    {
+      "path": "apps/web/components/dashboard/WorkshopDashboard.tsx",
+      "sha256": "d790642f823525fcaa9c35d8ad6bbd9b52acb035430d50b5d0b03bfd3cd30a50"
+    },
+    {
+      "path": "apps/web/components/landing/Button.tsx",
+      "sha256": "d7315f51d886b1f4978805b29da649faea2a35c7840aef9767e5ad5ddf6b3c6d"
+    },
+    {
+      "path": "apps/web/components/landing/ClosingCta.tsx",
+      "sha256": "02e9ee1f48320e981588cc50a7f0eba19e24917814f0d2088dbde93bdc283b4a"
+    },
+    {
+      "path": "apps/web/components/landing/Footer.tsx",
+      "sha256": "04e80dbda7b2202a32e249093c9899fe927f2f76a7f05bd9a1c0ee52c6784420"
+    },
+    {
+      "path": "apps/web/components/landing/Header.tsx",
+      "sha256": "1f7a944cc5567c4229ad108501a6e8ed58b8b10fcd170b338b47293f586b8f14"
+    },
+    {
+      "path": "apps/web/components/landing/Hero.tsx",
+      "sha256": "b395a8a8972363bba39d877eedfa364e71be6667fdd322e547e48994b66e5bbd"
+    },
+    {
+      "path": "apps/web/components/landing/Pricing.tsx",
+      "sha256": "2d4b18db56948b334252125d4fb397e073bdbdb39f1773bfb7b961fe2852a604"
+    },
+    {
+      "path": "apps/web/components/landing/Story.tsx",
+      "sha256": "86129ad8ef49e11a7dc871b1a026f59c0b8475ac9035a3f2898373781d1b7264"
+    },
+    {
+      "path": "apps/web/components/shared/AuthContext.tsx",
+      "sha256": "6c3ce1b997f9edc399267c08821c1547f4f05d4fcc5f9a8ae8bbb2114be95dab"
+    },
+    {
+      "path": "apps/web/components/shared/DashboardSearch.tsx",
+      "sha256": "af8f60556e66d6d40315bdcc697667d687c8b9f3eec3fcb692684cfdc26a9cae"
+    },
+    {
+      "path": "apps/web/components/shared/DashboardSearchQuery.tsx",
+      "sha256": "819afc44394f338f975cf28040c24c180f0dd6d2923dfb8938183da8165e09c7"
+    },
+    {
+      "path": "apps/web/components/shared/Dialogs.tsx",
+      "sha256": "f849b22548cbb767712b8e2a9594808d7c4a6023ca4f2fe570874a9c20c873eb"
+    },
+    {
+      "path": "apps/web/components/shared/ErrorBoundary.tsx",
+      "sha256": "890a12cbb847413ef6d7b11117ba8c2f2f3605a9513b98db3f612f301fc581da"
+    },
+    {
+      "path": "apps/web/components/shared/Providers.tsx",
+      "sha256": "808a5fbeff6e291dd793a1b60ace2555411f5ae8e4251a6d14c5bf9c89bf38ac"
+    },
+    {
+      "path": "apps/web/components/shared/States.tsx",
+      "sha256": "18b4273fa030052d2b6807fcd9c616df2756d3c6cae90c420d3c14dd209f1d2b"
+    },
+    {
+      "path": "apps/web/components/shared/StationMap.tsx",
+      "sha256": "f58fc1c34aa6931c1c0e1b88bc236a754e1741fe3cae0f0c12fc6b298b14e965"
+    },
+    {
+      "path": "apps/web/components/shared/StatusPopup.tsx",
+      "sha256": "cd67565399cf69492c427bc2a4493237595f8a93997cb52132a6778542bda39c"
+    },
+    {
+      "path": "apps/web/components/shared/Toast.tsx",
+      "sha256": "68af6515aeac0c64e79c01b61aabf65b18f9781e3c21bc97ee92792707ab197f"
+    },
+    {
+      "path": "apps/web/components/site/CookieConsentBanner.tsx",
+      "sha256": "240db6ac3e211dfbcba8cb4891a91462872bec253dc9efbcbd7f7932e89a465d"
+    },
+    {
+      "path": "apps/web/components/site/Input.tsx",
+      "sha256": "71330dfc2e242ff2a794da0323c39f1461c5b9fe1544bad5971b0d58f1345e41"
+    },
+    {
+      "path": "apps/web/components/site/PageIntro.tsx",
+      "sha256": "319b3fc047c069de0ace6e62f70add9e0f282534c30aac4fbb3ba343baad9dc1"
+    },
+    {
+      "path": "apps/web/components/site/SiteFooter.tsx",
+      "sha256": "df026366d1bd714e16dd3b901570fdde56bfd0f2d2e0e186ed0edaf4a8f76327"
+    },
+    {
+      "path": "apps/web/components/site/SiteHeader.tsx",
+      "sha256": "92e81fcc87cb243bf9d76ef323ff3bb75839635831b97d66b5469b65688e0512"
+    },
+    {
+      "path": "apps/web/components/site/routes.ts",
+      "sha256": "3a4b47de1b6f34fdea14c10562194d2cda7bdb7adcdfd56f2162c6614b889410"
+    },
+    {
+      "path": "apps/web/components/solutions/SolutionPage.tsx",
+      "sha256": "06273178e1e6d5ce16820ab7a04dc07eed9d82627d81d928b62f38d827b47a2b"
+    },
+    {
+      "path": "apps/web/lib/auth-methods.ts",
+      "sha256": "eeb0279c1f81c7ad1421a261220215a9dd44f467790e3d787c5e385ba07337aa"
+    },
+    {
+      "path": "apps/web/lib/customer-presentation.ts",
+      "sha256": "3d0a6c0dc55899f3cf5e4ed25f32c325801ebee4de43a46f8c4b81190b119c0a"
+    },
+    {
+      "path": "apps/web/lib/dashboard-search.ts",
+      "sha256": "1794faeb0e508337a2112d1b2c014483bf160ac69e648877d7fa962519837fba"
+    },
+    {
+      "path": "apps/web/lib/mock/dashboard-data.ts",
+      "sha256": "88b326aca7b81a2213699cda95c3e40d5ee207a00de28830ad402073e47de077"
+    },
+    {
+      "path": "apps/web/lib/partner-selling-unit.ts",
+      "sha256": "b0a179d2aa52647a569b6e6c7d360cdbdbafb82ff73d81bc97034ea42571b659"
+    },
+    {
+      "path": "apps/web/lib/partner-workshop.ts",
+      "sha256": "25dc4d3ab63c976229e0a6a9927113f33ca93cbe4e53fab35a4cb50810cb811a"
+    },
+    {
+      "path": "apps/web/lib/services/client.ts",
+      "sha256": "0ac5da4c5a9053c56048542c81738a39607f4186db85b40506574ecf1720641f"
+    },
+    {
+      "path": "apps/web/lib/services/company.ts",
+      "sha256": "cd1ee23307ce0ebf2dce680597dc0be1052831512924a412f71a4914c8c8e71d"
+    },
+    {
+      "path": "apps/web/lib/services/types.ts",
+      "sha256": "13ef83ba5753e48b34b0b7b5b9932c1f04b10012172adedd00c33c15b9dcaff3"
+    },
+    {
+      "path": "apps/web/lib/station-profile.ts",
+      "sha256": "fffc6f0d7aa96861cd80839b74664b830bf0b7294c26d3e00628dd6574df6cea"
+    },
+    {
+      "path": "apps/web/package.json",
+      "sha256": "a4b5e76d13bec715d4222c03387219da7377b316d3b805c24c918b4566638a26"
+    },
+    {
+      "path": "apps/web/tailwind.config.js",
+      "sha256": "e86d44a34acc6a8d8bd356b5e1cec230ab6e166ef0f60200d9991f5f185e7839"
+    },
+    {
+      "path": "apps/web/tests/additional-auth-methods.test.cjs",
+      "sha256": "a19d3b8f3cb027d41314bc1d35e01c8715bb4628235d2be3a92bb6a36ef4762a"
+    },
+    {
+      "path": "apps/web/tests/admin-company-approval.test.cjs",
+      "sha256": "6647c2e62ad66e8b73ab7453458066f912566502974a4ce6c7e2004fac5845e6"
+    },
+    {
+      "path": "apps/web/tests/admin-navigation.test.cjs",
+      "sha256": "353ad7e228dd91d07580481d760b0d91a9df77dae239ec2e635b3c4dbc9bad19"
+    },
+    {
+      "path": "apps/web/tests/admin-queue-states.test.cjs",
+      "sha256": "2544b9e05c34a57321f0ada3c28c015231275aeb26eaee0fba5eb6840bcaa0bf"
+    },
+    {
+      "path": "apps/web/tests/admin-screen-loading.test.cjs",
+      "sha256": "3cce0e90df259d1102687845876c518d31d2647a5c8150a05d2063558bd20bd3"
+    },
+    {
+      "path": "apps/web/tests/auth-method-ui.test.cjs",
+      "sha256": "eb900ab51c85ea3e9cee75a7368d51d32b8201367fe7e8599a45958c607fc551"
+    },
+    {
+      "path": "apps/web/tests/company-admin-ui-polish.test.cjs",
+      "sha256": "ec0e5c69f5b529691f373d7f7e9cc80842d48a6af957c068e035114233c845b5"
+    },
+    {
+      "path": "apps/web/tests/company-empty-pages.test.cjs",
+      "sha256": "e1c9b64f31eb7b273fd957ecaa3798ca0a07b5c2e75566852e4bc0235b34d48a"
+    },
+    {
+      "path": "apps/web/tests/customer-audit.test.cjs",
+      "sha256": "3b4ee7bed66896d8b8249fa44834b0830e228761fab7a5b16023270a923ab3c8"
+    },
+    {
+      "path": "apps/web/tests/customer-my-card.test.cjs",
+      "sha256": "c055c58988b4f300c18aa27ac9ff1238bdde235991430e44043f7193be029263"
+    },
+    {
+      "path": "apps/web/tests/dashboard-floating-feedback.test.cjs",
+      "sha256": "767797fa70026a5440170d3a4961454ef734ab02b8aa8d4a8facfc5e346df734"
+    },
+    {
+      "path": "apps/web/tests/dashboard-search-destinations.test.cjs",
+      "sha256": "765ef6c005b8220669b192ae76f39f86f3b76b80825340d93a134306a2b0f7bd"
+    },
+    {
+      "path": "apps/web/tests/dashboard-search-loader.test.cjs",
+      "sha256": "33dddbed3d1eaef2a0ca5c514a1956401ff6fdbb4b15aa5a7866bb1ff8022324"
+    },
+    {
+      "path": "apps/web/tests/dashboard-search-ui.test.cjs",
+      "sha256": "1629076c90551772d3abc534180e8e8f00434672959b04881bdbd936fa2714e5"
+    },
+    {
+      "path": "apps/web/tests/helpers/status-popup.cjs",
+      "sha256": "b75e5db46903741fed8970a846734930512ea99d1d4538a05932ee78291b1ae7"
+    },
+    {
+      "path": "apps/web/tests/landing-mobile-menu.test.cjs",
+      "sha256": "f02abe94a37ab7fcd75942637188b03252245b718363d1f9d9ade9626b3752fe"
+    },
+    {
+      "path": "apps/web/tests/mfa-password-proof.test.cjs",
+      "sha256": "b4cd0e0086e08ba3bced2c9dea8ab5193077de7d0d21b339e06ceeb1a354e920"
+    },
+    {
+      "path": "apps/web/tests/partner-audit-regression.test.cjs",
+      "sha256": "d52ea0850820eae62a2eb9eef7ae4e91115c2206ff502caa54e49f3167df6fa6"
+    },
+    {
+      "path": "apps/web/tests/partner-mobile-navigation.test.cjs",
+      "sha256": "1e8ac23391d7020f26b63a2105b06084ba5dde7681fae51a420d14bf7f59308d"
+    },
+    {
+      "path": "apps/web/tests/partner-subtype-workshop.test.cjs",
+      "sha256": "cbad4866d28fd8493ec7b973d546977eb221df8d40c01eef29baf13adba6eb7d"
+    },
+    {
+      "path": "apps/web/tests/partner-verification.test.cjs",
+      "sha256": "a84e62ded2d9b01f07477859876d2ac124ffaf422469e7eb65f1d4812d102fc4"
+    },
+    {
+      "path": "apps/web/tests/production-auth-navigation.test.cjs",
+      "sha256": "fcd097acea4c0cb1324ff56c429b67b2993fedd649b7039bace22567e57b6cab"
+    },
+    {
+      "path": "apps/web/tests/production-company-invitations.test.cjs",
+      "sha256": "9e13246db9adf9a79297708b91d78bfd74f0e90ef6535eeb06eeb33afd829a2e"
+    },
+    {
+      "path": "apps/web/tests/production-company-workflows.test.cjs",
+      "sha256": "57e85811ce664b9973a15c5290319eb5f0d2532aa4607b56cd8ade2dc6101d17"
+    },
+    {
+      "path": "apps/web/tests/production-customer-controls.test.cjs",
+      "sha256": "bfb2e7729059db29aef9627072fda2fed557f886a96f01d1666f85d1202a8bb2"
+    },
+    {
+      "path": "apps/web/tests/production-partner-staff.test.cjs",
+      "sha256": "c0a58502e2463a1aecc951955c7fc8bc907c6b169fd671f418139105a3c74e4e"
+    },
+    {
+      "path": "apps/web/tests/production-public-controls.test.cjs",
+      "sha256": "dd7d46fcbc873d2bb7a1c3d4585b5f247f614851e62e45444ae6de5ef5c06881"
+    },
+    {
+      "path": "apps/web/tests/production-shared-state.test.cjs",
+      "sha256": "ae9ea042f86b8538c9ed0eb1a533407fd10342362bcac174698410033a131336"
+    },
+    {
+      "path": "apps/web/tests/signup-report-regression.test.cjs",
+      "sha256": "b735d50b25aad3eb8ac3feb112d851a6d17957a020c9f16ca9d63cffb9a1960b"
+    },
+    {
+      "path": "apps/web/tests/station-location-picker.test.cjs",
+      "sha256": "8c28664848efc66cd0096eb98e19c917a5a37a4834f8f300f81f12a02cfb141f"
+    },
+    {
+      "path": "apps/web/tests/station-map-states.test.cjs",
+      "sha256": "34aa0815a97bb8d1a5f517b9d2fc2ee66e10cfa33d36fa2f013acf7033492b0a"
+    },
+    {
+      "path": "apps/web/tests/station-profile-fields.test.cjs",
+      "sha256": "d7560b42ec310b5225071dfc522e245a51b509fd803a533604983c9d638bf27a"
+    },
+    {
+      "path": "apps/web/tests/station-profile-form.test.cjs",
+      "sha256": "37ada121159c2d7992962f8e407ed2a93fa5f59ba7cb8cf108d3e618afae5391"
+    },
+    {
+      "path": "apps/web/tests/status-popup.test.cjs",
+      "sha256": "fbaf4d2a746984280520f09ffb9ad97e61d9a76743acb34c13cc90f710dbb283"
+    },
+    {
+      "path": "apps/web/tests/success-honesty.test.cjs",
+      "sha256": "ae753267e90ccd4332009764143fd9945d727747bef4405b54da2a2f40afde99"
+    },
+    {
+      "path": "apps/web/tests/test-report-company.test.cjs",
+      "sha256": "2d6827c97152f68495ad271204dc014287b87ada142980a1c7922ba449a6b6db"
+    },
+    {
+      "path": "apps/web/tests/transport-regression.test.cjs",
+      "sha256": "19e28f7acefb090cef8c5a3fcfba34b84af0a23c66bea63b14137d35166718b0"
+    },
+    {
+      "path": "apps/web/tests/ui-dashboard-polish.test.cjs",
+      "sha256": "eabb4fabb845ff58574a5259961503b6844b72cd56bb034f39fdbf0ac2c2d767"
+    },
+    {
+      "path": "packages/shared/partner-access.d.mts",
+      "sha256": "75ac0f6ff60a2da20ccc96d670e03f0cec4e1c847f370fac5f58553e81631705"
+    },
+    {
+      "path": "packages/shared/partner-access.mjs",
+      "sha256": "cde5f71d6ed2dc2ee9304eeb57704d3050de454288557aa7436ca1224926498c"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "sha256": "62ea80d9bac12a3761ac50580bba3b6dda4ac8865ec13b4a7fd8ae0a799c25b0"
+    }
+  ],
+  "finalApplicationTreeDigest": "3df18fb679952b296cffc4ea8759f09770c6a6e96ee2586bdc814a0de7322574"
+}

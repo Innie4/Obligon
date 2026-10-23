@@ -1,0 +1,36 @@
+{
+  "recordedAt": "2026-10-23T21:14:06.171253+00:00",
+  "sourceFrozen": true,
+  "files": {
+    "apps/web/components/shared/DashboardSearch.tsx": "af8f60556e66d6d40315bdcc697667d687c8b9f3eec3fcb692684cfdc26a9cae",
+    "apps/web/tests/dashboard-search-ui.test.cjs": "1629076c90551772d3abc534180e8e8f00434672959b04881bdbd936fa2714e5"
+  },
+  "focused": {
+    "ui": {
+      "tests": 19,
+      "pass": 19,
+      "fail": 0,
+      "skipped": 0
+    },
+    "loader": {
+      "tests": 17,
+      "pass": 17,
+      "fail": 0,
+      "skipped": 0
+    },
+    "destinations": {
+      "tests": 12,
+      "pass": 12,
+      "fail": 0,
+      "skipped": 0
+    }
+  },
+  "totalPass": 48,
+  "requestExpressionComparison": "requestDifferenceFiles: []",
+  "globalCriticalBaseline": "Unrelated API package/test and lockfile drift reported to parent; global comparison did not pass",
+  "browser": "Parent owns live focus, portal and settled-pointer navigation checks",
+  "independentReview": "Passed final frozen source recheck by popup_feedback23; reviewer freshly reran UI19/19; no bounded source blocker; browser delegated to parent",
+  "build": "Parent owns full build and suites",
+  "keyboardRegression": "Default Tab order red reproduction; Clear-to-Retry and reverse bridge, same-popup Dismiss and outside-focus closure pass after correction",
+  "loadingDismiss": "Search loading explicitly sets dismissible=false; consumer prop and settlement checked"
+}

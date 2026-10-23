@@ -1,0 +1,51 @@
+{
+  "verifiedAt": "2026-10-23T21:18:03.810411+00:00",
+  "manifest": "followup-source-manifest.json",
+  "web": {
+    "tests": 646,
+    "passed": 646,
+    "failed": 0,
+    "skipped": 0,
+    "exitCode": 0,
+    "log": "followup-web-tests.txt"
+  },
+  "api": {
+    "tests": 1264,
+    "passed": 1251,
+    "failed": 0,
+    "skipped": 13,
+    "exitCode": 0,
+    "log": "followup-api-tests.txt",
+    "environment": "Both DATABASE_URL and OBLIGON_TEST_DATABASE_URL point only to task-owned PostgreSQL55423; isolated schemas/child processes; concurrency2; no .env or live providers"
+  },
+  "build": {
+    "exitCode": 0,
+    "log": "followup-web-build.txt"
+  },
+  "audits": {
+    "all": 0,
+    "production": 0,
+    "exitCodes": [
+      0,
+      0
+    ]
+  },
+  "browser": {
+    "search": "Tab input to Clear to Retry; Enter returns input focus; loading then ready without popup",
+    "pendingReport": "../popup-feedback-2026-10-23/dashboard-search/report.md",
+    "receipt": "../../popup-feedback-2026-10-23/evidence/search-browser-final.json"
+  },
+  "artifacts": {
+    "followup-web-tests.txt": "845fcfa4b98eab9f7baba19db96fc99c4ffb7691b4291255fbb7ac0939397b62",
+    "followup-api-tests.txt": "64f352cf4893e855c50f6264693636c444eb94cf8dfbe77b7d602877e4b7d79a",
+    "followup-web-build.txt": "3069d798248a1437dad5fbb39bdaec58eb5a87d7fd8b81dc0f36f32ad58d9298",
+    "dependency-audit-all.json": "1067d6e851cb5cd571801c3c2f423ae099a10261bf0dc8dee665f1f1cc9b99b0",
+    "dependency-audit-production.json": "c3dd1a03bb47ae73186f3f897f20167cf11a6ca1fe04ec07b343239db73ffa06",
+    "zod-compatibility.json": "b48a3670d5ca33ecab7af836806c3c0a845f6a4d531d40cfd8de37b72756b250"
+  },
+  "sourceSecrets": {
+    "findings": 0,
+    "scope": "apps, excluding dependencies/builds/real env files",
+    "log": "followup-source-secret-scan.txt"
+  }
+}

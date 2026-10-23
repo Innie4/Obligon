@@ -11,7 +11,7 @@ const deferred = () => { let resolve, reject; const promise = new Promise((yes, 
 class Unavailable extends Error { constructor(results = []) { super('Unavailable'); this.results = results; this.unavailable = ['Recent records']; } }
 
 function fixture({ user = { id: 'customer-1', role: 'customer' }, scope = 'customer', compact = false, load = async () => [], entries = [{ href: '/customer/transactions', label: 'History', keywords: 'transactions receipts' }, { href: '/customer/stations', label: 'Stations' }, { href: '/auth/sign-in-options', label: 'Sign-in options' }] } = {}) {
-  const slots = [], effects = [], timers = new Map(), calls = [], routes = [], reloads = [], focus = [];
+  const slots = [], effects = [], timers = new Map(), calls = [], routes = [], reloads = [], focus = [], documentListeners = new Map();
   let cursor = 0, timerId = 0, tree, pathname = `/${scope}`;
   const props = { scope, entries, compact };
   const location = { pathname, search: '', assign: href => reloads.push(href) };
@@ -23,13 +23,15 @@ function fixture({ user = { id: 'customer-1', role: 'customer' }, scope = 'custo
     useCallback(fn, deps) { const i = cursor++, previous = slots[i]; if (!previous || deps.some((v, n) => !Object.is(v, previous.deps[n]))) slots[i] = { deps, fn }; return slots[i].fn; },
     useEffect(fn, deps) { const i = cursor++, previous = slots[i]; if (!previous || deps.some((v, n) => !Object.is(v, previous.deps[n]))) effects.push(() => { previous?.cleanup?.(); slots[i] = { deps, cleanup: fn() }; }); }
   };
+  const popupMock = require('./helpers/status-popup.cjs').statusPopupMock(React);
+  const StatusPopup = Object.assign(props => { const node = popupMock.StatusPopup(props); node.props['data-popup-dismissible'] = props.dismissible; return node; }, { __statusPopupMock: true });
   const exported = {};
   const source = fs.readFileSync(require.resolve('../components/shared/DashboardSearch.tsx'), 'utf8');
   vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }).outputText, {
     exports: exported, Error, Map,
-    document: { body: {}, getElementById: () => ({ scrollIntoView() {} }) },
+    document: { body: {}, getElementById: () => ({ scrollIntoView() {} }), addEventListener(name, listener) { const handlers = documentListeners.get(name) ?? new Set(); handlers.add(listener); documentListeners.set(name, handlers); }, removeEventListener(name, listener) { documentListeners.get(name)?.delete(listener); } },
     window: { location, setTimeout(fn) { const id = ++timerId; timers.set(id, fn); return id; }, clearTimeout(id) { timers.delete(id); } },
-    require: name => name === 'react' ? React : name === 'react-dom' ? { createPortal: value => value } : name === 'next/link' ? { default: 'Link', __esModule: true } : name === 'next/navigation' ? { usePathname: () => pathname, useRouter: () => ({ push: href => routes.push(href) }) } : name === './AuthContext' ? { useSession: () => ({ user }) } : name === './useDialogFocus' ? { useDialogFocus: (...args) => focus.push(args) } : name === '@/lib/dashboard-search' ? { DashboardSearchUnavailableError: Unavailable, searchDashboardRecords: async (...args) => { calls.push(args); return load(...args); } } : {}
+    require: name => name === 'react' ? React : name === '@/components/shared/StatusPopup' ? { StatusPopup } : name === 'react-dom' ? { createPortal: value => value } : name === 'next/link' ? { default: 'Link', __esModule: true } : name === 'next/navigation' ? { usePathname: () => pathname, useRouter: () => ({ push: href => routes.push(href) }) } : name === './AuthContext' ? { useSession: () => ({ user }) } : name === './useDialogFocus' ? { useDialogFocus: (...args) => focus.push(args) } : name === '@/lib/dashboard-search' ? { DashboardSearchUnavailableError: Unavailable, searchDashboardRecords: async (...args) => { calls.push(args); return load(...args); } } : {}
   });
   const ui = {
     render() { cursor = 0; tree = exported.DashboardSearch(props); return tree; },
@@ -43,6 +45,7 @@ function fixture({ user = { id: 'customer-1', role: 'customer' }, scope = 'custo
     async runTimers() { const pending = [...timers.values()]; timers.clear(); pending.forEach(fn => fn()); await flush(); ui.render(); ui.effects(); ui.render(); },
     changeUser(next) { user = next; ui.render(); const beforeEffects = text(tree); ui.effects(); ui.render(); return beforeEffects; },
     path(next) { pathname = next; ui.render(); ui.effects(); ui.render(); },
+    focusIn(target) { for (const listener of documentListeners.get('focusin') ?? []) listener({ target }); ui.render(); ui.effects(); ui.render(); },
     unmount() { slots.forEach(value => value?.cleanup?.()); }
   };
   ui.render(); ui.effects(); ui.render(); return ui;
@@ -64,6 +67,23 @@ test('search debounces real records and does not request data for one character'
   await ui.runTimers(); assert.equal(ui.calls.length, 1); assert.equal(ui.calls[0][1], 'ref-704');
   const result = ui.options()[0]; assert.equal(result.props.href, '/customer/transactions?id=receipt-1');
   result.props.onClick(); ui.render(); assert.equal(ui.input().props.value, '');
+});
+
+test('record loading floats while matching pages and combobox result semantics remain available', async () => {
+  const ui = fixture(); ui.open(); ui.query('transaction');
+  const popup = ui.nodes().find(node => node.props?.['data-status-popup'] === 'loading');
+  assert.ok(popup, 'loading feedback must use the shared floating popup');
+  assert.equal(popup.props['data-popup-dismissible'], false, 'short-lived search progress must not offer a Dismiss that can blur and cancel its owner');
+  assert.match(text(popup), /Searching records/);
+  const list = ui.nodes().find(node => node.props?.role === 'listbox');
+  assert.equal(ui.input().props['aria-controls'], list.props.id);
+  assert.equal(ui.options().length, 1); assert.match(ui.text(), /1\s+result/);
+  assert.equal(list.props['aria-busy'], true);
+  assert.equal(ui.nodes().some(node => node.type === 'span' && /Searching records/.test(text(node))), false);
+  await ui.runTimers();
+  assert.equal(ui.nodes().some(node => node.props?.['data-status-popup'] === 'loading'), false);
+  assert.equal(ui.nodes().find(node => node.props?.role === 'listbox').props['aria-busy'], false);
+  assert.equal(ui.options()[0].props.href, '/customer/transactions');
 });
 
 test('old query responses cannot replace newer results or restore closed results', async () => {
@@ -104,12 +124,94 @@ test('partial record errors keep real hits and page destinations with an explici
   assert.ok(retry); retry.props.onClick(); ui.render(); ui.effects(); await ui.runTimers(); assert.equal(ui.calls.length, 2);
 });
 
+test('desktop popup retry survives pointer and keyboard blur without changing outside-blur dismissal', async () => {
+  let attempts = 0;
+  const ui = fixture({ load: async () => { if (++attempts === 1) throw new Error('Unavailable'); return []; } });
+  ui.open(); ui.query('transaction'); await ui.runTimers();
+  const popup = ui.nodes().find(node => node.props?.['data-status-popup'] === 'error');
+  assert.ok(popup, 'failed record searches must use floating feedback');
+  const retry = nodes(popup).find(node => node.type === 'button' && text(node) === 'Retry search');
+  let focusCalls = 0;
+  ui.input().props.ref.current = { focus() { focusCalls++; } };
+  let prevented = false;
+  retry.props.onMouseDown({ preventDefault() { prevented = true; } });
+  assert.equal(prevented, true, 'pointer retry must preserve the input focus until click');
+  const container = ui.nodes().find(node => node.props?.onBlur);
+  const feedbackTarget = {}, popupTarget = { contains: target => target === feedbackTarget };
+  container.props.ref.current = { contains: () => false };
+  retry.props.ref.current = { closest: () => popupTarget };
+  container.props.onBlur({ currentTarget: { contains: () => false }, relatedTarget: feedbackTarget }); ui.render();
+  assert.equal(ui.input().props['aria-expanded'], true, 'keyboard focus on this search retry keeps results mounted');
+  retry.props.onClick(); ui.render(); ui.effects(); ui.render(); await ui.runTimers();
+  assert.equal(focusCalls, 1, 'retry restores the owning combobox focus');
+  assert.equal(ui.calls.length, 2); assert.equal(ui.input().props['aria-expanded'], true);
+  assert.equal(ui.nodes().some(node => node.props?.['data-status-popup'] === 'error'), false);
+  ui.nodes().find(node => node.props?.onBlur).props.onBlur({ currentTarget: { contains: () => false }, relatedTarget: { closest: () => null } }); ui.render();
+  assert.equal(ui.input().props['aria-expanded'], false, 'focus outside search and its retry still closes desktop results');
+});
+
+test('ordinary desktop Tab order reaches portal retry and returns with ShiftTab before leaving search', async () => {
+  const ui = fixture({ load: async () => { throw new Error('Unavailable'); } });
+  ui.open(); ui.query('transaction'); await ui.runTimers();
+  const input = ui.input(), container = ui.nodes().find(node => node.props?.onBlur);
+  const clear = ui.nodes().find(node => node.props?.['aria-label'] === 'Clear search');
+  const popup = ui.nodes().find(node => node.props?.['data-status-popup'] === 'error');
+  const retry = nodes(popup).find(node => node.type === 'button' && text(node) === 'Retry search');
+  let active;
+  const inputTarget = { focus() { focusTo(inputTarget); } }, clearTarget = { focus() { focusTo(clearTarget); } };
+  const outsideTarget = {}, dismissTarget = {};
+  const popupTarget = { contains: target => target === retryTarget || target === dismissTarget };
+  const retryTarget = { closest: () => popupTarget, focus() { focusTo(retryTarget); } };
+  const desktopTarget = { contains: target => target === inputTarget || target === clearTarget };
+  input.props.ref.current = inputTarget;
+  if (clear.props.ref) clear.props.ref.current = clearTarget;
+  if (retry.props.ref) retry.props.ref.current = retryTarget;
+  if (container.props.ref) container.props.ref.current = desktopTarget;
+  const defaultOrder = [inputTarget, clearTarget, outsideTarget, retryTarget, dismissTarget];
+  function focusTo(target) { active = target; ui.focusIn(target); }
+  function tab(shiftKey = false) {
+    const element = active === inputTarget ? input : active === clearTarget ? clear : active === retryTarget ? retry : null;
+    let prevented = false;
+    element?.props.onKeyDown?.({ key: 'Tab', shiftKey, preventDefault() { prevented = true; } });
+    if (!prevented) focusTo(defaultOrder[defaultOrder.indexOf(active) + (shiftKey ? -1 : 1)]);
+  }
+  focusTo(inputTarget); tab(); assert.equal(active, clearTarget);
+  tab(); assert.equal(active, retryTarget, 'last local control must bridge to the owned portal retry before unrelated header controls');
+  assert.equal(ui.input().props['aria-expanded'], true);
+  tab(true); assert.equal(active, clearTarget, 'ShiftTab returns from portal retry to the last local control');
+  tab(); tab(); assert.equal(active, dismissTarget, 'the same popup dismiss control remains keyboard reachable');
+  assert.equal(ui.input().props['aria-expanded'], true);
+  focusTo(outsideTarget);
+  assert.equal(ui.input().props['aria-expanded'], false, 'portal-to-outside focus also closes the desktop dropdown');
+});
+
+test('mobile search feedback stays owned by the modal and retry retains its focus boundary', async () => {
+  const ui = fixture({ compact: true, load: async () => { throw new Error('Unavailable'); } });
+  ui.open(); ui.query('transaction');
+  let dialog = ui.nodes().find(node => node.props?.role === 'dialog');
+  assert.ok(nodes(dialog).some(node => node.props?.['data-status-popup'] === 'loading'));
+  await ui.runTimers();
+  dialog = ui.nodes().find(node => node.props?.role === 'dialog');
+  const popup = nodes(dialog).find(node => node.props?.['data-status-popup'] === 'error');
+  assert.ok(popup, 'popup anchor must remain inside the mobile dialog for its nearest-dialog portal');
+  assert.equal(ui.focus.at(-1)[2], true);
+  let focusCalls = 0;
+  const mobileInput = nodes(dialog).find(node => node.type === 'input');
+  mobileInput.props.ref.current = { focus() { focusCalls++; } };
+  nodes(popup).find(node => node.type === 'button' && text(node) === 'Retry search').props.onClick();
+  ui.render(); ui.effects(); await ui.runTimers();
+  assert.equal(focusCalls, 1, 'retry restores focus within the existing mobile dialog');
+  assert.equal(ui.calls.length, 2); assert.ok(ui.nodes().some(node => node.props?.role === 'dialog'));
+  assert.equal(ui.options()[0].props.href, '/customer/transactions');
+});
+
 test('failed record searches never claim an empty complete search or remove permitted pages', async () => {
   const ui = fixture({ load: async () => { throw new Error('private server diagnostic'); } });
   ui.open(); ui.query('transaction'); await ui.runTimers();
   assert.match(ui.text(), /Records could not be searched/); assert.doesNotMatch(ui.text(), /private server diagnostic/);
   assert.equal(ui.options()[0].props.href, '/customer/transactions');
-  ui.query('unmatched'); await ui.runTimers(); assert.match(ui.text(), /Retry to search records/);
+  ui.query('unmatched'); await ui.runTimers(); assert.match(ui.text(), /Retry search/);
+  assert.doesNotMatch(ui.text(), /No matching pages or records|No matching pages\. Retry/);
 });
 
 test('ready empty searches show a real empty state and a result cannot navigate outside its dashboard', async () => {

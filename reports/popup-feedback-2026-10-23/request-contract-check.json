@@ -1,7 +1,12 @@
 {
   "approvedPatchSha256": "446d9a44acc544b22b271caefa7cd15bd06f234f3ab818e3bb339baa0be7a775",
   "criticalInputsChecked": 74,
-  "criticalDrift": [],
+  "criticalDrift": [
+    "apps/api/package.json",
+    "apps/api/tests/partner-dashboard-wiring.test.mjs",
+    "apps/api/tests/partner-production-readiness.test.mjs",
+    "pnpm-lock.yaml"
+  ],
   "changedPreviouslyApprovedWebFiles": [
     "apps/web/app/admin/login/page.tsx",
     "apps/web/app/auth/session-expired/page.tsx",
@@ -39,6 +44,7 @@
     "apps/web/components/dashboard/StationLocationPicker.tsx",
     "apps/web/components/dashboard/StationProfileForm.tsx",
     "apps/web/components/dashboard/WorkshopDashboard.tsx",
+    "apps/web/components/shared/DashboardSearch.tsx",
     "apps/web/components/shared/Dialogs.tsx",
     "apps/web/components/shared/States.tsx",
     "apps/web/components/shared/StationMap.tsx",

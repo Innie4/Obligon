@@ -1,0 +1,19 @@
+{
+  "keyboardTabChain": [
+    "Search admin dashboard",
+    "Clear search",
+    "Retry search"
+  ],
+  "keyboardRetry": "Enter returned focus to combobox; loading then settled results with no popup",
+  "pointerSelection": {
+    "path": "/admin?search=Fleet+UI+Fixture",
+    "popups": [],
+    "searchExpanded": "false",
+    "title": "Company Oversight"
+  },
+  "networkBlocking": "Only disposable localhost4419 reads temporarily blocked; block list and Network domain cleared in finally",
+  "limits": [
+    "Desktop real-keyboard check",
+    "No screen-reader acceptance"
+  ]
+}

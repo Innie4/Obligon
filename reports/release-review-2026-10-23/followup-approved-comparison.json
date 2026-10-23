@@ -1,0 +1,13 @@
+{
+  "criticalInputs": 74,
+  "unchangedInputs": 70,
+  "expectedDelta": [
+    "apps/api/package.json",
+    "apps/api/tests/partner-dashboard-wiring.test.mjs",
+    "apps/api/tests/partner-production-readiness.test.mjs",
+    "pnpm-lock.yaml"
+  ],
+  "unexpectedDelta": [],
+  "productionBoundarySourceChanged": false,
+  "limits": "Runtime dependency updates are real changes even with unchanged source; sampled compatibility and full API acceptance are documented separately."
+}

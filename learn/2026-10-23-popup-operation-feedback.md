@@ -10,7 +10,7 @@ Requests now explain their progress and failures in floating cards across public
 
 Paths below start at `apps/web/`. The linked manifests enumerate the individual changed files.
 
-- `components/shared/StatusPopup.tsx` adds cards, grouping and cleanup. `States.tsx`, `Dialogs.tsx` and `ErrorBoundary.tsx` use them; `StationMap.tsx` floats map loading/failure. `Toast.tsx` and `Providers.tsx` bind notifications to the current account/company. See the [foundation manifest](../reports/popup-feedback-2026-10-23/foundation-receipt.json).
+- `components/shared/StatusPopup.tsx` adds cards, grouping and cleanup. `States.tsx`, `Dialogs.tsx` and `ErrorBoundary.tsx` use them; `StationMap.tsx` floats map loading/failure. `DashboardSearch.tsx` floats search feedback while retaining results and explicit retry. `Toast.tsx` and `Providers.tsx` bind notifications to the current account/company. See the [foundation manifest](../reports/popup-feedback-2026-10-23/foundation-receipt.json) and [search receipt](../reports/popup-feedback-2026-10-23/dashboard-search/receipt.json).
 - `components/auth/`: AuthForms, AdditionalSignInMethods, GoogleIdentityButton, SignInOptions, CompanyInvitation, AuthGuard, VerificationUI, MFAUI, SuccessHonesty, SuccessAutoRedirect, AuthStatus, DemoAccountPanel and LogoutButton use transient feedback. See the [auth/public manifest](../reports/popup-feedback-2026-10-23/auth-public-receipt.json).
 - `app/`: admin/login, auth/session-expired, forgot-password, reset-password and support pages; `components/careers/CareersPage.tsx` and `components/site/CookieConsentBanner.tsx` show request feedback. The same auth/public manifest records their files.
 - `components/admin-dashboard/`: AdminModals, AdminScreen, CardApprovalQueue, DiscountApprovals, IntakeConsole, OperationsInbox and RecoveryReview; `company-dashboard/`: CompanyContextSelector, CompanyModals and CompanyScreen; `customer-dashboard/`: CardRequestModals, CustomerFuelCheckout, CustomerModals and CustomerScreen; `dashboard/`: DashboardScreen, PartnerApiKeys, PartnerServiceRequests, PartnerSubscriptionGate, PartnerVerification, StationDiscounts, StationLocationPicker, StationProfileForm and WorkshopDashboard replace temporary background messages. See the [dashboard manifest](../reports/popup-feedback-2026-10-23/dashboard-consumers/source-hashes.json).
@@ -20,8 +20,8 @@ Paths below start at `apps/web/`. The linked manifests enumerate the individual 
 
 1. A component renders `StatusPopup` while its existing request state needs feedback.
 2. An effect registers it with `StatusPopupProvider`. A portal renders the card inside the nearest dialog, or the document body. It neither opens another modal nor moves focus.
-3. Each host shows at most two ordinary cards and one progress card. Equal messages group only when their actions also match.
-4. Settlement or owner removal clears the card. Dismissal hides feedback without cancelling the request. Retry invokes the existing callback only when clicked.
+3. Each host shows at most two ordinary cards and one progress card. Equal messages group only when their actions also match. Search bridges keyboard focus to portal Retry; document focus tracking preserves outside dismissal.
+4. Settlement or owner removal clears the card. Dismissal hides feedback without cancelling the request. Retry invokes the existing callback only when clicked. Search progress has no Dismiss control.
 5. `SessionToastScope` derives identity from user, role and organization. Switching identity clears toasts and rejects callbacks captured by an earlier scope, while mounted request popups keep their own lifetime.
 
 ## Why it's built this way

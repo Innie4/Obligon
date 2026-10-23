@@ -169,7 +169,9 @@ test("the reports table dropped its invented columns", () => {
 
 test("manual payout controls are absent under direct settlement", () => {
   const settlement = screen.slice(screen.indexOf('function SettlementsPage'), screen.indexOf('function DisputesPage'));
-  assert.match(settlement, /Manual payouts are inactive\. Your settlement account receives funds automatically\./);
+  assert.match(settlement, /Manual payouts are inactive\. Eligible revenue is settled automatically by the provider\./);
+  assert.match(settlement, /Manual payouts are inactive\. A verified settlement destination is required before provider settlement\./);
+  assert.match(settlement, /destinationReady = Boolean\(defaultAccount\?\.isDefault && defaultAccount\.verified && !defaultAccount\.needsRenomination\)/);
   assert.doesNotMatch(settlement, /Payouts.*Coming soon/);
   assert.doesNotMatch(settlement, /onOpenPayout\(|requestPayout\(/);
 });
@@ -445,7 +447,8 @@ test("the header badge and the notifications page share one fetch", () => {
 });
 
 test("no action button renders without something to do", () => {
-  assert.match(screen, /\{onAction \? \(/);
+  assert.match(screen, /\{onAction\s*\?\s*<td\b/);
+  assert.match(screen, /onClick=\{\(\) => onAction\(row\)\}/);
   assert.doesNotMatch(screen, /row\.action \?\? "Details"\s*\n\s*<\/button>/);
 });
 

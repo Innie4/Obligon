@@ -1,0 +1,3886 @@
+TAP version 13
+# Subtest: discoverable passkey login sends no guessed identity and saves the application session
+ok 1 - discoverable passkey login sends no guessed identity and saves the application session
+  ---
+  duration_ms: 964.351197
+  type: 'test'
+  ...
+# Subtest: cancelled passkey does not send a finish request or create a session
+ok 2 - cancelled passkey does not send a finish request or create a session
+  ---
+  duration_ms: 805.534645
+  type: 'test'
+  ...
+# Subtest: a late native passkey prompt cannot replace a newer password login
+ok 3 - a late native passkey prompt cannot replace a newer password login
+  ---
+  duration_ms: 842.471203
+  type: 'test'
+  ...
+# Subtest: a late passkey server response cannot restore a logged-out session
+ok 4 - a late passkey server response cannot restore a logged-out session
+  ---
+  duration_ms: 577.473835
+  type: 'test'
+  ...
+# Subtest: a prepared Google popup is rejected before resetting a newer account
+ok 5 - a prepared Google popup is rejected before resetting a newer account
+  ---
+  duration_ms: 350.936969
+  type: 'test'
+  ...
+# Subtest: Google login preserves the MFA gate and remember preference through final proof
+ok 6 - Google login preserves the MFA gate and remember preference through final proof
+  ---
+  duration_ms: 236.965553
+  type: 'test'
+  ...
+# Subtest: a Google link challenge is bound to its existing application account
+ok 7 - a Google link challenge is bound to its existing application account
+  ---
+  duration_ms: 214.986657
+  type: 'test'
+  ...
+# Subtest: cancelled enrollment never finishes or stores the fresh password
+ok 8 - cancelled enrollment never finishes or stores the fresh password
+  ---
+  duration_ms: 349.436735
+  type: 'test'
+  ...
+# Subtest: late enrollment is rejected when the account changes during the device prompt
+ok 9 - late enrollment is rejected when the account changes during the device prompt
+  ---
+  duration_ms: 399.722841
+  type: 'test'
+  ...
+# Subtest: passkey removal uses its encoded resource and fresh password only in the request
+ok 10 - passkey removal uses its encoded resource and fresh password only in the request
+  ---
+  duration_ms: 301.481398
+  type: 'test'
+  ...
+# Subtest: mock mode reports unavailable methods instead of pretending provider success
+ok 11 - mock mode reports unavailable methods instead of pretending provider success
+  ---
+  duration_ms: 305.386867
+  type: 'test'
+  ...
+# Subtest: company review exposes labelled verification and contract approval controls
+ok 12 - company review exposes labelled verification and contract approval controls
+  ---
+  duration_ms: 483.478227
+  type: 'test'
+  ...
+# Subtest: approving without explicit confirmation never sends an approval request
+ok 13 - approving without explicit confirmation never sends an approval request
+  ---
+  duration_ms: 210.80097
+  type: 'test'
+  ...
+# Subtest: a checked agreement sends a literal boolean bound to the selected company
+ok 14 - a checked agreement sends a literal boolean bound to the selected company
+  ---
+  duration_ms: 178.884273
+  type: 'test'
+  ...
+# Subtest: editing an existing verified company preserves the current subscription without a new approval checkbox
+ok 15 - editing an existing verified company preserves the current subscription without a new approval checkbox
+  ---
+  duration_ms: 140.873011
+  type: 'test'
+  ...
+# Subtest: failed approval retains the review form and reports the backend error
+ok 16 - failed approval retains the review form and reports the backend error
+  ---
+  duration_ms: 99.96959
+  type: 'test'
+  ...
+# Subtest: new company copy and success feedback explain pending contract approval
+ok 17 - new company copy and success feedback explain pending contract approval
+  ---
+  duration_ms: 108.34155
+  type: 'test'
+  ...
+# Subtest: admin shared search receives unique destinations when pages share a category
+ok 18 - admin shared search receives unique destinations when pages share a category
+  ---
+  duration_ms: 233.604784
+  type: 'test'
+  ...
+# Subtest: admin header selects the admin data scope and includes shared security navigation
+ok 19 - admin header selects the admin data scope and includes shared security navigation
+  ---
+  duration_ms: 104.153362
+  type: 'test'
+  ...
+# Subtest: DiscountApprovals distinguishes loading and failed reads from an empty queue and supports retry
+ok 20 - DiscountApprovals distinguishes loading and failed reads from an empty queue and supports retry
+  ---
+  duration_ms: 290.435922
+  type: 'test'
+  ...
+# Subtest: CardApprovalQueue distinguishes loading and failed reads from an empty queue and supports retry
+ok 21 - CardApprovalQueue distinguishes loading and failed reads from an empty queue and supports retry
+  ---
+  duration_ms: 165.155864
+  type: 'test'
+  ...
+# Subtest: ReplacementReconciliation distinguishes loading and failed reads from an empty queue and supports retry
+ok 22 - ReplacementReconciliation distinguishes loading and failed reads from an empty queue and supports retry
+  ---
+  duration_ms: 101.900699
+  type: 'test'
+  ...
+# Subtest: OperationsInbox distinguishes loading and failed reads from an empty queue and supports retry
+ok 23 - OperationsInbox distinguishes loading and failed reads from an empty queue and supports retry
+  ---
+  duration_ms: 94.016858
+  type: 'test'
+  ...
+# Subtest: admin search remains available through pending requests and ignores superseded responses
+ok 24 - admin search remains available through pending requests and ignores superseded responses
+  ---
+  duration_ms: 431.27112
+  type: 'test'
+  ...
+# Subtest: admin failed requests retain controls and do not pretend that the result is empty
+ok 25 - admin failed requests retain controls and do not pretend that the result is empty
+  ---
+  duration_ms: 165.26364
+  type: 'test'
+  ...
+# Subtest: admin reporting filter stays available while the selected window loads
+ok 26 - admin reporting filter stays available while the selected window loads
+  ---
+  duration_ms: 148.737377
+  type: 'test'
+  ...
+# Subtest: admin report download failure retains successfully loaded rows and metrics
+ok 27 - admin report download failure retains successfully loaded rows and metrics
+  ---
+  duration_ms: 125.083391
+  type: 'test'
+  ...
+# Subtest: compact admin metrics retain four named values and empty pagination remains disabled
+ok 28 - compact admin metrics retain four named values and empty pagination remains disabled
+  ---
+  duration_ms: 126.914019
+  type: 'test'
+  ...
+# Subtest: pending background refresh cannot overwrite stations after location changes
+ok 29 - pending background refresh cannot overwrite stations after location changes
+  ---
+  duration_ms: 162.649305
+  type: 'test'
+  ...
+# Subtest: disabled provider config shows honest copy without a fake Google action
+ok 30 - disabled provider config shows honest copy without a fake Google action
+  ---
+  duration_ms: 287.050386
+  type: 'test'
+  ...
+# Subtest: unsupported passkey browser gives a reason and keeps the method disabled
+ok 31 - unsupported passkey browser gives a reason and keeps the method disabled
+  ---
+  duration_ms: 83.657661
+  type: 'test'
+  ...
+# Subtest: passkey sign-in blocks duplicate prompts and completes only once
+ok 32 - passkey sign-in blocks duplicate prompts and completes only once
+  ---
+  duration_ms: 52.110823
+  type: 'test'
+  ...
+# Subtest: cancelled passkey sign-in announces an error without reporting success
+ok 33 - cancelled passkey sign-in announces an error without reporting success
+  ---
+  duration_ms: 58.183359
+  type: 'test'
+  ...
+# Subtest: Google entry uses the prepared server challenge and preserves MFA result
+ok 34 - Google entry uses the prepared server challenge and preserves MFA result
+  ---
+  duration_ms: 47.289015
+  type: 'test'
+  ...
+# Subtest: Google renderer uses the official SDK API, server nonce and no automatic selection
+ok 35 - Google renderer uses the official SDK API, server nonce and no automatic selection
+  ---
+  duration_ms: 50.523366
+  type: 'test'
+  ...
+# Subtest: disabled Google widget is inert and prepares a fresh challenge when the other attempt ends
+ok 36 - disabled Google widget is inert and prepares a fresh challenge when the other attempt ends
+  ---
+  duration_ms: 51.032849
+  type: 'test'
+  ...
+# Subtest: Google callback errors remain announced after the parent busy cycle until a deliberate retry
+ok 37 - Google callback errors remain announced after the parent busy cycle until a deliberate retry
+  ---
+  duration_ms: 84.89256
+  type: 'test'
+  ...
+# Subtest: management requires a fresh password and clears it before an enrollment prompt
+ok 38 - management requires a fresh password and clears it before an enrollment prompt
+  ---
+  duration_ms: 119.669732
+  type: 'test'
+  ...
+# Subtest: passkey removal names the credential, requires password and reports other-session signout
+ok 39 - passkey removal names the credential, requires password and reports other-session signout
+  ---
+  duration_ms: 110.0024
+  type: 'test'
+  ...
+# Subtest: Google linking first verifies password, then displays only the official renderer component
+ok 40 - Google linking first verifies password, then displays only the official renderer component
+  ---
+  duration_ms: 67.266527
+  type: 'test'
+  ...
+# Subtest: disabled providers still allow password-authorized removal of existing methods
+ok 41 - disabled providers still allow password-authorized removal of existing methods
+  ---
+  duration_ms: 37.997469
+  type: 'test'
+  ...
+# Subtest: changing accounts clears the old busy form and a late action cannot unlock the next account action
+ok 42 - changing accounts clears the old busy form and a late action cannot unlock the next account action
+  ---
+  duration_ms: 43.228222
+  type: 'test'
+  ...
+# Subtest: the shared account link uses the common sign-in management route
+ok 43 - the shared account link uses the common sign-in management route
+  ---
+  duration_ms: 26.069786
+  type: 'test'
+  ...
+# Subtest: the auth grid and login form allow a provider widget to shrink within a phone viewport
+ok 44 - the auth grid and login form allow a provider widget to shrink within a phone viewport
+  ---
+  duration_ms: 237.661022
+  type: 'test'
+  ...
+# Subtest: the desktop admin sidebar includes the shared sign-in management link
+ok 45 - the desktop admin sidebar includes the shared sign-in management link
+  ---
+  duration_ms: 39.405389
+  type: 'test'
+  ...
+# Subtest: customer profile links to real Google and passkey management and preserves transaction approval guidance
+ok 46 - customer profile links to real Google and passkey management and preserves transaction approval guidance
+  ---
+  duration_ms: 483.496368
+  type: 'test'
+  ...
+# Subtest: login provider initialization uses floating loading feedback and no background status paragraph
+ok 47 - login provider initialization uses floating loading feedback and no background status paragraph
+  ---
+  duration_ms: 28.941993
+  type: 'test'
+  ...
+# Subtest: passkey prompt exposes pending popup only while the existing login request is unresolved
+ok 48 - passkey prompt exposes pending popup only while the existing login request is unresolved
+  ---
+  duration_ms: 51.467971
+  type: 'test'
+  ...
+# Subtest: login proceeds while previous session revocation is unavailable
+ok 49 - login proceeds while previous session revocation is unavailable
+  ---
+  duration_ms: 397.13165
+  type: 'test'
+  ...
+# Subtest: logout clears local UI even when revocation is unavailable
+ok 50 - logout clears local UI even when revocation is unavailable
+  ---
+  duration_ms: 49.991047
+  type: 'test'
+  ...
+# Subtest: late startup refresh cannot replace a newer authenticated account
+ok 51 - late startup refresh cannot replace a newer authenticated account
+  ---
+  duration_ms: 32.977596
+  type: 'test'
+  ...
+# Subtest: late startup refresh cannot sign a logged-out account back in
+ok 52 - late startup refresh cannot sign a logged-out account back in
+  ---
+  duration_ms: 51.58499
+  type: 'test'
+  ...
+# Subtest: pending MFA cannot restore the original session after logout
+ok 53 - pending MFA cannot restore the original session after logout
+  ---
+  duration_ms: 860.619289
+  type: 'test'
+  ...
+# Subtest: pending MFA cannot restore the original session after new-login
+ok 54 - pending MFA cannot restore the original session after new-login
+  ---
+  duration_ms: 561.066562
+  type: 'test'
+  ...
+# Subtest: replaced password proof rejects a pending MFA completion even without a session token
+ok 55 - replaced password proof rejects a pending MFA completion even without a session token
+  ---
+  duration_ms: 470.230798
+  type: 'test'
+  ...
+# Subtest: two MFA replays cannot persist two different successful completions
+ok 56 - two MFA replays cannot persist two different successful completions
+  ---
+  duration_ms: 359.466457
+  type: 'test'
+  ...
+# Subtest: pending password login cannot restore the original session after logout
+ok 57 - pending password login cannot restore the original session after logout
+  ---
+  duration_ms: 608.384799
+  type: 'test'
+  ...
+# Subtest: pending password login cannot restore the original session after new-login
+ok 58 - pending password login cannot restore the original session after new-login
+  ---
+  duration_ms: 593.788113
+  type: 'test'
+  ...
+# Subtest: late logout response does not erase a later account and revokes only the captured session
+ok 59 - late logout response does not erase a later account and revokes only the captured session
+  ---
+  duration_ms: 261.1792
+  type: 'test'
+  ...
+# Subtest: password change clears session only when reauthenticationRequired=false
+ok 60 - password change clears session only when reauthenticationRequired=false
+  ---
+  duration_ms: 231.216473
+  type: 'test'
+  ...
+# Subtest: password change clears session only when reauthenticationRequired=true
+ok 61 - password change clears session only when reauthenticationRequired=true
+  ---
+  duration_ms: 343.245097
+  type: 'test'
+  ...
+# Subtest: late provider password-change response cannot clear a newly signed-in account
+ok 62 - late provider password-change response cannot clear a newly signed-in account
+  ---
+  duration_ms: 323.612919
+  type: 'test'
+  ...
+# Subtest: AuthProvider ignores an older login success after a later account is authenticated
+ok 63 - AuthProvider ignores an older login success after a later account is authenticated
+  ---
+  duration_ms: 330.700695
+  type: 'test'
+  ...
+# Subtest: AuthProvider ignores an older login failure after a later account is authenticated
+ok 64 - AuthProvider ignores an older login failure after a later account is authenticated
+  ---
+  duration_ms: 278.921197
+  type: 'test'
+  ...
+# Subtest: password modal explains and routes required reauthentication after clearing React session
+ok 65 - password modal explains and routes required reauthentication after clearing React session
+  ---
+  duration_ms: 122.392277
+  type: 'test'
+  ...
+# Subtest: reject invalid calendar date: ""
+ok 66 - reject invalid calendar date: ""
+  ---
+  duration_ms: 3.067992
+  type: 'test'
+  ...
+# Subtest: reject invalid calendar date: "2026-2-01"
+ok 67 - reject invalid calendar date: "2026-2-01"
+  ---
+  duration_ms: 0.253603
+  type: 'test'
+  ...
+# Subtest: reject invalid calendar date: "2026-02-30"
+ok 68 - reject invalid calendar date: "2026-02-30"
+  ---
+  duration_ms: 0.565387
+  type: 'test'
+  ...
+# Subtest: reject invalid calendar date: "2025-02-29"
+ok 69 - reject invalid calendar date: "2025-02-29"
+  ---
+  duration_ms: 0.191224
+  type: 'test'
+  ...
+# Subtest: reject invalid calendar date: "2026-13-01"
+ok 70 - reject invalid calendar date: "2026-13-01"
+  ---
+  duration_ms: 0.176759
+  type: 'test'
+  ...
+# Subtest: reject invalid calendar date: "0000-01-01"
+ok 71 - reject invalid calendar date: "0000-01-01"
+  ---
+  duration_ms: 0.140693
+  type: 'test'
+  ...
+# Subtest: reject invalid calendar date: "2026-01-00"
+ok 72 - reject invalid calendar date: "2026-01-00"
+  ---
+  duration_ms: 0.117319
+  type: 'test'
+  ...
+# Subtest: reject invalid calendar date: "2026-01-01T12:30"
+ok 73 - reject invalid calendar date: "2026-01-01T12:30"
+  ---
+  duration_ms: 0.990966
+  type: 'test'
+  ...
+# Subtest: reject invalid calendar date: " 2026-01-01"
+ok 74 - reject invalid calendar date: " 2026-01-01"
+  ---
+  duration_ms: 0.803713
+  type: 'test'
+  ...
+# Subtest: calendar values round trip without UTC conversion, including leap day
+ok 75 - calendar values round trip without UTC conversion, including leap day
+  ---
+  duration_ms: 1.29856
+  type: 'test'
+  ...
+# Subtest: month navigation rolls both December and January into the correct year
+ok 76 - month navigation rolls both December and January into the correct year
+  ---
+  duration_ms: 0.357524
+  type: 'test'
+  ...
+# Subtest: calendar-day navigation crosses month/year boundaries
+ok 77 - calendar-day navigation crosses month/year boundaries
+  ---
+  duration_ms: 0.338621
+  type: 'test'
+  ...
+# Subtest: date constraints include their boundaries and reject invalid dates
+ok 78 - date constraints include their boundaries and reject invalid dates
+  ---
+  duration_ms: 0.226282
+  type: 'test'
+  ...
+# Subtest: date-time field keeps the local wall clock string exact
+ok 79 - date-time field keeps the local wall clock string exact
+  ---
+  duration_ms: 0.357822
+  type: 'test'
+  ...
+# Subtest: calendar renders six rows when required
+ok 80 - calendar renders six rows when required
+  ---
+  duration_ms: 194.804462
+  type: 'test'
+  ...
+# Subtest: calendar next/previous controls cross the year
+ok 81 - calendar next/previous controls cross the year
+  ---
+  duration_ms: 92.528153
+  type: 'test'
+  ...
+# Subtest: disabled dates cannot select and valid day emits an ISO date
+ok 82 - disabled dates cannot select and valid day emits an ISO date
+  ---
+  duration_ms: 73.30659
+  type: 'test'
+  ...
+# Subtest: one endpoint completes the range in chronological order
+ok 83 - one endpoint completes the range in chronological order
+  ---
+  duration_ms: 84.122837
+  type: 'test'
+  ...
+# Subtest: range cannot cross disabled dates
+ok 84 - range cannot cross disabled dates
+  ---
+  duration_ms: 26.17403
+  type: 'test'
+  ...
+# Subtest: arrow focus crosses a month without selecting
+ok 85 - arrow focus crosses a month without selecting
+  ---
+  duration_ms: 38.295618
+  type: 'test'
+  ...
+# Subtest: Page Down clamps month end, Shift Page Up moves a year
+ok 86 - Page Down clamps month end, Shift Page Up moves a year
+  ---
+  duration_ms: 33.145618
+  type: 'test'
+  ...
+# Subtest: min/max disable unavailable months and days, including keyboard movement
+ok 87 - min/max disable unavailable months and days, including keyboard movement
+  ---
+  duration_ms: 30.52966
+  type: 'test'
+  ...
+# Subtest: blank calendar claims no selection
+ok 88 - blank calendar claims no selection
+  ---
+  duration_ms: 34.988842
+  type: 'test'
+  ...
+# Subtest: manual date editing rejects invalid and unavailable dates without changing caller value
+ok 89 - manual date editing rejects invalid and unavailable dates without changing caller value
+  ---
+  duration_ms: 66.949288
+  type: 'test'
+  ...
+# Subtest: opening announces dialog, Escape closes it and restores trigger focus
+ok 90 - opening announces dialog, Escape closes it and restores trigger focus
+  ---
+  duration_ms: 51.235824
+  type: 'test'
+  ...
+# Subtest: outside pointer closes and disabling cannot retain open calendar
+ok 91 - outside pointer closes and disabling cannot retain open calendar
+  ---
+  duration_ms: 54.568449
+  type: 'test'
+  ...
+# Subtest: calendar selection emits ISO date and returns focus
+ok 92 - calendar selection emits ISO date and returns focus
+  ---
+  duration_ms: 34.050185
+  type: 'test'
+  ...
+# Subtest: date-time adapter emits the original local datetime form shape
+ok 93 - date-time adapter emits the original local datetime form shape
+  ---
+  duration_ms: 35.50184
+  type: 'test'
+  ...
+# Subtest: clearing one datetime part preserves the other while the controlled parent echoes empty value
+ok 94 - clearing one datetime part preserves the other while the controlled parent echoes empty value
+  ---
+  duration_ms: 43.84841
+  type: 'test'
+  ...
+# Subtest: external datetime replacement and reset replace both component drafts
+ok 95 - external datetime replacement and reset replace both component drafts
+  ---
+  duration_ms: 44.355086
+  type: 'test'
+  ...
+# Subtest: company compact records retain visible field labels and the existing row action
+ok 96 - company compact records retain visible field labels and the existing row action
+  ---
+  duration_ms: 27.705241
+  type: 'test'
+  ...
+# Subtest: company empty records present their recovery copy without inventing data
+ok 97 - company empty records present their recovery copy without inventing data
+  ---
+  duration_ms: 1.663769
+  type: 'test'
+  ...
+# Subtest: admin compact records preserve the same scoped review row and disabled state
+ok 98 - admin compact records preserve the same scoped review row and disabled state
+  ---
+  duration_ms: 4.145124
+  type: 'test'
+  ...
+# Subtest: read-only admin reports do not gain a review action in either presentation
+ok 99 - read-only admin reports do not gain a review action in either presentation
+  ---
+  duration_ms: 3.873487
+  type: 'test'
+  ...
+# Subtest: admin empty results announce a useful next step without a fabricated record
+ok 100 - admin empty results announce a useful next step without a fabricated record
+  ---
+  duration_ms: 1.427033
+  type: 'test'
+  ...
+# Subtest: long record text stays text in both company and admin presentations
+ok 101 - long record text stays text in both company and admin presentations
+  ---
+  duration_ms: 5.028278
+  type: 'test'
+  ...
+# Subtest: partner bank verification distinguishes loading, failed reads and an empty successful response
+ok 102 - partner bank verification distinguishes loading, failed reads and an empty successful response
+  ---
+  duration_ms: 243.641379
+  type: 'test'
+  ...
+# Subtest: discount review reason appears only after a pending request is loaded and is disabled while saving
+ok 103 - discount review reason appears only after a pending request is loaded and is disabled while saving
+  ---
+  duration_ms: 218.176797
+  type: 'test'
+  ...
+# Subtest: compact company metric summaries retain every label and value as a definition list
+ok 104 - compact company metric summaries retain every label and value as a definition list
+  ---
+  duration_ms: 5.614501
+  type: 'test'
+  ...
+# Subtest: company pagination keeps empty and single-record views disabled and advances only valid pages
+ok 105 - company pagination keeps empty and single-record views disabled and advances only valid pages
+  ---
+  duration_ms: 5.659994
+  type: 'test'
+  ...
+# Subtest: card presentation names driver and vehicle assignments without changing the underlying card
+ok 106 - card presentation names driver and vehicle assignments without changing the underlying card
+  ---
+  duration_ms: 229.423374
+  type: 'test'
+  ...
+# Subtest: quantity metrics preserve the exact value while grouping each approved unit phrase
+ok 107 - quantity metrics preserve the exact value while grouping each approved unit phrase
+  ---
+  duration_ms: 4.975502
+  type: 'test'
+  ...
+# Subtest: partner metrics preserve exact quantities while keeping approved units together
+ok 108 - partner metrics preserve exact quantities while keeping approved units together
+  ---
+  duration_ms: 8.006521
+  type: 'test'
+  ...
+# Subtest: empty vehicles page retains its first creation action
+ok 109 - empty vehicles page retains its first creation action
+  ---
+  duration_ms: 34.163665
+  type: 'test'
+  ...
+# Subtest: empty cards page retains its first creation action
+ok 110 - empty cards page retains its first creation action
+  ---
+  duration_ms: 6.433684
+  type: 'test'
+  ...
+# Subtest: empty team page retains its first creation action
+ok 111 - empty team page retains its first creation action
+  ---
+  duration_ms: 3.406002
+  type: 'test'
+  ...
+# Subtest: empty roadside page retains its first creation action
+ok 112 - empty roadside page retains its first creation action
+  ---
+  duration_ms: 6.30951
+  type: 'test'
+  ...
+# Subtest: empty maintenance page retains its first creation action
+ok 113 - empty maintenance page retains its first creation action
+  ---
+  duration_ms: 5.455604
+  type: 'test'
+  ...
+# Subtest: empty support page retains its first creation action
+ok 114 - empty support page retains its first creation action
+  ---
+  duration_ms: 4.410353
+  type: 'test'
+  ...
+# Subtest: support ticket modal presents subject and message fields
+ok 115 - support ticket modal presents subject and message fields
+  ---
+  duration_ms: 10.277941
+  type: 'test'
+  ...
+# Subtest: first card modal presents complete issuer identity setup and two separate limits
+ok 116 - first card modal presents complete issuer identity setup and two separate limits
+  ---
+  duration_ms: 18.104842
+  type: 'test'
+  ...
+# Subtest: station locator renders a previous API response without per-fuel prices
+ok 117 - station locator renders a previous API response without per-fuel prices
+  ---
+  duration_ms: 7.636346
+  type: 'test'
+  ...
+# Subtest: legacy card assignment form cannot save missing asset IDs
+ok 118 - legacy card assignment form cannot save missing asset IDs
+  ---
+  duration_ms: 13.705004
+  type: 'test'
+  ...
+# Subtest: current explicitly unassigned card can save a deliberate assignment
+ok 119 - current explicitly unassigned card can save a deliberate assignment
+  ---
+  duration_ms: 8.333712
+  type: 'test'
+  ...
+# Subtest: previous API capabilities cannot enable a silently ignored stable driver filter
+ok 120 - previous API capabilities cannot enable a silently ignored stable driver filter
+  ---
+  duration_ms: 22.43871
+  type: 'test'
+  ...
+# Subtest: company station locator labels gas prices using their recorded selling units
+ok 121 - company station locator labels gas prices using their recorded selling units
+  ---
+  duration_ms: 6.961815
+  type: 'test'
+  ...
+# Subtest: card form preserves chosen fleet IDs and independent comma-formatted limits
+ok 122 - card form preserves chosen fleet IDs and independent comma-formatted limits
+  ---
+  duration_ms: 2.677308
+  type: 'test'
+  ...
+# Subtest: invalid amount invalid is refused before submission
+ok 123 - invalid amount invalid is refused before submission
+  ---
+  duration_ms: 0.56261
+  type: 'test'
+  ...
+# Subtest: invalid amount 0 is refused before submission
+ok 124 - invalid amount 0 is refused before submission
+  ---
+  duration_ms: 0.26409
+  type: 'test'
+  ...
+# Subtest: invalid amount 1,2,3 is refused before submission
+ok 125 - invalid amount 1,2,3 is refused before submission
+  ---
+  duration_ms: 0.274932
+  type: 'test'
+  ...
+# Subtest: invalid amount 100.001 is refused before submission
+ok 126 - invalid amount 100.001 is refused before submission
+  ---
+  duration_ms: 0.237982
+  type: 'test'
+  ...
+# Subtest: invalid amount Infinity is refused before submission
+ok 127 - invalid amount Infinity is refused before submission
+  ---
+  duration_ms: 0.222311
+  type: 'test'
+  ...
+# Subtest: monthly limit below daily is rejected
+ok 128 - monthly limit below daily is rejected
+  ---
+  duration_ms: 0.290474
+  type: 'test'
+  ...
+# Subtest: transaction export preserves the active date vehicle and driver filters
+ok 129 - transaction export preserves the active date vehicle and driver filters
+  ---
+  duration_ms: 0.856322
+  type: 'test'
+  ...
+# Subtest: fleet export does not carry irrelevant transaction filters
+ok 130 - fleet export does not carry irrelevant transaction filters
+  ---
+  duration_ms: 0.395145
+  type: 'test'
+  ...
+# Subtest: loading an assigned card preserves vehicle and driver IDs
+ok 131 - loading an assigned card preserves vehicle and driver IDs
+  ---
+  duration_ms: 0.454116
+  type: 'test'
+  ...
+# Subtest: assigning a card to the selected vehicle keeps its driver
+ok 132 - assigning a card to the selected vehicle keeps its driver
+  ---
+  duration_ms: 1.097473
+  type: 'test'
+  ...
+# Subtest: legacy assignment responses cannot turn missing IDs into an unassignment payload
+ok 133 - legacy assignment responses cannot turn missing IDs into an unassignment payload
+  ---
+  duration_ms: 0.729713
+  type: 'test'
+  ...
+# Subtest: explicit null assignment IDs are safe and allow deliberate assignment
+ok 134 - explicit null assignment IDs are safe and allow deliberate assignment
+  ---
+  duration_ms: 1.485801
+  type: 'test'
+  ...
+# Subtest: transaction exports preserve stable driver IDs independently of displayed names
+ok 135 - transaction exports preserve stable driver IDs independently of displayed names
+  ---
+  duration_ms: 2.594616
+  type: 'test'
+  ...
+# Subtest: receipts keep actual failed/pending/refunded statuses and omit unknown card, fuel and terminal details
+ok 136 - receipts keep actual failed/pending/refunded statuses and omit unknown card, fuel and terminal details
+  ---
+  duration_ms: 5.28742
+  type: 'test'
+  ...
+# Subtest: card badges and actions never treat unknown or terminated cards as active
+ok 137 - card badges and actions never treat unknown or terminated cards as active
+  ---
+  duration_ms: 0.575951
+  type: 'test'
+  ...
+# Subtest: funding guidance follows the balance rather than past top-ups
+ok 138 - funding guidance follows the balance rather than past top-ups
+  ---
+  duration_ms: 0.410986
+  type: 'test'
+  ...
+# Subtest: the auth header uses the current role and inclusive onboarding copy
+ok 139 - the auth header uses the current role and inclusive onboarding copy
+  ---
+  duration_ms: 43.60255
+  type: 'test'
+  ...
+# Subtest: the phone account menu exposes wallet, profile and real sign-out
+ok 140 - the phone account menu exposes wallet, profile and real sign-out
+  ---
+  duration_ms: 124.559363
+  type: 'test'
+  ...
+# Subtest: notifications use server read state and persist individual IDs even when titles match
+ok 141 - notifications use server read state and persist individual IDs even when titles match
+  ---
+  duration_ms: 948.955642
+  type: 'test'
+  ...
+# Subtest: mark-all calls persistence and failed saves never claim success or change read appearance
+ok 142 - mark-all calls persistence and failed saves never claim success or change read appearance
+  ---
+  duration_ms: 417.437039
+  type: 'test'
+  ...
+# Subtest: recent activity rows are native keyboard-operable buttons
+ok 143 - recent activity rows are native keyboard-operable buttons
+  ---
+  duration_ms: 554.308796
+  type: 'test'
+  ...
+# Subtest: gas receipts use recorded kg and standard cubic metres without litre conversion
+ok 144 - gas receipts use recorded kg and standard cubic metres without litre conversion
+  ---
+  duration_ms: 1.387936
+  type: 'test'
+  ...
+# Subtest: expired or absent paid period disables budget control despite included catalogue feature
+ok 145 - expired or absent paid period disables budget control despite included catalogue feature
+  ---
+  duration_ms: 4.848397
+  type: 'test'
+  ...
+# Subtest: active catalogue inclusion enables budget management
+ok 146 - active catalogue inclusion enables budget management
+  ---
+  duration_ms: 0.425285
+  type: 'test'
+  ...
+# Subtest: unavailable or missing catalogue feature stays disabled during active period
+ok 147 - unavailable or missing catalogue feature stays disabled during active period
+  ---
+  duration_ms: 0.284282
+  type: 'test'
+  ...
+# Subtest: legacy explicit exclusion cannot accidentally enable a paid control
+ok 148 - legacy explicit exclusion cannot accidentally enable a paid control
+  ---
+  duration_ms: 3.758339
+  type: 'test'
+  ...
+# Subtest: offline Bronze and Gold catalogues preserve premium feature exclusions
+ok 149 - offline Bronze and Gold catalogues preserve premium feature exclusions
+  ---
+  duration_ms: 876.802098
+  type: 'test'
+  ...
+# Subtest: customer account label uses current subscription instead of stale session tier
+ok 150 - customer account label uses current subscription instead of stale session tier
+  ---
+  duration_ms: 0.410487
+  type: 'test'
+  ...
+# Subtest: Overview directs budget changes to My Card without a subscription gate
+ok 151 - Overview directs budget changes to My Card without a subscription gate
+  ---
+  duration_ms: 1448.434744
+  type: 'test'
+  ...
+# Subtest: legacy customer payment routes preserve return parameters and select the correct My Card payment flow
+ok 152 - legacy customer payment routes preserve return parameters and select the correct My Card payment flow
+  ---
+  duration_ms: 15.328643
+  type: 'test'
+  ...
+# Subtest: plain legacy customer links redirect to My Card without triggering payment confirmation
+ok 153 - plain legacy customer links redirect to My Card without triggering payment confirmation
+  ---
+  duration_ms: 15.918214
+  type: 'test'
+  ...
+# Subtest: subscription and fuel confirmations ignore the other embedded payment flow
+ok 154 - subscription and fuel confirmations ignore the other embedded payment flow
+  ---
+  duration_ms: 21.38195
+  type: 'test'
+  ...
+# Subtest: customer navigation keeps My Card as the only subscription entry
+ok 155 - customer navigation keeps My Card as the only subscription entry
+  ---
+  duration_ms: 88.572713
+  type: 'test'
+  ...
+# Subtest: existing card routes selected landing plan to renewal and keeps all controls in My Card
+ok 156 - existing card routes selected landing plan to renewal and keeps all controls in My Card
+  ---
+  duration_ms: 658.018141
+  type: 'test'
+  ...
+# Subtest: new customers still open their selected first-card plan
+ok 157 - new customers still open their selected first-card plan
+  ---
+  duration_ms: 719.00398
+  type: 'test'
+  ...
+# Subtest: Flutterwave subscription and fuel returns never invoke first-card verification
+ok 158 - Flutterwave subscription and fuel returns never invoke first-card verification
+  ---
+  duration_ms: 976.018053
+  type: 'test'
+  ...
+# Subtest: first-card processor return still verifies issuance payment
+ok 159 - first-card processor return still verifies issuance payment
+  ---
+  duration_ms: 405.297948
+  type: 'test'
+  ...
+# Subtest: only My Card opens the monthly projection prompt for an entitled customer
+ok 160 - only My Card opens the monthly projection prompt for an entitled customer
+  ---
+  duration_ms: 999.499607
+  type: 'test'
+  ...
+# Subtest: embedded subscription and fuel panels each confirm only their own payment return
+ok 161 - embedded subscription and fuel panels each confirm only their own payment return
+  ---
+  duration_ms: 167.128858
+  type: 'test'
+  ...
+# Subtest: expired subscription disables new fuel payments and wallet authorization while preserving paid codes
+ok 162 - expired subscription disables new fuel payments and wallet authorization while preserving paid codes
+  ---
+  duration_ms: 78.498033
+  type: 'test'
+  ...
+# Subtest: fuel checkout refreshes access after renewal without repeating processor confirmation
+ok 163 - fuel checkout refreshes access after renewal without repeating processor confirmation
+  ---
+  duration_ms: 41.74207
+  type: 'test'
+  ...
+# Subtest: My Card status changes refresh fuel controls without repeating payment confirmation
+ok 164 - My Card status changes refresh fuel controls without repeating payment confirmation
+  ---
+  duration_ms: 63.590089
+  type: 'test'
+  ...
+# Subtest: customer gas checkout sends kg and keeps its recorded quantity
+ok 165 - customer gas checkout sends kg and keeps its recorded quantity
+  ---
+  duration_ms: 33.551527
+  type: 'test'
+  ...
+# Subtest: customer gas checkout sends scm and keeps its recorded quantity
+ok 166 - customer gas checkout sends scm and keeps its recorded quantity
+  ---
+  duration_ms: 33.861155
+  type: 'test'
+  ...
+# Subtest: customer gas checkout cannot charge with an unknown approved selling unit
+ok 167 - customer gas checkout cannot charge with an unknown approved selling unit
+  ---
+  duration_ms: 34.949107
+  type: 'test'
+  ...
+# Subtest: admin bank reads use floating progress and failure while retaining the empty business state
+ok 168 - admin bank reads use floating progress and failure while retaining the empty business state
+  ---
+  duration_ms: 303.692702
+  type: 'test'
+  ...
+# Subtest: partner subscription check floats feedback and keeps protected content unavailable while pending
+ok 169 - partner subscription check floats feedback and keeps protected content unavailable while pending
+  ---
+  duration_ms: 81.270552
+  type: 'test'
+  ...
+# Subtest: partner API loading and operation errors use floating messages without changing their wording
+ok 170 - partner API loading and operation errors use floating messages without changing their wording
+  ---
+  duration_ms: 157.206039
+  type: 'test'
+  ...
+# Subtest: URL search sync follows same-page navigation, clearing, back/forward and pathname changes without resetting manual edits
+ok 171 - URL search sync follows same-page navigation, clearing, back/forward and pathname changes without resetting manual edits
+  ---
+  duration_ms: 101.020796
+  type: 'test'
+  ...
+# Subtest: company vehicles query reaches scoped API and resets pagination
+ok 172 - company vehicles query reaches scoped API and resets pagination
+  ---
+  duration_ms: 474.79789
+  type: 'test'
+  ...
+# Subtest: company cards query reaches scoped API and resets pagination
+ok 173 - company cards query reaches scoped API and resets pagination
+  ---
+  duration_ms: 269.129734
+  type: 'test'
+  ...
+# Subtest: company transaction search opens all history without conflicting vehicle/driver/date filters
+ok 174 - company transaction search opens all history without conflicting vehicle/driver/date filters
+  ---
+  duration_ms: 147.591776
+  type: 'test'
+  ...
+# Subtest: customer transaction query filters actual visible references and resets to the first page
+ok 175 - customer transaction query filters actual visible references and resets to the first page
+  ---
+  duration_ms: 548.803585
+  type: 'test'
+  ...
+# Subtest: partner StaffPage query narrows loaded scoped records
+ok 176 - partner StaffPage query narrows loaded scoped records
+  ---
+  duration_ms: 417.370368
+  type: 'test'
+  ...
+# Subtest: partner DisputesPage query narrows loaded scoped records
+ok 177 - partner DisputesPage query narrows loaded scoped records
+  ---
+  duration_ms: 526.52929
+  type: 'test'
+  ...
+# Subtest: admin URL search sends scoped server filter and resets pagination
+ok 178 - admin URL search sends scoped server filter and resets pagination
+  ---
+  duration_ms: 96.832154
+  type: 'test'
+  ...
+# Subtest: partner transaction query reaches server search and resets a later page
+ok 179 - partner transaction query reaches server search and resets a later page
+  ---
+  duration_ms: 397.968196
+  type: 'test'
+  ...
+# Subtest: customer station URL query filters loaded station names and can be cleared
+ok 180 - customer station URL query filters loaded station names and can be cleared
+  ---
+  duration_ms: 231.174968
+  type: 'test'
+  ...
+# Subtest: customer station search requests a station outside the initial nearest-list limit
+ok 181 - customer station search requests a station outside the initial nearest-list limit
+  ---
+  duration_ms: 237.394708
+  type: 'test'
+  ...
+# Subtest: company station and team controls apply their visible search values
+ok 182 - company station and team controls apply their visible search values
+  ---
+  duration_ms: 172.009572
+  type: 'test'
+  ...
+# Subtest: customer records use existing personal endpoints without triggering payment reconciliation
+ok 183 - customer records use existing personal endpoints without triggering payment reconciliation
+  ---
+  duration_ms: 298.727233
+  type: 'test'
+  ...
+# Subtest: company context preserves the personal account role and uses scoped paginated searches
+ok 184 - company context preserves the personal account role and uses scoped paginated searches
+  ---
+  duration_ms: 54.161352
+  type: 'test'
+  ...
+# Subtest: admin record kinds lead to their actual existing table pages
+ok 185 - admin record kinds lead to their actual existing table pages
+  ---
+  duration_ms: 22.629611
+  type: 'test'
+  ...
+# Subtest: fuel partner searches only its existing transaction, staff and dispute APIs
+ok 186 - fuel partner searches only its existing transaction, staff and dispute APIs
+  ---
+  duration_ms: 20.22337
+  type: 'test'
+  ...
+# Subtest: legacy partner staff contacts never become destination URL tokens
+ok 187 - legacy partner staff contacts never become destination URL tokens
+  ---
+  duration_ms: 26.886546
+  type: 'test'
+  ...
+# Subtest: workshop/nonfuel identity partner/mechanic never requests fuel records
+ok 188 - workshop/nonfuel identity partner/mechanic never requests fuel records
+  ---
+  duration_ms: 43.89605
+  type: 'test'
+  ...
+# Subtest: workshop/nonfuel identity mechanic/fuel_station never requests fuel records
+ok 189 - workshop/nonfuel identity mechanic/fuel_station never requests fuel records
+  ---
+  duration_ms: 42.610209
+  type: 'test'
+  ...
+# Subtest: workshop/nonfuel identity partner/other never requests fuel records
+ok 190 - workshop/nonfuel identity partner/other never requests fuel records
+  ---
+  duration_ms: 40.25484
+  type: 'test'
+  ...
+# Subtest: role, context and pending-company gates reject before any record request
+ok 191 - role, context and pending-company gates reject before any record request
+  ---
+  duration_ms: 80.041939
+  type: 'test'
+  ...
+# Subtest: short queries make no requests and oversized queries report an explicit error
+ok 192 - short queries make no requests and oversized queries report an explicit error
+  ---
+  duration_ms: 64.838653
+  type: 'test'
+  ...
+# Subtest: query and destination tokens are encoded as values and cannot inject routes or parameters
+ok 193 - query and destination tokens are encoded as values and cannot inject routes or parameters
+  ---
+  duration_ms: 67.859508
+  type: 'test'
+  ...
+# Subtest: one failed source retains matching authorized records and reports unavailable categories
+ok 194 - one failed source retains matching authorized records and reports unavailable categories
+  ---
+  duration_ms: 28.578227
+  type: 'test'
+  ...
+# Subtest: total transport failure is unavailable, rather than a successful empty search
+ok 195 - total transport failure is unavailable, rather than a successful empty search
+  ---
+  duration_ms: 26.520088
+  type: 'test'
+  ...
+# Subtest: missing IDs and malformed response lists never create invented record links
+ok 196 - missing IDs and malformed response lists never create invented record links
+  ---
+  duration_ms: 24.547203
+  type: 'test'
+  ...
+# Subtest: each search is capped at three calls and twelve matching records
+ok 197 - each search is capped at three calls and twelve matching records
+  ---
+  duration_ms: 29.782014
+  type: 'test'
+  ...
+# Subtest: joined vehicle/card rows cannot create duplicate record keys
+ok 198 - joined vehicle/card rows cannot create duplicate record keys
+  ---
+  duration_ms: 19.943928
+  type: 'test'
+  ...
+# Subtest: selected search queries are delivered over HTTP as encoded GET requests
+ok 199 - selected search queries are delivered over HTTP as encoded GET requests
+  ---
+  duration_ms: 180.778368
+  type: 'test'
+  ...
+# Subtest: navigation matches keywords and route names and Enter actually navigates
+ok 200 - navigation matches keywords and route names and Enter actually navigates
+  ---
+  duration_ms: 269.083768
+  type: 'test'
+  ...
+# Subtest: search debounces real records and does not request data for one character
+ok 201 - search debounces real records and does not request data for one character
+  ---
+  duration_ms: 166.166091
+  type: 'test'
+  ...
+# Subtest: record loading floats while matching pages and combobox result semantics remain available
+ok 202 - record loading floats while matching pages and combobox result semantics remain available
+  ---
+  duration_ms: 125.860528
+  type: 'test'
+  ...
+# Subtest: old query responses cannot replace newer results or restore closed results
+ok 203 - old query responses cannot replace newer results or restore closed results
+  ---
+  duration_ms: 88.135644
+  type: 'test'
+  ...
+# Subtest: changing account or company context rejects late partial results
+ok 204 - changing account or company context rejects late partial results
+  ---
+  duration_ms: 74.390026
+  type: 'test'
+  ...
+# Subtest: every authorization-context change hides already displayed private hits before effects run
+ok 205 - every authorization-context change hides already displayed private hits before effects run
+  ---
+  duration_ms: 260.639233
+  type: 'test'
+  ...
+# Subtest: partial record errors keep real hits and page destinations with an explicit retry
+ok 206 - partial record errors keep real hits and page destinations with an explicit retry
+  ---
+  duration_ms: 52.011982
+  type: 'test'
+  ...
+# Subtest: desktop popup retry survives pointer and keyboard blur without changing outside-blur dismissal
+ok 207 - desktop popup retry survives pointer and keyboard blur without changing outside-blur dismissal
+  ---
+  duration_ms: 63.408111
+  type: 'test'
+  ...
+# Subtest: ordinary desktop Tab order reaches portal retry and returns with ShiftTab before leaving search
+ok 208 - ordinary desktop Tab order reaches portal retry and returns with ShiftTab before leaving search
+  ---
+  duration_ms: 112.208916
+  type: 'test'
+  ...
+# Subtest: mobile search feedback stays owned by the modal and retry retains its focus boundary
+ok 209 - mobile search feedback stays owned by the modal and retry retains its focus boundary
+  ---
+  duration_ms: 102.51721
+  type: 'test'
+  ...
+# Subtest: failed record searches never claim an empty complete search or remove permitted pages
+ok 210 - failed record searches never claim an empty complete search or remove permitted pages
+  ---
+  duration_ms: 65.180742
+  type: 'test'
+  ...
+# Subtest: ready empty searches show a real empty state and a result cannot navigate outside its dashboard
+ok 211 - ready empty searches show a real empty state and a result cannot navigate outside its dashboard
+  ---
+  duration_ms: 55.177454
+  type: 'test'
+  ...
+# Subtest: mobile search opens a labelled modal with keyboard navigation and 44px controls
+ok 212 - mobile search opens a labelled modal with keyboard navigation and 44px controls
+  ---
+  duration_ms: 61.933771
+  type: 'test'
+  ...
+# Subtest: changing routes closes the search and resets its query
+ok 213 - changing routes closes the search and resets its query
+  ---
+  duration_ms: 53.96788
+  type: 'test'
+  ...
+# Subtest: selecting the current record explicitly reloads its saved query by click or Enter
+ok 214 - selecting the current record explicitly reloads its saved query by click or Enter
+  ---
+  duration_ms: 135.270356
+  type: 'test'
+  ...
+# Subtest: modified result clicks preserve normal browser link behavior
+ok 215 - modified result clicks preserve normal browser link behavior
+  ---
+  duration_ms: 31.418357
+  type: 'test'
+  ...
+# Subtest: partner search receives only destinations allowed for its current subtype
+ok 216 - partner search receives only destinations allowed for its current subtype
+  ---
+  duration_ms: 163.523341
+  type: 'test'
+  ...
+# Subtest: company search preserves contract approval navigation gates
+ok 217 - company search preserves contract approval navigation gates
+  ---
+  duration_ms: 421.713218
+  type: 'test'
+  ...
+# Subtest: customer desktop and phone headers expose the same real search destinations
+ok 218 - customer desktop and phone headers expose the same real search destinations
+  ---
+  duration_ms: 258.742806
+  type: 'test'
+  ...
+# Subtest: dialog traps both tab directions, ignores hidden controls, closes on Escape and restores the opener
+ok 219 - dialog traps both tab directions, ignores hidden controls, closes on Escape and restores the opener
+  ---
+  duration_ms: 97.551054
+  type: 'test'
+  ...
+# Subtest: only the topmost nested dialog receives Escape and scroll stays locked until both close
+ok 220 - only the topmost nested dialog receives Escape and scroll stays locked until both close
+  ---
+  duration_ms: 21.038015
+  type: 'test'
+  ...
+# Subtest: closed navigation does not change focus or lock scrolling
+ok 221 - closed navigation does not change focus or lock scrolling
+  ---
+  duration_ms: 19.457804
+  type: 'test'
+  ...
+# Subtest: Escape closes the landing menu while focus remains in its header
+ok 222 - Escape closes the landing menu while focus remains in its header
+  ---
+  duration_ms: 259.323321
+  type: 'test'
+  ...
+# Subtest: public-page mobile navigation exposes routes, account buttons and Escape dismissal
+ok 223 - public-page mobile navigation exposes routes, account buttons and Escape dismissal
+  ---
+  duration_ms: 54.73546
+  type: 'test'
+  ...
+# Subtest: hamburger exposes its expanded state and can open and close the mobile links
+ok 224 - hamburger exposes its expanded state and can open and close the mobile links
+  ---
+  duration_ms: 34.15686
+  type: 'test'
+  ...
+# Subtest: mobile Login remains a real destination link and closes the menu
+ok 225 - mobile Login remains a real destination link and closes the menu
+  ---
+  duration_ms: 27.376963
+  type: 'test'
+  ...
+# Subtest: mobile Get Started remains a real destination link and closes the menu
+ok 226 - mobile Get Started remains a real destination link and closes the menu
+  ---
+  duration_ms: 25.20143
+  type: 'test'
+  ...
+# Subtest: individual pricing immediately renders the restored plan comparison and selected-plan links
+ok 227 - individual pricing immediately renders the restored plan comparison and selected-plan links
+  ---
+  duration_ms: 247.367752
+  type: 'test'
+  ...
+# Subtest: organization pricing restores the annual plans and routes every CTA to a contract inquiry
+ok 228 - organization pricing restores the annual plans and routes every CTA to a contract inquiry
+  ---
+  duration_ms: 56.941904
+  type: 'test'
+  ...
+# Subtest: product showcase has a single-line Get started CTA with a small arrow
+ok 229 - product showcase has a single-line Get started CTA with a small arrow
+  ---
+  duration_ms: 13.508694
+  type: 'test'
+  ...
+# Subtest: individual plan links consistently name the selected plan and preserve signup selection
+ok 230 - individual plan links consistently name the selected plan and preserve signup selection
+  ---
+  duration_ms: 317.409593
+  type: 'test'
+  ...
+# Subtest: Explore FuelVista remains a page link with a navigation arrow rather than a disclosure chevron
+ok 231 - Explore FuelVista remains a page link with a navigation arrow rather than a disclosure chevron
+  ---
+  duration_ms: 56.912225
+  type: 'test'
+  ...
+# Subtest: Inter local asset is the verified normal variable font with Latin and naira coverage
+ok 232 - Inter local asset is the verified normal variable font with Latin and naira coverage
+  ---
+  duration_ms: 191.85888
+  type: 'test'
+  ...
+# Subtest: Plus Jakarta Sans local asset is the verified normal variable font with Latin and naira coverage
+ok 233 - Plus Jakarta Sans local asset is the verified normal variable font with Latin and naira coverage
+  ---
+  duration_ms: 109.952193
+  type: 'test'
+  ...
+# Subtest: actual Next local loader emits only local font assets with preserved swap, weight and CSS variables
+ok 234 - actual Next local loader emits only local font assets with preserved swap, weight and CSS variables
+  ---
+  duration_ms: 187.376262
+  type: 'test'
+  ...
+# Subtest: failed live authenticator setup displays its real error and cannot show or continue with fake credentials
+ok 235 - failed live authenticator setup displays its real error and cannot show or continue with fake credentials
+  ---
+  duration_ms: 311.059396
+  type: 'test'
+  ...
+# Subtest: authenticator instructions appear when a real setup QR is available
+ok 236 - authenticator instructions appear when a real setup QR is available
+  ---
+  duration_ms: 88.377704
+  type: 'test'
+  ...
+# Subtest: a challenge opened without password proof explains recovery and disables code submission
+ok 237 - a challenge opened without password proof explains recovery and disables code submission
+  ---
+  duration_ms: 113.417179
+  type: 'test'
+  ...
+# Subtest: successful MFA updates session before redirecting the customer to their dashboard
+ok 238 - successful MFA updates session before redirecting the customer to their dashboard
+  ---
+  duration_ms: 154.499935
+  type: 'test'
+  ...
+# Subtest: successful MFA updates session before redirecting the company to their dashboard
+ok 239 - successful MFA updates session before redirecting the company to their dashboard
+  ---
+  duration_ms: 108.743487
+  type: 'test'
+  ...
+# Subtest: successful MFA updates session before redirecting the partner to their dashboard
+ok 240 - successful MFA updates session before redirecting the partner to their dashboard
+  ---
+  duration_ms: 138.963014
+  type: 'test'
+  ...
+# Subtest: successful MFA updates session before redirecting the mechanic to their dashboard
+ok 241 - successful MFA updates session before redirecting the mechanic to their dashboard
+  ---
+  duration_ms: 60.637011
+  type: 'test'
+  ...
+# Subtest: successful MFA updates session before redirecting the admin to their dashboard
+ok 242 - successful MFA updates session before redirecting the admin to their dashboard
+  ---
+  duration_ms: 88.986245
+  type: 'test'
+  ...
+# Subtest: saved hexadecimal backup codes have a reachable input and are submitted intact
+ok 243 - saved hexadecimal backup codes have a reachable input and are submitted intact
+  ---
+  duration_ms: 139.366251
+  type: 'test'
+  ...
+# Subtest: separator-free backup codes are normalized to the generated server representation
+ok 244 - separator-free backup codes are normalized to the generated server representation
+  ---
+  duration_ms: 92.27495
+  type: 'test'
+  ...
+# Subtest: MFA UI ignores a successful completion after invalidate
+ok 245 - MFA UI ignores a successful completion after invalidate
+  ---
+  duration_ms: 48.468691
+  type: 'test'
+  ...
+# Subtest: MFA UI ignores a successful completion after unmount
+ok 246 - MFA UI ignores a successful completion after unmount
+  ---
+  duration_ms: 44.092258
+  type: 'test'
+  ...
+# Subtest: the service persists only a short-lived password proof in session storage and consumes it on success
+ok 247 - the service persists only a short-lived password proof in session storage and consumes it on success
+  ---
+  duration_ms: 535.109231
+  type: 'test'
+  ...
+# Subtest: expired proof is removed before a challenge can call the API
+ok 248 - expired proof is removed before a challenge can call the API
+  ---
+  duration_ms: 242.368212
+  type: 'test'
+  ...
+# Subtest: the populated-place snapshot covers all existing State/FCT keys and preserves recorded counts
+ok 249 - the populated-place snapshot covers all existing State/FCT keys and preserves recorded counts
+  ---
+  duration_ms: 10.889083
+  type: 'test'
+  ...
+# Subtest: place names are NFC strings with no case duplicates, and the catalog is immutable
+ok 250 - place names are NFC strings with no case duplicates, and the catalog is immutable
+  ---
+  duration_ms: 370.182739
+  type: 'test'
+  ...
+# Subtest: city choices contain actual populated places rather than renamed administrative areas
+ok 251 - city choices contain actual populated places rather than renamed administrative areas
+  ---
+  duration_ms: 0.469836
+  type: 'test'
+  ...
+# Subtest: canonical city validation and bounded labels reject invented, prototype and non-string inputs
+ok 252 - canonical city validation and bounded labels reject invented, prototype and non-string inputs
+  ---
+  duration_ms: 0.426427
+  type: 'test'
+  ...
+# Subtest: every combined city/state label round-trips within the established 100-character storage bound
+ok 253 - every combined city/state label round-trips within the established 100-character storage bound
+  ---
+  duration_ms: 870.542883
+  type: 'test'
+  ...
+# Subtest: a city name containing commas is parsed by its known State suffix without truncation
+ok 254 - a city name containing commas is parsed by its known State suffix without truncation
+  ---
+  duration_ms: 0.438396
+  type: 'test'
+  ...
+# Subtest: unique legacy city-only values resolve to the recorded state while ambiguous names are never guessed
+ok 255 - unique legacy city-only values resolve to the recorded state while ambiguous names are never guessed
+  ---
+  duration_ms: 9.019985
+  type: 'test'
+  ...
+# Subtest: parsing rejects malformed, cross-state, oversized and unknown values without coercion
+ok 256 - parsing rejects malformed, cross-state, oversized and unknown values without coercion
+  ---
+  duration_ms: 3.181259
+  type: 'test'
+  ...
+# Subtest: provenance binds the exact transformed catalog and discloses licensed source coverage limits
+ok 257 - provenance binds the exact transformed catalog and discloses licensed source coverage limits
+  ---
+  duration_ms: 11.515027
+  type: 'test'
+  ...
+# Subtest: the official catalog covers every State/FCT and all 774 distinct administrative pairs
+ok 258 - the official catalog covers every State/FCT and all 774 distinct administrative pairs
+  ---
+  duration_ms: 11.03473
+  type: 'test'
+  ...
+# Subtest: finite pair validation rejects unknown and cross-state areas without coercing user input
+ok 259 - finite pair validation rejects unknown and cross-state areas without coercing user input
+  ---
+  duration_ms: 0.36233
+  type: 'test'
+  ...
+# Subtest: official source transcription repairs preserve missing and wrapped administrative names
+ok 260 - official source transcription repairs preserve missing and wrapped administrative names
+  ---
+  duration_ms: 0.326422
+  type: 'test'
+  ...
+# Subtest: partner subscription belongs to the common desktop, mobile and search navigation
+ok 261 - partner subscription belongs to the common desktop, mobile and search navigation
+  ---
+  duration_ms: 204.740258
+  type: 'test'
+  ...
+# Subtest: staff access cells have a matching header and preserve the status and action columns
+ok 262 - staff access cells have a matching header and preserve the status and action columns
+  ---
+  duration_ms: 882.840061
+  type: 'test'
+  ...
+# Subtest: settlement setup copy never promises automatic receipt before a destination is verified
+ok 263 - settlement setup copy never promises automatic receipt before a destination is verified
+  ---
+  duration_ms: 1960.110166
+  type: 'test'
+  ...
+# Subtest: paid checkout needs the station and paid code, without wallet litres or published prices
+ok 264 - paid checkout needs the station and paid code, without wallet litres or published prices
+  ---
+  duration_ms: 378.206631
+  type: 'test'
+  ...
+# Subtest: wallet receipts use the recorded sale quantities instead of draft form values
+ok 265 - wallet receipts use the recorded sale quantities instead of draft form values
+  ---
+  duration_ms: 345.828777
+  type: 'test'
+  ...
+# Subtest: gas wallet authorization submits approved kg and displays the recorded quantity
+ok 266 - gas wallet authorization submits approved kg and displays the recorded quantity
+  ---
+  duration_ms: 264.786838
+  type: 'test'
+  ...
+# Subtest: gas wallet authorization submits approved scm and displays the recorded quantity
+ok 267 - gas wallet authorization submits approved scm and displays the recorded quantity
+  ---
+  duration_ms: 221.830878
+  type: 'test'
+  ...
+# Subtest: gas wallet authorization refuses a missing approved unit without sending a request
+ok 268 - gas wallet authorization refuses a missing approved unit without sending a request
+  ---
+  duration_ms: 187.322328
+  type: 'test'
+  ...
+# Subtest: wallet submission validates quantity even when submitted without the button
+ok 269 - wallet submission validates quantity even when submitted without the button
+  ---
+  duration_ms: 141.952205
+  type: 'test'
+  ...
+# Subtest: POS labels are programmatically associated with each editable input
+ok 270 - POS labels are programmatically associated with each editable input
+  ---
+  duration_ms: 130.489327
+  type: 'test'
+  ...
+# Subtest: a declined operation keeps the form and never creates a success record
+ok 271 - a declined operation keeps the form and never creates a success record
+  ---
+  duration_ms: 117.365814
+  type: 'test'
+  ...
+# Subtest: partner bottom navigation and Account partition every real dashboard route exactly once
+ok 272 - partner bottom navigation and Account partition every real dashboard route exactly once
+  ---
+  duration_ms: 280.558473
+  type: 'test'
+  ...
+# Subtest: mechanic navigation exposes workshop and common account routes
+ok 273 - mechanic navigation exposes workshop and common account routes
+  ---
+  duration_ms: 192.034801
+  type: 'test'
+  ...
+# Subtest: a partner account with mechanic organization profile has the same workshop navigation as a legacy mechanic
+ok 274 - a partner account with mechanic organization profile has the same workshop navigation as a legacy mechanic
+  ---
+  duration_ms: 58.514596
+  type: 'test'
+  ...
+# Subtest: gas stations retain their operational navigation and never receive a workshop link
+ok 275 - gas stations retain their operational navigation and never receive a workshop link
+  ---
+  duration_ms: 168.89283
+  type: 'test'
+  ...
+# Subtest: primary active state matches an actual route boundary at /dashboard
+ok 276 - primary active state matches an actual route boundary at /dashboard
+  ---
+  duration_ms: 65.038826
+  type: 'test'
+  ...
+# Subtest: primary active state matches an actual route boundary at /mechanic
+ok 277 - primary active state matches an actual route boundary at /mechanic
+  ---
+  duration_ms: 73.061379
+  type: 'test'
+  ...
+# Subtest: primary active state matches an actual route boundary at /dashboard/transactions
+ok 278 - primary active state matches an actual route boundary at /dashboard/transactions
+  ---
+  duration_ms: 76.069359
+  type: 'test'
+  ...
+# Subtest: primary active state matches an actual route boundary at /dashboard/transactions/synthetic-detail
+ok 279 - primary active state matches an actual route boundary at /dashboard/transactions/synthetic-detail
+  ---
+  duration_ms: 60.251454
+  type: 'test'
+  ...
+# Subtest: primary active state matches an actual route boundary at /dashboard/reports
+ok 280 - primary active state matches an actual route boundary at /dashboard/reports
+  ---
+  duration_ms: 19.662293
+  type: 'test'
+  ...
+# Subtest: primary active state matches an actual route boundary at /dashboard/transactions-other
+ok 281 - primary active state matches an actual route boundary at /dashboard/transactions-other
+  ---
+  duration_ms: 16.915656
+  type: 'test'
+  ...
+# Subtest: primary active state matches an actual route boundary at /dashboardish
+ok 282 - primary active state matches an actual route boundary at /dashboardish
+  ---
+  duration_ms: 21.332806
+  type: 'test'
+  ...
+# Subtest: nested Account route marks its link and header disclosure active without activating Overview
+ok 283 - nested Account route marks its link and header disclosure active without activating Overview
+  ---
+  duration_ms: 65.470544
+  type: 'test'
+  ...
+# Subtest: Account is a closed disclosure until clicked and toggling cleans its document listeners
+ok 284 - Account is a closed disclosure until clicked and toggling cleans its document listeners
+  ---
+  duration_ms: 73.394965
+  type: 'test'
+  ...
+# Subtest: selecting an Account destination closes the menu and removes listeners
+ok 285 - selecting an Account destination closes the menu and removes listeners
+  ---
+  duration_ms: 44.492231
+  type: 'test'
+  ...
+# Subtest: a pathname change closes Account while an unchanged pathname preserves it
+ok 286 - a pathname change closes Account while an unchanged pathname preserves it
+  ---
+  duration_ms: 39.866758
+  type: 'test'
+  ...
+# Subtest: Escape closes Account, restores its button focus and cleans document handlers
+ok 287 - Escape closes Account, restores its button focus and cleans document handlers
+  ---
+  duration_ms: 32.202282
+  type: 'test'
+  ...
+# Subtest: other keys and pointer events inside Account preserve its open state
+ok 288 - other keys and pointer events inside Account preserve its open state
+  ---
+  duration_ms: 89.828933
+  type: 'test'
+  ...
+# Subtest: an outside pointer closes Account without taking focus from the outside target
+ok 289 - an outside pointer closes Account without taking focus from the outside target
+  ---
+  duration_ms: 71.2437
+  type: 'test'
+  ...
+# Subtest: focus can move within Account but leaving the disclosure closes it
+ok 290 - focus can move within Account but leaving the disclosure closes it
+  ---
+  duration_ms: 57.227474
+  type: 'test'
+  ...
+# Subtest: losing focus without a related target closes Account
+ok 291 - losing focus without a related target closes Account
+  ---
+  duration_ms: 37.81496
+  type: 'test'
+  ...
+# Subtest: opening repeatedly never accumulates handlers and unmount removes every listener
+ok 292 - opening repeatedly never accumulates handlers and unmount removes every listener
+  ---
+  duration_ms: 29.875913
+  type: 'test'
+  ...
+# Subtest: desktop breakpoint closes Account, unmounts its logout control and cleans document and media listeners
+ok 293 - desktop breakpoint closes Account, unmounts its logout control and cleans document and media listeners
+  ---
+  duration_ms: 34.539959
+  type: 'test'
+  ...
+# Subtest: an Account open attempted while desktop already matches immediately closes without leaking handlers
+ok 294 - an Account open attempted while desktop already matches immediately closes without leaking handlers
+  ---
+  duration_ms: 27.095027
+  type: 'test'
+  ...
+# Subtest: workshop overview displays real workshop/team/support data without fuel or money metrics
+ok 295 - workshop overview displays real workshop/team/support data without fuel or money metrics
+  ---
+  duration_ms: 150.858896
+  type: 'test'
+  ...
+# Subtest: viewer can read workshop fields but has no enabled editor or save control
+ok 296 - viewer can read workshop fields but has no enabled editor or save control
+  ---
+  duration_ms: 75.616567
+  type: 'test'
+  ...
+# Subtest: workshop save uses only its profile endpoint and preserves services
+ok 297 - workshop save uses only its profile endpoint and preserves services
+  ---
+  duration_ms: 62.201986
+  type: 'test'
+  ...
+# Subtest: failed workshop save retains edits and shows the real error
+ok 298 - failed workshop save retains edits and shows the real error
+  ---
+  duration_ms: 59.871138
+  type: 'test'
+  ...
+# Subtest: overlapping workshop submissions send one request while the first is pending
+ok 299 - overlapping workshop submissions send one request while the first is pending
+  ---
+  duration_ms: 84.010667
+  type: 'test'
+  ...
+# Subtest: gas prices require an explicit valid approved unit and liquid legacy prices remain litres
+ok 300 - gas prices require an explicit valid approved unit and liquid legacy prices remain litres
+  ---
+  duration_ms: 1.730526
+  type: 'test'
+  ...
+# Subtest: gas pricing only offers approved gas products and sends their approved unit
+ok 301 - gas pricing only offers approved gas products and sends their approved unit
+  ---
+  duration_ms: 444.304063
+  type: 'test'
+  ...
+# Subtest: approving a new gas unit clears the old rate instead of converting or relabelling it
+ok 302 - approving a new gas unit clears the old rate instead of converting or relabelling it
+  ---
+  duration_ms: 480.480562
+  type: 'test'
+  ...
+# Subtest: pending gas unit approval explains why price publication is unavailable
+ok 303 - pending gas unit approval explains why price publication is unavailable
+  ---
+  duration_ms: 267.793636
+  type: 'test'
+  ...
+# Subtest: admin station review submits its explicitly selected legal gas unit for approval
+ok 304 - admin station review submits its explicitly selected legal gas unit for approval
+  ---
+  duration_ms: 103.014251
+  type: 'test'
+  ...
+# Subtest: issuer recovery requires the exact existing provider ID even for a locally recorded provider card
+ok 305 - issuer recovery requires the exact existing provider ID even for a locally recorded provider card
+  ---
+  duration_ms: 25.592179
+  type: 'test'
+  ...
+# Subtest: issuer lookup refusal stays visible and does not announce reconciliation success
+ok 306 - issuer lookup refusal stays visible and does not announce reconciliation success
+  ---
+  duration_ms: 35.367724
+  type: 'test'
+  ...
+# Subtest: admin bounded payment recovery calls only reconciliation and refreshes existing queues
+ok 307 - admin bounded payment recovery calls only reconciliation and refreshes existing queues
+  ---
+  duration_ms: 24.209777
+  type: 'test'
+  ...
+# Subtest: other verification describes the correct account type
+ok 308 - other verification describes the correct account type
+  ---
+  duration_ms: 436.101413
+  type: 'test'
+  ...
+# Subtest: fuel_station verification describes the correct account type
+ok 309 - fuel_station verification describes the correct account type
+  ---
+  duration_ms: 228.636394
+  type: 'test'
+  ...
+# Subtest: gas_station verification describes the correct account type
+ok 310 - gas_station verification describes the correct account type
+  ---
+  duration_ms: 196.756272
+  type: 'test'
+  ...
+# Subtest: a missing phone never displays a Verified contact badge even when a stale flag is true
+ok 311 - a missing phone never displays a Verified contact badge even when a stale flag is true
+  ---
+  duration_ms: 141.713008
+  type: 'test'
+  ...
+# Subtest: verified email completes the partner account without a phone or an automatic SMS request
+ok 312 - verified email completes the partner account without a phone or an automatic SMS request
+  ---
+  duration_ms: 110.469807
+  type: 'test'
+  ...
+# Subtest: verification waits for the loaded session before choosing delivery channels
+ok 313 - verification waits for the loaded session before choosing delivery channels
+  ---
+  duration_ms: 83.31927
+  type: 'test'
+  ...
+# Subtest: already verified contacts are labelled Verified without sending another code
+ok 314 - already verified contacts are labelled Verified without sending another code
+  ---
+  duration_ms: 127.338784
+  type: 'test'
+  ...
+# Subtest: email delivery with a missing phone names only email and keeps phone guidance visible
+ok 315 - email delivery with a missing phone names only email and keeps phone guidance visible
+  ---
+  duration_ms: 151.726523
+  type: 'test'
+  ...
+# Subtest: the initial send disables resend and ignores a duplicate click while pending
+ok 316 - the initial send disables resend and ignores a duplicate click while pending
+  ---
+  duration_ms: 187.451506
+  type: 'test'
+  ...
+# Subtest: partial delivery retry reports only its delivered channel
+ok 317 - partial delivery retry reports only its delivered channel
+  ---
+  duration_ms: 126.258285
+  type: 'test'
+  ...
+# Subtest: delivery failure never announces successful resend
+ok 318 - delivery failure never announces successful resend
+  ---
+  duration_ms: 76.810857
+  type: 'test'
+  ...
+# Subtest: a failed delivery request is not repeated by ordinary rerenders
+ok 319 - a failed delivery request is not repeated by ordinary rerenders
+  ---
+  duration_ms: 79.902051
+  type: 'test'
+  ...
+# Subtest: confirming one contact does not automatically replace the remaining delivered code
+ok 320 - confirming one contact does not automatically replace the remaining delivered code
+  ---
+  duration_ms: 82.917131
+  type: 'test'
+  ...
+# Subtest: failed replacement delivery clears old successful send claims
+ok 321 - failed replacement delivery clears old successful send claims
+  ---
+  duration_ms: 62.696151
+  type: 'test'
+  ...
+# Subtest: email proof completes the partner account while the other contact remains unverified
+ok 322 - email proof completes the partner account while the other contact remains unverified
+  ---
+  duration_ms: 68.609487
+  type: 'test'
+  ...
+# Subtest: phone proof completes the partner account while the other contact remains unverified
+ok 323 - phone proof completes the partner account while the other contact remains unverified
+  ---
+  duration_ms: 54.510475
+  type: 'test'
+  ...
+# Subtest: partner verification binds each attempt to the selected channel and clears stale input and errors
+ok 324 - partner verification binds each attempt to the selected channel and clears stale input and errors
+  ---
+  duration_ms: 58.004393
+  type: 'test'
+  ...
+# Subtest: a phone-verified partner does not automatically request email proof
+ok 325 - a phone-verified partner does not automatically request email proof
+  ---
+  duration_ms: 50.804339
+  type: 'test'
+  ...
+# Subtest: an explicit optional-contact action requests SMS and keeps email proof separate
+ok 326 - an explicit optional-contact action requests SMS and keeps email proof separate
+  ---
+  duration_ms: 47.905012
+  type: 'test'
+  ...
+# Subtest: optional partner verification cancels the success redirect before requesting its remaining code
+ok 327 - optional partner verification cancels the success redirect before requesting its remaining code
+  ---
+  duration_ms: 62.038754
+  type: 'test'
+  ...
+# Subtest: expired-session password proof follows MFA without announcing completed sign-in
+ok 328 - expired-session password proof follows MFA without announcing completed sign-in
+  ---
+  duration_ms: 347.643778
+  type: 'test'
+  ...
+# Subtest: expired session verifies the customer before routing to their own dashboard
+ok 329 - expired session verifies the customer before routing to their own dashboard
+  ---
+  duration_ms: 96.182203
+  type: 'test'
+  ...
+# Subtest: expired session verifies the company before routing to their own dashboard
+ok 330 - expired session verifies the company before routing to their own dashboard
+  ---
+  duration_ms: 100.504495
+  type: 'test'
+  ...
+# Subtest: expired session verifies the partner before routing to their own dashboard
+ok 331 - expired session verifies the partner before routing to their own dashboard
+  ---
+  duration_ms: 61.205436
+  type: 'test'
+  ...
+# Subtest: expired session verifies the mechanic before routing to their own dashboard
+ok 332 - expired session verifies the mechanic before routing to their own dashboard
+  ---
+  duration_ms: 72.743169
+  type: 'test'
+  ...
+# Subtest: expired session verifies the admin before routing to their own dashboard
+ok 333 - expired session verifies the admin before routing to their own dashboard
+  ---
+  duration_ms: 94.609516
+  type: 'test'
+  ...
+# Subtest: expired session cannot announce success when post-login verification fails
+ok 334 - expired session cannot announce success when post-login verification fails
+  ---
+  duration_ms: 68.912994
+  type: 'test'
+  ...
+# Subtest: admin sign-in checks verified role and clears a non-admin session
+ok 335 - admin sign-in checks verified role and clears a non-admin session
+  ---
+  duration_ms: 61.333786
+  type: 'test'
+  ...
+# Subtest: admin MFA navigation keeps credentials and password proof out of the URL
+ok 336 - admin MFA navigation keeps credentials and password proof out of the URL
+  ---
+  duration_ms: 25.154218
+  type: 'test'
+  ...
+# Subtest: verified admin session precedes the authorization announcement and redirect
+ok 337 - verified admin session precedes the authorization announcement and redirect
+  ---
+  duration_ms: 23.868399
+  type: 'test'
+  ...
+# Subtest: success page waits for session readiness without exposing a premature dashboard link
+ok 338 - success page waits for session readiness without exposing a premature dashboard link
+  ---
+  duration_ms: 30.251457
+  type: 'test'
+  ...
+# Subtest: success page sends signed-out users to sign-in
+ok 339 - success page sends signed-out users to sign-in
+  ---
+  duration_ms: 52.709993
+  type: 'test'
+  ...
+# Subtest: success page routes a mechanic to the approved dashboard
+ok 340 - success page routes a mechanic to the approved dashboard
+  ---
+  duration_ms: 57.56304
+  type: 'test'
+  ...
+# Subtest: success waits for the loaded role and cancels its dashboard timer after sign-out
+ok 341 - success waits for the loaded role and cancels its dashboard timer after sign-out
+  ---
+  duration_ms: 55.648831
+  type: 'test'
+  ...
+# Subtest: in-progress role fallback rejects unsafe return route null
+ok 342 - in-progress role fallback rejects unsafe return route null
+  ---
+  duration_ms: 60.052091
+  type: 'test'
+  ...
+# Subtest: in-progress role fallback rejects unsafe return route "//evil.example"
+ok 343 - in-progress role fallback rejects unsafe return route "//evil.example"
+  ---
+  duration_ms: 75.394466
+  type: 'test'
+  ...
+# Subtest: in-progress role fallback rejects unsafe return route "/\\\\evil.example"
+ok 344 - in-progress role fallback rejects unsafe return route "/\\\\evil.example"
+  ---
+  duration_ms: 102.245166
+  type: 'test'
+  ...
+# Subtest: in-progress role fallback rejects unsafe return route "/%5Cevil.example"
+ok 345 - in-progress role fallback rejects unsafe return route "/%5Cevil.example"
+  ---
+  duration_ms: 39.354336
+  type: 'test'
+  ...
+# Subtest: in-progress role fallback rejects unsafe return route "/%0Aevil.example"
+ok 346 - in-progress role fallback rejects unsafe return route "/%0Aevil.example"
+  ---
+  duration_ms: 28.090708
+  type: 'test'
+  ...
+# Subtest: success preserves a safe internal intended route and rejects a protocol-relative target
+ok 347 - success preserves a safe internal intended route and rejects a protocol-relative target
+  ---
+  duration_ms: 65.425327
+  type: 'test'
+  ...
+# Subtest: failure retry enters sign-in with a safe intended destination
+ok 348 - failure retry enters sign-in with a safe intended destination
+  ---
+  duration_ms: 37.778332
+  type: 'test'
+  ...
+# Subtest: failure retry discards an external return route
+ok 349 - failure retry discards an external return route
+  ---
+  duration_ms: 34.643907
+  type: 'test'
+  ...
+# Subtest: in-progress exposes the verified internal destination and cancels redirect on unmount
+ok 350 - in-progress exposes the verified internal destination and cancels redirect on unmount
+  ---
+  duration_ms: 75.907562
+  type: 'test'
+  ...
+# Subtest: in-progress failure retry goes to sign-in without another failing session request
+ok 351 - in-progress failure retry goes to sign-in without another failing session request
+  ---
+  duration_ms: 43.476441
+  type: 'test'
+  ...
+# Subtest: shared destination validator rejects navigation escapes and normalizes harmless internal paths
+ok 352 - shared destination validator rejects navigation escapes and normalizes harmless internal paths
+  ---
+  duration_ms: 17.538395
+  type: 'test'
+  ...
+# Subtest: mechanic can mount the approved route /mechanic with mobile navigation and existing plan gate
+ok 353 - mechanic can mount the approved route /mechanic with mobile navigation and existing plan gate
+  ---
+  duration_ms: 20.172264
+  type: 'test'
+  ...
+# Subtest: mechanic can mount the approved route /dashboard with mobile navigation and existing plan gate
+ok 354 - mechanic can mount the approved route /dashboard with mobile navigation and existing plan gate
+  ---
+  duration_ms: 17.277067
+  type: 'test'
+  ...
+# Subtest: mechanic can mount the approved route /dashboard/workshop with mobile navigation and existing plan gate
+ok 355 - mechanic can mount the approved route /dashboard/workshop with mobile navigation and existing plan gate
+  ---
+  duration_ms: 10.030291
+  type: 'test'
+  ...
+# Subtest: mechanic can mount the approved route /dashboard/staff with mobile navigation and existing plan gate
+ok 356 - mechanic can mount the approved route /dashboard/staff with mobile navigation and existing plan gate
+  ---
+  duration_ms: 20.461788
+  type: 'test'
+  ...
+# Subtest: mechanic can mount the approved route /dashboard/notifications with mobile navigation and existing plan gate
+ok 357 - mechanic can mount the approved route /dashboard/notifications with mobile navigation and existing plan gate
+  ---
+  duration_ms: 25.25268
+  type: 'test'
+  ...
+# Subtest: mechanic can mount the approved route /dashboard/settings with mobile navigation and existing plan gate
+ok 358 - mechanic can mount the approved route /dashboard/settings with mobile navigation and existing plan gate
+  ---
+  duration_ms: 38.380241
+  type: 'test'
+  ...
+# Subtest: mechanic can mount the approved route /dashboard/billing with mobile navigation and existing plan gate
+ok 359 - mechanic can mount the approved route /dashboard/billing with mobile navigation and existing plan gate
+  ---
+  duration_ms: 28.004695
+  type: 'test'
+  ...
+# Subtest: mechanic can mount the approved route /dashboard/verify with mobile navigation and existing plan gate
+ok 360 - mechanic can mount the approved route /dashboard/verify with mobile navigation and existing plan gate
+  ---
+  duration_ms: 18.15897
+  type: 'test'
+  ...
+# Subtest: mechanic remains denied the partner-only page /dashboard/fuel-pricing
+ok 361 - mechanic remains denied the partner-only page /dashboard/fuel-pricing
+  ---
+  duration_ms: 31.956856
+  type: 'test'
+  ...
+# Subtest: mechanic remains denied the partner-only page /dashboard/station-profile
+ok 362 - mechanic remains denied the partner-only page /dashboard/station-profile
+  ---
+  duration_ms: 36.123034
+  type: 'test'
+  ...
+# Subtest: mechanic remains denied the partner-only page /dashboard/settlements
+ok 363 - mechanic remains denied the partner-only page /dashboard/settlements
+  ---
+  duration_ms: 15.598916
+  type: 'test'
+  ...
+# Subtest: mechanic remains denied the partner-only page /dashboard/card-verification
+ok 364 - mechanic remains denied the partner-only page /dashboard/card-verification
+  ---
+  duration_ms: 21.018139
+  type: 'test'
+  ...
+# Subtest: mechanic remains denied the partner-only page /dashboard/transactions
+ok 365 - mechanic remains denied the partner-only page /dashboard/transactions
+  ---
+  duration_ms: 32.754679
+  type: 'test'
+  ...
+# Subtest: mechanic remains denied the partner-only page /dashboard/reports
+ok 366 - mechanic remains denied the partner-only page /dashboard/reports
+  ---
+  duration_ms: 18.412107
+  type: 'test'
+  ...
+# Subtest: mechanic remains denied the partner-only page /dashboard/disputes
+ok 367 - mechanic remains denied the partner-only page /dashboard/disputes
+  ---
+  duration_ms: 17.580088
+  type: 'test'
+  ...
+# Subtest: auth failure is a popup with the supplied retry and recovery destinations
+ok 368 - auth failure is a popup with the supplied retry and recovery destinations
+  ---
+  duration_ms: 60.466915
+  type: 'test'
+  ...
+# Subtest: auth progress uses a loading popup with a real cancellation destination
+ok 369 - auth progress uses a loading popup with a real cancellation destination
+  ---
+  duration_ms: 30.22933
+  type: 'test'
+  ...
+# Subtest: legacy invitation query maps to a validated internal acceptance destination
+ok 370 - legacy invitation query maps to a validated internal acceptance destination
+  ---
+  duration_ms: 294.600951
+  type: 'test'
+  ...
+# Subtest: signed-out invitation provides sign-in and signup links that preserve acceptance
+ok 371 - signed-out invitation provides sign-in and signup links that preserve acceptance
+  ---
+  duration_ms: 176.140925
+  type: 'test'
+  ...
+# Subtest: a verified invitee accepts, selects the company and keeps their account role before navigation
+ok 372 - a verified invitee accepts, selects the company and keeps their account role before navigation
+  ---
+  duration_ms: 124.705042
+  type: 'test'
+  ...
+# Subtest: unverified invitees have a verification destination and no acceptance button
+ok 373 - unverified invitees have a verification destination and no acceptance button
+  ---
+  duration_ms: 169.90891
+  type: 'test'
+  ...
+# Subtest: accepted links can retry opening the company without replaying acceptance
+ok 374 - accepted links can retry opening the company without replaying acceptance
+  ---
+  duration_ms: 41.52843
+  type: 'test'
+  ...
+# Subtest: expired invitation exposes no acceptance or company selection
+ok 375 - expired invitation exposes no acceptance or company selection
+  ---
+  duration_ms: 50.527634
+  type: 'test'
+  ...
+# Subtest: revoked invitation exposes no acceptance or company selection
+ok 376 - revoked invitation exposes no acceptance or company selection
+  ---
+  duration_ms: 41.79214
+  type: 'test'
+  ...
+# Subtest: wrong-account errors expose account switching while never accepting
+ok 377 - wrong-account errors expose account switching while never accepting
+  ---
+  duration_ms: 111.393232
+  type: 'test'
+  ...
+# Subtest: login preserves invitation through successful sign-in
+ok 378 - login preserves invitation through successful sign-in
+  ---
+  duration_ms: 284.258046
+  type: 'test'
+  ...
+# Subtest: login preserves invitation through password MFA
+ok 379 - login preserves invitation through password MFA
+  ---
+  duration_ms: 276.122083
+  type: 'test'
+  ...
+# Subtest: signup for invitation creates a customer account and keeps the verification return path
+ok 380 - signup for invitation creates a customer account and keeps the verification return path
+  ---
+  duration_ms: 209.99078
+  type: 'test'
+  ...
+# Subtest: MFA completion keeps server role and returns to invitation with no proof in URL
+ok 381 - MFA completion keeps server role and returns to invitation with no proof in URL
+  ---
+  duration_ms: 162.909314
+  type: 'test'
+  ...
+# Subtest: email verification returns to invitation while phone remains pending
+ok 382 - email verification returns to invitation while phone remains pending
+  ---
+  duration_ms: 238.375388
+  type: 'test'
+  ...
+# Subtest: leaving company calls context reset and preserves role before opening the personal dashboard
+ok 383 - leaving company calls context reset and preserves role before opening the personal dashboard
+  ---
+  duration_ms: 46.751279
+  type: 'test'
+  ...
+# Subtest: company shell gates a customer until a company context is selected
+ok 384 - company shell gates a customer until a company context is selected
+  ---
+  duration_ms: 61.369058
+  type: 'test'
+  ...
+# Subtest: company shell prevents pending operations and explains admin contract approval
+ok 385 - company shell prevents pending operations and explains admin contract approval
+  ---
+  duration_ms: 138.732658
+  type: 'test'
+  ...
+# Subtest: company search offers only approved destinations for the current company
+ok 386 - company search offers only approved destinations for the current company
+  ---
+  duration_ms: 112.252997
+  type: 'test'
+  ...
+# Subtest: switching company closes its mobile menu before replacing the dialog subtree
+ok 387 - switching company closes its mobile menu before replacing the dialog subtree
+  ---
+  duration_ms: 46.01063
+  type: 'test'
+  ...
+# Subtest: company selection binds the request to the current refresh credential and persists both signed tokens
+ok 388 - company selection binds the request to the current refresh credential and persists both signed tokens
+  ---
+  duration_ms: 15.260727
+  type: 'test'
+  ...
+# Subtest: company selection cannot restore a session after logout or account replacement
+ok 389 - company selection cannot restore a session after logout or account replacement
+  ---
+  duration_ms: 15.1181
+  type: 'test'
+  ...
+# Subtest: company selection fails without a live refresh credential
+ok 390 - company selection fails without a live refresh credential
+  ---
+  duration_ms: 14.725775
+  type: 'test'
+  ...
+# Subtest: company selection failure never overwrites existing signed tokens
+ok 391 - company selection failure never overwrites existing signed tokens
+  ---
+  duration_ms: 9.915319
+  type: 'test'
+  ...
+# Subtest: signup verification selects the code channel and submits only that proof
+ok 392 - signup verification selects the code channel and submits only that proof
+  ---
+  duration_ms: 202.884559
+  type: 'test'
+  ...
+# Subtest: signup email proof completes the account without marking the other contact verified
+ok 393 - signup email proof completes the account without marking the other contact verified
+  ---
+  duration_ms: 251.638866
+  type: 'test'
+  ...
+# Subtest: signup phone proof completes the account without marking the other contact verified
+ok 394 - signup phone proof completes the account without marking the other contact verified
+  ---
+  duration_ms: 119.215836
+  type: 'test'
+  ...
+# Subtest: switching signup code channels clears a rejected code without trying another channel automatically
+ok 395 - switching signup code channels clears a rejected code without trying another channel automatically
+  ---
+  duration_ms: 127.86547
+  type: 'test'
+  ...
+# Subtest: invitation email proof remains sufficient without falsely claiming phone verification
+ok 396 - invitation email proof remains sufficient without falsely claiming phone verification
+  ---
+  duration_ms: 153.466621
+  type: 'test'
+  ...
+# Subtest: phone proof cannot complete an email-required company invitation flow
+ok 397 - phone proof cannot complete an email-required company invitation flow
+  ---
+  duration_ms: 86.704296
+  type: 'test'
+  ...
+# Subtest: an existing email proof skips automatic delivery, with an explicit optional-contact action
+ok 398 - an existing email proof skips automatic delivery, with an explicit optional-contact action
+  ---
+  duration_ms: 76.511267
+  type: 'test'
+  ...
+# Subtest: an existing phone proof skips automatic delivery, with an explicit optional-contact action
+ok 399 - an existing phone proof skips automatic delivery, with an explicit optional-contact action
+  ---
+  duration_ms: 91.182659
+  type: 'test'
+  ...
+# Subtest: neither verified contact still triggers the initial dual-channel delivery request
+ok 400 - neither verified contact still triggers the initial dual-channel delivery request
+  ---
+  duration_ms: 71.731776
+  type: 'test'
+  ...
+# Subtest: phone-only company invitees must still verify email before acceptance
+ok 401 - phone-only company invitees must still verify email before acceptance
+  ---
+  duration_ms: 33.214544
+  type: 'test'
+  ...
+# Subtest: optional signup verification cancels the completed-account redirect and can be skipped
+ok 402 - optional signup verification cancels the completed-account redirect and can be skipped
+  ---
+  duration_ms: 72.743683
+  type: 'test'
+  ...
+# Subtest: success summary keeps contact badges truthful (false/false)
+ok 403 - success summary keeps contact badges truthful (false/false)
+  ---
+  duration_ms: 20.407202
+  type: 'test'
+  ...
+# Subtest: success summary keeps contact badges truthful (true/false)
+ok 404 - success summary keeps contact badges truthful (true/false)
+  ---
+  duration_ms: 13.779612
+  type: 'test'
+  ...
+# Subtest: success summary keeps contact badges truthful (false/true)
+ok 405 - success summary keeps contact badges truthful (false/true)
+  ---
+  duration_ms: 14.625916
+  type: 'test'
+  ...
+# Subtest: success summary keeps contact badges truthful (true/true)
+ok 406 - success summary keeps contact badges truthful (true/true)
+  ---
+  duration_ms: 13.361861
+  type: 'test'
+  ...
+# Subtest: company fleet services preserve total and caller pagination/search
+ok 407 - company fleet services preserve total and caller pagination/search
+  ---
+  duration_ms: 151.23999
+  type: 'test'
+  ...
+# Subtest: vehicle and card pages load another page and search resets its offset
+ok 408 - vehicle and card pages load another page and search resets its offset
+  ---
+  duration_ms: 856.886635
+  type: 'test'
+  ...
+# Subtest: company transaction filter resets page and preserves export filters
+ok 409 - company transaction filter resets page and preserves export filters
+  ---
+  duration_ms: 249.669737
+  type: 'test'
+  ...
+# Subtest: company funding blocks missing fee configuration and fractional naira
+ok 410 - company funding blocks missing fee configuration and fractional naira
+  ---
+  duration_ms: 423.869881
+  type: 'test'
+  ...
+# Subtest: company funding binds disclosed charge and never credits balance from checkout
+ok 411 - company funding binds disclosed charge and never credits balance from checkout
+  ---
+  duration_ms: 177.675169
+  type: 'test'
+  ...
+# Subtest: company funding failed settings can retry and a mismatched quote never redirects
+ok 412 - company funding failed settings can retry and a mismatched quote never redirects
+  ---
+  duration_ms: 138.433086
+  type: 'test'
+  ...
+# Subtest: member allocation preserves same request key after an uncertain failure
+ok 413 - member allocation preserves same request key after an uncertain failure
+  ---
+  duration_ms: 151.266219
+  type: 'test'
+  ...
+# Subtest: member allocation restores the same request after reopening or reloading
+ok 414 - member allocation restores the same request after reopening or reloading
+  ---
+  duration_ms: 267.397208
+  type: 'test'
+  ...
+# Subtest: single-use company code remains visible with its actual expiry and wallet source
+ok 415 - single-use company code remains visible with its actual expiry and wallet source
+  ---
+  duration_ms: 83.650513
+  type: 'test'
+  ...
+# Subtest: company support conversation shows status and keeps failed reply draft for retry
+ok 416 - company support conversation shows status and keeps failed reply draft for retry
+  ---
+  duration_ms: 158.469503
+  type: 'test'
+  ...
+# Subtest: same-name company selection cannot restore another company allocation
+ok 417 - same-name company selection cannot restore another company allocation
+  ---
+  duration_ms: 230.665517
+  type: 'test'
+  ...
+# Subtest: whole-naira input rejects fractional, malformed and unbounded amounts
+ok 418 - whole-naira input rejects fractional, malformed and unbounded amounts
+  ---
+  duration_ms: 295.677678
+  type: 'test'
+  ...
+# Subtest: exact quote rounds customer total upwards and leaves platform bearer base unchanged
+ok 419 - exact quote rounds customer total upwards and leaves platform bearer base unchanged
+  ---
+  duration_ms: 76.206407
+  type: 'test'
+  ...
+# Subtest: funding disabled during fee settings load and failure, until retry succeeds
+ok 420 - funding disabled during fee settings load and failure, until retry succeeds
+  ---
+  duration_ms: 588.477297
+  type: 'test'
+  ...
+# Subtest: funding submits the disclosed total and refuses fractions without rewriting input
+ok 421 - funding submits the disclosed total and refuses fractions without rewriting input
+  ---
+  duration_ms: 587.591726
+  type: 'test'
+  ...
+# Subtest: My Card load failure is explicit and retry recovers real card state
+ok 422 - My Card load failure is explicit and retry recovers real card state
+  ---
+  duration_ms: 666.417582
+  type: 'test'
+  ...
+# Subtest: My Card ignores loads resolved after unmount
+ok 423 - My Card ignores loads resolved after unmount
+  ---
+  duration_ms: 393.149011
+  type: 'test'
+  ...
+# Subtest: My Card catches an open-request lookup failure and exposes it
+ok 424 - My Card catches an open-request lookup failure and exposes it
+  ---
+  duration_ms: 415.453039
+  type: 'test'
+  ...
+# Subtest: closed My Card requests never offer stale payment or identity completion
+ok 425 - closed My Card requests never offer stale payment or identity completion
+  ---
+  duration_ms: 1116.325789
+  type: 'test'
+  ...
+# Subtest: returning from a paid withdrawn checkout never opens a details dialog
+ok 426 - returning from a paid withdrawn checkout never opens a details dialog
+  ---
+  duration_ms: 150.179016
+  type: 'test'
+  ...
+# Subtest: withdrawal uses support-review response and blocks duplicate clicks until the request completes
+ok 427 - withdrawal uses support-review response and blocks duplicate clicks until the request completes
+  ---
+  duration_ms: 171.203368
+  type: 'test'
+  ...
+# Subtest: withdrawal confirmation survives a follow-up read failure without promising provider processing
+ok 428 - withdrawal confirmation survives a follow-up read failure without promising provider processing
+  ---
+  duration_ms: 113.27141
+  type: 'test'
+  ...
+# Subtest: an existing confirmed refund is shown from the refund status endpoint after reload
+ok 429 - an existing confirmed refund is shown from the refund status endpoint after reload
+  ---
+  duration_ms: 105.705987
+  type: 'test'
+  ...
+# Subtest: a completed excess refund does not confirm the application withdrawal refund
+ok 430 - a completed excess refund does not confirm the application withdrawal refund
+  ---
+  duration_ms: 108.444867
+  type: 'test'
+  ...
+# Subtest: a later failed refund check replaces a stale pending response with support-review guidance
+ok 431 - a later failed refund check replaces a stale pending response with support-review guidance
+  ---
+  duration_ms: 112.253743
+  type: 'test'
+  ...
+# Subtest: unknown wallet balances never claim zero or no confirmed payments
+ok 432 - unknown wallet balances never claim zero or no confirmed payments
+  ---
+  duration_ms: 214.240599
+  type: 'test'
+  ...
+# Subtest: failed wallet refresh retains known balance with warning
+ok 433 - failed wallet refresh retains known balance with warning
+  ---
+  duration_ms: 95.70859
+  type: 'test'
+  ...
+# Subtest: receipt deep link is consumed once and remains closed after polling
+ok 434 - receipt deep link is consumed once and remains closed after polling
+  ---
+  duration_ms: 87.237946
+  type: 'test'
+  ...
+# Subtest: fuel retry clears only resolved load error and preserves payment error through refresh
+ok 435 - fuel retry clears only resolved load error and preserves payment error through refresh
+  ---
+  duration_ms: 40.14851
+  type: 'test'
+  ...
+# Subtest: push permission rejection keeps preference unchanged and shows recovery text
+ok 436 - push permission rejection keeps preference unchanged and shows recovery text
+  ---
+  duration_ms: 81.300535
+  type: 'test'
+  ...
+# Subtest: account push preference does not claim a missing device subscription is ready or request permission on load
+ok 437 - account push preference does not claim a missing device subscription is ready or request permission on load
+  ---
+  duration_ms: 179.653904
+  type: 'test'
+  ...
+# Subtest: explicit device enable updates browser status after successful registration
+ok 438 - explicit device enable updates browser status after successful registration
+  ---
+  duration_ms: 93.568578
+  type: 'test'
+  ...
+# Subtest: blocked and unsupported device status stays honest while the account preference can still be switched off
+ok 439 - blocked and unsupported device status stays honest while the account preference can still be switched off
+  ---
+  duration_ms: 163.021861
+  type: 'test'
+  ...
+# Subtest: device state lookup failure shows retry without overwriting the account preference
+ok 440 - device state lookup failure shows retry without overwriting the account preference
+  ---
+  duration_ms: 71.951034
+  type: 'test'
+  ...
+# Subtest: top-up transport binds the customer authorized total to the existing request payload
+ok 441 - top-up transport binds the customer authorized total to the existing request payload
+  ---
+  duration_ms: 95.730437
+  type: 'test'
+  ...
+# Subtest: unexposed card purchase error points to existing dashboard Support without fictional phone
+ok 442 - unexposed card purchase error points to existing dashboard Support without fictional phone
+  ---
+  duration_ms: 93.805585
+  type: 'test'
+  ...
+# Subtest: quote conflict discards old total, reloads settings, and waits for fresh authorization
+ok 443 - quote conflict discards old total, reloads settings, and waits for fresh authorization
+  ---
+  duration_ms: 42.556326
+  type: 'test'
+  ...
+# Subtest: partial My Card failure keeps a known card useful but blocks a new request when unknown
+ok 444 - partial My Card failure keeps a known card useful but blocks a new request when unknown
+  ---
+  duration_ms: 183.203894
+  type: 'test'
+  ...
+# Subtest: first transaction PIN setup omits current PIN and blocks duplicate submissions
+ok 445 - first transaction PIN setup omits current PIN and blocks duplicate submissions
+  ---
+  duration_ms: 37.105254
+  type: 'test'
+  ...
+# Subtest: existing PIN change requires current proof and submits it to the server
+ok 446 - existing PIN change requires current proof and submits it to the server
+  ---
+  duration_ms: 34.86837
+  type: 'test'
+  ...
+# Subtest: unknown PIN state fails closed and can recover through retry
+ok 447 - unknown PIN state fails closed and can recover through retry
+  ---
+  duration_ms: 50.557502
+  type: 'test'
+  ...
+# Subtest: station details preserve missing location without inventing a distance
+ok 448 - station details preserve missing location without inventing a distance
+  ---
+  duration_ms: 87.792785
+  type: 'test'
+  ...
+# Subtest: station details preserve omitted distance metadata without inventing a distance
+ok 449 - station details preserve omitted distance metadata without inventing a distance
+  ---
+  duration_ms: 98.451895
+  type: 'test'
+  ...
+# Subtest: station details preserve zero distance without inventing a distance
+ok 450 - station details preserve zero distance without inventing a distance
+  ---
+  duration_ms: 126.336214
+  type: 'test'
+  ...
+# Subtest: station details preserve known distance without inventing a distance
+ok 451 - station details preserve known distance without inventing a distance
+  ---
+  duration_ms: 88.415447
+  type: 'test'
+  ...
+# Subtest: staff form maps attendant to supported dispatcher and sends explicit POS access
+ok 452 - staff form maps attendant to supported dispatcher and sends explicit POS access
+  ---
+  duration_ms: 948.320326
+  type: 'test'
+  ...
+# Subtest: editing disabled staff starts disabled and submits the chosen enabled state
+ok 453 - editing disabled staff starts disabled and submits the chosen enabled state
+  ---
+  duration_ms: 539.076744
+  type: 'test'
+  ...
+# Subtest: mechanic team invitation hides POS permission and always sends false
+ok 454 - mechanic team invitation hides POS permission and always sends false
+  ---
+  duration_ms: 363.537199
+  type: 'test'
+  ...
+# Subtest: landing navigation remains reachable between mobile and desktop breakpoints
+ok 455 - landing navigation remains reachable between mobile and desktop breakpoints
+  ---
+  duration_ms: 148.85519
+  type: 'test'
+  ...
+# Subtest: career application opens a named dialog using the shared focus behavior
+ok 456 - career application opens a named dialog using the shared focus behavior
+  ---
+  duration_ms: 95.099724
+  type: 'test'
+  ...
+# Subtest: career submission cannot be dismissed or repeated before the response arrives
+ok 457 - career submission cannot be dismissed or repeated before the response arrives
+  ---
+  duration_ms: 128.572209
+  type: 'test'
+  ...
+# Subtest: career drafts survive failure, can retry, and reset only after dismissal
+ok 458 - career drafts survive failure, can retry, and reset only after dismissal
+  ---
+  duration_ms: 93.300646
+  type: 'test'
+  ...
+# Subtest: a career response arriving after unmount does not announce stale success
+ok 459 - a career response arriving after unmount does not announce stale success
+  ---
+  duration_ms: 139.294199
+  type: 'test'
+  ...
+# Subtest: a completed career application cannot submit again before dismissal
+ok 460 - a completed career application cannot submit again before dismissal
+  ---
+  duration_ms: 128.001342
+  type: 'test'
+  ...
+# Subtest: privacy request controls have associated labels and stable request values
+ok 461 - privacy request controls have associated labels and stable request values
+  ---
+  duration_ms: 91.887326
+  type: 'test'
+  ...
+# Subtest: privacy requests show busy state, suppress duplicates and retain failed drafts
+ok 462 - privacy requests show busy state, suppress duplicates and retain failed drafts
+  ---
+  duration_ms: 68.614625
+  type: 'test'
+  ...
+# Subtest: privacy request values send the selected native option to the service
+ok 463 - privacy request values send the selected native option to the service
+  ---
+  duration_ms: 337.760136
+  type: 'test'
+  ...
+# Subtest: a privacy response arriving after unmount does not announce stale success
+ok 464 - a privacy response arriving after unmount does not announce stale success
+  ---
+  duration_ms: 75.557688
+  type: 'test'
+  ...
+# Subtest: the public contact category label targets its select
+ok 465 - the public contact category label targets its select
+  ---
+  duration_ms: 112.797388
+  type: 'test'
+  ...
+# Subtest: reduced motion disables smooth scroll and running animations in the stylesheet
+ok 466 - reduced motion disables smooth scroll and running animations in the stylesheet
+  ---
+  duration_ms: 41.933136
+  type: 'test'
+  ...
+# Subtest: public careers loading and retryable request failure use popup feedback
+ok 467 - public careers loading and retryable request failure use popup feedback
+  ---
+  duration_ms: 70.183946
+  type: 'test'
+  ...
+# Subtest: overlapping same-input polls retain their pending response
+ok 468 - overlapping same-input polls retain their pending response
+  ---
+  duration_ms: 42.58672
+  type: 'test'
+  ...
+# Subtest: initial loading failure remains a blocking error without invented records
+ok 469 - initial loading failure remains a blocking error without invented records
+  ---
+  duration_ms: 35.921571
+  type: 'test'
+  ...
+# Subtest: failed background refresh preserves last loaded records and announces refresh failure
+ok 470 - failed background refresh preserves last loaded records and announces refresh failure
+  ---
+  duration_ms: 21.642358
+  type: 'test'
+  ...
+# Subtest: successful background refresh recovers an initial error into usable data
+ok 471 - successful background refresh recovers an initial error into usable data
+  ---
+  duration_ms: 24.789512
+  type: 'test'
+  ...
+# Subtest: successful later poll clears the stale-record warning
+ok 472 - successful later poll clears the stale-record warning
+  ---
+  duration_ms: 37.88844
+  type: 'test'
+  ...
+# Subtest: a completed stale request cannot unlock overlap with the current location request
+ok 473 - a completed stale request cannot unlock overlap with the current location request
+  ---
+  duration_ms: 20.462568
+  type: 'test'
+  ...
+# Subtest: empty boundary retains the creation action supplied by its caller
+ok 474 - empty boundary retains the creation action supplied by its caller
+  ---
+  duration_ms: 2.064947
+  type: 'test'
+  ...
+# Subtest: API unsubscribe failure rejects and leaves the browser subscribed for retry
+ok 475 - API unsubscribe failure rejects and leaves the browser subscribed for retry
+  ---
+  duration_ms: 222.467049
+  type: 'test'
+  ...
+# Subtest: browser unsubscribe refusal with a remaining subscription rejects instead of claiming push is disabled
+ok 476 - browser unsubscribe refusal with a remaining subscription rejects instead of claiming push is disabled
+  ---
+  duration_ms: 51.135126
+  type: 'test'
+  ...
+# Subtest: an already expired browser subscription is disabled after API removal
+ok 477 - an already expired browser subscription is disabled after API removal
+  ---
+  duration_ms: 29.099237
+  type: 'test'
+  ...
+# Subtest: service worker lookup failure is surfaced rather than treated as missing subscription
+ok 478 - service worker lookup failure is surfaced rather than treated as missing subscription
+  ---
+  duration_ms: 30.956994
+  type: 'test'
+  ...
+# Subtest: device state lookup failure rejects instead of falsely reporting an unsubscribed browser
+ok 479 - device state lookup failure rejects instead of falsely reporting an unsubscribed browser
+  ---
+  duration_ms: 25.150948
+  type: 'test'
+  ...
+# Subtest: a missing browser subscription is already disabled
+ok 480 - a missing browser subscription is already disabled
+  ---
+  duration_ms: 22.246921
+  type: 'test'
+  ...
+# Subtest: successful API and browser removal reports disabled
+ok 481 - successful API and browser removal reports disabled
+  ---
+  duration_ms: 21.397272
+  type: 'test'
+  ...
+# Subtest: registration rejection is surfaced to the preference caller
+ok 482 - registration rejection is surfaced to the preference caller
+  ---
+  duration_ms: 27.609005
+  type: 'test'
+  ...
+# Subtest: signup password guidance matches the existing minimum-length policy and is associated with the input
+ok 483 - signup password guidance matches the existing minimum-length policy and is associated with the input
+  ---
+  duration_ms: 664.666672
+  type: 'test'
+  ...
+# Subtest: short signup passwords are rejected before any request and expose a linked error
+ok 484 - short signup passwords are rejected before any request and expose a linked error
+  ---
+  duration_ms: 304.678235
+  type: 'test'
+  ...
+# Subtest: auth support uses a headset and a visible, accessible Support label
+ok 485 - auth support uses a headset and a visible, accessible Support label
+  ---
+  duration_ms: 18.622381
+  type: 'test'
+  ...
+# Subtest: company signup preserves the supplied manager name and CAC registration reference
+ok 486 - company signup preserves the supplied manager name and CAC registration reference
+  ---
+  duration_ms: 135.281303
+  type: 'test'
+  ...
+# Subtest: customer location options cover the selected state and send a canonical administrative pair
+ok 487 - customer location options cover the selected state and send a canonical administrative pair
+  ---
+  duration_ms: 144.526102
+  type: 'test'
+  ...
+# Subtest: changing state clears a stale LGA and blocks submitting an unrelated or fabricated location
+ok 488 - changing state clears a stale LGA and blocks submitting an unrelated or fabricated location
+  ---
+  duration_ms: 264.977187
+  type: 'test'
+  ...
+# Subtest: a valid FCT area council is accepted and switching roles resets customer location choices
+ok 489 - a valid FCT area council is accepted and switching roles resets customer location choices
+  ---
+  duration_ms: 208.158838
+  type: 'test'
+  ...
+# Subtest: gas station signup submits an explicit subtype and only canonical gas products
+ok 490 - gas station signup submits an explicit subtype and only canonical gas products
+  ---
+  duration_ms: 149.116708
+  type: 'test'
+  ...
+# Subtest: mechanic signup submits workshop services without treating them as fuels
+ok 491 - mechanic signup submits workshop services without treating them as fuels
+  ---
+  duration_ms: 274.327491
+  type: 'test'
+  ...
+# Subtest: catalog fuel aliases match partner station names without conflating fuels
+ok 492 - catalog fuel aliases match partner station names without conflating fuels
+  ---
+  duration_ms: 1.314237
+  type: 'test'
+  ...
+# Subtest: initial Nigeria viewport never acquires GPS or publishes a station point
+ok 493 - initial Nigeria viewport never acquires GPS or publishes a station point
+  ---
+  duration_ms: 264.23871
+  type: 'test'
+  ...
+# Subtest: explicit GPS requests uncached high accuracy and keeps exact zero coordinates with honest accuracy
+ok 494 - explicit GPS requests uncached high accuracy and keeps exact zero coordinates with honest accuracy
+  ---
+  duration_ms: 143.243075
+  type: 'test'
+  ...
+# Subtest: GPS error 1 preserves the existing point and allows retry
+ok 495 - GPS error 1 preserves the existing point and allows retry
+  ---
+  duration_ms: 74.254444
+  type: 'test'
+  ...
+# Subtest: GPS error 2 preserves the existing point and allows retry
+ok 496 - GPS error 2 preserves the existing point and allows retry
+  ---
+  duration_ms: 129.625255
+  type: 'test'
+  ...
+# Subtest: GPS error 3 preserves the existing point and allows retry
+ok 497 - GPS error 3 preserves the existing point and allows retry
+  ---
+  duration_ms: 116.573749
+  type: 'test'
+  ...
+# Subtest: unsupported GPS and map loading failure remain separate and GPS works without map code
+ok 498 - unsupported GPS and map loading failure remain separate and GPS works without map code
+  ---
+  duration_ms: 176.444054
+  type: 'test'
+  ...
+# Subtest: disabled changes, externally replaced locations and unmount invalidate pending GPS callbacks
+ok 499 - disabled changes, externally replaced locations and unmount invalidate pending GPS callbacks
+  ---
+  duration_ms: 261.97995
+  type: 'test'
+  ...
+# Subtest: a bounded UI timeout invalidates late GPS success
+ok 500 - a bounded UI timeout invalidates late GPS success
+  ---
+  duration_ms: 93.692225
+  type: 'test'
+  ...
+# Subtest: pending GPS uses the latest callback without allowing duplicate acquisition
+ok 501 - pending GPS uses the latest callback without allowing duplicate acquisition
+  ---
+  duration_ms: 72.167912
+  type: 'test'
+  ...
+# Subtest: invalid GPS coordinates cannot replace an existing station point
+ok 502 - invalid GPS coordinates cannot replace an existing station point
+  ---
+  duration_ms: 128.652386
+  type: 'test'
+  ...
+# Subtest: a drag at a broad zoom restores the saved pin without publishing imprecise coordinates
+ok 503 - a drag at a broad zoom restores the saved pin without publishing imprecise coordinates
+  ---
+  duration_ms: 126.491736
+  type: 'test'
+  ...
+# Subtest: precise map click, drag and keyboard-pan centre confirmation update only the draft
+ok 504 - precise map click, drag and keyboard-pan centre confirmation update only the draft
+  ---
+  duration_ms: 65.649033
+  type: 'test'
+  ...
+# Subtest: manual placement cancels pending GPS and tile failures block manual confirmation
+ok 505 - manual placement cancels pending GPS and tile failures block manual confirmation
+  ---
+  duration_ms: 86.625669
+  type: 'test'
+  ...
+# Subtest: manual placement waits for actual tile load, including after a failed retry, while GPS stays usable
+ok 506 - manual placement waits for actual tile load, including after a failed retry, while GPS stays usable
+  ---
+  duration_ms: 44.790176
+  type: 'test'
+  ...
+# Subtest: map keyboard controls pan and zoom without animation and respect zoom limits
+ok 507 - map keyboard controls pan and zoom without animation and respect zoom limits
+  ---
+  duration_ms: 54.232928
+  type: 'test'
+  ...
+# Subtest: map keyboard handling ignores disabled state, descendants, modified shortcuts and unrelated keys
+ok 508 - map keyboard handling ignores disabled state, descendants, modified shortcuts and unrelated keys
+  ---
+  duration_ms: 39.297716
+  type: 'test'
+  ...
+# Subtest: OSM preview announces loading and bounded timeout keeps list guidance and a full-map link
+ok 509 - OSM preview announces loading and bounded timeout keeps list guidance and a full-map link
+  ---
+  duration_ms: 191.891459
+  type: 'test'
+  ...
+# Subtest: iframe load is explicitly unverified rather than proof of drawn map tiles
+ok 510 - iframe load is explicitly unverified rather than proof of drawn map tiles
+  ---
+  duration_ms: 101.479572
+  type: 'test'
+  ...
+# Subtest: retry isolates old iframe events and unmount clears timers and rejects late callbacks
+ok 511 - retry isolates old iframe events and unmount clears timers and rejects late callbacks
+  ---
+  duration_ms: 41.533823
+  type: 'test'
+  ...
+# Subtest: no valid map coordinates shows an honest compact fallback without contacting a provider
+ok 512 - no valid map coordinates shows an honest compact fallback without contacting a provider
+  ---
+  duration_ms: 44.93388
+  type: 'test'
+  ...
+# Subtest: Google script load validates the API object and failure becomes visible rather than throwing
+ok 513 - Google script load validates the API object and failure becomes visible rather than throwing
+  ---
+  duration_ms: 41.567884
+  type: 'test'
+  ...
+# Subtest: Google map initialization errors are contained and a valid map waits for real tile readiness
+ok 514 - Google map initialization errors are contained and a valid map waits for real tile readiness
+  ---
+  duration_ms: 94.646874
+  type: 'test'
+  ...
+# Subtest: a Google map with no tile event cannot remain loading forever
+ok 515 - a Google map with no tile event cannot remain loading forever
+  ---
+  duration_ms: 50.987568
+  type: 'test'
+  ...
+# Subtest: empty opening hours stay unset: null
+ok 516 - empty opening hours stay unset: null
+  ---
+  duration_ms: 2.78156
+  type: 'test'
+  ...
+# Subtest: empty opening hours stay unset: ""
+ok 517 - empty opening hours stay unset: ""
+  ---
+  duration_ms: 0.280175
+  type: 'test'
+  ...
+# Subtest: empty opening hours stay unset: "   "
+ok 518 - empty opening hours stay unset: "   "
+  ---
+  duration_ms: 0.593576
+  type: 'test'
+  ...
+# Subtest: recognizes an existing all-day schedule: Open 24/7
+ok 519 - recognizes an existing all-day schedule: Open 24/7
+  ---
+  duration_ms: 0.467087
+  type: 'test'
+  ...
+# Subtest: recognizes an existing all-day schedule: 24/7
+ok 520 - recognizes an existing all-day schedule: 24/7
+  ---
+  duration_ms: 0.315915
+  type: 'test'
+  ...
+# Subtest: recognizes an existing all-day schedule: 24 hours
+ok 521 - recognizes an existing all-day schedule: 24 hours
+  ---
+  duration_ms: 0.217832
+  type: 'test'
+  ...
+# Subtest: recognizes an existing all-day schedule: OPEN 24 HOURS
+ok 522 - recognizes an existing all-day schedule: OPEN 24 HOURS
+  ---
+  duration_ms: 0.181134
+  type: 'test'
+  ...
+# Subtest: parses a stored daily schedule without changing its times: 08:00 - 18:30
+ok 523 - parses a stored daily schedule without changing its times: 08:00 - 18:30
+  ---
+  duration_ms: 1.361823
+  type: 'test'
+  ...
+# Subtest: parses a stored daily schedule without changing its times: 22:00-06:00
+ok 524 - parses a stored daily schedule without changing its times: 22:00-06:00
+  ---
+  duration_ms: 0.481885
+  type: 'test'
+  ...
+# Subtest: unknown or ambiguous existing hours are preserved exactly: Mon–Fri 8am until late; Saturday 10am
+ok 525 - unknown or ambiguous existing hours are preserved exactly: Mon–Fri 8am until late; Saturday 10am
+  ---
+  duration_ms: 1.102091
+  type: 'test'
+  ...
+# Subtest: unknown or ambiguous existing hours are preserved exactly:   By appointment only  
+ok 526 - unknown or ambiguous existing hours are preserved exactly:   By appointment only  
+  ---
+  duration_ms: 0.364836
+  type: 'test'
+  ...
+# Subtest: unknown or ambiguous existing hours are preserved exactly: 25:00 - 18:00
+ok 527 - unknown or ambiguous existing hours are preserved exactly: 25:00 - 18:00
+  ---
+  duration_ms: 0.205389
+  type: 'test'
+  ...
+# Subtest: unknown or ambiguous existing hours are preserved exactly: 08:00 - 08:00
+ok 528 - unknown or ambiguous existing hours are preserved exactly: 08:00 - 08:00
+  ---
+  duration_ms: 0.12301
+  type: 'test'
+  ...
+# Subtest: daily hours require two valid different times: /18:00
+ok 529 - daily hours require two valid different times: /18:00
+  ---
+  duration_ms: 0.212089
+  type: 'test'
+  ...
+# Subtest: daily hours require two valid different times: 08:00/
+ok 530 - daily hours require two valid different times: 08:00/
+  ---
+  duration_ms: 0.112467
+  type: 'test'
+  ...
+# Subtest: daily hours require two valid different times: 24:00/18:00
+ok 531 - daily hours require two valid different times: 24:00/18:00
+  ---
+  duration_ms: 0.095416
+  type: 'test'
+  ...
+# Subtest: daily hours require two valid different times: 8:00/18:00
+ok 532 - daily hours require two valid different times: 8:00/18:00
+  ---
+  duration_ms: 0.100152
+  type: 'test'
+  ...
+# Subtest: daily hours require two valid different times: 08:60/18:00
+ok 533 - daily hours require two valid different times: 08:60/18:00
+  ---
+  duration_ms: 0.087665
+  type: 'test'
+  ...
+# Subtest: daily hours require two valid different times: 08:00/08:00
+ok 534 - daily hours require two valid different times: 08:00/08:00
+  ---
+  duration_ms: 0.108779
+  type: 'test'
+  ...
+# Subtest: hours validation rejects oversized legacy values without truncating them
+ok 535 - hours validation rejects oversized legacy values without truncating them
+  ---
+  duration_ms: 0.201427
+  type: 'test'
+  ...
+# Subtest: default fuel options contain all five supported products
+ok 536 - default fuel options contain all five supported products
+  ---
+  duration_ms: 2.024339
+  type: 'test'
+  ...
+# Subtest: existing raw fuel labels take precedence without renaming or reordering selected values
+ok 537 - existing raw fuel labels take precedence without renaming or reordering selected values
+  ---
+  duration_ms: 0.446705
+  type: 'test'
+  ...
+# Subtest: existing selected aliases remain distinct raw selections while duplicate fallback aliases are omitted
+ok 538 - existing selected aliases remain distinct raw selections while duplicate fallback aliases are omitted
+  ---
+  duration_ms: 0.250275
+  type: 'test'
+  ...
+# Subtest: fuel disclosure preserves raw selections when a checkbox appends or removes an exact value
+ok 539 - fuel disclosure preserves raw selections when a checkbox appends or removes an exact value
+  ---
+  duration_ms: 142.425906
+  type: 'test'
+  ...
+# Subtest: fuel Escape closes the disclosure, restores trigger focus and cleans handlers
+ok 540 - fuel Escape closes the disclosure, restores trigger focus and cleans handlers
+  ---
+  duration_ms: 53.49442
+  type: 'test'
+  ...
+# Subtest: outside pointer and blur close fuel choices while inside pointers preserve them
+ok 541 - outside pointer and blur close fuel choices while inside pointers preserve them
+  ---
+  duration_ms: 54.070183
+  type: 'test'
+  ...
+# Subtest: disabled fuel choices cannot open and do not install listeners
+ok 542 - disabled fuel choices cannot open and do not install listeners
+  ---
+  duration_ms: 72.665094
+  type: 'test'
+  ...
+# Subtest: legacy hours remain untouched until the user explicitly chooses a replacement
+ok 543 - legacy hours remain untouched until the user explicitly chooses a replacement
+  ---
+  duration_ms: 121.570038
+  type: 'test'
+  ...
+# Subtest: daily native time fields preserve overnight schedules and have distinct labels
+ok 544 - daily native time fields preserve overnight schedules and have distinct labels
+  ---
+  duration_ms: 129.14687
+  type: 'test'
+  ...
+# Subtest: disabled opening-hours controls preserve their current schedule
+ok 545 - disabled opening-hours controls preserve their current schedule
+  ---
+  duration_ms: 115.865583
+  type: 'test'
+  ...
+# Subtest: a new valid station submits selected State/city, fuels and exact GPS coordinates
+ok 546 - a new valid station submits selected State/city, fuels and exact GPS coordinates
+  ---
+  duration_ms: 181.095402
+  type: 'test'
+  ...
+# Subtest: gas profile requires an explicit requested unit and keeps requested approval separate
+ok 547 - gas profile requires an explicit requested unit and keeps requested approval separate
+  ---
+  duration_ms: 110.064368
+  type: 'test'
+  ...
+# Subtest: gas profile cannot submit a petroleum fuel retained from an old draft
+ok 548 - gas profile cannot submit a petroleum fuel retained from an old draft
+  ---
+  duration_ms: 85.376215
+  type: 'test'
+  ...
+# Subtest: zero latitude and longitude are valid real coordinates and are preserved
+ok 549 - zero latitude and longitude are valid real coordinates and are preserved
+  ---
+  duration_ms: 1.033087
+  type: 'test'
+  ...
+# Subtest: saved null coordinates are unknown rather than fabricated zero GPS
+ok 550 - saved null coordinates are unknown rather than fabricated zero GPS
+  ---
+  duration_ms: 0.369884
+  type: 'test'
+  ...
+# Subtest: saved blank strings coordinates are unknown rather than fabricated zero GPS
+ok 551 - saved blank strings coordinates are unknown rather than fabricated zero GPS
+  ---
+  duration_ms: 0.302186
+  type: 'test'
+  ...
+# Subtest: saved numeric strings coordinates are unknown rather than fabricated zero GPS
+ok 552 - saved numeric strings coordinates are unknown rather than fabricated zero GPS
+  ---
+  duration_ms: 0.223782
+  type: 'test'
+  ...
+# Subtest: saved out of range coordinates are unknown rather than fabricated zero GPS
+ok 553 - saved out of range coordinates are unknown rather than fabricated zero GPS
+  ---
+  duration_ms: 0.418434
+  type: 'test'
+  ...
+# Subtest: the form shows the fuels error and makes no API submission with no fuel
+ok 554 - the form shows the fuels error and makes no API submission with no fuel
+  ---
+  duration_ms: 89.110141
+  type: 'test'
+  ...
+# Subtest: the form shows the location error and makes no API submission with no position
+ok 555 - the form shows the location error and makes no API submission with no position
+  ---
+  duration_ms: 65.666988
+  type: 'test'
+  ...
+# Subtest: the form shows the location error and makes no API submission with blank position
+ok 556 - the form shows the location error and makes no API submission with blank position
+  ---
+  duration_ms: 92.297798
+  type: 'test'
+  ...
+# Subtest: the form shows the state error and makes no API submission with no State
+ok 557 - the form shows the state error and makes no API submission with no State
+  ---
+  duration_ms: 60.968101
+  type: 'test'
+  ...
+# Subtest: the form shows the city error and makes no API submission with no city
+ok 558 - the form shows the city error and makes no API submission with no city
+  ---
+  duration_ms: 56.838465
+  type: 'test'
+  ...
+# Subtest: the form shows the city error and makes no API submission with a city from another State
+ok 559 - the form shows the city error and makes no API submission with a city from another State
+  ---
+  duration_ms: 34.460601
+  type: 'test'
+  ...
+# Subtest: unsupported legacy fuel needs explicit correction while legacy city and hours stay intact
+ok 560 - unsupported legacy fuel needs explicit correction while legacy city and hours stay intact
+  ---
+  duration_ms: 28.74246
+  type: 'test'
+  ...
+# Subtest: changing State clears the old city and search filter before displaying the new places
+ok 561 - changing State clears the old city and search filter before displaying the new places
+  ---
+  duration_ms: 30.878204
+  type: 'test'
+  ...
+# Subtest: filtering city options keeps the selected city even when it does not match the query
+ok 562 - filtering city options keeps the selected city even when it does not match the query
+  ---
+  duration_ms: 28.068318
+  type: 'test'
+  ...
+# Subtest: saving disables fieldset and child controls and prevents another submit or draft change
+ok 563 - saving disables fieldset and child controls and prevents another submit or draft change
+  ---
+  duration_ms: 32.826662
+  type: 'test'
+  ...
+# Subtest: a failed save exposes its actual error and preserves fields for retry
+ok 564 - a failed save exposes its actual error and preserves fields for retry
+  ---
+  duration_ms: 57.503663
+  type: 'test'
+  ...
+# Subtest: requesting station B removes stale station A editor until B loads
+ok 565 - requesting station B removes stale station A editor until B loads
+  ---
+  duration_ms: 387.704214
+  type: 'test'
+  ...
+# Subtest: Add station remains usable after profile GET failure and creates through the real POST contract
+ok 566 - Add station remains usable after profile GET failure and creates through the real POST contract
+  ---
+  duration_ms: 183.623346
+  type: 'test'
+  ...
+# Subtest: editing saves the selected station ID and disables selection and Add while its request is pending
+ok 567 - editing saves the selected station ID and disables selection and Add while its request is pending
+  ---
+  duration_ms: 129.839959
+  type: 'test'
+  ...
+# Subtest: progress is removed on settlement and owner unmount, including dialog scope
+ok 568 - progress is removed on settlement and owner unmount, including dialog scope
+  ---
+  duration_ms: 441.379307
+  type: 'test'
+  ...
+# Subtest: equivalent loaders dedupe, all progress is bounded, and errors take priority
+ok 569 - equivalent loaders dedupe, all progress is bounded, and errors take priority
+  ---
+  duration_ms: 102.969581
+  type: 'test'
+  ...
+# Subtest: dismiss does not cancel a request or reappear for identical rerenders
+ok 570 - dismiss does not cancel a request or reappear for identical rerenders
+  ---
+  duration_ms: 67.552026
+  type: 'test'
+  ...
+# Subtest: new callback and action identities refresh handlers without resurrecting dismissed feedback
+ok 571 - new callback and action identities refresh handlers without resurrecting dismissed feedback
+  ---
+  duration_ms: 81.041804
+  type: 'test'
+  ...
+# Subtest: independent retry actions never dedupe and retry only follows an explicit click
+ok 572 - independent retry actions never dedupe and retry only follows an explicit click
+  ---
+  duration_ms: 55.535677
+  type: 'test'
+  ...
+# Subtest: a blocked or failed retry keeps the unresolved error visible
+ok 573 - a blocked or failed retry keeps the unresolved error visible
+  ---
+  duration_ms: 53.439798
+  type: 'test'
+  ...
+# Subtest: another host gaining error priority preserves the existing dialog portal key
+ok 574 - another host gaining error priority preserves the existing dialog portal key
+  ---
+  duration_ms: 55.138797
+  type: 'test'
+  ...
+# Subtest: providerless recovery is a floating popup and preserves non-dismissible retry
+ok 575 - providerless recovery is a floating popup and preserves non-dismissible retry
+  ---
+  duration_ms: 41.815318
+  type: 'test'
+  ...
+# Subtest: toast notifications dedupe, bound the queue, retain errors, and clear all timers
+ok 576 - toast notifications dedupe, bound the queue, retain errors, and clear all timers
+  ---
+  duration_ms: 30.668009
+  type: 'test'
+  ...
+# Subtest: toast scope changes clear queues and timers, reject old callbacks, and preserve first-render new callbacks
+ok 577 - toast scope changes clear queues and timers, reject old callbacks, and preserve first-render new callbacks
+  ---
+  duration_ms: 38.576107
+  type: 'test'
+  ...
+# Subtest: session scope keys change only for account, role, organization type or organization identity
+ok 578 - session scope keys change only for account, role, organization type or organization identity
+  ---
+  duration_ms: 15.151149
+  type: 'test'
+  ...
+# Subtest: success summary announces account loading without claiming sign-in or creation
+ok 579 - success summary announces account loading without claiming sign-in or creation
+  ---
+  duration_ms: 300.481701
+  type: 'test'
+  ...
+# Subtest: anonymous direct success access shows a working login destination without account claims
+ok 580 - anonymous direct success access shows a working login destination without account claims
+  ---
+  duration_ms: 66.474168
+  type: 'test'
+  ...
+# Subtest: authenticated contact summary remains accurate for email=false, phone=false
+ok 581 - authenticated contact summary remains accurate for email=false, phone=false
+  ---
+  duration_ms: 51.361066
+  type: 'test'
+  ...
+# Subtest: authenticated contact summary remains accurate for email=true, phone=false
+ok 582 - authenticated contact summary remains accurate for email=true, phone=false
+  ---
+  duration_ms: 50.088779
+  type: 'test'
+  ...
+# Subtest: authenticated contact summary remains accurate for email=false, phone=true
+ok 583 - authenticated contact summary remains accurate for email=false, phone=true
+  ---
+  duration_ms: 37.87815
+  type: 'test'
+  ...
+# Subtest: authenticated contact summary remains accurate for email=true, phone=true
+ok 584 - authenticated contact summary remains accurate for email=true, phone=true
+  ---
+  duration_ms: 34.666662
+  type: 'test'
+  ...
+# Subtest: missing authenticated user and unauthenticated cached user both avoid claiming sign-in
+ok 585 - missing authenticated user and unauthenticated cached user both avoid claiming sign-in
+  ---
+  duration_ms: 80.144661
+  type: 'test'
+  ...
+# Subtest: an authenticated aggregate verification flag never invents confirmed contact details
+ok 586 - an authenticated aggregate verification flag never invents confirmed contact details
+  ---
+  duration_ms: 68.29622
+  type: 'test'
+  ...
+# Subtest: company invitation reports the actual email delivery outcome (true)
+ok 587 - company invitation reports the actual email delivery outcome (true)
+  ---
+  duration_ms: 676.194445
+  type: 'test'
+  ...
+# Subtest: company invitation reports the actual email delivery outcome (false)
+ok 588 - company invitation reports the actual email delivery outcome (false)
+  ---
+  duration_ms: 342.926828
+  type: 'test'
+  ...
+# Subtest: company invitation reports the actual email delivery outcome (undefined)
+ok 589 - company invitation reports the actual email delivery outcome (undefined)
+  ---
+  duration_ms: 186.020464
+  type: 'test'
+  ...
+# Subtest: failed company invitation retains the form and never claims a saved invitation
+ok 590 - failed company invitation retains the form and never claims a saved invitation
+  ---
+  duration_ms: 176.202795
+  type: 'test'
+  ...
+# Subtest: company header shows the selected organization rather than a sample company
+ok 591 - company header shows the selected organization rather than a sample company
+  ---
+  duration_ms: 196.493345
+  type: 'test'
+  ...
+# Subtest: vehicle row opens a vehicle editor while the separate assignment action remains available
+ok 592 - vehicle row opens a vehicle editor while the separate assignment action remains available
+  ---
+  duration_ms: 89.112157
+  type: 'test'
+  ...
+# Subtest: vehicle editor saves the changed driver against the existing vehicle without requiring a card
+ok 593 - vehicle editor saves the changed driver against the existing vehicle without requiring a card
+  ---
+  duration_ms: 76.69237
+  type: 'test'
+  ...
+# Subtest: choosing Unassigned explicitly clears the vehicle driver instead of omitting the update
+ok 594 - choosing Unassigned explicitly clears the vehicle driver instead of omitting the update
+  ---
+  duration_ms: 103.216295
+  type: 'test'
+  ...
+# Subtest: vehicle editor preserves an inactive current driver unless the user changes it
+ok 595 - vehicle editor preserves an inactive current driver unless the user changes it
+  ---
+  duration_ms: 64.448128
+  type: 'test'
+  ...
+# Subtest: incomplete older vehicle responses cannot silently overwrite missing vehicle details
+ok 596 - incomplete older vehicle responses cannot silently overwrite missing vehicle details
+  ---
+  duration_ms: 74.002496
+  type: 'test'
+  ...
+# Subtest: vehicle editor renders and preserves its current fuel value: petrol
+ok 597 - vehicle editor renders and preserves its current fuel value: petrol
+  ---
+  duration_ms: 77.654607
+  type: 'test'
+  ...
+# Subtest: vehicle editor renders and preserves its current fuel value: electric
+ok 598 - vehicle editor renders and preserves its current fuel value: electric
+  ---
+  duration_ms: 110.995215
+  type: 'test'
+  ...
+# Subtest: vehicle editor renders and preserves its current fuel value: Hydrogen legacy
+ok 599 - vehicle editor renders and preserves its current fuel value: Hydrogen legacy
+  ---
+  duration_ms: 93.209828
+  type: 'test'
+  ...
+# Subtest: unavailable issuer (false) blocks identity collection and issue requests
+ok 600 - unavailable issuer (false) blocks identity collection and issue requests
+  ---
+  duration_ms: 92.17776
+  type: 'test'
+  ...
+# Subtest: unavailable issuer (undefined) blocks identity collection and issue requests
+ok 601 - unavailable issuer (undefined) blocks identity collection and issue requests
+  ---
+  duration_ms: 101.160639
+  type: 'test'
+  ...
+# Subtest: configured first-card form still requests identity and preserves the supported issuance flow
+ok 602 - configured first-card form still requests identity and preserves the supported issuance flow
+  ---
+  duration_ms: 98.489672
+  type: 'test'
+  ...
+# Subtest: an unavailable backend times out with an actionable error
+ok 603 - an unavailable backend times out with an actionable error
+  ---
+  duration_ms: 1239.934206
+  type: 'test'
+  ...
+# Subtest: caller cancellation is preserved
+ok 604 - caller cancellation is preserved
+  ---
+  duration_ms: 385.597868
+  type: 'test'
+  ...
+# Subtest: network failure for GET explains recovery without retrying the request
+ok 605 - network failure for GET explains recovery without retrying the request
+  ---
+  duration_ms: 269.68358
+  type: 'test'
+  ...
+# Subtest: network failure for POST explains recovery without retrying the request
+ok 606 - network failure for POST explains recovery without retrying the request
+  ---
+  duration_ms: 212.578708
+  type: 'test'
+  ...
+# Subtest: logout without an existing session makes no remote request
+ok 607 - logout without an existing session makes no remote request
+  ---
+  duration_ms: 209.017476
+  type: 'test'
+  ...
+# Subtest: late logout response cannot erase a newer login
+ok 608 - late logout response cannot erase a newer login
+  ---
+  duration_ms: 224.884826
+  type: 'test'
+  ...
+# Subtest: late session response cannot persist a previous account after login
+ok 609 - late session response cannot persist a previous account after login
+  ---
+  duration_ms: 231.487512
+  type: 'test'
+  ...
+# Subtest: late unauthorized response cannot revoke a newer session
+ok 610 - late unauthorized response cannot revoke a newer session
+  ---
+  duration_ms: 184.913493
+  type: 'test'
+  ...
+# Subtest: late token refresh cannot replace tokens from a newer login
+ok 611 - late token refresh cannot replace tokens from a newer login
+  ---
+  duration_ms: 202.574981
+  type: 'test'
+  ...
+# Subtest: a cold API may take 50 seconds without aborting or repeating a write
+ok 612 - a cold API may take 50 seconds without aborting or repeating a write
+  ---
+  duration_ms: 212.765073
+  type: 'test'
+  ...
+# Subtest: copy check catches rendered entities and escaped literals while ignoring comments
+ok 613 - copy check catches rendered entities and escaped literals while ignoring comments
+  ---
+  duration_ms: 13.493804
+  type: 'test'
+  ...
+# Subtest: legacy plan exclusion does not exempt unrelated arrays
+ok 614 - legacy plan exclusion does not exempt unrelated arrays
+  ---
+  duration_ms: 3.879321
+  type: 'test'
+  ...
+# Subtest: static application copy contains no emitted em dashes
+ok 615 - static application copy contains no emitted em dashes
+  ---
+  duration_ms: 1455.164724
+  type: 'test'
+  ...
+# Subtest: partner request list shows pending, empty, failure and retry states from real loader outcomes
+ok 616 - partner request list shows pending, empty, failure and retry states from real loader outcomes
+  ---
+  duration_ms: 376.045451
+  type: 'test'
+  ...
+# Subtest: partner reply panel shows loading and then an honest empty reply state
+ok 617 - partner reply panel shows loading and then an honest empty reply state
+  ---
+  duration_ms: 62.954089
+  type: 'test'
+  ...
+# Subtest: late replies and failures cannot replace the selected request state
+ok 618 - late replies and failures cannot replace the selected request state
+  ---
+  duration_ms: 36.405207
+  type: 'test'
+  ...
+# Subtest: a failed selected reply request offers retry without claiming no replies
+ok 619 - a failed selected reply request offers retry without claiming no replies
+  ---
+  duration_ms: 49.540664
+  type: 'test'
+  ...
+# Subtest: API access does not flash a missing-plan message while loading or after failure
+ok 620 - API access does not flash a missing-plan message while loading or after failure
+  ---
+  duration_ms: 42.36608
+  type: 'test'
+  ...
+# Subtest: successful API access load distinguishes an unavailable plan from an empty available list
+ok 621 - successful API access load distinguishes an unavailable plan from an empty available list
+  ---
+  duration_ms: 27.897819
+  type: 'test'
+  ...
+# Subtest: partner tables keep keyboard scrolling and only expose real row actions
+ok 622 - partner tables keep keyboard scrolling and only expose real row actions
+  ---
+  duration_ms: 441.860294
+  type: 'test'
+  ...
+# Subtest: customer Account closes on Escape and outside pointer while preserving internal clicks
+ok 623 - customer Account closes on Escape and outside pointer while preserving internal clicks
+  ---
+  duration_ms: 88.686105
+  type: 'test'
+  ...
+# Subtest: customer Account closes on route, desktop and external focus changes
+ok 624 - customer Account closes on route, desktop and external focus changes
+  ---
+  duration_ms: 71.539209
+  type: 'test'
+  ...
+# Subtest: station discount load failure offers retry and never invents an empty request list
+ok 625 - station discount load failure offers retry and never invents an empty request list
+  ---
+  duration_ms: 37.564371
+  type: 'test'
+  ...
+# Subtest: station discounts explain missing stations and approved prices without offering an enabled submit
+ok 626 - station discounts explain missing stations and approved prices without offering an enabled submit
+  ---
+  duration_ms: 56.932445
+  type: 'test'
+  ...
+# Subtest: discount submission preserves approved selling unit and shows success only after acceptance
+ok 627 - discount submission preserves approved selling unit and shows success only after acceptance
+  ---
+  duration_ms: 31.162596
+  type: 'test'
+  ...
+# Subtest: discount refusal remains visible and does not announce success
+ok 628 - discount refusal remains visible and does not announce success
+  ---
+  duration_ms: 21.81384
+  type: 'test'
+  ...
+# Subtest: subscription gate announces pending and error states and keeps protected content hidden
+ok 629 - subscription gate announces pending and error states and keeps protected content hidden
+  ---
+  duration_ms: 12.572974
+  type: 'test'
+  ...
+# Subtest: subscription gate preserves active, inactive and exempt route behavior
+ok 630 - subscription gate preserves active, inactive and exempt route behavior
+  ---
+  duration_ms: 20.410127
+  type: 'test'
+  ...
+# Subtest: customer support forwards failed included-service loading to the real retry boundary
+ok 631 - customer support forwards failed included-service loading to the real retry boundary
+  ---
+  duration_ms: 188.712603
+  type: 'test'
+  ...
+# Subtest: customer support ticket failures expose retry instead of a false empty conversation
+ok 632 - customer support ticket failures expose retry instead of a false empty conversation
+  ---
+  duration_ms: 209.653539
+  type: 'test'
+  ...
+# Subtest: customer support thread failures can be refreshed and late old messages stay hidden
+ok 633 - customer support thread failures can be refreshed and late old messages stay hidden
+  ---
+  duration_ms: 114.195231
+  type: 'test'
+  ...
+# Subtest: accepted customer support messages stay acknowledged when conversation refresh fails
+ok 634 - accepted customer support messages stay acknowledged when conversation refresh fails
+  ---
+  duration_ms: 109.11667
+  type: 'test'
+  ...
+# Subtest: card plan modal distinguishes loading, load failure, true empty plans and selectable plans
+ok 635 - card plan modal distinguishes loading, load failure, true empty plans and selectable plans
+  ---
+  duration_ms: 135.162417
+  type: 'test'
+  ...
+# Subtest: phone wallet history uses the same loaded funding records as the balance and desktop table
+ok 636 - phone wallet history uses the same loaded funding records as the balance and desktop table
+  ---
+  duration_ms: 117.227801
+  type: 'test'
+  ...
+# Subtest: inactive-plan customer support leads with working messages and reports and hides the unusable coordination form
+ok 637 - inactive-plan customer support leads with working messages and reports and hides the unusable coordination form
+  ---
+  duration_ms: 114.416028
+  type: 'test'
+  ...
+# Subtest: customer overview names the task and provides actual Wallet and My Card destinations
+ok 638 - customer overview names the task and provides actual Wallet and My Card destinations
+  ---
+  duration_ms: 97.877535
+  type: 'test'
+  ...
+# Subtest: customer history exposes a scroll cue and keeps signed amounts intact with their currency
+ok 639 - customer history exposes a scroll cue and keeps signed amounts intact with their currency
+  ---
+  duration_ms: 106.445036
+  type: 'test'
+  ...
+# Subtest: customer stations put real station details before the optional map without requesting GPS
+ok 640 - customer stations put real station details before the optional map without requesting GPS
+  ---
+  duration_ms: 84.97901
+  type: 'test'
+  ...
+# Subtest: customer empty notifications retain their visible page heading and context
+ok 641 - customer empty notifications retain their visible page heading and context
+  ---
+  duration_ms: 127.147445
+  type: 'test'
+  ...
+# Subtest: verification client binds email channel in one request
+ok 642 - verification client binds email channel in one request
+  ---
+  duration_ms: 352.924229
+  type: 'test'
+  ...
+# Subtest: verification client binds phone channel in one request
+ok 643 - verification client binds phone channel in one request
+  ---
+  duration_ms: 152.791944
+  type: 'test'
+  ...
+# Subtest: verification client binds legacy omitted channel in one request
+ok 644 - verification client binds legacy omitted channel in one request
+  ---
+  duration_ms: 161.505392
+  type: 'test'
+  ...
+# Subtest: simulated email proof cannot verify the other contact
+ok 645 - simulated email proof cannot verify the other contact
+  ---
+  duration_ms: 177.906403
+  type: 'test'
+  ...
+# Subtest: simulated phone proof cannot verify the other contact
+ok 646 - simulated phone proof cannot verify the other contact
+  ---
+  duration_ms: 103.841733
+  type: 'test'
+  ...
+1..646
+# tests 646
+# suites 0
+# pass 646
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 9253.612221

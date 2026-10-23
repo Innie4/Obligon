@@ -1,6 +1,6 @@
 # Popup operation feedback
 
-23 October 2026. Implementation and local verification complete. Release results will be recorded in [the combined release report](../release-review-2026-10-23/report.md).
+23 October 2026. Implementation and local verification complete, including the final shared-search follow-up. Release results are recorded in [the combined release report](../release-review-2026-10-23/report.md).
 
 Temporary loading, pending, error and action-result messages now appear in floating popup cards across customer, partner, company, admin and public/account flows. Field validation, saved transaction/approval statuses, access requirements, empty records and reference codes remain beside their relevant controls.
 
@@ -30,3 +30,7 @@ The unchanged API acceptance evidence remains **1,251 passed, 13 explicitly opt-
 The user confirmed qualified review of original patch `446d9a44acc544b22b271caefa7cd15bd06f234f3ab818e3bb339baa0be7a775` and authorized push/deployment. Subsequent popup changes are user-authorized presentation work. Original approval and source hashes are preserved separately from the final combined manifest.
 
 The complete source patch contains 206 files and has SHA-256 `fc0eb77d2c2093eaac0f2e741c55f999df0bb0fcdda3ec5c2df342ca52dfbfb5`. Supporting reports, screenshots and learning notes are outside that application-patch identity.
+
+## Final shared-search acceptance
+
+The final follow-up also converts search progress/errors, preserves result counts and authorized destinations, and provides desktop keyboard access to the popup retry. Its loading popup is non-dismissible and settles automatically. Independent review and real Chrome Tab/Enter recovery checks pass. The final complete web suite has **646 passing tests**, and the fresh API suite has **1,251 passed / 13 opt-in skipped / zero failed**. See the [follow-up release record](../release-review-2026-10-23/zod-advisory-followup.md) and [search report](dashboard-search/report.md). Earlier counts/hashes in this report describe the initial popup freeze.

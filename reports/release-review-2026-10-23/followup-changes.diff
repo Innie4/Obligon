@@ -1,0 +1,365 @@
+diff --git a/apps/api/package.json b/apps/api/package.json
+index 2c5e712..1347669 100644
+--- a/apps/api/package.json
++++ b/apps/api/package.json
+@@ -42,7 +42,7 @@
+     "pg": "^8.12.0",
+     "qrcode": "^1.5.4",
+     "web-push": "^3.6.7",
+-    "zod": "^3.23.8"
++    "zod": "4.6.6"
+   },
+   "devDependencies": {
+     "@types/cors": "^2.8.19",
+diff --git a/apps/api/tests/partner-dashboard-wiring.test.mjs b/apps/api/tests/partner-dashboard-wiring.test.mjs
+index 2365d5f..38225f6 100644
+--- a/apps/api/tests/partner-dashboard-wiring.test.mjs
++++ b/apps/api/tests/partner-dashboard-wiring.test.mjs
+@@ -169,7 +169,9 @@ test("the reports table dropped its invented columns", () => {
+ 
+ test("manual payout controls are absent under direct settlement", () => {
+   const settlement = screen.slice(screen.indexOf('function SettlementsPage'), screen.indexOf('function DisputesPage'));
+-  assert.match(settlement, /Manual payouts are inactive\. Your settlement account receives funds automatically\./);
++  assert.match(settlement, /Manual payouts are inactive\. Eligible revenue is settled automatically by the provider\./);
++  assert.match(settlement, /Manual payouts are inactive\. A verified settlement destination is required before provider settlement\./);
++  assert.match(settlement, /destinationReady = Boolean\(defaultAccount\?\.isDefault && defaultAccount\.verified && !defaultAccount\.needsRenomination\)/);
+   assert.doesNotMatch(settlement, /Payouts.*Coming soon/);
+   assert.doesNotMatch(settlement, /onOpenPayout\(|requestPayout\(/);
+ });
+@@ -445,7 +447,8 @@ test("the header badge and the notifications page share one fetch", () => {
+ });
+ 
+ test("no action button renders without something to do", () => {
+-  assert.match(screen, /\{onAction \? \(/);
++  assert.match(screen, /\{onAction\s*\?\s*<td\b/);
++  assert.match(screen, /onClick=\{\(\) => onAction\(row\)\}/);
+   assert.doesNotMatch(screen, /row\.action \?\? "Details"\s*\n\s*<\/button>/);
+ });
+ 
+diff --git a/apps/api/tests/partner-production-readiness.test.mjs b/apps/api/tests/partner-production-readiness.test.mjs
+index 6ee7f73..3651a9e 100644
+--- a/apps/api/tests/partner-production-readiness.test.mjs
++++ b/apps/api/tests/partner-production-readiness.test.mjs
+@@ -313,16 +313,19 @@ test("a table header has a heading for every body column", () => {
+   const head = screen.slice(screen.indexOf("<thead"), screen.indexOf("</thead>"));
+   const body = screen.slice(screen.indexOf("<tbody"), screen.indexOf("</tbody>"));
+   assert.match(head, /\{columns\.map\(/);
+-  assert.match(head, />Status</);
+-  assert.match(head, />Action</);
+-  // The count is stated rather than inferred, so a future column cannot drift again.
+-  assert.match(body, /colSpan=\{columns\.length \+ 2\}/);
++  assert.match(head, /\{hasStatus\s*\?\s*<th\b[^>]*>Status<\/th>/);
++  assert.match(head, /\{onAction\s*\?\s*<th\b[^>]*>Action<\/th>/);
++  assert.match(body, /\{hasStatus\s*\?\s*<td\b/);
++  assert.match(body, /\{onAction\s*\?\s*<td\b/);
++  // Optional status/action columns must use the same count in the empty row.
++  assert.match(body, /colSpan=\{columns\.length \+ \(hasStatus \? 1 : 0\) \+ \(onAction \? 1 : 0\)\}/);
+ });
+ 
+ test("no action button renders without something to do", () => {
+   // They rendered "Details" everywhere, and "RETRY" on a failed payout, wired to
+   // nothing — an operator could believe they had retried a failed transfer.
+-  assert.match(screen, /\{onAction \? \(/);
++  assert.match(screen, /\{onAction\s*\?\s*<td\b/);
++  assert.match(screen, /onClick=\{\(\) => onAction\(row\)\}/);
+   assert.doesNotMatch(screen, /onClick=\{\(\) => onAction\?\.\(row\)\}/);
+ });
+ 
+@@ -348,9 +351,14 @@ test("the unread badge reflects a real count", () => {
+ });
+ 
+ test("the search says what it searches", () => {
+-  // The placeholder promised transactions and stations; the implementation matched
+-  // only nav labels, so a transaction reference returned "No matching sections".
+-  assert.match(header, /Search dashboard sections/);
++  // The shared search now resolves authorized pages and recent record matches.
++  const search = read(webRoot, "components", "shared", "DashboardSearch.tsx");
++  const records = read(webRoot, "lib", "dashboard-search.ts");
++  assert.match(header, /<DashboardSearch scope="partner" entries=\{searchEntries\}/);
++  assert.match(search, /placeholder="Search pages and recent records"/);
++  assert.match(search, /searchDashboardRecords\(scope, normalized, user\)/);
++  assert.match(records, /\/api\/partner\/transactions/);
++  assert.match(records, /href: '\/dashboard\/transactions'/);
+   assert.doesNotMatch(header, /placeholder=\{page\.searchPlaceholder\}/);
+ });
+ 
+@@ -391,7 +399,9 @@ test("it has a 6-digit input, a resend countdown and validation states", () => {
+   assert.match(verification, /maxLength=\{CODE_LENGTH\}/);
+   assert.match(verification, /Resend in \$\{cooldown\}s/);
+   assert.match(verification, /RESEND_COOLDOWN_SECONDS/);
+-  assert.match(verification, /role="alert"/);
++  assert.match(verification, /<StatusPopup tone="error" message=\{error\}/);
++  const popup = read(webRoot, "components", "shared", "StatusPopup.tsx");
++  assert.match(popup, /role=\{popup\.tone === "error" \? "alert" : "status"\}/);
+   assert.match(verification, /aria-invalid=\{stage === "failed"\}/);
+   assert.match(verification, /Account verification complete/);
+ });
+diff --git a/apps/web/components/shared/DashboardSearch.tsx b/apps/web/components/shared/DashboardSearch.tsx
+index 132175e..25d7e08 100644
+--- a/apps/web/components/shared/DashboardSearch.tsx
++++ b/apps/web/components/shared/DashboardSearch.tsx
+@@ -4,9 +4,10 @@ import Link from "next/link";
+ import { usePathname, useRouter } from "next/navigation";
+ import * as React from "react";
+ import { createPortal } from "react-dom";
+-import { ArrowUpRight, Loader2, Search, X } from "lucide-react";
++import { ArrowUpRight, Search, X } from "lucide-react";
+ import { useSession } from "./AuthContext";
+ import { useDialogFocus } from "./useDialogFocus";
++import { StatusPopup } from "@/components/shared/StatusPopup";
+ import { DashboardSearchUnavailableError, searchDashboardRecords, type DashboardSearchResult, type DashboardSearchScope } from "@/lib/dashboard-search";
+ 
+ export type DashboardSearchEntry = { href: string; label: string; keywords?: string };
+@@ -31,6 +32,9 @@ export function DashboardSearch({ scope, entries, className = "", compact = fals
+   const listId = `${id}-results`;
+   const inputRef = React.useRef<HTMLInputElement>(null);
+   const mobileInputRef = React.useRef<HTMLInputElement>(null);
++  const desktopRef = React.useRef<HTMLDivElement>(null);
++  const clearButtonRef = React.useRef<HTMLButtonElement>(null);
++  const retryButtonRef = React.useRef<HTMLButtonElement>(null);
+   const dialogRef = React.useRef<HTMLElement>(null);
+   const request = React.useRef(0);
+   const [query, setQuery] = React.useState("");
+@@ -42,10 +46,17 @@ export function DashboardSearch({ scope, entries, className = "", compact = fals
+   const normalized = query.trim().toLowerCase();
+   const open = mode !== null;
+   const close = React.useCallback(() => { setMode(null); setQuery(""); setActive(-1); }, []);
++  const withinDesktopSearch = React.useCallback((target: Node | null) => Boolean(desktopRef.current?.contains(target) || retryButtonRef.current?.closest("[data-status-popup]")?.contains(target)), []);
+   useDialogFocus(dialogRef, close, mode === "mobile");
+ 
+   React.useEffect(() => { close(); setRemote(null); }, [owner, pathname, close]);
+   React.useEffect(() => { if (mode === "mobile") mobileInputRef.current?.focus(); }, [mode]);
++  React.useEffect(() => {
++    if (mode !== "desktop") return;
++    const outsideFocus = (event: FocusEvent) => { if (!withinDesktopSearch(event.target as Node | null)) setMode(current => current === "desktop" ? null : current); };
++    document.addEventListener("focusin", outsideFocus);
++    return () => document.removeEventListener("focusin", outsideFocus);
++  }, [mode, withinDesktopSearch]);
+   React.useEffect(() => {
+     const revision = ++request.current;
+     setActive(-1);
+@@ -101,26 +112,27 @@ export function DashboardSearch({ scope, entries, className = "", compact = fals
+     return <div className="flex min-h-11 min-w-0 items-center gap-2 rounded-xl border border-obligon-border bg-white px-3 focus-within:ring-2 focus-within:ring-obligon-green focus-within:ring-offset-2">
+       <Search size={18} className="shrink-0 text-obligon-text" aria-hidden="true" />
+       <input ref={mobile ? mobileInputRef : inputRef} value={query} maxLength={80} type="text" inputMode="search" enterKeyHint="search" autoComplete="off" spellCheck={false} placeholder="Search pages and recent records" aria-label={`Search ${scope} dashboard`} role="combobox" aria-expanded={open} aria-controls={open ? listId : undefined} aria-autocomplete="list" aria-activedescendant={open && selected >= 0 ? `${listId}-${selected}` : undefined} onFocus={() => { if (!mobile) setMode("desktop"); }} onChange={event => { setQuery(event.target.value); setActive(-1); }} onKeyDown={keyDown} className="min-h-11 w-full min-w-0 bg-transparent text-base text-obligon-navy outline-none focus-visible:outline-none placeholder:text-obligon-text md:text-sm" />
+-      {query ? <button type="button" onClick={() => { setQuery(""); setActive(-1); (mobile ? mobileInputRef : inputRef).current?.focus(); }} aria-label="Clear search" className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-lg text-obligon-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-obligon-green"><X size={17} aria-hidden="true" /></button> : null}
++      {query ? <button ref={mobile ? undefined : clearButtonRef} type="button" onKeyDown={event => { if (event.key === "Tab" && !event.shiftKey && mode === "desktop" && retryButtonRef.current) { event.preventDefault(); retryButtonRef.current.focus(); } }} onClick={() => { setQuery(""); setActive(-1); (mobile ? mobileInputRef : inputRef).current?.focus(); }} aria-label="Clear search" className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-lg text-obligon-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-obligon-green"><X size={17} aria-hidden="true" /></button> : null}
+     </div>;
+   }
+ 
+   function resultList() {
+     return <>
++      {loading ? <StatusPopup tone="loading" message="Searching records..." dismissible={false} /> : null}
++      {currentRemote?.status === "error" ? <StatusPopup tone="error" message={currentRemote.partial && currentRemote.items.length ? "Some records could not be searched. Available results are shown." : "Records could not be searched. You can still open matching pages."} action={<button ref={retryButtonRef} type="button" onKeyDown={event => { if (event.key === "Tab" && event.shiftKey && mode === "desktop") { const previous = clearButtonRef.current ?? inputRef.current; if (previous) { event.preventDefault(); previous.focus(); } } }} onMouseDown={event => event.preventDefault()} onClick={() => { setRetry(value => value + 1); (mode === "mobile" ? mobileInputRef : inputRef).current?.focus(); }} className="min-h-11 font-bold text-obligon-green underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-obligon-green">Retry search</button>} /> : null}
+       <div className="border-b border-obligon-border px-4 py-3 text-xs leading-5 text-obligon-text" aria-live="polite">
+-        {loading ? <span className="flex items-center gap-2" role="status"><Loader2 size={14} aria-hidden="true" className="animate-spin motion-reduce:animate-none" />Searching records...</span> : normalized.length < 2 ? "Choose a page, or type at least 2 characters to find records." : <span role="status">{results.length} {results.length === 1 ? "result" : "results"}</span>}
++        {normalized.length < 2 ? "Choose a page, or type at least 2 characters to find records." : <span role="status">{results.length} {results.length === 1 ? "result" : "results"}</span>}
+       </div>
+-      {currentRemote?.status === "error" ? <div className="border-b border-obligon-border px-4 py-3"><p role="alert" className="text-sm leading-5 text-red-700">{currentRemote.partial && currentRemote.items.length ? "Some records could not be searched. Available results are shown." : "Records could not be searched. You can still open matching pages."}</p><button type="button" onClick={() => setRetry(value => value + 1)} className="mt-1 min-h-11 font-bold text-obligon-green underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-obligon-green">Retry search</button></div> : null}
+-      <ul id={listId} role="listbox" aria-label="Search results" className="max-h-[min(56vh,420px)] overflow-y-auto p-2">
++      <ul id={listId} role="listbox" aria-label="Search results" aria-busy={loading} className="max-h-[min(56vh,420px)] overflow-y-auto p-2">
+         {results.map((item, index) => <li key={item.href} role="none"><Link id={`${listId}-${index}`} href={item.href} role="option" aria-selected={selected === index} tabIndex={-1} onMouseDown={event => event.preventDefault()} onMouseEnter={() => setActive(index)} onClick={event => select(item, event)} className={`flex min-h-12 min-w-0 items-center gap-3 rounded-lg px-3 py-2 ${selected === index ? "bg-obligon-mist text-obligon-green" : "text-obligon-navy hover:bg-obligon-mist"}`}><span className="min-w-0 flex-1"><span className="block break-words text-sm font-bold">{item.label}</span>{item.description ? <span className="mt-0.5 block break-words text-xs leading-5 text-obligon-text">{item.description}</span> : null}</span><ArrowUpRight size={17} className="shrink-0" aria-hidden="true" /></Link></li>)}
+       </ul>
+-      {!results.length && !loading ? <p role="status" className="px-4 pb-5 text-sm text-obligon-text">{currentRemote?.status === "error" ? "No matching pages. Retry to search records." : "No matching pages or records. Try another name or reference."}</p> : null}
++      {!results.length && !loading && currentRemote?.status !== "error" ? <p role="status" className="px-4 pb-5 text-sm text-obligon-text">No matching pages or records. Try another name or reference.</p> : null}
+     </>;
+   }
+ 
+   return <div className={`min-w-0 ${compact ? "" : "w-auto md:w-full md:max-w-[360px]"} ${className}`}>
+     <button type="button" onClick={() => setMode("mobile")} aria-label={`Search ${scope} dashboard`} aria-haspopup="dialog" aria-expanded={mode === "mobile"} className={`grid size-11 shrink-0 place-items-center rounded-xl border border-obligon-border bg-white text-obligon-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-obligon-green ${compact ? "" : "md:hidden"}`}><Search size={20} aria-hidden="true" /></button>
+-    {!compact ? <div className="relative hidden min-w-0 md:block" onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setMode(current => current === "desktop" ? null : current); }}>
++    {!compact ? <div ref={desktopRef} className="relative hidden min-w-0 md:block" onBlur={event => { if (!withinDesktopSearch(event.relatedTarget as Node | null)) setMode(current => current === "desktop" ? null : current); }}>
+       {field(false)}
+       {mode === "desktop" ? <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-xl border border-obligon-border bg-white shadow-hero">{resultList()}</div> : null}
+     </div> : null}
+diff --git a/apps/web/tests/dashboard-search-ui.test.cjs b/apps/web/tests/dashboard-search-ui.test.cjs
+index d74830f..c9f07ae 100644
+--- a/apps/web/tests/dashboard-search-ui.test.cjs
++++ b/apps/web/tests/dashboard-search-ui.test.cjs
+@@ -11,7 +11,7 @@ const deferred = () => { let resolve, reject; const promise = new Promise((yes,
+ class Unavailable extends Error { constructor(results = []) { super('Unavailable'); this.results = results; this.unavailable = ['Recent records']; } }
+ 
+ function fixture({ user = { id: 'customer-1', role: 'customer' }, scope = 'customer', compact = false, load = async () => [], entries = [{ href: '/customer/transactions', label: 'History', keywords: 'transactions receipts' }, { href: '/customer/stations', label: 'Stations' }, { href: '/auth/sign-in-options', label: 'Sign-in options' }] } = {}) {
+-  const slots = [], effects = [], timers = new Map(), calls = [], routes = [], reloads = [], focus = [];
++  const slots = [], effects = [], timers = new Map(), calls = [], routes = [], reloads = [], focus = [], documentListeners = new Map();
+   let cursor = 0, timerId = 0, tree, pathname = `/${scope}`;
+   const props = { scope, entries, compact };
+   const location = { pathname, search: '', assign: href => reloads.push(href) };
+@@ -23,13 +23,15 @@ function fixture({ user = { id: 'customer-1', role: 'customer' }, scope = 'custo
+     useCallback(fn, deps) { const i = cursor++, previous = slots[i]; if (!previous || deps.some((v, n) => !Object.is(v, previous.deps[n]))) slots[i] = { deps, fn }; return slots[i].fn; },
+     useEffect(fn, deps) { const i = cursor++, previous = slots[i]; if (!previous || deps.some((v, n) => !Object.is(v, previous.deps[n]))) effects.push(() => { previous?.cleanup?.(); slots[i] = { deps, cleanup: fn() }; }); }
+   };
++  const popupMock = require('./helpers/status-popup.cjs').statusPopupMock(React);
++  const StatusPopup = Object.assign(props => { const node = popupMock.StatusPopup(props); node.props['data-popup-dismissible'] = props.dismissible; return node; }, { __statusPopupMock: true });
+   const exported = {};
+   const source = fs.readFileSync(require.resolve('../components/shared/DashboardSearch.tsx'), 'utf8');
+   vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }).outputText, {
+     exports: exported, Error, Map,
+-    document: { body: {}, getElementById: () => ({ scrollIntoView() {} }) },
++    document: { body: {}, getElementById: () => ({ scrollIntoView() {} }), addEventListener(name, listener) { const handlers = documentListeners.get(name) ?? new Set(); handlers.add(listener); documentListeners.set(name, handlers); }, removeEventListener(name, listener) { documentListeners.get(name)?.delete(listener); } },
+     window: { location, setTimeout(fn) { const id = ++timerId; timers.set(id, fn); return id; }, clearTimeout(id) { timers.delete(id); } },
+-    require: name => name === 'react' ? React : name === 'react-dom' ? { createPortal: value => value } : name === 'next/link' ? { default: 'Link', __esModule: true } : name === 'next/navigation' ? { usePathname: () => pathname, useRouter: () => ({ push: href => routes.push(href) }) } : name === './AuthContext' ? { useSession: () => ({ user }) } : name === './useDialogFocus' ? { useDialogFocus: (...args) => focus.push(args) } : name === '@/lib/dashboard-search' ? { DashboardSearchUnavailableError: Unavailable, searchDashboardRecords: async (...args) => { calls.push(args); return load(...args); } } : {}
++    require: name => name === 'react' ? React : name === '@/components/shared/StatusPopup' ? { StatusPopup } : name === 'react-dom' ? { createPortal: value => value } : name === 'next/link' ? { default: 'Link', __esModule: true } : name === 'next/navigation' ? { usePathname: () => pathname, useRouter: () => ({ push: href => routes.push(href) }) } : name === './AuthContext' ? { useSession: () => ({ user }) } : name === './useDialogFocus' ? { useDialogFocus: (...args) => focus.push(args) } : name === '@/lib/dashboard-search' ? { DashboardSearchUnavailableError: Unavailable, searchDashboardRecords: async (...args) => { calls.push(args); return load(...args); } } : {}
+   });
+   const ui = {
+     render() { cursor = 0; tree = exported.DashboardSearch(props); return tree; },
+@@ -43,6 +45,7 @@ function fixture({ user = { id: 'customer-1', role: 'customer' }, scope = 'custo
+     async runTimers() { const pending = [...timers.values()]; timers.clear(); pending.forEach(fn => fn()); await flush(); ui.render(); ui.effects(); ui.render(); },
+     changeUser(next) { user = next; ui.render(); const beforeEffects = text(tree); ui.effects(); ui.render(); return beforeEffects; },
+     path(next) { pathname = next; ui.render(); ui.effects(); ui.render(); },
++    focusIn(target) { for (const listener of documentListeners.get('focusin') ?? []) listener({ target }); ui.render(); ui.effects(); ui.render(); },
+     unmount() { slots.forEach(value => value?.cleanup?.()); }
+   };
+   ui.render(); ui.effects(); ui.render(); return ui;
+@@ -66,6 +69,23 @@ test('search debounces real records and does not request data for one character'
+   result.props.onClick(); ui.render(); assert.equal(ui.input().props.value, '');
+ });
+ 
++test('record loading floats while matching pages and combobox result semantics remain available', async () => {
++  const ui = fixture(); ui.open(); ui.query('transaction');
++  const popup = ui.nodes().find(node => node.props?.['data-status-popup'] === 'loading');
++  assert.ok(popup, 'loading feedback must use the shared floating popup');
++  assert.equal(popup.props['data-popup-dismissible'], false, 'short-lived search progress must not offer a Dismiss that can blur and cancel its owner');
++  assert.match(text(popup), /Searching records/);
++  const list = ui.nodes().find(node => node.props?.role === 'listbox');
++  assert.equal(ui.input().props['aria-controls'], list.props.id);
++  assert.equal(ui.options().length, 1); assert.match(ui.text(), /1\s+result/);
++  assert.equal(list.props['aria-busy'], true);
++  assert.equal(ui.nodes().some(node => node.type === 'span' && /Searching records/.test(text(node))), false);
++  await ui.runTimers();
++  assert.equal(ui.nodes().some(node => node.props?.['data-status-popup'] === 'loading'), false);
++  assert.equal(ui.nodes().find(node => node.props?.role === 'listbox').props['aria-busy'], false);
++  assert.equal(ui.options()[0].props.href, '/customer/transactions');
++});
++
+ test('old query responses cannot replace newer results or restore closed results', async () => {
+   const first = deferred(), second = deferred();
+   const ui = fixture({ load: (scope, query) => query === 'alpha' ? first.promise : second.promise });
+@@ -104,12 +124,94 @@ test('partial record errors keep real hits and page destinations with an explici
+   assert.ok(retry); retry.props.onClick(); ui.render(); ui.effects(); await ui.runTimers(); assert.equal(ui.calls.length, 2);
+ });
+ 
++test('desktop popup retry survives pointer and keyboard blur without changing outside-blur dismissal', async () => {
++  let attempts = 0;
++  const ui = fixture({ load: async () => { if (++attempts === 1) throw new Error('Unavailable'); return []; } });
++  ui.open(); ui.query('transaction'); await ui.runTimers();
++  const popup = ui.nodes().find(node => node.props?.['data-status-popup'] === 'error');
++  assert.ok(popup, 'failed record searches must use floating feedback');
++  const retry = nodes(popup).find(node => node.type === 'button' && text(node) === 'Retry search');
++  let focusCalls = 0;
++  ui.input().props.ref.current = { focus() { focusCalls++; } };
++  let prevented = false;
++  retry.props.onMouseDown({ preventDefault() { prevented = true; } });
++  assert.equal(prevented, true, 'pointer retry must preserve the input focus until click');
++  const container = ui.nodes().find(node => node.props?.onBlur);
++  const feedbackTarget = {}, popupTarget = { contains: target => target === feedbackTarget };
++  container.props.ref.current = { contains: () => false };
++  retry.props.ref.current = { closest: () => popupTarget };
++  container.props.onBlur({ currentTarget: { contains: () => false }, relatedTarget: feedbackTarget }); ui.render();
++  assert.equal(ui.input().props['aria-expanded'], true, 'keyboard focus on this search retry keeps results mounted');
++  retry.props.onClick(); ui.render(); ui.effects(); ui.render(); await ui.runTimers();
++  assert.equal(focusCalls, 1, 'retry restores the owning combobox focus');
++  assert.equal(ui.calls.length, 2); assert.equal(ui.input().props['aria-expanded'], true);
++  assert.equal(ui.nodes().some(node => node.props?.['data-status-popup'] === 'error'), false);
++  ui.nodes().find(node => node.props?.onBlur).props.onBlur({ currentTarget: { contains: () => false }, relatedTarget: { closest: () => null } }); ui.render();
++  assert.equal(ui.input().props['aria-expanded'], false, 'focus outside search and its retry still closes desktop results');
++});
++
++test('ordinary desktop Tab order reaches portal retry and returns with ShiftTab before leaving search', async () => {
++  const ui = fixture({ load: async () => { throw new Error('Unavailable'); } });
++  ui.open(); ui.query('transaction'); await ui.runTimers();
++  const input = ui.input(), container = ui.nodes().find(node => node.props?.onBlur);
++  const clear = ui.nodes().find(node => node.props?.['aria-label'] === 'Clear search');
++  const popup = ui.nodes().find(node => node.props?.['data-status-popup'] === 'error');
++  const retry = nodes(popup).find(node => node.type === 'button' && text(node) === 'Retry search');
++  let active;
++  const inputTarget = { focus() { focusTo(inputTarget); } }, clearTarget = { focus() { focusTo(clearTarget); } };
++  const outsideTarget = {}, dismissTarget = {};
++  const popupTarget = { contains: target => target === retryTarget || target === dismissTarget };
++  const retryTarget = { closest: () => popupTarget, focus() { focusTo(retryTarget); } };
++  const desktopTarget = { contains: target => target === inputTarget || target === clearTarget };
++  input.props.ref.current = inputTarget;
++  if (clear.props.ref) clear.props.ref.current = clearTarget;
++  if (retry.props.ref) retry.props.ref.current = retryTarget;
++  if (container.props.ref) container.props.ref.current = desktopTarget;
++  const defaultOrder = [inputTarget, clearTarget, outsideTarget, retryTarget, dismissTarget];
++  function focusTo(target) { active = target; ui.focusIn(target); }
++  function tab(shiftKey = false) {
++    const element = active === inputTarget ? input : active === clearTarget ? clear : active === retryTarget ? retry : null;
++    let prevented = false;
++    element?.props.onKeyDown?.({ key: 'Tab', shiftKey, preventDefault() { prevented = true; } });
++    if (!prevented) focusTo(defaultOrder[defaultOrder.indexOf(active) + (shiftKey ? -1 : 1)]);
++  }
++  focusTo(inputTarget); tab(); assert.equal(active, clearTarget);
++  tab(); assert.equal(active, retryTarget, 'last local control must bridge to the owned portal retry before unrelated header controls');
++  assert.equal(ui.input().props['aria-expanded'], true);
++  tab(true); assert.equal(active, clearTarget, 'ShiftTab returns from portal retry to the last local control');
++  tab(); tab(); assert.equal(active, dismissTarget, 'the same popup dismiss control remains keyboard reachable');
++  assert.equal(ui.input().props['aria-expanded'], true);
++  focusTo(outsideTarget);
++  assert.equal(ui.input().props['aria-expanded'], false, 'portal-to-outside focus also closes the desktop dropdown');
++});
++
++test('mobile search feedback stays owned by the modal and retry retains its focus boundary', async () => {
++  const ui = fixture({ compact: true, load: async () => { throw new Error('Unavailable'); } });
++  ui.open(); ui.query('transaction');
++  let dialog = ui.nodes().find(node => node.props?.role === 'dialog');
++  assert.ok(nodes(dialog).some(node => node.props?.['data-status-popup'] === 'loading'));
++  await ui.runTimers();
++  dialog = ui.nodes().find(node => node.props?.role === 'dialog');
++  const popup = nodes(dialog).find(node => node.props?.['data-status-popup'] === 'error');
++  assert.ok(popup, 'popup anchor must remain inside the mobile dialog for its nearest-dialog portal');
++  assert.equal(ui.focus.at(-1)[2], true);
++  let focusCalls = 0;
++  const mobileInput = nodes(dialog).find(node => node.type === 'input');
++  mobileInput.props.ref.current = { focus() { focusCalls++; } };
++  nodes(popup).find(node => node.type === 'button' && text(node) === 'Retry search').props.onClick();
++  ui.render(); ui.effects(); await ui.runTimers();
++  assert.equal(focusCalls, 1, 'retry restores focus within the existing mobile dialog');
++  assert.equal(ui.calls.length, 2); assert.ok(ui.nodes().some(node => node.props?.role === 'dialog'));
++  assert.equal(ui.options()[0].props.href, '/customer/transactions');
++});
++
+ test('failed record searches never claim an empty complete search or remove permitted pages', async () => {
+   const ui = fixture({ load: async () => { throw new Error('private server diagnostic'); } });
+   ui.open(); ui.query('transaction'); await ui.runTimers();
+   assert.match(ui.text(), /Records could not be searched/); assert.doesNotMatch(ui.text(), /private server diagnostic/);
+   assert.equal(ui.options()[0].props.href, '/customer/transactions');
+-  ui.query('unmatched'); await ui.runTimers(); assert.match(ui.text(), /Retry to search records/);
++  ui.query('unmatched'); await ui.runTimers(); assert.match(ui.text(), /Retry search/);
++  assert.doesNotMatch(ui.text(), /No matching pages or records|No matching pages\. Retry/);
+ });
+ 
+ test('ready empty searches show a real empty state and a result cannot navigate outside its dashboard', async () => {
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index 543b700..d6f0947 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -70,8 +70,8 @@ importers:
+         specifier: ^3.6.7
+         version: 3.6.7(supports-color@7.2.0)
+       zod:
+-        specifier: ^3.23.8
+-        version: 3.25.76
++        specifier: 4.6.6
++        version: 4.6.6
+     devDependencies:
+       '@types/cors':
+         specifier: ^2.8.19
+@@ -2680,8 +2680,8 @@ packages:
+     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
+     engines: {node: '>=10'}
+ 
+-  zod@3.25.76:
+-    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
++  zod@4.6.6:
++    resolution: {integrity: sha512-4UmzQUF5fxvfcYHlbjBmejU+w+hbDnWFx4aS8kBx7nPBHcO2SqPbpAG8snbdg+Xse4pRefR98hgjFgIMCI/UhA==}
+ 
+ snapshots:
+ 
+@@ -5594,4 +5594,4 @@ snapshots:
+ 
+   yocto-queue@0.1.0: {}
+ 
+-  zod@3.25.76: {}
++  zod@4.6.6: {}

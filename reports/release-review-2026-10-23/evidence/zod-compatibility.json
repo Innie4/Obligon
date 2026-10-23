@@ -1,0 +1,122 @@
+{
+  "directDependencies": {
+    "current": "3.25.76",
+    "candidate": "4.6.6"
+  },
+  "environmentCases": [
+    {
+      "name": "default",
+      "equivalent": true,
+      "currentSuccess": true,
+      "patchedSuccess": true
+    },
+    {
+      "name": "test",
+      "equivalent": true,
+      "currentSuccess": true,
+      "patchedSuccess": true
+    },
+    {
+      "name": "production",
+      "equivalent": true,
+      "currentSuccess": true,
+      "patchedSuccess": true
+    },
+    {
+      "name": "bounded",
+      "equivalent": true,
+      "currentSuccess": true,
+      "patchedSuccess": true
+    },
+    {
+      "name": "badurl",
+      "equivalent": true,
+      "currentSuccess": false,
+      "patchedSuccess": false
+    },
+    {
+      "name": "badnumber",
+      "equivalent": true,
+      "currentSuccess": false,
+      "patchedSuccess": false
+    },
+    {
+      "name": "shortsecret",
+      "equivalent": true,
+      "currentSuccess": false,
+      "patchedSuccess": false
+    },
+    {
+      "name": "badrole",
+      "equivalent": true,
+      "currentSuccess": false,
+      "patchedSuccess": false
+    },
+    {
+      "name": "badname",
+      "equivalent": true,
+      "currentSuccess": false,
+      "patchedSuccess": false
+    },
+    {
+      "name": "overflow",
+      "equivalent": true,
+      "currentSuccess": false,
+      "patchedSuccess": false
+    },
+    {
+      "name": "fraction",
+      "equivalent": true,
+      "currentSuccess": false,
+      "patchedSuccess": false
+    },
+    {
+      "name": "zero",
+      "equivalent": true,
+      "currentSuccess": false,
+      "patchedSuccess": false
+    },
+    {
+      "name": "blankname",
+      "equivalent": true,
+      "currentSuccess": false,
+      "patchedSuccess": false
+    },
+    {
+      "name": "boolTrue",
+      "equivalent": true,
+      "currentSuccess": true,
+      "patchedSuccess": true
+    },
+    {
+      "name": "boolOther",
+      "equivalent": true,
+      "currentSuccess": true,
+      "patchedSuccess": true
+    }
+  ],
+  "emailCases": {
+    "count": 22,
+    "differentAcceptance": []
+  },
+  "flattenFieldErrorShapePreserved": true,
+  "boundedCollectionProbe": {
+    "installed3": {
+      "accepted": false,
+      "elementValidations": 5000,
+      "issueCount": 1
+    },
+    "patchedV3Entry": {
+      "accepted": false,
+      "elementValidations": 5000,
+      "issueCount": 1
+    },
+    "patchedDefault4": {
+      "accepted": false,
+      "elementValidations": 0,
+      "issueCount": 1
+    }
+  },
+  "sourceSha256": "21d168ca533e56164b13891447716cb94ff33902d87418fe724758d3b234e139",
+  "constraints": "No repository or environment files edited. Evaluated synthetic values with isolated env schemas and integrity-verified candidate tarball. No providers or database contacted."
+}

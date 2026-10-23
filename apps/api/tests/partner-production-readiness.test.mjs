@@ -313,16 +313,19 @@ test("a table header has a heading for every body column", () => {
   const head = screen.slice(screen.indexOf("<thead"), screen.indexOf("</thead>"));
   const body = screen.slice(screen.indexOf("<tbody"), screen.indexOf("</tbody>"));
   assert.match(head, /\{columns\.map\(/);
-  assert.match(head, />Status</);
-  assert.match(head, />Action</);
-  // The count is stated rather than inferred, so a future column cannot drift again.
-  assert.match(body, /colSpan=\{columns\.length \+ 2\}/);
+  assert.match(head, /\{hasStatus\s*\?\s*<th\b[^>]*>Status<\/th>/);
+  assert.match(head, /\{onAction\s*\?\s*<th\b[^>]*>Action<\/th>/);
+  assert.match(body, /\{hasStatus\s*\?\s*<td\b/);
+  assert.match(body, /\{onAction\s*\?\s*<td\b/);
+  // Optional status/action columns must use the same count in the empty row.
+  assert.match(body, /colSpan=\{columns\.length \+ \(hasStatus \? 1 : 0\) \+ \(onAction \? 1 : 0\)\}/);
 });
 
 test("no action button renders without something to do", () => {
   // They rendered "Details" everywhere, and "RETRY" on a failed payout, wired to
   // nothing — an operator could believe they had retried a failed transfer.
-  assert.match(screen, /\{onAction \? \(/);
+  assert.match(screen, /\{onAction\s*\?\s*<td\b/);
+  assert.match(screen, /onClick=\{\(\) => onAction\(row\)\}/);
   assert.doesNotMatch(screen, /onClick=\{\(\) => onAction\?\.\(row\)\}/);
 });
 
@@ -348,9 +351,14 @@ test("the unread badge reflects a real count", () => {
 });
 
 test("the search says what it searches", () => {
-  // The placeholder promised transactions and stations; the implementation matched
-  // only nav labels, so a transaction reference returned "No matching sections".
-  assert.match(header, /Search dashboard sections/);
+  // The shared search now resolves authorized pages and recent record matches.
+  const search = read(webRoot, "components", "shared", "DashboardSearch.tsx");
+  const records = read(webRoot, "lib", "dashboard-search.ts");
+  assert.match(header, /<DashboardSearch scope="partner" entries=\{searchEntries\}/);
+  assert.match(search, /placeholder="Search pages and recent records"/);
+  assert.match(search, /searchDashboardRecords\(scope, normalized, user\)/);
+  assert.match(records, /\/api\/partner\/transactions/);
+  assert.match(records, /href: '\/dashboard\/transactions'/);
   assert.doesNotMatch(header, /placeholder=\{page\.searchPlaceholder\}/);
 });
 
@@ -391,7 +399,9 @@ test("it has a 6-digit input, a resend countdown and validation states", () => {
   assert.match(verification, /maxLength=\{CODE_LENGTH\}/);
   assert.match(verification, /Resend in \$\{cooldown\}s/);
   assert.match(verification, /RESEND_COOLDOWN_SECONDS/);
-  assert.match(verification, /role="alert"/);
+  assert.match(verification, /<StatusPopup tone="error" message=\{error\}/);
+  const popup = read(webRoot, "components", "shared", "StatusPopup.tsx");
+  assert.match(popup, /role=\{popup\.tone === "error" \? "alert" : "status"\}/);
   assert.match(verification, /aria-invalid=\{stage === "failed"\}/);
   assert.match(verification, /Account verification complete/);
 });

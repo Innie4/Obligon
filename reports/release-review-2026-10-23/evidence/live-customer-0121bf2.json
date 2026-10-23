@@ -1,0 +1,34 @@
+{
+  "revision": "0121bf255dbe52d326cdb6a42ab116c8dff86430",
+  "routes": [
+    {
+      "path": "/customer",
+      "popups": [],
+      "title": "Dashboard Overview"
+    },
+    {
+      "path": "/customer/wallet",
+      "popups": [],
+      "title": "Wallet Management"
+    },
+    {
+      "path": "/customer/card",
+      "popups": [],
+      "title": "My Card"
+    },
+    {
+      "path": "/auth/sign-in-options",
+      "popups": [],
+      "title": "Sign-in options"
+    }
+  ],
+  "login": "Authorized supplied customer credentials; second observed attempt returned HTTP200 after initial generic failure",
+  "network": "Customer subscription, card and spend-projection reads returned HTTP200",
+  "google": "Official Google button and separate passkey visible on login after config resolved",
+  "limits": [
+    "No card/identity/payment mutation",
+    "No new Google linking or biometric/passkey enrollment",
+    "Generic admin/company/partner live access remains unavailable",
+    "One initial API health browser navigation was client-blocked; direct public health check returned200"
+  ]
+}
