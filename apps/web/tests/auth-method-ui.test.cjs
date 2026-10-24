@@ -52,8 +52,8 @@ function loginFixture({ methods = config, unsupported = null, signIn } = {}) {
 test('disabled provider config shows honest copy without a fake Google action', async () => {
   const fixture = loginFixture({ methods: { google: { enabled: false }, passkeys: { enabled: false } } });
   fixture.effects(); await flush(); fixture.render();
-  assert.match(fixture.text(), /Google sign-in is not configured/);
-  assert.match(fixture.text(), /Passkey sign-in is not enabled/);
+  assert.match(fixture.text(), /Google sign-in is unavailable/);
+  assert.match(fixture.text(), /Passkey sign-in is unavailable/);
   assert.equal(fixture.nodes().some(node => node.type === 'GoogleIdentityButton'), false);
   assert.equal(fixture.button('Sign in with a passkey'), undefined);
   assert.equal(fixture.calls.length, 0);

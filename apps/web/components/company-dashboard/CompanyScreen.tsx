@@ -71,16 +71,17 @@ function Status({ status, statusTone = "muted" }: {
   status: string;
   statusTone?: CompanyTone;
 }) { return <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${tone[statusTone]}`}>{status}</span>; }
-function Metrics({ metrics }: {
+function Metrics({ metrics, compact = false }: {
   metrics: Metric[];
+  compact?: boolean;
 }) {
-  return <dl aria-label="Company metrics" className={`mt-6 grid grid-cols-2 gap-3 sm:gap-4 ${metrics.length > 3 ? "sm:grid-cols-4" : metrics.length === 3 ? "sm:grid-cols-3" : ""}`}>
+  return <dl aria-label="Company metrics" className={`grid grid-cols-2 gap-3 sm:gap-4 ${compact ? "mt-5 border-y border-obligon-border py-4" : "mt-6"} ${metrics.length > 3 ? "sm:grid-cols-4" : metrics.length === 3 ? "sm:grid-cols-3" : ""}`}>
 
-    {metrics.map((metric, index) => <div key={metric.label} className={`min-w-0 rounded-xl border border-obligon-border bg-white p-3 sm:p-4 xl:p-5 ${metrics.length === 3 && index === 2 ? "col-span-2 sm:col-span-1" : ""}`}>
+      {metrics.map((metric, index) => <div key={metric.label} className={`min-w-0 ${compact ? "" : "rounded-xl border border-obligon-border bg-white p-3 sm:p-4 xl:p-5"} ${metrics.length === 3 && index === 2 ? "col-span-2 sm:col-span-1" : ""}`}>
 
       <dt className="text-xs font-medium leading-5 text-obligon-text sm:text-sm">{metric.label}</dt>
 
-      <dd className="mt-1 break-words text-2xl font-bold tracking-tight text-obligon-navy tabular-nums sm:mt-2 xl:text-3xl">{metric.value.split(/(\s+(?:standard m³|kg|L)(?=\s|$|·))/).map((part, partIndex) => partIndex % 2 ? <span key={partIndex} className="whitespace-nowrap text-sm font-medium tracking-normal text-obligon-text sm:text-base">{part}</span> : part)}</dd>
+        <dd className={`mt-1 break-words font-bold tracking-tight text-obligon-navy tabular-nums sm:mt-2 ${compact ? "text-xl sm:text-2xl" : "text-2xl xl:text-3xl"}`}>{metric.value.split(/(\s+(?:standard m³|kg|L)(?=\s|$|·))/).map((part, partIndex) => partIndex % 2 ? <span key={partIndex} className="whitespace-nowrap text-sm font-medium tracking-normal text-obligon-text sm:text-base">{part}</span> : part)}</dd>
 
       {metric.helper ? <dd className="mt-1 text-xs leading-5 text-obligon-text">{metric.helper}</dd> : null}
 
@@ -88,11 +89,13 @@ function Metrics({ metrics }: {
 
   </dl>;
 }
-function Table({ title, columns, rows, empty = "No records yet.", actionLabel, onAction, onRowAction, rowActionLabel = "Manage" }: {
+function Table({ title, columns, rows, empty = "No records yet.", emptyMessage, emptyAction, actionLabel, onAction, onRowAction, rowActionLabel = "Manage" }: {
   title: string;
   columns: string[];
   rows: CompanyRow[];
   empty?: string;
+  emptyMessage?: string;
+  emptyAction?: React.ReactNode;
   actionLabel?: string;
   onAction?: () => void;
   onRowAction?: (row: CompanyRow) => void;
@@ -126,7 +129,6 @@ function Table({ title, columns, rows, empty = "No records yet.", actionLabel, o
           {onRowAction ? <button type="button" onClick={() => onRowAction(row)} className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-obligon-border px-4 text-sm font-bold text-obligon-green hover:bg-obligon-mist">{rowActionLabel}<span className="sr-only"> {row.cells[0]}</span></button> : null}
         </li>)}
       </ul>
-      <p className="hidden border-b border-obligon-border bg-obligon-mist/50 px-5 py-3 text-xs leading-5 text-obligon-text md:block">Scroll horizontally when needed to view all columns and actions.</p>
       <div tabIndex={0} role="region" aria-label={`${title} table`} className="hidden overflow-x-auto md:block">
 
       <table className="w-full text-left text-sm">
@@ -171,7 +173,7 @@ function Table({ title, columns, rows, empty = "No records yet.", actionLabel, o
       </table>
 
       </div>
-    </> : <div className="px-4"><EmptyState title={empty} /></div>}
+    </> : <div className="px-4"><EmptyState title={empty} message={emptyMessage} action={emptyAction} /></div>}
 
   </section>;
 }
@@ -189,7 +191,7 @@ function Overview({ onModal }: PageProps) {
 
       <Link href="/company/reports" className="mt-3 inline-flex min-h-11 items-center font-bold text-obligon-green">View fleet reports →</Link>
 
-      <Table title="Recent transactions" columns={["Date", "Vehicle", "Driver", "Amount"]} rows={result.data?.recentTransactions ?? []} actionLabel="Export" onAction={() => onModal("export")} />
+      <Table title="Recent transactions" columns={["Date", "Vehicle", "Driver", "Amount"]} rows={result.data?.recentTransactions ?? []} empty="No recent company card purchases" emptyMessage="Purchases made with company cards will appear here." emptyAction={<Link href="/company/cards" className="inline-flex min-h-11 items-center rounded-lg border border-obligon-border px-4 text-sm font-bold text-obligon-green">View cards</Link>} actionLabel="Export" onAction={() => onModal("export")} />
 
     </DataBoundary>
 
@@ -244,19 +246,19 @@ function Cards({ onModal }: PageProps) {
 
     <Header pageKey="cards" action={{ label: "Issue New Card", modal: "newCard" }} onModal={onModal} />
 
-    <div className="mt-5 flex flex-wrap gap-3">
+    <div className="mt-5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
 
-      <button type="button" onClick={() => onModal("assign")} className={controlClass}>Assign Card</button>
+      <button type="button" onClick={() => onModal("assign")} className={`${controlClass} w-full sm:w-auto`}>Assign card</button>
 
-      <button type="button" onClick={() => onModal("cardConfirm")} className={controlClass}>Freeze / Unfreeze Card</button>
-      <button type="button" onClick={() => onModal("posCode")} className={controlClass}>Get single-use fuel code</button>
+      <button type="button" onClick={() => onModal("cardConfirm")} className={`${controlClass} w-full sm:w-auto`}>Freeze / unfreeze</button>
+      <button type="button" onClick={() => onModal("posCode")} className={`${controlClass} col-span-2 w-full sm:w-auto`}>Get single-use fuel code</button>
 
     </div>
     <label className="mt-4 block max-w-lg text-sm font-bold">Search fuel cards<input type="search" maxLength={254} value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} className={`${controlClass} mt-1 w-full`} /></label>
 
     <DataBoundary result={result}>
 
-      <Metrics metrics={result.data?.metrics ?? []} />
+      <Metrics metrics={result.data?.metrics ?? []} compact />
 
       <Table title="All cards" columns={["Card", "Number", "Driver / vehicle", "Remaining monthly limit"]} rows={cards} empty="No cards. Issue your first card above." onRowAction={row => onModal("cardConfirm", { cardId: row.cardId ?? row.id })} />
       <CompanyPagination page={page} total={result.data?.total ?? 0} count={result.data?.cards.length ?? 0} onPageChange={setPage} />
@@ -331,7 +333,7 @@ function Transactions({ onModal }: PageProps) {
     {!driverFilterReady && choices.status === "success" ? <p className="mt-3 text-sm text-obligon-text">Driver filtering is currently unavailable. Refresh this page to try again.</p> : null}
     <DataBoundary result={result}>
 
-      <Table title="Transactions" columns={["Date & time", "Vehicle / driver", "Station / fuel", "Card", "Amount"]} rows={result.data?.transactions ?? []} empty="No transactions match these filters." />
+      <Table title="Transactions" columns={["Date & time", "Vehicle / driver", "Station / fuel", "Card", "Amount"]} rows={result.data?.transactions ?? []} empty="No company card purchases match these filters" emptyMessage="Purchases made with company cards will appear here. Try another period or filter." emptyAction={<Link href="/company/cards" className="inline-flex min-h-11 items-center rounded-lg border border-obligon-border px-4 text-sm font-bold text-obligon-green">View cards</Link>} />
 
       <CompanyPagination page={page} total={result.data?.total ?? 0} count={result.data?.transactions.length ?? 0} onPageChange={setPage} />
       <p className="mt-3 text-xs text-obligon-text">Text search filters this table. CSV export uses its selected period and fleet filters.</p>

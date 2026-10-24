@@ -1,0 +1,40 @@
+{
+  "base": "a28e2564a08bbaad40b63b9c9addfea51e1a3f38",
+  "webTests": {
+    "passed": 707,
+    "failed": 0,
+    "skipped": 0
+  },
+  "build": "passed",
+  "typecheck": "passed",
+  "lint": "passed with warnings",
+  "routeSweep": {
+    "contexts": 81,
+    "widths": [
+      1440,
+      768,
+      390,
+      320
+    ],
+    "frames": 324,
+    "uncaughtErrors": 0,
+    "documentOverflow": 0
+  },
+  "finalAxe": {
+    "frames": 38,
+    "violations": 0,
+    "uncaughtErrors": 0,
+    "documentOverflow": 0
+  },
+  "darkCustomerAxe": {
+    "routes": [
+      "/customer",
+      "/customer/card",
+      "/customer/profile"
+    ],
+    "violations": 0,
+    "incomplete": 0
+  },
+  "providerEffects": "disabled in isolated fixtures; no real funds moved",
+  "publicDesignInspector": "style-rule FAILs preserved and disclosed; not all-pass"
+}

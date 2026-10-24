@@ -183,6 +183,26 @@ test('existing card routes selected landing plan to renewal and keeps all contro
   assert.ok(nodes.some(node => node.type === 'button' && node.props.disabled === false && node.props.children.includes('Set or change projected spend')));
 });
 
+test('My Card provides direct section links while preserving payment-return parameters', async () => {
+  const fixture = cardFixture('?paymentFlow=subscription&reference=RENEWAL-RETURN', true);
+  fixture.props.subscription = { active: true, subscription: { plan_code: 'bronze' } };
+  fixture.render(fixture.CardPage, fixture.props);
+  await flush();
+  const tree = fixture.render(fixture.CardPage, fixture.props);
+  const nav = allNodes(tree).find(node => node.type === 'nav' && node.props['aria-label'] === 'My Card sections');
+  assert.ok(nav, 'the long card page exposes its main tasks before their content');
+  const links = allNodes(nav).filter(node => node.type === 'a');
+  assert.deepEqual(Array.from(links, node => node.props.href), ['#card-status', '#subscription', '#fuel-budget', '#fuel', '#fuel-orders']);
+  for (const link of links) {
+    const destination = new URL(link.props.href, 'https://obligon.example/customer/card?paymentFlow=subscription&reference=RENEWAL-RETURN');
+    assert.equal(destination.searchParams.get('reference'), 'RENEWAL-RETURN');
+    assert.equal(destination.searchParams.get('paymentFlow'), 'subscription');
+  }
+  assert.ok(allNodes(tree).some(node => node.props?.id === 'card-status'));
+  assert.ok(allNodes(tree).some(node => node.props?.id === 'subscription'));
+  assert.ok(allNodes(tree).some(node => node.props?.id === 'fuel-budget'));
+});
+
 test('new customers still open their selected first-card plan', async () => {
   const fixture = cardFixture('?chosenPlan=gold', false);
   fixture.render(fixture.CardPage, fixture.props);

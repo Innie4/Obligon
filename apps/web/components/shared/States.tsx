@@ -17,15 +17,17 @@ export function EmptyState({
   icon: Icon = Inbox,
   title = "Nothing here yet",
   message,
-  action
+  action,
+  compact = false
 }: {
   icon?: React.ComponentType<LucideProps>;
   title?: string;
   message?: string;
   action?: React.ReactNode;
+  compact?: boolean;
 }) {
   return (
-    <div className="flex min-h-52 flex-col items-center justify-center gap-3 px-5 py-12 text-center">
+    <div className={`flex flex-col items-center justify-center gap-3 px-5 text-center ${compact ? "py-6" : "min-h-52 py-12"}`}>
       <span className="mb-1 text-obligon-green">
         <Icon size={28} strokeWidth={1.5} aria-hidden="true" />
       </span>
@@ -66,7 +68,7 @@ export function AsyncBoundary({
   status: AsyncStatus;
   error?: string | null;
   isEmpty?: boolean;
-  empty?: { title?: string; message?: string; icon?: React.ComponentType<LucideProps>; action?: React.ReactNode };
+  empty?: { title?: string; message?: string; icon?: React.ComponentType<LucideProps>; action?: React.ReactNode; compact?: boolean };
   loadingLabel?: string;
   onRetry?: () => void;
   children: React.ReactNode;
@@ -77,6 +79,6 @@ export function AsyncBoundary({
   }
   return <>
     {error ? <StatusPopup tone="warning" title="These records could not be refreshed. Showing the last loaded data." message={error} onRetry={onRetry} retryLabel="Retry refresh" /> : null}
-    {isEmpty ? <EmptyState title={empty?.title} message={empty?.message} icon={empty?.icon} action={empty?.action} /> : children}
+    {isEmpty ? <EmptyState title={empty?.title} message={empty?.message} icon={empty?.icon} action={empty?.action} compact={empty?.compact} /> : children}
   </>;
 }

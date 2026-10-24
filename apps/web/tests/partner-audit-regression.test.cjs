@@ -10,7 +10,7 @@ function load(path, dependencies = {}, expose = '') {
   const code = ts.transpileModule(fs.readFileSync(require.resolve(path), 'utf8') + expose, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true },
   }).outputText;
-  vm.runInNewContext(code, { exports, require: name => name.endsWith('/partner-access.mjs') ? partnerAccess : name === '@/lib/partner-selling-unit' ? load('../lib/partner-selling-unit.ts',{'../../../packages/shared/partner-access.mjs':partnerAccess}) : name === '@/components/shared/AuthContext' ? {useSession:()=>({user:{role:'partner'}})} : name === 'next/dynamic' ? { default: () => 'StationProfileForm', __esModule: true } : dependencies[name] ?? {}, window: { print() {} } });
+  vm.runInNewContext(code, { exports, require: name => name.endsWith('/partner-access.mjs') ? partnerAccess : name === '@/lib/partner-selling-unit' ? load('../lib/partner-selling-unit.ts',{'../../../packages/shared/partner-access.mjs':partnerAccess}) : name === '@/components/shared/AuthContext' ? {useSession:()=>({user:{role:'partner',organizationRole:'owner'}})} : name === 'next/dynamic' ? { default: () => 'StationProfileForm', __esModule: true } : dependencies[name] ?? {}, window: { print() {} } });
   return exports;
 }
 function nodes(node) {

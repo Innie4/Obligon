@@ -20,15 +20,17 @@ function fixture(name, request, dependencies = {}, globals = {}, props = {}) {
   };
   const exported = {};
   const customerScreen = ['SupportPage', 'WalletPage', 'OverviewPage', 'TransactionsPage', 'StationsPage', 'NotificationsPage'].includes(name);
-  const source = fs.readFileSync(require.resolve(customerScreen ? '../components/customer-dashboard/CustomerScreen.tsx' : name === 'CardPlanModal' ? '../components/customer-dashboard/CardRequestModals.tsx' : `../components/dashboard/${name}.tsx`), 'utf8') + (customerScreen ? `\nexport { ${name} };` : '');
+  const partnerScreen = ['PartnerOverview', 'DataTable', 'SettingsPage', 'StaffPage', 'FuelPricingPage', 'StationProfilePage', 'SettlementsPage'].includes(name);
+  const source = fs.readFileSync(require.resolve(customerScreen ? '../components/customer-dashboard/CustomerScreen.tsx' : partnerScreen ? '../components/dashboard/DashboardScreen.tsx' : name === 'CardPlanModal' ? '../components/customer-dashboard/CardRequestModals.tsx' : `../components/dashboard/${name}.tsx`), 'utf8') + (name === 'PartnerOverview' ? '\nexport { OverviewPage as PartnerOverview };' : customerScreen || partnerScreen ? `\nexport { ${name} };` : '');
   vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }).outputText, {
     exports: exported, Date, Error, ...globals,
     require(id) {
       if (id === 'react') return React;
       if (id.endsWith('/partner-access.mjs')) return require('../../../packages/shared/partner-access.mjs');
       if (id in dependencies) return dependencies[id];
+      if (partnerScreen && id === 'next/dynamic') return { __esModule: true, default: () => 'StationProfileForm' };
       if (id === '@/lib/services') return { authenticatedRequest: (...args) => { calls.push(args); return request(...args); } };
-      if (customerScreen || name === 'CardPlanModal') return id === 'lucide-react' ? new Proxy({}, { get: (_, icon) => String(icon) }) : {};
+      if (customerScreen || partnerScreen || name === 'CardPlanModal') return id === 'lucide-react' ? new Proxy({}, { get: (_, icon) => String(icon) }) : {};
       throw new Error(`Unexpected import: ${id}`);
     }
   });
@@ -213,7 +215,7 @@ test('station discounts explain missing stations and approved prices without off
 
 test('discount submission preserves approved selling unit and shows success only after acceptance', async () => {
   const pending = deferred();
-  const ui = fixture('StationDiscounts', async path => path === '/api/partner/pricing' ? stationPricing : pending.promise, discountDependencies, { FormData: class { constructor(form) { this.form = form; } get(name) { return this.form[name]; } } });
+  const ui = fixture('StationDiscounts', async path => path === '/api/partner/pricing' ? stationPricing : pending.promise, discountDependencies, { FormData: class { constructor(form) { this.form = form; } get(name) { return this.form[name]; } } }, { canManage: true });
   await ui.settle();
   const form = ui.nodes().find(node => node.type === 'form');
   const submitted = form.props.onSubmit({ preventDefault() {}, currentTarget: { rate: '5', starts: '2026-10-24T09:00:00Z', ends: '2026-10-25T18:00:00Z' } }); ui.render();
@@ -225,7 +227,7 @@ test('discount submission preserves approved selling unit and shows success only
 });
 
 test('discount refusal remains visible and does not announce success', async () => {
-  const ui = fixture('StationDiscounts', async path => { if (path === '/api/partner/pricing') return stationPricing; throw new Error('Discount window was rejected'); }, discountDependencies, { FormData: class { get(name) { return name === 'rate' ? '5' : '2026-10-24T09:00:00Z'; } } });
+  const ui = fixture('StationDiscounts', async path => { if (path === '/api/partner/pricing') return stationPricing; throw new Error('Discount window was rejected'); }, discountDependencies, { FormData: class { get(name) { return name === 'rate' ? '5' : '2026-10-24T09:00:00Z'; } } }, { canManage: true });
   await ui.settle();
   await ui.nodes().find(node => node.type === 'form').props.onSubmit({ preventDefault() {}, currentTarget: {} }); ui.render();
   assert.match(ui.text(), /Discount window was rejected/); assert.doesNotMatch(ui.text(), /submitted for admin review/);
@@ -356,7 +358,7 @@ test('customer overview names the task and provides actual Wallet and My Card de
   assert.ok(ui.nodes().some(node => node.props?.href === '/customer/card'));
 });
 
-test('customer history exposes a scroll cue and keeps signed amounts intact with their currency', () => {
+test('customer history shows phone records and keeps signed amounts intact with their currency', () => {
   const row = { id: 'payment-one', kind: 'movement', title: 'Fuel debit', reference: 'REF-ONE', amount: '-₦1,000', signedKobo: -100000, balanceAfterLabel: '₦2,000', time: '23 Oct' };
   const ui = fixture('TransactionsPage', async () => ({}), {
     'next/navigation': { useRouter: () => ({ push() {} }) },
@@ -365,10 +367,33 @@ test('customer history exposes a scroll cue and keeps signed amounts intact with
     '@/components/shared/Toast': { useToast: () => ({ success() {}, error() {} }) },
     '@/components/shared/States': { AsyncBoundary: 'AsyncBoundary' }
   }, { window: { location: { search: '' } }, URLSearchParams });
-  assert.match(ui.text(), /Scroll horizontally to view amounts, balances and receipts/);
+  assert.doesNotMatch(ui.text(), /Scroll horizontally to view amounts, balances and receipts/);
+  const phone = ui.nodes().find(node => node.type === "ul" && node.props?.["aria-label"] === "Transaction history records");
+  assert.ok(phone); assert.match(text(phone), /-₦1,000/); assert.match(text(phone), /₦2,000/);
   const amount = ui.nodes().find(node => node.type === 'td' && text(node).trim() === row.amount);
   assert.ok(amount); assert.match(amount.props.className, /whitespace-nowrap/);
   const region = ui.nodes().find(node => node.props?.role === 'region'); assert.equal(region.props.tabIndex, 0);
+});
+
+test('customer receipts preserve long references and signed amounts with narrow-screen wrapping', () => {
+  const row = { id: 'large-receipt', kind: 'dispense', title: 'Gas purchase', reference: 'OBLIGON-REFERENCE-'.repeat(12), amount: '-₦9,999,999,999.99', signedKobo: -999999999999, balanceAfterLabel: '₦99,999,999,999.99', time: '24 Oct', quantity: '12345.678', sellingUnit: 'scm', fuel: 'CNG', status: 'success' };
+  const ui = fixture('TransactionsPage', async () => ({}), {
+    'next/navigation': { useRouter: () => ({ push() {} }) },
+    '@/components/shared/usePolling': { usePolling() {} },
+    '@/components/shared/useAsync': { useAsync: () => ({ status: 'success', data: [row], refresh() {} }) },
+    '@/components/shared/Toast': { useToast: () => ({ success() {}, error() {} }) },
+    '@/components/shared/States': { AsyncBoundary: 'AsyncBoundary' },
+    '@/lib/customer-presentation': { customerReceiptRows: event => [['Balance After', event.balanceAfterLabel], ['Quantity', `${event.quantity} standard m³`]] }
+  }, { window: { location: { search: '' } }, URLSearchParams });
+  ui.button('View Receipt').props.onClick(); ui.render();
+  const reference = ui.nodes().find(node => node.type === 'p' && text(node).includes(row.reference));
+  assert.ok(reference); assert.match(reference.props.className, /break-all/);
+  const amount = ui.nodes().find(node => node.type === 'p' && text(node).trim() === row.amount);
+  assert.ok(amount); assert.match(amount.props.className, /break-words/); assert.match(amount.props.className, /text-xl/); assert.match(amount.props.className, /min-\[390px\]:text-2xl/);
+  const balanceRow = ui.nodes().find(node => typeof node.type === 'function' && node.props?.label === 'Balance After');
+  const balance = flatten(balanceRow.type(balanceRow.props)).find(node => node.type === 'span' && text(node) === row.balanceAfterLabel);
+  assert.ok(balance); assert.match(balance.props.className, /min-w-0/); assert.match(balance.props.className, /overflow-wrap:anywhere/);
+  assert.ok(ui.nodes().some(node => node.props?.value === '12345.678 standard m³'));
 });
 
 test('customer stations put real station details before the optional map without requesting GPS', async () => {
@@ -396,6 +421,172 @@ test('customer empty notifications retain their visible page heading and context
     '@/components/shared/Toast': { useToast: () => ({ success() {}, error() {} }) }
   });
   const nodes = ui.nodes(), boundary = nodes.findIndex(node => node.type === 'AsyncBoundary');
-  assert.ok(nodes.findIndex(node => node.type === 'h2' && text(node) === 'Notifications') < boundary);
+  const heading = nodes.findIndex(node => node.type === 'h1' && text(node) === 'Notifications');
+  assert.ok(heading >= 0 && heading < boundary);
   assert.equal(nodes[boundary].props.isEmpty, true);
+});
+
+function renderAsyncStates(tree) {
+  const exported = {};
+  const React = { createElement: (type, props, ...children) => ({ type, props: { ...props, children } }) };
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync(require.resolve('../components/shared/States.tsx'), 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true },
+  }).outputText, { exports: exported, require: id => id === 'react' ? React : id === './StatusPopup' ? { StatusPopup: 'StatusPopup' } : { Inbox: 'Inbox' } });
+  function resolve(node) {
+    if (Array.isArray(node)) return node.map(resolve);
+    if (!node || typeof node !== 'object') return node;
+    if (node.type === 'AsyncBoundary') return resolve(exported.AsyncBoundary(node.props));
+    if (Object.values(exported).includes(node.type)) return resolve(node.type(node.props));
+    return { ...node, props: { ...node.props, children: resolve(node.props?.children) } };
+  }
+  return resolve(tree);
+}
+
+test('station search and filter recovery remain available when a server search has no matches', () => {
+  let records = [{ id: 'one', name: 'Available station', address: 'Test road', fuels: ['LPG'], lat: null, lng: null }];
+  const ui = fixture('StationsPage', async () => ({}), {
+    'next/navigation': { useRouter: () => ({ push() {} }) },
+    '@/components/shared/useAsync': { useAsync: () => ({ status: 'success', data: records, refresh() {}, reload() {} }) },
+    '@/components/shared/States': { AsyncBoundary: 'AsyncBoundary' },
+    '@/lib/station-fuels': { stationFuelName: value => value },
+    './StationLocationControl': { useStationLocation: () => ({ location: undefined }), StationLocationControl: 'StationLocationControl' },
+    '../shared/StationMap': { StationMap: 'StationMap' },
+  }, { window: { setInterval: () => 1, addEventListener() {}, removeEventListener() {} }, document: { addEventListener() {}, removeEventListener() {} }, clearInterval() {} });
+  ui.nodes().find(node => node.props?.['aria-label'] === 'Search stations').props.onChange({ target: { value: 'No matching station' } });
+  records = [];
+  const visible = flatten(renderAsyncStates(ui.render()));
+  const input = visible.find(node => node.props?.['aria-label'] === 'Search stations');
+  assert.ok(input, 'the actual empty boundary must not hide the search field');
+  assert.equal(input.props.value, 'No matching station');
+  const clear = visible.find(node => node.type === 'button' && text(node).trim() === 'Clear filters');
+  assert.ok(clear, 'a no-match result offers a direct reset');
+  clear.props.onClick();
+  assert.equal(flatten(renderAsyncStates(ui.render())).find(node => node.props?.['aria-label'] === 'Search stations').props.value, '');
+});
+
+test('customer route titles remain h1 headings independently of desktop navigation', () => {
+  const ui = fixture('NotificationsPage', async () => ({}), {
+    '@/components/shared/usePolling': { usePolling() {} },
+    '@/components/shared/useAsync': { useAsync: () => ({ status: 'success', data: [], refresh() {} }) },
+    '@/components/shared/States': { AsyncBoundary: 'AsyncBoundary' },
+    '@/components/shared/Toast': { useToast: () => ({ success() {}, error() {} }) },
+  });
+  assert.equal(ui.nodes().filter(node => node.type === 'h1' && text(node) === 'Notifications').length, 1);
+});
+
+test('partner settings show organization details without admin-only controls to ordinary members', () => {
+  for (const organizationRole of ['viewer', 'cashier', 'manager']) {
+    const ui = fixture('SettingsPage', async () => ({}), {
+      '@/components/shared/AuthContext': { useSession: () => ({ user: { role: 'partner', partnerType: 'fuel_station', organizationRole } }) },
+      '@/components/shared/useAsync': { useAsync: () => ({ status: 'success', data: { org: { name: 'Station organization', verificationStatus: 'verified' }, security: { twoFactorEnabled: false } }, reload() {} }) },
+      '@/components/shared/States': { AsyncBoundary: 'AsyncBoundary' },
+      '@/components/shared/Toast': { useToast: () => ({ success() {}, error() {} }) },
+      './PartnerApiKeys': { PartnerApiKeys: 'PartnerApiKeys' },
+    });
+    assert.match(ui.text(), /Station organization/);
+    assert.ok(!ui.button('Save details') || ui.button('Save details').props.disabled, `${organizationRole} cannot attempt admin-only changes`);
+    assert.ok(!ui.nodes().some(node => node.type === 'PartnerApiKeys'), 'no admin-only API-key request is mounted');
+  }
+});
+
+test('partner settings preserve editing and API access for owners and administrators', () => {
+  for (const organizationRole of ['owner', 'admin']) {
+    const ui = fixture('SettingsPage', async () => ({}), {
+      '@/components/shared/AuthContext': { useSession: () => ({ user: { role: 'partner', partnerType: 'fuel_station', organizationRole } }) },
+      '@/components/shared/useAsync': { useAsync: () => ({ status: 'success', data: { org: { name: 'Station organization', verificationStatus: 'verified' }, security: { twoFactorEnabled: false } }, reload() {} }) },
+      '@/components/shared/States': { AsyncBoundary: 'AsyncBoundary' },
+      '@/components/shared/Toast': { useToast: () => ({ success() {}, error() {} }) },
+      './PartnerApiKeys': { PartnerApiKeys: 'PartnerApiKeys' },
+    });
+    assert.equal(ui.button('Save details').props.disabled, false);
+    assert.ok(ui.nodes().some(node => node.type === 'PartnerApiKeys'));
+  }
+});
+
+test('ordinary partner members can read the team without invite or edit actions', () => {
+  for (const organizationRole of ['viewer', 'dispatcher', 'manager']) {
+    const ui = fixture('StaffPage', async () => ({}), {
+      '@/components/shared/AuthContext': { useSession: () => ({ user: { role: 'partner', partnerType: 'fuel_station', organizationRole } }) },
+      '@/components/shared/useAsync': { useAsync: () => ({ status: 'success', data: { staff: [{ id: 'staff-one', cells: ['ST-1', 'Station owner', 'Owner', 'Enabled'], status: 'ACTIVE' }], stats: { active: 1, total: 1 } }, reload() {} }) },
+      '@/components/shared/States': { AsyncBoundary: 'AsyncBoundary' },
+    });
+    assert.equal(ui.button('Invite Attendant'), undefined);
+    assert.equal(ui.nodes().find(node => node.props?.title === 'Staff Members').props.onAction, undefined);
+  }
+});
+
+test('read-only discount presentation cannot submit an admin approval request', async () => {
+  const ui = fixture('StationDiscounts', async () => stationPricing, discountDependencies, {}, { canManage: false });
+  await ui.settle();
+  assert.equal(ui.nodes().find(node => node.type === 'fieldset').props.disabled, true);
+  await ui.nodes().find(node => node.type === 'form').props.onSubmit({ preventDefault() {} });
+  assert.equal(ui.calls.filter(([, options]) => options?.method === 'POST').length, 0);
+});
+
+test('price publishing follows the existing manager threshold without blocking price viewing', async () => {
+  for (const organizationRole of ['viewer', 'dispatcher', 'manager', 'admin', 'owner']) {
+    const writes = [];
+    const ui = fixture('FuelPricingPage', async () => ({}), {
+      '@/components/shared/AuthContext': { useSession: () => ({ user: { role: 'partner', partnerType: 'fuel_station', organizationRole } }) },
+      '@/components/shared/useAsync': { useAsync: () => ({ status: 'success', data: { stations: [{ id: 'one', name: 'Station', approvedSellingUnits: { PMS: 'litre' } }], prices: [{ stationId: 'one', fuelType: 'PMS', price: 1000, sellingUnit: 'litre' }] }, reload() {} }) },
+      '@/components/shared/States': { AsyncBoundary: 'AsyncBoundary' },
+      '@/components/shared/Toast': { useToast: () => ({ success() {}, error() {} }) },
+      '@/lib/partner-selling-unit': { priceSellingUnit: () => 'litre' },
+      '@/lib/services': { mutationsApi: { updatePrices: (...args) => writes.push(args) } },
+    });
+    const editable = ['manager', 'admin', 'owner'].includes(organizationRole);
+    assert.equal(ui.button('Publish Prices').props.disabled, !editable);
+    if (!editable) {
+      await ui.nodes().find(node => node.type === 'form').props.onSubmit({ preventDefault() {} });
+      assert.equal(writes.length, 0);
+    }
+  }
+});
+
+test('settlement viewers see nomination details without admin-only bank actions', () => {
+  const ui = fixture('SettlementsPage', async () => ({}), {
+    '@/components/shared/AuthContext': { useSession: () => ({ user: { role: 'partner', organizationRole: 'viewer' } }) },
+    '@/components/shared/useAsync': { useAsync: () => ({ status: 'success', data: { bankAccounts: [{ id: 'bank-one', bankName: 'Test Bank', accountMask: '••••1234', accountName: 'Station', isDefault: false, verified: true }], totals: { pendingLabel: '₦0', totalSettledLabel: '₦0' }, settlements: [], payouts: [] }, reload() {} }) },
+    '@/components/shared/States': { AsyncBoundary: 'AsyncBoundary' },
+    '@/components/shared/Toast': { useToast: () => ({ success() {}, error() {} }) },
+  }, {}, { version: 0, onPayoutRequested() {} });
+  assert.match(ui.text(), /Test Bank/);
+  assert.equal(ui.button('Make default'), undefined);
+  assert.equal(ui.button('Add settlement account'), undefined);
+});
+
+test('partner overview keeps all metrics in compact phone groups and gives empty authorizations useful context', () => {
+  const metrics = [{ label: 'Today revenue', value: '₦9,876,543,210.98' }, { label: 'Today transactions', value: '12' }, { label: 'Today quantities', value: '12.50 kg · 2.45 standard m³' }];
+  const quickStats = [['Station count', '4'], ['Gross sales', '₦7,654,321.00'], ['Fees', '₦1,234.00'], ['Net sales', '₦7,653,087.00']];
+  const ui = fixture('PartnerOverview', async () => ({}), {
+    '@/components/shared/AuthContext': { useSession: () => ({ user: { role: 'partner', partnerType: 'gas_station', organizationRole: 'viewer' } }) },
+    '@/components/shared/useAsync': { useAsync: () => ({ status: 'success', data: { metrics, quickStats, recentTransactions: [] }, reload() {} }) },
+    '@/components/shared/States': { AsyncBoundary: 'AsyncBoundary' },
+  });
+  const totals = ui.nodes().find(node => node.type === 'section' && node.props?.['aria-label'] === 'Station totals');
+  assert.ok(totals); assert.match(totals.props.className, /(?:^| )grid-cols-2(?: |$)/);
+  for (const [label, value] of quickStats) { assert.ok(text(totals).includes(label)); assert.ok(text(totals).includes(value)); }
+  const today = ui.nodes().filter(node => node.props?.metric);
+  assert.equal(today.length, 3);
+  assert.deepEqual(Array.from(today, node => node.props.metric.value), metrics.map(metric => metric.value));
+  const table = ui.nodes().find(node => node.props?.title === 'Recent Dispenser Authorizations');
+  assert.match(table.props.empty.message, /authoriz|collect|dispens/i);
+  assert.ok(flatten(table.props.empty.action).some(node => node.props?.href === '/dashboard/transactions'));
+});
+
+test('partner phone records expose the transaction amount, status and working action without horizontal scrolling', () => {
+  const row = { id: 'one', cells: ['24 Oct, 10:15', 'Walk-in\nDirect', 'CARD-1', '₦12,345.67'], status: 'Completed' };
+  let selected;
+  const ui = fixture('DataTable', async () => ({}), {}, {}, {
+    title: 'Card Authorizations', columns: ['Date & Time', 'Customer / Vehicle', 'Card', 'Amount (₦)'], rows: [row], onAction: value => { selected = value; },
+  });
+  const list = ui.nodes().find(node => node.type === 'ul' && node.props?.['aria-label'] === 'Card Authorizations records');
+  assert.ok(list, 'phone records have a readable alternative to the wide table');
+  assert.match(text(list), /₦12,345\.67/);
+  assert.ok(flatten(list).some(node => node.props?.status === "Completed"));
+  flatten(list).find(node => node.type === 'button').props.onClick();
+  assert.equal(selected, row);
+  assert.doesNotMatch(ui.text(), /Scroll horizontally when needed to view all columns and actions/);
+  const region = ui.nodes().find(node => node.props?.role === 'region');
+  assert.equal(region.props.tabIndex, 0);
 });

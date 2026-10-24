@@ -1,0 +1,35 @@
+# Obligon UI refinement
+
+2026-10-24. Base source a28e256. Self-authored brief from the existing project and user instructions; no paid generation or brand change.
+
+## Brief and current app
+Obligon serves Nigerian customers buying fuel, station and workshop partners serving them, companies managing fleets, and administrators reviewing operations. The first task depends on role: check card/payment status, find a station, authorize a sale, manage a fleet record, or resolve a review queue. The intended feel is clear, capable and specific. The deliverable is a tested responsive Next.js application, rendered review evidence and a deployed release, not a native iPhone binary.
+
+Existing assets: bundled licensed Plus Jakarta Sans headings and Inter controls; green #3d6a00, navy #00010c, blue #011554 and lime #aaf857; authentic Fuelvista card, station photograph and Obligon logos. Fonts are retained because they are the existing brand and include the naira glyph. Apple fonts are unavailable on this Linux host; Apple-font fidelity is not claimed. App-designer renderer preflight succeeded with no FAILs using bundled tooling; the unavailable SF font request was recorded.
+
+Before: evidence/before has 30 rendered frames from 15 route families. The independent critic identifies task hierarchy and mobile density problems. The full route/viewport baseline is captured separately. The prior design report is historical evidence only.
+
+## Keep / lose / unknown
+Keep every route, navigation entry, role/tenant boundary, approved fuel unit, price, plan benefit, provider-disabled state, payment return, exact financial handler, scoped search, theme/location preference, visible operation popup, focus behaviour and keyboard scrolling. Keep all form fields and status reasons. Lose permanent scroll instruction strips, avoidable repeated labels, uncontrolled mobile wrapping, and repetitive plan-card stacks. Unknown provider completion and production configuration remain outside a visual-quality score.
+
+## Exploration
+Three concepts rendered at 3x in design/shots/explore: Roadbook (printed, light, serif, green, product imagery); Service lane (place, dark, grotesque, green, station photograph); Fuel pass (object, colour-field, rounded fallback, blue, shape/material). These differ in ground, type and richness; the current design and global history were consulted.
+
+Chosen: Service lane task/status hierarchy with Roadbook light content rhythm, applied to the existing green/navy web system. Keep white operational content and the customer's explicit theme choice. Service lane differs from the previous object/light/grotesque/green/colour-material history row by source, ground and richness. Its large dark blank area is not carried into forms. Roadbook's serif and overlapping image lose because they reduce continuity and legibility. Fuel pass loses because an all-lime field overpowers prolonged operations. No navigation omission from a prototype is adopted.
+
+## Category research
+Official WEX fleet mobile-app and card-management pages describe separate station finding, card controls and reporting tasks, with public interface images. Moniepoint's official account help describes business/profile context switching. These are verified functional observations; their private dashboards are not audited. Corpay research did not yield a sufficiently observed interface in the bounded search, so no visual claim is made. Public references: https://www.wexinc.com/products/fuel-cards-fleet/fleet-mobile-apps/ ; https://www.wexinc.com/products/fuel-cards-fleet/large-fleets/fleet-card-payment-management/ ; https://support.moniepoint.com/topics/account-information-and-updates-234 . The external metaphor is the service forecourt: one clearly marked lane per task, status before action, concise choices. Refuse generic glowing fintech tiles, decorative cursor effects, shader backgrounds and motion that distracts from amounts.
+
+## Tokens and content
+Retain actual brand/type tokens. Canvas #f6f8fa, surface #ffffff, ink #00010c, secondary #454650, quiet line #dde3e8, action/selection #3d6a00, light selection #edf4e7. Body 14–16px, metadata 12–13px, section 20–24px, page 28–34px, dominant amount/display 40–56px. Headings tighten tracking; financial figures stay tabular and exact. Use 4/8/12/16 within groups and 24/32/40 between groups; controls at least44px on phones. Do not introduce another font or runtime dependency.
+
+Content uses existing plans and actual fixture states. Current plan and compared plan must be distinct. Preserve all benefit labels and limitations, with progressive disclosure rather than deleted content. Verification status precedes plan comparisons. Phone tables show the main identity, amount and status without hiding detail. State text names the failed task and offers recovery. Public labels and system copy use sentence case, no em dashes, greetings or promotional filler. Synthetic account/amount data is solely local test data and is never proof of a production transaction.
+
+## Signature interaction
+Plan comparison follows a selected plan with an explicit pressed state, a short opacity/selection transition and all benefits reachable by keyboard. Selection changes the preview only; purchase still uses the existing selected plan handler and requires an explicit action. Reduced motion removes travel. Web haptics are not claimed. Long operational screens gain task/section navigation using existing anchors and scroll-margin so headings are not hidden by chrome.
+
+## All ten installed repositories
+Superdesign: concept comparison/context; hosted CLI unavailable, use pinned source. Better Design: semantic component discipline and button/table/empty-state examples; MCP disconnected, no hosted review claimed. Design Taste: hierarchy, typography, accessibility and public inspector. Canvas UI: progressive enhancement reference, GPU effects declined for operational clarity. Paper Shaders: explicit dependency/version/fallback cautions, texture declined. UI Layouts: responsive composition and navigation. Hyperiux: navigation/scroll ideas, no pro assets. Motion Primitives: bounded dialog/selection transitions and focus/scroll retention. Cursify: native cursor retained for touch/keyboard and unverified code licence. Trickle: CSS-only feedback restraint, no animated financial text. All ten catalog entries and local README snapshots were read; focused compatible sources were inspected. No hosted credits, external code upload, shader or cursor package was introduced.
+
+## Verification and scoring
+Inventory every page route, alias and system surface; inspect desktop/tablet/phone widths1440/768/390/320, long tokens, states, keyboard controls, readable contrast and scroll access. One critic is retained for at least two and at most four rounds. Scores follow observed evidence, never the requested target alone. Raw findings, warnings, intentional exceptions and unobserved cases remain visible. Existing financial/authentication release restrictions still apply if scope changes.

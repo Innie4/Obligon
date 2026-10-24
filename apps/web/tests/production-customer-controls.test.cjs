@@ -260,6 +260,16 @@ function pushProfileFixture(permission = 'default', overrides = {}) {
  });
  return { ...fixture, Toggle, saves, calls, props: { onModal() {} } };
 }
+test('profile sections make security reachable without replacing settings or their handlers', async () => {
+ const fixture=pushProfileFixture(),opened=[];fixture.props.onModal=value=>opened.push(value);
+ fixture.render(fixture.component,fixture.props);await flush();const tree=fixture.render(fixture.component,fixture.props);
+ const nav=nodes(tree).find(node=>node.type==='nav'&&node.props?.['aria-label']==='Profile settings sections');assert.ok(nav);
+ const links=nodes(nav).filter(node=>node.type==='a');
+ assert.deepEqual(Array.from(links,node=>node.props.href),['#profile-details','#customer-appearance-title','#sign-in-options','#profile-notifications','#profile-security']);
+ for(const id of ['profile-details','profile-notifications','profile-security']){const target=nodes(tree).find(node=>node.props?.id===id);assert.ok(target);assert.equal(target.props.tabIndex,-1);}
+ const password=nodes(tree).find(node=>node.type==='button'&&text(node).includes('Password'));assert.ok(password);password.props.onClick();assert.deepEqual(opened,['changePassword']);
+ assert.ok(text(tree).includes('Two-Factor Authentication'));
+});
 test('account push preference does not claim a missing device subscription is ready or request permission on load', async () => {
  for (const permission of ['default', 'granted']) {
   const fixture = pushProfileFixture(permission); fixture.render(fixture.component, fixture.props); await flush();

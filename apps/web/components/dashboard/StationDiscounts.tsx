@@ -14,7 +14,7 @@ interface Pricing {
 
 const fieldClass = "mt-2 block min-h-12 w-full min-w-0 rounded-xl border border-obligon-border bg-white px-3 py-3 text-sm font-normal text-obligon-navy disabled:opacity-60";
 
-export function StationDiscounts() {
+export function StationDiscounts({ canManage = false }: { canManage?: boolean }) {
   const [starts, setStarts] = React.useState("");
   const [ends, setEnds] = React.useState("");
   const [data, setData] = React.useState<Pricing | null>(null);
@@ -47,7 +47,7 @@ export function StationDiscounts() {
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!sellingUnit || busy || loading || loadError) return;
+    if (!canManage || !sellingUnit || busy || loading || loadError) return;
     const form = new FormData(event.currentTarget);
     setBusy(true);
     setError("");
@@ -82,8 +82,9 @@ export function StationDiscounts() {
     {loading ? <StatusPopup tone="loading" message="Loading station prices and discounts…" /> : null}
     {loadError ? <StatusPopup tone="error" message={[loadError, data ? " Showing the last loaded discounts." : ""].join(" ").trim()} action={<button type="button" disabled={loading || busy} onClick={() => void load()} className="mt-2 min-h-11 rounded-lg px-2 font-semibold underline disabled:opacity-60">Retry loading discounts</button>} /> : null}
     {data ? <>
+    {!canManage ? <p className="mt-5 text-sm text-obligon-text">You can view discounts. An owner, administrator or manager can request changes.</p> : null}
       {!data.stations.length ? <p className="mt-5 rounded-xl bg-obligon-mist/60 p-4 text-sm text-obligon-text">Add a station in Station Profile before requesting a discount.</p> : <form onSubmit={submit} className="mt-6">
-        <fieldset disabled={busy || loading || Boolean(loadError)} className="grid min-w-0 gap-5 sm:grid-cols-2">
+        <fieldset disabled={!canManage || busy || loading || Boolean(loadError)} className="grid min-w-0 gap-5 sm:grid-cols-2">
           <legend className="sr-only">Request a station discount</legend>
           <label className="min-w-0 text-sm font-semibold text-obligon-navy">Station
             <select className={fieldClass} value={station} onChange={event => { setStation(event.target.value); setFuel(""); }} required>{data.stations.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
@@ -93,9 +94,9 @@ export function StationDiscounts() {
           </label>
           {!prices.length && !loading && !loadError ? <p className="text-sm leading-6 text-obligon-text sm:col-span-2">Publish an approved fuel price for this station before requesting a discount.</p> : null}
           <label className="min-w-0 text-sm font-semibold text-obligon-navy">Discount (%)<input className={fieldClass} name="rate" type="number" min="0.01" max="49.99" step="0.01" required /></label>
-          <DateTimeField label="Starts (local time)" name="starts" value={starts} onChange={setStarts} required disabled={busy || loading || Boolean(loadError)} />
-          <DateTimeField label="Ends (local time)" name="ends" value={ends} onChange={setEnds} required disabled={busy || loading || Boolean(loadError)} />
-          <button type="submit" className="min-h-12 self-end rounded-xl bg-obligon-green px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-obligon-green/90 disabled:opacity-60" disabled={busy || loading || Boolean(loadError) || !prices.length || !sellingUnit}>{busy ? "Submitting request…" : "Request admin approval"}</button>
+          <DateTimeField label="Starts (local time)" name="starts" value={starts} onChange={setStarts} required disabled={!canManage || busy || loading || Boolean(loadError)} />
+          <DateTimeField label="Ends (local time)" name="ends" value={ends} onChange={setEnds} required disabled={!canManage || busy || loading || Boolean(loadError)} />
+          <button type="submit" className="min-h-12 self-end rounded-xl bg-obligon-green px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-obligon-green/90 disabled:opacity-60" disabled={!canManage || busy || loading || Boolean(loadError) || !prices.length || !sellingUnit}>{busy ? "Submitting request…" : "Request admin approval"}</button>
         </fieldset>
       </form>}
       <div className="mt-8 border-t border-obligon-border pt-6">

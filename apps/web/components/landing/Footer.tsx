@@ -69,7 +69,7 @@ export function Footer() {
           ))}
         </div>
 
-        <div className="mt-16 pt-8 text-center text-[13px] leading-4 text-white/40">
+        <div className="mt-16 pt-8 text-center text-[13px] leading-4 text-white/60">
           &copy; {new Date().getFullYear()} Obligon LTD. Registered in the Federal Republic of Nigeria. All rights reserved.
         </div>
       </div>

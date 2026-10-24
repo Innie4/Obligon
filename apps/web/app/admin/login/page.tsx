@@ -62,11 +62,10 @@ export default function AdminLoginPage() {
   return (
     <AuthShell>
       <div className="w-full max-w-[440px] mx-auto p-4 sm:p-6">
-        <div className="rounded-2xl border border-obligon-border bg-white p-8 shadow-card">
+        <div className="rounded-2xl border border-obligon-border bg-white p-5 sm:p-8">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold text-obligon-green">Admin Portal</p>
-              <h2 className="mt-2 font-display text-2xl font-bold text-obligon-navy">Admin Access</h2>
+              <h1 className="font-display text-2xl font-bold text-obligon-navy">Admin sign in</h1>
             </div>
             <div className="grid size-11 place-items-center rounded-xl bg-obligon-lime/20 text-obligon-green">
               <ShieldCheck size={24} />
@@ -74,7 +73,7 @@ export default function AdminLoginPage() {
           </div>
 
           <p className="mt-2 text-sm text-obligon-text">
-            Enter your internal administrative credentials to access the oversight system.
+            Use your administrator account to continue.
           </p>
 
           {error ? <StatusPopup tone="error" message={error} /> : null}
@@ -127,7 +126,7 @@ export default function AdminLoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-sm pt-1">
+            <div className="flex flex-wrap items-center justify-between gap-3 text-sm pt-1">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"

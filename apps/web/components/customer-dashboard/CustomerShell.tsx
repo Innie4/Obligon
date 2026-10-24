@@ -198,7 +198,7 @@ function DesktopHeader() {
 
   return (
     <header className="sticky top-0 z-30 hidden min-h-[74px] items-center justify-between gap-5 border-b border-obligon-border bg-white/95 px-8 backdrop-blur-sm lg:flex xl:px-12">
-      <h1 className="min-w-0 font-display text-lg font-bold tracking-tight sm:text-xl text-[#20251f] xl:text-2xl">{pageTitles[page]}</h1>
+      <p className="min-w-0 font-display text-lg font-bold tracking-tight sm:text-xl text-[#20251f] xl:text-2xl">{pageTitles[page]}</p>
       <div className="flex min-w-0 flex-1 items-center justify-end gap-4">
         <DashboardSearch scope="customer" entries={customerSearchEntries} />
         <Link href="/customer/notifications" className="grid size-11 shrink-0 place-items-center rounded-xl text-obligon-text transition-colors hover:bg-obligon-mist" aria-label="Notifications">

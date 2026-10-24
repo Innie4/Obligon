@@ -175,7 +175,17 @@ export function IntakeConsole() {
         Review publication and incoming requests. Decisions and business changes
         are recorded in the activity register.
       </p>
-      <nav aria-label="Review queues" className="my-6 flex flex-wrap gap-2">
+      <label htmlFor="admin-review-queue" className="my-5 block text-sm font-semibold text-obligon-navy md:hidden">Review queue
+        <select id="admin-review-queue" value={queue} className="mt-2 min-h-12 w-full rounded-xl border border-obligon-border bg-white px-3 font-normal" onChange={event => {
+          setQueue(event.target.value as Queue);
+          setSelected(null);
+          setPage(0);
+          setSearch("");
+        }}>
+          {tabs.map(tab => <option key={tab} value={tab}>{titles[tab]}</option>)}
+        </select>
+      </label>
+      <nav aria-label="Review queues" className="my-6 hidden flex-wrap gap-2 md:flex">
         {tabs.map((tab) => (
           <button
             type="button"
@@ -252,7 +262,7 @@ export function IntakeConsole() {
             {rows.map((row) => (
               <article key={row.id} className="border-b p-5 last:border-0">
                 <div className="flex flex-wrap justify-between gap-3">
-                  <h3 className="font-bold">
+                <h3 className="min-w-0 break-words font-bold [overflow-wrap:anywhere]">
                     {row.title ??
                       row.name ??
                       row.contact_name ??
@@ -262,7 +272,7 @@ export function IntakeConsole() {
                       row.email ??
                       row.id}
                   </h3>
-                  <span className="text-sm font-bold">
+                <span className="max-w-full break-words text-sm font-bold">
                     {row.status ?? row.type ?? row.entity_type}
                   </span>
                 </div>
@@ -361,7 +371,7 @@ export function IntakeConsole() {
                 );
               }}
             >
-              <h3 className="text-xl font-bold">
+              <h3 className="break-words text-xl font-bold [overflow-wrap:anywhere]">
                 Review{" "}
                 {selected.name ??
                   selected.contact_name ??

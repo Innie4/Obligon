@@ -43,18 +43,24 @@ function WorkshopEditor({ profile, canEdit, onSaved }: { profile: WorkshopProfil
   return <form onSubmit={submit} className="mt-6 max-w-4xl space-y-6 rounded-2xl border border-obligon-border bg-white p-5 sm:p-8">
       {(saving) ? <StatusPopup tone="pending" message="Saving workshop profile…" /> : null}
     {!canEdit ? <p className="rounded-lg bg-obligon-mist p-4 text-sm text-obligon-text">Your team can view this profile. An owner or administrator can update it.</p> : null}
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-obligon-border pb-5">
+      <nav aria-label="Workshop profile sections" className="flex flex-wrap gap-2">
+        {[["workshop-details", "Details"], ["workshop-about", "About"], ["workshop-services", "Services"]].map(([id, label]) => <a key={id} href={`#${id}`} className="inline-flex min-h-11 items-center rounded-xl border border-obligon-border px-3 text-sm font-semibold text-obligon-green">{label}</a>)}
+      </nav>
+      {canEdit ? <button type="submit" disabled={saving} className="min-h-12 rounded-xl bg-obligon-green px-5 text-sm font-bold text-white disabled:opacity-60">{saving ? "Saving…" : "Save workshop profile"}</button> : null}
+    </div>
     <fieldset disabled={!canEdit || saving} className="grid gap-5 sm:grid-cols-2">
-      <legend className="font-display text-lg font-bold tracking-tight sm:text-xl text-obligon-navy">Workshop details</legend>
+      <legend id="workshop-details" tabIndex={-1} className="scroll-mt-28 font-display text-lg font-bold tracking-tight sm:text-xl text-obligon-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-obligon-green">Workshop details</legend>
       {([
         ["name", "Workshop name", 200], ["address", "Street address", 500],
         ["city", "City / town", 200], ["website", "Website (optional)", 500]
       ] as const).map(([name, label, limit]) => <label key={name} className="block text-sm font-bold text-obligon-navy">
         {label}<input name={name} value={draft[name]} onChange={event => change(name, event.target.value)} required={name === "name"} type={name === "website" ? "url" : "text"} autoComplete={name === "address" ? "street-address" : name === "city" ? "address-level2" : name === "website" ? "url" : "organization"} maxLength={limit} className={fieldClass} />
       </label>)}
-      <label className="block text-sm font-semibold text-obligon-navy sm:col-span-2">About your workshop
+      <label id="workshop-about" tabIndex={-1} className="block scroll-mt-28 text-sm font-semibold text-obligon-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-obligon-green sm:col-span-2">About your workshop
         <textarea name="description" value={draft.description} onChange={event => change("description", event.target.value)} maxLength={2000} rows={4} className={fieldClass} />
       </label>
-      <fieldset className="sm:col-span-2"><legend className="text-sm font-semibold text-obligon-navy">Services offered</legend>
+      <fieldset className="sm:col-span-2"><legend id="workshop-services" tabIndex={-1} className="scroll-mt-28 text-sm font-semibold text-obligon-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-obligon-green">Services offered</legend>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">{options.map(service => <label key={service} className="flex min-h-12 items-center gap-3 rounded-xl border border-obligon-border px-4 py-3 text-sm text-obligon-navy transition-colors has-[:checked]:border-obligon-green has-[:checked]:bg-obligon-mist">
           <input type="checkbox" checked={draft.services.includes(service)} onChange={event => change("services", event.target.checked ? [...draft.services, service] : draft.services.filter(value => value !== service))} className="size-4 accent-obligon-green" />{service}
         </label>)}</div>

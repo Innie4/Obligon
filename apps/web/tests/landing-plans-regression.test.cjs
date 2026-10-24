@@ -12,7 +12,7 @@ function loadComponent(path, name) {
     useState(initial) {
       const index = cursor++;
       if (!(index in state)) state[index] = initial;
-      return [state[index], next => { state[index] = next; }];
+      return [state[index], next => { state[index] = typeof next === 'function' ? next(state[index]) : next; }];
     },
     useEffect() {},
     useCallback: callback => callback,
@@ -57,7 +57,8 @@ test('individual pricing immediately renders the restored plan comparison and se
     assert.equal(nodes(cards[index], node => node.type === 'li').length, 18);
     assert.equal(nodes(cards[index], node => node.type === 'a')[0].props.href, `/auth/signup?role=customer&plan=${name.toLowerCase()}`);
   }
-  assert.deepEqual(nodes(tree, node => node.type === 'button').map(text), ['Individual', 'Organization']);
+  const audience = nodes(tree, node => node.props['aria-label'] === 'Plan audience')[0];
+  assert.deepEqual(nodes(audience, node => node.type === 'button').map(text), ['Individual', 'Organization']);
   assert.doesNotMatch(text(tree), /Contact sales for a custom requirement/);
 });
 
@@ -85,4 +86,42 @@ test('product showcase has a single-line Get started CTA with a small arrow', ()
   assert.match(cta.props.className, /whitespace-nowrap/);
   assert.equal(nodes(cta, node => node.type === 'svg')[0].props.size, 16);
   assert.doesNotMatch(text(tree), /See current plans|Compare plans/);
+});
+
+test('mobile plan comparison preserves every benefit and selected signup destination', () => {
+  const render = loadComponent('../components/landing/Pricing.tsx', 'Pricing');
+  let tree = render();
+  const compare = () => nodes(tree, node => node.props['aria-label'] === 'Compare individual plans')[0];
+  const buttons = nodes(compare(), node => node.type === 'button');
+  assert.equal(buttons.find(node => text(node) === 'Gold').props['aria-pressed'], true);
+  buttons.find(node => text(node) === 'Bronze').props.onClick();
+  tree = render();
+  const selected = nodes(tree, node => node.type === 'article' && !node.props.className.includes('hidden lg:flex'));
+  assert.equal(selected.length, 1);
+  assert.match(text(selected[0]), /^Bronze/);
+  assert.equal(nodes(selected[0], node => node.type === 'li').length, 18);
+  assert.equal(nodes(selected[0], node => node.type === 'a')[0].props.href, '/auth/signup?role=customer&plan=bronze');
+  assert.equal(nodes(tree, node => node.type === 'article').length, 3);
+});
+
+test('organization plan comparison keeps its own selection and every contract inquiry', () => {
+  const render = loadComponent('../components/landing/Pricing.tsx', 'Pricing');
+  let tree = render();
+  const audience = () => nodes(tree, node => node.props['aria-label'] === 'Plan audience')[0];
+  nodes(audience(), node => node.type === 'button' && text(node) === 'Organization')[0].props.onClick();
+  tree = render();
+  const compare = nodes(tree, node => node.props['aria-label'] === 'Compare organization plans')[0];
+  nodes(compare, node => node.type === 'button' && text(node) === 'Enterprise')[0].props.onClick();
+  tree = render();
+  const selected = nodes(tree, node => node.type === 'article' && !node.props.className.includes('hidden lg:flex'));
+  assert.equal(selected.length, 1);
+  assert.match(text(selected[0]), /^Enterprise/);
+  for (const article of nodes(tree, node => node.type === 'article')) {
+    const href = nodes(article, node => node.type === 'a')[0].props.href;
+    assert.match(new URL(href, 'https://obligon.test').searchParams.get('request'), /contract/);
+  }
+  nodes(audience(), node => node.type === 'button' && text(node) === 'Individual')[0].props.onClick();
+  tree = render();
+  const individual = nodes(tree, node => node.props['aria-label'] === 'Compare individual plans')[0];
+  assert.equal(nodes(individual, node => node.type === 'button' && text(node) === 'Gold')[0].props['aria-pressed'], true);
 });

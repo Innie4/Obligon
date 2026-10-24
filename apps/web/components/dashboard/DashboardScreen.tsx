@@ -129,6 +129,7 @@ function DataTable<T extends PartnerRow = PartnerRow>({
   subtitle,
   columns,
   rows,
+  empty,
   actionLabel,
   onAction,
   rowKey = (row, index) => row.reference ?? row.id ?? `${row.cells[0]}-${index}`
@@ -137,11 +138,14 @@ function DataTable<T extends PartnerRow = PartnerRow>({
   subtitle?: string;
   columns: string[];
   rows: T[];
+  empty?: { title: string; message: string; action?: React.ReactNode };
   actionLabel?: string;
   onAction?: (row?: T) => void;
   rowKey?: (row: T, index: number) => string;
 }) {
   const hasStatus = rows.some(row => Boolean(row.status));
+  const amountIndex = columns.findIndex(column => /amount|spend|payout|paid|balance/i.test(column));
+  const emptyContent = empty ? <div className="mx-auto max-w-md space-y-3 text-center"><p className="font-semibold text-obligon-navy">{empty.title}</p><p className="text-sm leading-6 text-obligon-text">{empty.message}</p>{empty.action}</div> : "No records found.";
   return (
     <section className="min-w-0 overflow-hidden rounded-2xl border border-obligon-border bg-white">
       <div className="flex flex-col gap-4 border-b border-obligon-border px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
@@ -160,8 +164,17 @@ function DataTable<T extends PartnerRow = PartnerRow>({
           </button>
         ) : null}
       </div>
-      <p className="border-b border-obligon-border bg-obligon-mist/50 px-6 py-3 text-xs leading-5 text-obligon-text">Scroll horizontally when needed to view all columns and actions.</p>
-      <div tabIndex={0} role="region" aria-label={`${title} table, scroll horizontally to see all columns`} className="overflow-x-auto overscroll-x-contain focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-obligon-green">
+      <ul aria-label={`${title} records`} className="divide-y divide-obligon-border sm:hidden">
+        {rows.length ? rows.map((row, index) => <li key={rowKey(row, index)} className="p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <p className="min-w-0 whitespace-pre-line text-sm font-bold text-obligon-navy">{row.cells[0]}</p>
+            {amountIndex > 0 ? <strong className="whitespace-nowrap text-lg tabular-nums text-obligon-navy">{row.cells[amountIndex]}</strong> : null}
+          </div>
+          <dl className="mt-4 space-y-3 text-sm">{row.cells.map((cell, cellIndex) => cellIndex === 0 || cellIndex === amountIndex ? null : <div key={cellIndex} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-3"><dt className="text-xs text-obligon-text">{columns[cellIndex]}</dt><dd className="whitespace-pre-line break-words text-right text-obligon-navy">{cell}</dd></div>)}</dl>
+          {row.status || onAction ? <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-obligon-border pt-3">{row.status ? <StatusPill status={row.status} tone={row.tone} /> : <span />}{onAction ? <button type="button" onClick={() => onAction(row)} className="min-h-11 rounded-xl px-3 text-sm font-semibold text-obligon-green">{row.action ?? "Details"}</button> : null}</div> : null}
+        </li>) : <li className="px-4 py-8 text-sm text-obligon-text">{emptyContent}</li>}
+      </ul>
+      <div tabIndex={0} role="region" aria-label={`${title} table, scroll horizontally to see all columns`} className="hidden overflow-x-auto overscroll-x-contain focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-obligon-green sm:block">
         <table className="w-full min-w-[820px] border-collapse text-left">
           <thead className="bg-obligon-mist/50">
             <tr className="border-b border-obligon-border text-xs font-semibold text-obligon-text">
@@ -183,7 +196,7 @@ function DataTable<T extends PartnerRow = PartnerRow>({
             {rows.length === 0 ? (
               <tr>
                 <td colSpan={columns.length + (hasStatus ? 1 : 0) + (onAction ? 1 : 0)} className="px-6 py-10 text-center text-sm text-obligon-text">
-                  Nothing to show yet.
+                    {emptyContent}
                 </td>
               </tr>
             ) : null}
@@ -245,6 +258,7 @@ function useDebounced<T>(value: T, delayMs = 300): T {
 
 // ============ OVERVIEW ============
 function OverviewPage() {
+  const { user } = useSession();
   const { status, data, error, reload } = useAsync(() => api.getPartnerOverview());
 
   return (
@@ -263,22 +277,23 @@ function OverviewPage() {
           <>
 
 
-            <div className="grid gap-6 xl:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 xl:grid-cols-3 xl:gap-5">
               {data.metrics.map((metric, index) => (
                 <SmallMetric
                   key={metric.label}
                   metric={metric}
                   icon={metricIcons[index] ?? <BarChart3 size={20} />}
+                  className={data.metrics.length === 3 && index === 2 ? "col-span-2 xl:col-span-1" : ""}
                 />
               ))}
             </div>
 
-            <section className="mt-8 grid rounded-xl border border-obligon-border bg-white sm:grid-cols-2 xl:grid-cols-4 shadow-sm">
+            <section aria-label="Station totals" className="mt-5 grid grid-cols-2 rounded-xl border border-obligon-border bg-white xl:grid-cols-4">
               {data.quickStats.map(([label, value], index) => (
-                <article key={label} className={`p-6 ${index < 3 ? "xl:border-r xl:border-obligon-border" : ""}`}>
+                <article key={label} className={`min-w-0 p-3 sm:p-4 xl:p-5 ${index % 2 === 0 ? "border-r border-obligon-border" : ""} ${index < data.quickStats.length - 2 ? "border-b border-obligon-border xl:border-b-0" : ""} ${index < data.quickStats.length - 1 ? "xl:border-r xl:border-obligon-border" : ""}`}>
                   <p className="text-xs font-semibold text-obligon-text">{label}</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <p className="font-display text-[26px] font-extrabold text-obligon-navy">{value}</p>
+                  <div className="mt-2 flex min-w-0 items-start gap-2">
+                    <p className="min-w-0 break-words font-display text-xl font-bold leading-tight tabular-nums text-obligon-navy sm:text-2xl">{value}</p>
                     {label === "Verified Partners" ? <CheckCircle2 className="text-obligon-green" size={18} /> : null}
                   </div>
                 </article>
@@ -290,6 +305,7 @@ function OverviewPage() {
                 title="Recent Dispenser Authorizations"
                 columns={["Reference", "Station", "Amount Dispensed", "Time"]}
                 rows={data.recentTransactions}
+                empty={{ title: "No station authorizations yet", message: "Customer wallet authorizations and paid fuel collections appear here after they are recorded at your station.", action: partnerPageAllowed(user, "transactions") ? <Link href="/dashboard/transactions" className="inline-flex min-h-11 items-center rounded-xl border border-obligon-border px-4 text-sm font-semibold text-obligon-green">Open transaction history</Link> : undefined }}
                 rowKey={(row) => row.id ?? row.reference ?? row.cells[0]}
               />
             </div>
@@ -305,6 +321,7 @@ type PriceDraft = { fuelType: string; price: string };
 
 function FuelPricingPage() {
   const { user } = useSession();
+  const canManagePrices = ["owner", "admin", "manager"].includes(user?.organizationRole ?? "");
   const { success: toastSuccess, error: toastError } = useToast();
   const { status, data, error, reload } = useAsync(() => api.getPartnerPricing());
   const [drafts, setDrafts] = React.useState<PriceDraft[] | null>(null);
@@ -327,6 +344,7 @@ function FuelPricingPage() {
 
   async function handleSync(event: React.FormEvent) {
     event.preventDefault();
+    if (!canManagePrices || syncing) return;
     const updates = rows
       .filter((row) => row.fuelType.trim() && Number(row.price) > 0 && approvedFuels.includes(partnerFuelCode(row.fuelType)!))
       .map((row) => ({ fuelType: row.fuelType.trim(), price: Number(row.price), sellingUnit: rowUnit(row.fuelType) }));
@@ -371,7 +389,10 @@ function FuelPricingPage() {
         loadingLabel="Loading current prices…"
       >
         {data ? (
-          <form onSubmit={handleSync} className="grid w-full min-w-0 grid-cols-1 gap-6 lg:grid-cols-3">
+          <form onSubmit={handleSync}>
+            {!canManagePrices ? <p className="mb-5 text-sm text-obligon-text">You can view prices. An owner, administrator or manager can publish changes.</p> : null}
+            <fieldset disabled={!canManagePrices || syncing} className="grid w-full min-w-0 grid-cols-1 gap-6 lg:grid-cols-3">
+            <legend className="sr-only">Station fuel prices</legend>
             {rows.length ? (
               rows.map((row, index) => (
                 <article
@@ -426,17 +447,18 @@ function FuelPricingPage() {
                 <span className="inline-flex items-center gap-2"><Plus size={16} /> Add fuel type</span>
               </button>
               <button
-                disabled={syncing || !rows.length || rows.some(row => !approvedFuels.includes(partnerFuelCode(row.fuelType)!))}
+                disabled={!canManagePrices || syncing || !rows.length || rows.some(row => !approvedFuels.includes(partnerFuelCode(row.fuelType)!))}
                 type="submit"
                 className="h-12 rounded-xl bg-obligon-green px-8 font-extrabold text-white shadow-none hover:bg-obligon-green/90 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {syncing ? <Loader2 size={18} className="animate-spin" /> : "Publish Prices"}
               </button>
             </div>
+            </fieldset>
           </form>
         ) : null}
       </AsyncBoundary>
-      <StationDiscounts/>
+      <StationDiscounts canManage={canManagePrices}/>
     </DashboardCanvas>
   );
 }
@@ -726,6 +748,8 @@ function SettlementsPage({
   onPayoutRequested: () => void;
   version: number;
 }) {
+  const { user } = useSession();
+  const canManageAccounts = ["owner", "admin"].includes(user?.organizationRole ?? "");
   const { status, data, error, reload } = useAsync(() => api.getPartnerSettlements(), [version]);
   const [addingAccount, setAddingAccount] = React.useState(false);
   const [removingAccount, setRemovingAccount] = React.useState<PartnerBankAccount | null>(null);
@@ -765,11 +789,11 @@ function SettlementsPage({
                     <p className="font-bold text-obligon-navy">{account.bankName} {account.isDefault?<span className="text-xs">· Default</span>:null}</p>
                     <p className="mt-1 font-mono text-sm">{account.accountMask}</p><p className="text-xs">{account.accountName}</p>
                     <p className="mt-2 text-xs font-bold">{account.needsRenomination?"Re-add this bank account to register a secure settlement destination, then choose it as default.":account.verified?"Verified destination":"Awaiting admin verification"}</p>
-                    {!account.isDefault&&!account.needsRenomination?<button type="button" disabled={choosingDefault!==null} onClick={()=>void chooseDefault(account)} className="mt-3 rounded-lg border border-obligon-green px-3 py-2 text-xs font-bold disabled:opacity-50">{choosingDefault===account.id?"Updating…":"Make default"}</button>:null}
-                    {account.needsRenomination?<button type="button" onClick={()=>setRemovingAccount(account)} className="mt-3 ml-3 text-xs underline">Remove old nomination</button>:null}
+                    {canManageAccounts&&!account.isDefault&&!account.needsRenomination?<button type="button" disabled={choosingDefault!==null} onClick={()=>void chooseDefault(account)} className="mt-3 rounded-lg border border-obligon-green px-3 py-2 text-xs font-bold disabled:opacity-50">{choosingDefault===account.id?"Updating…":"Make default"}</button>:null}
+                    {canManageAccounts&&account.needsRenomination?<button type="button" onClick={()=>setRemovingAccount(account)} className="mt-3 ml-3 text-xs underline">Remove old nomination</button>:null}
                   </div>)}
                 </div>
-                <button type="button" onClick={()=>setAddingAccount(true)} className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-obligon-green px-4 text-xs font-bold text-white"><Plus size={14}/>Add settlement account</button>
+                {canManageAccounts ? <button type="button" onClick={()=>setAddingAccount(true)} className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-obligon-green px-4 text-xs font-bold text-white"><Plus size={14}/>Add settlement account</button> : <p className="mt-4 text-sm text-obligon-text">An owner or administrator can manage settlement accounts.</p>}
 
                 <div className="mt-6 rounded-xl border border-obligon-border p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.8px] text-obligon-text">Pending settlement</p>
@@ -872,6 +896,8 @@ function DisputesPage() {
 
 // ============ STATION PROFILE ============
 function StationProfilePage() {
+  const { user } = useSession();
+  const canManageStations = ["owner", "admin"].includes(user?.organizationRole ?? "");
   const { success: toastSuccess, error: toastError } = useToast();
   const [selectedId, setSelectedId] = React.useState<string>();
   const [creating, setCreating] = React.useState(false);
@@ -886,6 +912,7 @@ function StationProfilePage() {
   const profileReady = !selectedId || fetched?.id === selectedId;
 
   async function handleSave(payload: StationProfileSubmission) {
+    if (!canManageStations) return;
     setSaving(true);
     try {
       if (creating) {
@@ -927,7 +954,7 @@ function StationProfilePage() {
         </article>
       ) : null}
     </div>
-  ) : <EmptyState icon={Building2} title="No station linked yet" message="Choose Add station to submit your first location for approval." />;
+  ) : <EmptyState icon={Building2} title="No station linked yet" message={canManageStations ? "Choose Add station to submit your first location for approval." : "An owner or administrator can add your station for approval."} />;
 
   return (
     <DashboardCanvas>
@@ -943,7 +970,7 @@ function StationProfilePage() {
             {stationList?.stations.map(item => <option key={item.id} value={item.id}>{item.name} · {item.status}</option>)}
           </select>
         </label>
-        <button type="button" disabled={saving || creating} className="min-h-12 rounded-xl bg-obligon-green px-5 text-sm font-bold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-obligon-green disabled:opacity-50" onClick={() => { setCreating(true); setOperationsOpen(false); }}>Add station</button>
+        {canManageStations ? <button type="button" disabled={saving || creating} className="min-h-12 rounded-xl bg-obligon-green px-5 text-sm font-bold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-obligon-green disabled:opacity-50" onClick={() => { setCreating(true); setOperationsOpen(false); }}>Add station</button> : null}
       </div>
       {listError ? <StatusPopup tone="error" message={["The station list could not load:", listError.message].join(" ").trim()} action={<button type="button" onClick={reloadList} className="min-h-11 rounded-lg border border-obligon-border px-3 font-bold">Retry station list</button>} /> : null}
       {!creating && stationList?.stations.find(item => item.id === stationId)?.review_note ? <p className="mb-4 rounded-xl border border-obligon-border bg-white p-4 text-sm" role="status">Admin review: {stationList.stations.find(item => item.id === stationId)?.review_note}</p> : null}
@@ -1060,7 +1087,7 @@ function TransactionsPage() {
       <DashboardSearchQuery onSearch={value => { setQuery(value); setPage(0); }} />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Fleet Transactions</h1>
+          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Transactions</h1>
           <p className="mt-1 text-sm text-obligon-text">
             Every card-authorized fuel dispense across your partner network.
             {data ? ` ${total.toLocaleString()} matching.` : ""}
@@ -1312,6 +1339,7 @@ function NotificationsPage() {
 // ============ STAFF ============
 function StaffPage() {
   const { user } = useSession();
+  const canManageStaff = ["owner", "admin"].includes(user?.organizationRole ?? "");
   const mechanic = partnerTypeFor(user) === "mechanic";
   const { status, data, error, reload } = useAsync(() => api.getPartnerStaff());
   const [inviting, setInviting] = React.useState(false);
@@ -1330,14 +1358,14 @@ function StaffPage() {
             {data ? ` ${data.stats.active} of ${data.stats.total} active.` : ""}
           </p>
         </div>
-        <button
+        {canManageStaff ? <button
           type="button"
           onClick={() => setInviting(true)}
           className="inline-flex h-11 items-center gap-2 rounded-xl bg-obligon-green px-5 text-sm font-extrabold text-white shadow-none hover:bg-obligon-green/90 transition"
         >
           <Plus size={16} />
-          Invite Attendant
-        </button>
+          {mechanic ? "Invite team member" : "Invite Attendant"}
+        </button> : null}
       </div>
 
       <label className="mb-6 block max-w-sm text-sm font-bold">Search staff<input type="search" maxLength={254} value={query} onChange={event => setQuery(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-obligon-border bg-white px-3 font-medium" placeholder="Name, email or role" /></label>
@@ -1355,7 +1383,7 @@ function StaffPage() {
             columns={["Reference", "Member", "Role", "Access"]}
             rows={rows}
             rowKey={(row, index) => row.id ?? `${row.cells[0]}-${index}`}
-            onAction={(row) => row && setEditing(row)}
+            onAction={canManageStaff ? (row) => row && setEditing(row) : undefined}
           />
         ) : null}
       </AsyncBoundary>
@@ -1368,6 +1396,7 @@ function StaffPage() {
 // ============ SETTINGS ============
 function SettingsPage() {
   const { user } = useSession();
+  const canManageOrganization = ["owner", "admin"].includes(user?.organizationRole ?? "");
   const { success: toastSuccess, error: toastError } = useToast();
   const [saving,setSaving]=React.useState(false);
   const { status, data, error, reload } = useAsync(() => api.getPartnerSettings());
@@ -1398,17 +1427,17 @@ function SettingsPage() {
         loadingLabel="Loading settings…"
       >
         {data ? (
-          <div><form className="mb-6 rounded-xl border bg-white p-6" onSubmit={async e=>{e.preventDefault();const form=new FormData(e.currentTarget);setSaving(true);try{await api.request("/api/partner/settings",{method:"PUT",body:JSON.stringify(Object.fromEntries(form))});toastSuccess("Organisation details saved.");reload();}catch(error){toastError((error as Error).message);}finally{setSaving(false);}}}><h2 className="text-xl font-bold">Organisation details</h2>{([['name','Organisation',data.org.name],['rcNumber','RC number',data.org.rcNumber],['address','Address',data.org.address],['city','City',data.org.city]] as const).map(([name,label,value])=><label key={name} className="mt-4 block">{label}<input name={name} defaultValue={value??''} required={name==='name'} maxLength={name==='address'?500:200} className="mt-2 block min-h-12 w-full rounded border p-3"/></label>)}<p className="mt-3 text-sm">Only organisation owners and administrators can save these details.</p><button disabled={saving} className="mt-4 min-h-12 rounded bg-obligon-green px-5 font-bold text-white">{saving?'Saving…':'Save details'}</button></form><Link href="/auth/mfa/setup" className="mb-4 inline-flex min-h-12 items-center font-bold text-obligon-green underline">Manage two-factor authentication</Link><Link href="/forgot-password" className="ml-5 inline-flex min-h-12 items-center font-bold text-obligon-green underline">Reset password</Link>
+          <div>{canManageOrganization ? <form className="mb-6 rounded-xl border bg-white p-6" onSubmit={async e=>{e.preventDefault();const form=new FormData(e.currentTarget);setSaving(true);try{await api.request("/api/partner/settings",{method:"PUT",body:JSON.stringify(Object.fromEntries(form))});toastSuccess("Organisation details saved.");reload();}catch(error){toastError((error as Error).message);}finally{setSaving(false);}}}><h2 className="text-xl font-bold">Organisation details</h2>{([['name','Organisation',data.org.name],['rcNumber','RC number',data.org.rcNumber],['address','Address',data.org.address],['city','City',data.org.city]] as const).map(([name,label,value])=><label key={name} className="mt-4 block">{label}<input name={name} defaultValue={value??''} required={name==='name'} maxLength={name==='address'?500:200} className="mt-2 block min-h-12 w-full rounded border p-3"/></label>)}<p className="mt-3 text-sm">Only organisation owners and administrators can save these details.</p><button disabled={saving} className="mt-4 min-h-12 rounded bg-obligon-green px-5 font-bold text-white">{saving?'Saving…':'Save details'}</button></form> : <p className="mb-6 text-sm text-obligon-text">You can view these details. An owner or administrator can update the organization.</p>}<Link href="/auth/mfa/setup" className="mb-4 inline-flex min-h-12 items-center font-bold text-obligon-green underline">Manage two-factor authentication</Link><Link href="/forgot-password" className="ml-5 inline-flex min-h-12 items-center font-bold text-obligon-green underline">Reset password</Link>
           <section className="min-w-0 overflow-hidden rounded-2xl border border-obligon-border bg-white">
             <div className="divide-y divide-obligon-border/70">
               {rows.map(([label, value]) => (
                 <div key={label} className="flex flex-col gap-1 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
                   <span className="text-sm font-bold text-obligon-navy">{label}</span>
-                  <span className="text-sm font-medium text-obligon-text">{value}</span>
+                  <span className="break-words text-sm font-medium text-obligon-text">{value}</span>
                 </div>
               ))}
             </div>
-          </section><section id="partner-support"><PartnerServiceRequests/></section>{partnerPageAllowed(user, "transactions") ? <PartnerApiKeys/> : null}</div>
+          </section><section id="partner-support"><PartnerServiceRequests/></section>{canManageOrganization && partnerPageAllowed(user, "transactions") ? <PartnerApiKeys/> : null}</div>
         ) : null}
       </AsyncBoundary>
     </DashboardCanvas>

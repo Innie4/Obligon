@@ -45,9 +45,9 @@ export function AuthShell({ children, compact = false }: AuthShellProps) {
               Back to home
             </Link>
             <div>
-              <h1 className="font-display text-[44px] font-bold leading-[1.12] tracking-tight">
+              <p className="font-display text-[44px] font-bold leading-[1.12] tracking-tight">
                 Your fuel, in one place.
-              </h1>
+              </p>
               <p className="mt-5 text-base leading-6 text-white/70">
                 Manage personal fuel spending, organize your company fleet, or run your station
                 operations with Obligon.

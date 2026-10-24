@@ -240,6 +240,7 @@ test('auth failure is a popup with the supplied retry and recovery destinations'
   ui.render({ status: 'failure', serverError: 'The sign-in request failed.', onRetry: retry });
   const popup = ui.nodes().find(node => node.type === 'StatusPopup');
   assert.equal(popup.props.tone, 'error');
+  assert.equal(popup.props.dismissible, false, 'the only recovery UI cannot be dismissed to leave a blank page');
   assert.equal(popup.props.message, 'The sign-in request failed.');
   assert.equal(popup.props.onRetry, retry);
   assert.deepEqual(nodes(popup.props.action).filter(node => node.type === 'Link').map(node => node.props.href), ['/auth/login', '/support']);
@@ -251,6 +252,15 @@ test('auth progress uses a loading popup with a real cancellation destination', 
   ui.render({ status: 'progress' });
   const popup = ui.nodes().find(node => node.type === 'StatusPopup');
   assert.equal(popup.props.tone, 'loading');
+  assert.equal(popup.props.dismissible, false, 'cancellation remains reachable until navigation');
   assert.match(popup.props.message, /Checking your sign-in session/);
   assert.equal(popup.props.action.props.href, '/auth/login');
+});
+
+test('deferred success rendering starts with stable loading markup before showing an already loaded session', () => {
+  const ui = fixture('../components/auth/SuccessAutoRedirect.tsx', { role: 'company' });
+  assert.equal(ui.nodes().some(node => node.type === 'Link'), false, 'the first hydration render matches the server loading branch');
+  ui.render();
+  assert.equal(ui.nodes().find(node => node.type === 'Link')?.props.href, '/company');
+  assert.equal(ui.timers.size, 1, 'presentation hydration does not duplicate the existing redirect');
 });

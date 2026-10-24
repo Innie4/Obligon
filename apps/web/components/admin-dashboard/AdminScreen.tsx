@@ -234,7 +234,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
           {data?.metrics.map((metric) => (
             <div key={metric.label} className="min-w-0 rounded-xl border border-obligon-border bg-white p-3 sm:p-5">
               <dt className="text-xs font-medium leading-5 text-obligon-text sm:text-sm">{metric.label}</dt>
-              <dd className="mt-1 break-words text-2xl font-bold tracking-tight tabular-nums sm:mt-2 sm:text-3xl">{metric.value}</dd>
+                <dd className="mt-1 break-words text-xl font-bold tracking-tight tabular-nums min-[390px]:text-2xl sm:mt-2 sm:text-3xl">{metric.value.split(/(\s+(?:standard m³|kg|L)(?=\s|$|·))/).map((part, index) => index % 2 ? <span key={index} className="whitespace-nowrap text-sm font-medium tracking-normal text-obligon-text sm:text-base">{part}</span> : part)}</dd>
               {metric.helper && <dd className="mt-1 text-xs leading-5 text-obligon-text">{metric.helper}</dd>}
             </div>
           ))}

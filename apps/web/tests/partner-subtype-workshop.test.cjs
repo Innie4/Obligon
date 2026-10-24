@@ -65,13 +65,20 @@ test('gas prices require an explicit valid approved unit and liquid legacy price
   assert.equal(units.priceSellingUnit('CNG'),undefined);assert.equal(units.priceSellingUnit('LPG Autogas'),undefined);assert.equal(units.priceSellingUnit('CNG','litre'),undefined);assert.equal(units.priceSellingUnit('CNG','kg'),'kg');assert.equal(units.priceSellingUnit('CNG','scm'),'scm');assert.equal(units.priceSellingUnit('LPG','litre'),'litre');assert.equal(units.priceSellingUnit('PMS Petrol'),'litre');
 });
 
+test('workshop section links and the top save preserve the single existing form handler',async()=>{
+ const ui=fixture();ui.edit();
+ const nav=ui.nodes().find(n=>n.type==='nav'&&n.props?.['aria-label']==='Workshop profile sections');assert.ok(nav);
+ for(const link of nodes(nav).filter(n=>n.type==='a')){const target=ui.nodes().find(n=>n.props?.id===link.props.href.slice(1));assert.ok(target);assert.equal(target.props.tabIndex,-1);}
+ assert.equal(ui.nodes().filter(n=>n.type==='button'&&n.props.type==='submit').length,2);
+ await ui.submit();assert.equal(ui.calls.filter(call=>call.method==='PUT').length,1);
+});
 function pricingFixture({approvedSellingUnits={CNG:'kg'},sellingUnit='kg'}={}) {
  const slots=[],calls=[];let cursor=0,tree;
  const React={createElement:(type,props,...children)=>({type,props:{...props,children}}),useState(initial){const i=cursor++;slots[i]??={value:initial};return [slots[i].value,value=>slots[i].value=typeof value==='function'?value(slots[i].value):value];}};
  const data={stations:[{id:'gas-station',name:'Gas only',approvedSellingUnits}],prices:[{stationId:'gas-station',fuelType:'CNG',price:200,sellingUnit},{stationId:'gas-station',fuelType:'PMS',price:900,sellingUnit:'litre'}],history:[]};
  const {FuelPricingPage}=compile('../components/dashboard/DashboardScreen.tsx',{
  react:React,'next/dynamic':{default:()=> 'StationProfileForm',__esModule:true},'../../../../packages/shared/partner-access.mjs':access,'@/lib/partner-selling-unit':units,
- '@/components/shared/AuthContext':{useSession:()=>({user:{role:'partner',partnerType:'gas_station'}})},
+ '@/components/shared/AuthContext':{useSession:()=>({user:{role:'partner',partnerType:'gas_station',organizationRole:'manager'}})},
  '@/components/shared/Toast':{useToast:()=>({success(){},error:value=>calls.push(['error',value])})},
  '@/components/shared/useAsync':{useAsync:()=>({status:'success',data,reload(){}})},
  '@/lib/services':{api:{getPartnerPricing(){}},mutationsApi:{updatePrices:async(updates,stationId)=>calls.push({updates,stationId})}},
@@ -104,7 +111,9 @@ test('admin station review submits its explicitly selected legal gas unit for ap
  function render(){cursor=0;tree=IntakeConsole();const jobs=pending;pending=[];jobs.forEach(fn=>fn());}const flush=async()=>{for(let i=0;i<10;i++)await Promise.resolve();};
  render();await flush();render();nodes(tree).find(n=>n.type==='button'&&text(n).trim()==='Review record').props.onClick();render();
  const unit=nodes(tree).find(n=>n.props?.['aria-label']==='CNG approved selling unit');assert.equal(unit.props.value,'kg');unit.props.onChange({target:{value:'scm'}});render();
- const decision=nodes(tree).find(n=>n.type==='select'&&!n.props['aria-label']);decision.props.onChange({target:{value:'active'}});render();
+ const reviewForm=nodes(tree).find(n=>n.type==='form');
+ const decision=nodes(reviewForm).find(n=>n.type==='select'&&!n.props['aria-label']);assert.ok(decision,'the selected station review has a decision control');decision.props.onChange({target:{value:'active'}});render();
+ assert.equal(nodes(tree).find(n=>n.props?.id==='admin-review-queue').props.value,'stations','the decision must not change the selected review queue');
  nodes(tree).find(n=>n.type==='textarea').props.onChange({target:{value:'Approved station standard cubic metre unit'}});render();nodes(tree).find(n=>n.type==='form').props.onSubmit({preventDefault(){}});await flush();
  const write=calls.find(call=>call.options?.method==='POST');assert.equal(write.path,'/api/admin/stations/gas-review/review');assert.deepEqual(JSON.parse(write.options.body).sellingUnits,{CNG:'scm'});assert.equal(JSON.parse(write.options.body).status,'active');
 });

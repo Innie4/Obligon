@@ -19,11 +19,11 @@ export function Header() {
 
   return (
     <header onKeyDown={event => { if (event.key === "Escape" && open) { setOpen(false); event.currentTarget.querySelector<HTMLButtonElement>('[aria-controls="landing-mobile-navigation"]')?.focus(); } }}
-      className="absolute left-0 top-0 z-20 h-[104px] w-full bg-white"
+      className="absolute left-0 top-0 z-20 h-20 w-full bg-white"
       data-node-id="2:325"
     >
       <nav className="mx-auto flex h-full max-w-[1280px] items-center justify-between px-5 sm:px-8 lg:px-16">
-        <div className="flex h-[95px] items-center gap-12">
+        <div className="flex h-full items-center gap-12">
           <Link className="flex min-h-11 shrink-0 items-center" href="/" aria-label="Obligon LTD home">
             <DashboardLogo width={112} priority />
           </Link>
@@ -66,7 +66,7 @@ export function Header() {
       </nav>
 
       {open ? (
-        <div id="landing-mobile-navigation" className="absolute inset-x-0 top-[104px] max-h-[calc(100dvh-104px)] overflow-y-auto bg-white px-5 py-4 shadow-hero lg:hidden">
+        <div id="landing-mobile-navigation" className="absolute inset-x-0 top-20 max-h-[calc(100dvh-5rem)] overflow-y-auto bg-white px-5 py-4 shadow-hero lg:hidden">
           <div className="flex flex-col gap-4">
             {navItems.map((item) => (
               <Link

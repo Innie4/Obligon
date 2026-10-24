@@ -3,6 +3,9 @@ import * as React from "react";
 import Link from "next/link";
 import { authenticatedRequest } from "@/lib/services";
 import { customerPaymentReference } from "@/lib/customer-card-routes";
+import { ChevronDown } from "lucide-react";
+import { StatusPopup } from "./StatusPopup";
+import { EmptyState } from "./States";
 interface State {
   active: boolean;
   needsFirstCard?: boolean;
@@ -97,8 +100,19 @@ export function SubscriptionPanel({ kind, embedded = false, preferredPlan: selec
       setBusy(false);
     }
   }
+  const plans = data?.plans ?? [];
+  const currentPlanCode = data?.active
+    ? plans.find(plan => plan.name.toLowerCase() === data.subscription?.name?.toLowerCase())?.code
+    : undefined;
+  const previewCode = plans.find(plan => plan.code === preferredPlan)?.code ?? currentPlanCode ?? plans[0]?.code;
+  const comparisonLabels = ["Fuel Spend Tracking", "Loyalty Rewards", "Generator Repairer", "Towing Services"];
+  const previewFeatures = (plan: State["plans"][number]) => {
+    const comparison = kind === "customer" ? plan.features.filter(feature => typeof feature !== "string" && comparisonLabels.includes(feature.label)) : [];
+    return comparison.length ? comparison : plan.features.slice(0, 4);
+  };
+  const PlanHeading = embedded ? "h3" : "h2";
   return (
-    <section className={embedded ? "rounded-2xl border border-obligon-border bg-white p-6" : "p-6 sm:p-10"}>
+    <section className={embedded ? "rounded-2xl border border-obligon-border bg-white p-5 sm:p-6" : "p-5 sm:p-10"}>
       {embedded ? <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Subscription</h2> : <h1 className="text-3xl font-extrabold">{kind === "partner" ? "Partner" : "Customer"} Subscription</h1>}
       <p className="mt-3">
         {data?.active
@@ -109,31 +123,38 @@ export function SubscriptionPanel({ kind, embedded = false, preferredPlan: selec
         Each payment covers one month. Renew here before expiry. Subscription
         fees are separate from fuel funds.
       </p>
-      {error && (
-        <p role="alert" className="my-4 text-red-700">
-          {error}
-        </p>
-      )}
+      {error ? <StatusPopup tone="error" title="Could not load or update your plan" message={error} onRetry={() => void refresh()} /> : null}
+      {busy ? <StatusPopup tone="pending" message="Preparing your plan payment…" /> : null}
+      {data && !plans.length ? <EmptyState title="No plans available" message="We could not find a plan to offer right now." action={<button type="button" onClick={() => void refresh()} className="min-h-11 rounded-lg border border-obligon-border px-4 text-sm font-semibold">Reload plans</button>} /> : null}
+      {plans.length > 1 ? <div className="mt-6 md:hidden" role="group" aria-label="Compare subscription plans">
+        <p className="mb-3 text-sm font-semibold text-obligon-navy">Compare plans</p>
+        <div className="grid grid-cols-3 gap-2">
+          {plans.map(plan => <button key={plan.code} type="button" aria-pressed={previewCode === plan.code} aria-controls={`subscription-${kind}-${plan.code}`} onClick={() => setPreferredPlan(plan.code)} className={`min-h-12 min-w-0 rounded-xl px-2 py-3 text-sm font-semibold transition-colors ${previewCode === plan.code ? "bg-obligon-green text-white" : "bg-obligon-mist text-obligon-text hover:bg-obligon-panel"}`}>{plan.name}</button>)}
+        </div>
+      </div> : null}
       <div className="my-6 grid gap-5 md:grid-cols-3">
-        {[...(data?.plans ?? [])]
-          .sort(
-            (a, b) =>
-              Number(b.code === preferredPlan) -
-              Number(a.code === preferredPlan),
-          )
-          .map((p) => (
-            <article key={p.code} className="flex min-w-0 flex-col rounded-xl border bg-white p-5">
-              <h2 className="text-xl font-bold">{p.name}</h2>
-              <p className="my-3">
+        {plans.map((p) => (
+            <article key={p.code} id={`subscription-${kind}-${p.code}`} className={`${p.code === previewCode ? "flex" : "hidden md:flex"} min-w-0 flex-col rounded-xl bg-obligon-mist p-5`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <PlanHeading className="font-display text-xl font-bold tracking-tight">{p.name}</PlanHeading>
+                {p.code === currentPlanCode ? <span className="text-xs font-bold text-obligon-green">Current plan</span> : null}
+              </div>
+              <p className="my-3 text-lg font-bold tabular-nums">
                 ₦{(p.price_kobo / 100).toLocaleString()} / month
               </p>
-              <ul className="mb-5 flex-1 space-y-2">
+              <ul className="space-y-3 text-sm leading-5">
+                {previewFeatures(p).map((f, i) => <li key={i}>{typeof f === "string" ? f : `${f.label}: ${f.state}`}</li>)}
+              </ul>
+              <details className="group mb-5 mt-4 flex-1">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-sm font-semibold text-obligon-green [&::-webkit-details-marker]:hidden">All plan benefits <ChevronDown size={16} aria-hidden="true" className="shrink-0 transition-transform group-open:rotate-180" /></summary>
+                <ul className="mt-3 space-y-2.5 border-t border-obligon-border pt-4">
                 {p.features.map((f, i) => (
-                  <li key={i} className="text-sm">
+                  <li key={i} className="text-sm leading-5">
                     {typeof f === "string" ? f : `${f.label}: ${f.state}`}
                   </li>
                 ))}
-              </ul>
+                </ul>
+              </details>
               {data?.needsFirstCard ? (
                 <Link
                   href={`/customer/card?chosenPlan=${p.code}`}
@@ -153,7 +174,7 @@ export function SubscriptionPanel({ kind, embedded = false, preferredPlan: selec
             </article>
           ))}
       </div>
-      {!data && !error && <p>Loading plans…</p>}
+      {!data && !error ? <StatusPopup tone="loading" message="Loading subscription plans…" /> : null}
     </section>
   );
 }

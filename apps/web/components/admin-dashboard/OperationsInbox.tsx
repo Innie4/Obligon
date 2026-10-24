@@ -159,7 +159,8 @@ export function OperationsInbox() {
           {tickets.map((t) => (
             <button
               key={t.id}
-              className="mb-3 block w-full break-words rounded-xl border border-obligon-border bg-white p-4 text-left leading-6 hover:bg-obligon-mist"
+                aria-pressed={selected?.id === t.id}
+                className={`mb-3 block w-full break-words rounded-xl border p-4 text-left leading-6 [overflow-wrap:anywhere] ${selected?.id === t.id ? "border-obligon-green bg-obligon-green/10 text-obligon-navy" : "border-obligon-border bg-white hover:bg-obligon-mist"}`}
               onClick={() => void select(t)}
             >
               {t.reference} ·{" "}
@@ -174,7 +175,7 @@ export function OperationsInbox() {
         </div>
         {selected && (
           <div className="min-w-0 rounded-xl border border-obligon-border bg-white p-5">
-            <h3 className="font-bold">{selected.subject}</h3>
+              <h3 className="break-words font-bold [overflow-wrap:anywhere]">{selected.subject}</h3>
             <p className="mt-2 text-sm">
               {selected.category} · {selected.priority} priority ·{" "}
               {selected.status}

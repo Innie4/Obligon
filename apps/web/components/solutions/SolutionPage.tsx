@@ -24,7 +24,7 @@ type SolutionPageProps = {
   accent: "green" | "blue" | "lime";
 };
 
-export function SolutionPage({ eyebrow, name, title, body, stats, features, modules }: SolutionPageProps) {
+export function SolutionPage({ name, title, body, stats, features, modules }: SolutionPageProps) {
   return (
     <main className="min-h-screen bg-obligon-mist text-obligon-navy">
       <SiteHeader />
@@ -33,18 +33,17 @@ export function SolutionPage({ eyebrow, name, title, body, stats, features, modu
         <div className="mx-auto grid min-h-[640px] max-w-[1280px] items-center gap-12 px-5 py-16 sm:px-8 lg:grid-cols-[1fr_520px] lg:px-16">
           <div>
             <PageIntro
-              eyebrow={eyebrow}
               title={title}
               body={body}
               tone="inverse"
             />
             <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-              <Link href={name==="FuelVista"?routes.signup:`/support?request=${name}` } className="inline-flex h-14 items-center justify-center gap-2 rounded-lg bg-obligon-green px-7 text-base font-bold text-white shadow-green">
+              <Link href={name==="FuelVista"?routes.signup:`/support?request=${name}` } className="inline-flex h-14 items-center justify-center gap-2 rounded-lg bg-obligon-green px-7 text-base font-bold text-white">
                 Start with {name}
                 <ArrowRight size={16} />
               </Link>
               <Link href={routes.support} className="inline-flex h-14 items-center justify-center rounded-lg border border-white/20 px-7 text-base font-bold text-white">
-                Talk to Sales
+                Talk to sales
               </Link>
             </div>
           </div>
@@ -58,10 +57,10 @@ export function SolutionPage({ eyebrow, name, title, body, stats, features, modu
                   {(name === "EnergyVista" ? ["Fuel type and quantity", "Delivery location and access", "Required dates and supply schedule"] : ["Facility location and access", "Generator model and capacity", "Fuel or maintenance requirements"]).map(detail => <li key={detail} className="flex items-start gap-3"><CheckCircle2 size={18} aria-hidden="true" className="mt-1 shrink-0 text-obligon-lime" />{detail}</li>)}
                 </ul>
               </div>}
-              <div className="mt-7 grid grid-cols-1 gap-6 sm:grid-cols-3">
+              <div className="mt-7 grid grid-cols-3 gap-3 border-t border-white/20 pt-6 sm:gap-6">
                 {stats.map((stat) => (
                   <div key={stat.label} className="min-w-0">
-                    <p className="font-display text-2xl font-bold text-obligon-lime">{stat.value}</p>
+                    <p className="break-words font-display text-lg font-bold text-obligon-lime sm:text-2xl">{stat.value}</p>
                     <p className="mt-2 text-sm leading-6 text-white/80">{stat.label}</p>
                   </div>
                 ))}
@@ -74,7 +73,7 @@ export function SolutionPage({ eyebrow, name, title, body, stats, features, modu
       <section className="mx-auto max-w-[1280px] px-5 py-20 sm:px-8 lg:px-16 lg:py-28">
         <div className="grid gap-8 lg:grid-cols-[360px_1fr]">
           <div>
-            <h2 className="mt-4 font-display text-4xl font-extrabold leading-[44px]">Designed for daily operators.</h2>
+            <h2 className="font-display text-4xl font-extrabold leading-[44px]">{name} tools</h2>
             <p className="mt-5 text-base leading-6 text-obligon-text">
               Review the available tools or discuss the service scope with our team before you proceed.
             </p>
@@ -106,8 +105,7 @@ export function SolutionPage({ eyebrow, name, title, body, stats, features, modu
             </ul>
           </div>
           <aside className="rounded-[32px] bg-obligon-navy p-8 text-white">
-            <p className="text-sm font-semibold text-obligon-lime">Company enquiries</p>
-            <h3 className="mt-4 font-display text-3xl font-extrabold leading-10">Plan your team requirements.</h3>
+            <h3 className="font-display text-3xl font-extrabold leading-10">Plan your company requirements</h3>
             <p className="mt-4 text-base leading-6 text-[#b8c4ff]">
               Discuss {name} with our team. We will confirm account setup, available services, partner requirements, and support.
             </p>
@@ -127,11 +125,11 @@ export function SolutionPage({ eyebrow, name, title, body, stats, features, modu
         <div className="rounded-[40px] bg-obligon-panel px-6 py-14 text-center sm:px-12">
           <h2 className="mt-4 font-display text-3xl font-extrabold leading-tight sm:text-4xl">Discuss your requirements</h2>
           <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
-            <Link href={name==="FuelVista"?routes.signup:`/support?request=${name}` } className="inline-flex h-14 items-center justify-center rounded-lg bg-obligon-green px-8 text-base font-bold text-white shadow-green">
-              Request Onboarding
+            <Link href={name==="FuelVista"?routes.signup:`/support?request=${name}` } className="inline-flex h-14 items-center justify-center rounded-lg bg-obligon-green px-8 text-base font-bold text-white">
+              Request onboarding
             </Link>
             <Link href={routes.support} className="inline-flex h-14 items-center justify-center rounded-lg border border-obligon-navy px-8 text-base font-bold text-obligon-navy">
-              Contact Support
+              Contact support
             </Link>
           </div>
         </div>

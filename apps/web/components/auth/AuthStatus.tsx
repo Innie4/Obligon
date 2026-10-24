@@ -57,10 +57,10 @@ export function AuthStatus({ status, message, serverError, redirect, onRetry }: 
   const linkClass = "inline-flex min-h-11 items-center justify-center rounded-lg px-4 py-2 text-sm font-bold text-obligon-green underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";
 
   if (status === "progress") {
-    return <StatusPopup tone="loading" title={item.title} message={displayBody} action={<Link href={routes.login} className={linkClass}>Cancel and return to login</Link>} />;
+    return <><h1 className="sr-only">{item.title}</h1><StatusPopup tone="loading" title={item.title} message={displayBody} dismissible={false} action={<Link href={routes.login} className={linkClass}>Cancel and return to login</Link>} /></>;
   }
   if (status === "failure") {
-    return <StatusPopup tone="error" title={item.title} message={displayBody} onRetry={onRetry} action={<div className="flex flex-wrap gap-2"><Link href={routes.login} className={linkClass}>Return to login</Link><Link href={routes.support} className={linkClass}>Contact Support</Link></div>} />;
+    return <><h1 className="sr-only">{item.title}</h1><StatusPopup tone="error" title={item.title} message={displayBody} dismissible={false} onRetry={onRetry} action={<div className="flex flex-wrap gap-2"><Link href={routes.login} className={linkClass}>Return to login</Link><Link href={routes.support} className={linkClass}>Contact Support</Link></div>} /></>;
   }
 
   return <section className="w-full min-w-0 max-w-lg rounded-2xl bg-white p-5 text-center sm:p-8">

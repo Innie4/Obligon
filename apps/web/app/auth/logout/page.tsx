@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { StatusPopup } from "@/components/shared/StatusPopup";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { routes } from "@/components/site/routes";
 import { useSession } from "@/components/shared/AuthContext";
@@ -17,12 +17,8 @@ export default function LogoutPage() {
 
   return (
     <AuthShell compact>
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="text-center">
-          <Loader2 size={32} className="mx-auto animate-spin text-obligon-green" />
-          <p className="mt-4 text-obligon-text">Signing you out...</p>
-        </div>
-      </div>
+      <h1 className="sr-only">Signing out</h1>
+      <StatusPopup tone="loading" title="Signing out" message="Your session is being closed." dismissible={false} />
     </AuthShell>
   );
 }

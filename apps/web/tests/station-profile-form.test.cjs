@@ -58,14 +58,14 @@ function hooks() {
 const station = overrides => ({ id: 'synthetic-station-a', name: 'Synthetic Station', address: 'Synthetic road', city: 'Lagos, Lagos', hours: 'Open 24/7', fuels: ['PMS Petrol'], lat: 6.5244, lng: 3.3792, ...overrides });
 const validDraft = () => helpers.stationProfileDraft(station());
 
-function formFixture({ saved = null, saving = false, reject, partnerType = 'fuel_station' } = {}) {
+function formFixture({ saved = null, saving = false, reject, partnerType = 'fuel_station', organizationRole = 'owner' } = {}) {
   const runtime = hooks(), calls = [];
   const { StationProfileForm } = load('../components/dashboard/StationProfileForm.tsx', {
     react: runtime.React,
     '../../../../packages/shared/nigeria-cities.mjs': cities,
     '../../../../packages/shared/nigeria-locations.mjs': locations,
     '@/lib/station-profile': helpers,
-    '@/components/shared/AuthContext': { useSession: () => ({user:{role:'partner', partnerType}}) },
+    '@/components/shared/AuthContext': { useSession: () => ({user:{role:'partner', partnerType, organizationRole}}) },
     './StationProfileFields': { FuelMultiSelect: 'FuelMultiSelect', OpeningHoursField: 'OpeningHoursField' },
     './StationLocationPicker': { StationLocationPicker: 'StationLocationPicker' },
   });
@@ -210,6 +210,33 @@ test('a failed save exposes its actual error and preserves fields for retry', as
   assert.ok(ui.nodes().some(node => node.props.role === 'alert' && text(node).includes('Synthetic save unavailable')));
 });
 
+test('ordinary members can read station details without editing drafts, requesting GPS or submitting changes', async () => {
+  for (const organizationRole of ['viewer', 'dispatcher', 'manager']) {
+    const ui = formFixture({ saved: station(), organizationRole });
+    assert.equal(ui.nodes().find(node => node.type === 'fieldset').props.disabled, true);
+    assert.equal(ui.nodes().find(node => node.type === 'StationLocationPicker').props.disabled, true);
+    assert.equal(ui.nodes().some(node => node.type === 'button' && node.props.type === 'submit'), false);
+    const name = ui.control('station-name').props.value;
+    ui.change('station-name', 'An unauthorized draft');
+    assert.equal(ui.control('station-name').props.value, name);
+    await ui.submit();
+    assert.equal(ui.calls.length, 0);
+  }
+});
+
+test('station form section links and the top save use the existing validated submission path', async () => {
+  const ui = formFixture({ saved: station() });
+  const nav = ui.nodes().find(node => node.type === 'nav' && node.props?.['aria-label'] === 'Station profile sections');
+  assert.ok(nav);
+  for (const link of nodes(nav).filter(node => node.type === 'a')) {
+    const target = ui.nodes().find(node => node.props?.id === link.props.href.slice(1));
+    assert.ok(target); assert.equal(target.props.tabIndex, -1);
+  }
+  assert.equal(ui.nodes().filter(node => node.type === 'button' && node.props.type === 'submit').length, 2);
+  await ui.submit();
+  assert.equal(ui.calls.length, 1);
+});
+
 function pageFixture({ initial = station(), profileError = null, savePromise = null } = {}) {
   const runtime = hooks(), calls = [], toasts = [];
   let tree, asyncIndex = 0;
@@ -217,6 +244,7 @@ function pageFixture({ initial = station(), profileError = null, savePromise = n
   const list = { data: { stations: [station(), station({ id: 'synthetic-station-b', name: 'Synthetic Station B' })] }, error: null, reload() { calls.push({ kind: 'reload-list' }); } };
   const { StationProfilePage } = load('../components/dashboard/DashboardScreen.tsx', {
     react: runtime.React,
+    '@/components/shared/AuthContext': { useSession: () => ({ user: { role: 'partner', partnerType: 'fuel_station', organizationRole: 'owner' } }) },
     '@/components/shared/Toast': { useToast: () => ({ success: value => toasts.push(['success', value]), error: value => toasts.push(['error', value]) }) },
     '@/components/shared/States': { AsyncBoundary: 'AsyncBoundary', EmptyState: 'EmptyState' },
     '@/components/shared/useAsync': { useAsync: () => asyncIndex++ === 0 ? list : profile },

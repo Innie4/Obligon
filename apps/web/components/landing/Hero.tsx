@@ -5,13 +5,13 @@ import { assets } from "./assets";
 export function Hero() {
   return (
     <section
-      className="relative overflow-hidden bg-obligon-navy pt-[104px]"
+      className="relative overflow-hidden bg-obligon-navy pt-20"
       data-node-id="2:3"
     >
 
-      <div className="relative mx-auto grid min-h-[660px] w-full max-w-[1280px] min-w-0 items-center gap-12 px-5 py-16 sm:px-8 lg:grid-cols-2 lg:px-16 lg:py-20">
+      <div className="relative mx-auto grid w-full max-w-[1280px] min-w-0 items-center gap-10 px-5 py-12 sm:px-8 lg:min-h-[660px] lg:grid-cols-2 lg:gap-12 lg:px-16 lg:py-20">
         <div className="min-w-0 max-w-[544px]">
-          <h1 className="font-display text-[44px] font-bold leading-[1.07] tracking-tight text-white sm:text-[56px] lg:text-[64px]">
+          <h1 className="font-display text-[44px] font-bold leading-[1.07] tracking-tight text-white sm:text-[64px] lg:text-[80px]">
             Your fuel.
             <br />
             Your control.
@@ -24,7 +24,7 @@ export function Hero() {
 
           <div className="mt-6 flex flex-col items-start gap-4 sm:flex-row lg:mt-10">
             <LandingButton href="/auth/signup" icon="arrow">
-              Get Started
+              Get started
             </LandingButton>
             <LandingButton href="/solutions/fuelvista" variant="secondary" icon="arrow">
               Explore FuelVista

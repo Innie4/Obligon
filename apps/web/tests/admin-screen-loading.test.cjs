@@ -98,3 +98,16 @@ test('compact admin metrics retain four named values and empty pagination remain
   for (const metric of metrics) assert.ok(ui.text().includes(metric.label));
   for (const label of ['Previous', 'Next']) assert.equal(ui.all().find(node => node.type === 'button' && text(node) === label).props.disabled, true);
 });
+
+test('report metrics preserve the exact quantities while keeping each approved selling unit together', async () => {
+  const value = '2.5 standard m³ · 7 kg · 10 L';
+  const ui = screenFixture('reports'); ui.render();
+  ui.reads[0].resolve({ metrics: [{ label: 'Recorded volume', value }], stations: [], total: 0 });
+  await flush(); ui.render();
+  const metrics = ui.all().find(node => node.type === 'dl' && node.props['aria-label'] === 'Platform metrics');
+  const definition = walk(metrics).find(node => node.type === 'dd');
+  assert.equal(text(definition), value);
+  for (const unit of ['standard m³', 'kg', 'L']) {
+    assert.ok(walk(definition).some(node => node.type === 'span' && text(node).trim() === unit));
+  }
+});

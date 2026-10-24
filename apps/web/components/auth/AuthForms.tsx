@@ -329,7 +329,7 @@ function LoginForm() {
       <form onSubmit={handleLoginSubmit} className="mx-auto min-w-0 w-full max-w-[480px] rounded-2xl border border-obligon-border bg-white p-6 sm:p-8 shadow-card" noValidate>
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-display text-2xl font-bold text-obligon-navy">Welcome back</h2>
+          <h1 className="font-display text-[28px] font-bold tracking-tight text-obligon-navy">Sign in</h1>
           <p className="mt-1 text-xs text-obligon-text">Sign in to your Obligon account</p>
         </div>
         <ShieldCheck className="text-obligon-green" size={28} />
@@ -668,8 +668,7 @@ function SignupForm() {
       <form id="signup" onSubmit={handleSignupSubmit} className="mx-auto w-full max-w-[680px] rounded-2xl border border-obligon-border bg-white p-4 shadow-card sm:p-8" noValidate>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-bold text-obligon-green">Onboard to Obligon</p>
-          <h2 className="mt-2 font-display text-xl font-bold text-obligon-navy sm:text-2xl">Create your account</h2>
+          <h1 className="font-display text-[28px] font-bold tracking-tight text-obligon-navy">Create your account</h1>
         </div>
         <ShieldCheck className="text-obligon-green" size={28} />
       </div>
@@ -679,7 +678,7 @@ function SignupForm() {
       {/* Top Level Role Selector */}
       <div className="mt-6">
         <label className="text-xs font-bold text-obligon-text block mb-2">
-          Select Account Category
+          Account type
         </label>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {[
@@ -693,20 +692,21 @@ function SignupForm() {
               <button
                 key={item.key}
                 type="button"
+                aria-pressed={active}
                 onClick={() => handleTopRoleChange(item.key)}
-                className={`min-h-[112px] p-3.5 rounded-xl border text-left transition flex flex-col justify-between ${
+                className={`flex min-h-[76px] items-center gap-3 rounded-xl border p-3.5 text-left transition-colors sm:min-h-[112px] sm:flex-col sm:items-stretch sm:justify-between ${
                   active
                     ? "border-obligon-green bg-[#e8fbd7] text-obligon-green ring-2 ring-obligon-green/20"
                     : "border-obligon-border bg-white text-obligon-navy hover:bg-obligon-mist"
                 }`}
               >
-                <div className="flex items-center justify-between w-full">
+                <div className="flex shrink-0 items-center justify-between gap-3 sm:w-full">
                   <Icon size={20} className={active ? "text-obligon-green" : "text-obligon-navy"} />
                   {active && <span className="size-2 rounded-full bg-obligon-green" />}
                 </div>
-                <div className="mt-2.5">
-                  <p className="font-extrabold text-xs leading-4">{item.title}</p>
-                  <p className="text-xs font-medium text-obligon-text mt-0.5 leading-tight line-clamp-2">{item.desc}</p>
+                <div className="min-w-0 flex-1 sm:mt-2.5">
+                  <p className="text-sm font-bold leading-5">{item.title}</p>
+                  <p className="mt-0.5 text-[13px] leading-5 text-obligon-text">{item.desc}</p>
                 </div>
               </button>
             );
@@ -735,6 +735,7 @@ function SignupForm() {
                 <button
                   key={key}
                   type="button"
+                  aria-pressed={active}
                   onClick={() => handlePartnerTypeChange(key)}
                   className={`p-3 rounded-xl border text-left transition flex items-start gap-2.5 ${
                     active

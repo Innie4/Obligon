@@ -10,7 +10,7 @@ const text = node => node == null ? '' : Array.isArray(node) ? node.map(text).jo
 function queueFixture(filename, component) {
   const slots = [], effects = [], reads = []; let cursor = 0, tree;
   const React = {
-    createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
+    createElement: (type, props, ...children) => typeof type === 'function' ? type({ ...props, children }) : ({ type, props: { ...props, children } }),
     useState(initial) { const index = cursor++; if (!(index in slots)) slots[index] = { value: initial }; return [slots[index].value, value => { slots[index].value = typeof value === 'function' ? value(slots[index].value) : value; }]; },
     useRef(initial) { const index = cursor++; return slots[index] ??= { current: initial }; },
     useCallback(fn, deps) { const index = cursor++, old = slots[index]; if (!old || deps.some((value, i) => !Object.is(value, old.deps[i]))) slots[index] = { fn, deps }; return slots[index].fn; },
@@ -22,6 +22,7 @@ function queueFixture(filename, component) {
   if (component === 'ReplacementReconciliation') code += '\nexports.ReplacementReconciliation = ReplacementReconciliation;';
   vm.runInNewContext(code, { exports, React, Error, require(name) {
     if (name === 'react') return React;
+    if (name === '@/components/shared/States') return { EmptyState: ({ title, message }) => React.createElement('div', { role: 'status' }, title, message) };
     if (name.startsWith('@/lib/services')) return { authenticatedRequest: request, api: { request } };
     return {};
   } });

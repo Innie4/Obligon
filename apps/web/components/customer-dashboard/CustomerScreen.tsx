@@ -129,7 +129,7 @@ function VehicleTable() {
       isEmpty={!vehicles || vehicles.length === 0}
       onRetry={reload}
       loadingLabel="Loading vehicles…"
-      empty={{ title: "No vehicle data", message: "Vehicle performance metrics will appear here." }}
+      empty={{ title: "No vehicle data", message: "No vehicle performance records are available yet.", compact: true }}
     >
       <Card className="overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-5 sm:px-6 border-b border-[#eef3ee]">
@@ -181,7 +181,9 @@ function ActivityList({ desktop = false }: { desktop?: boolean }) {
       loadingLabel="Loading activity…"
       empty={{
         title: "No recent activity",
-        message: "Your transactions and account alerts will appear here."
+        message: "Your transactions and account alerts will appear here.",
+        compact: true,
+        action: <Link href="/customer/transactions" className="inline-flex min-h-11 items-center rounded-xl border border-obligon-border px-4 text-sm font-semibold text-obligon-green">View history</Link>
       }}
     >
       <Card className="overflow-hidden">
@@ -276,7 +278,7 @@ function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
 
   return (
     <Canvas>
-      <div className="mb-6 lg:hidden"><h2 className="font-display text-2xl font-bold tracking-tight text-obligon-navy">Overview</h2><p className="mt-2 text-sm text-obligon-text">Your balance and recent activity.</p></div>
+      <div className="mb-6"><h1 className="font-display text-2xl font-bold tracking-tight text-obligon-navy">Overview</h1><p className="mt-2 text-sm text-obligon-text">Your balance and recent activity.</p></div>
       {cardLoadStatus === "loading" ? <StatusPopup tone="loading" message="Loading card status…" /> : null}
       {cardLoadStatus === "error" ? <StatusPopup tone="error" message="Card status unavailable" onRetry={refreshCard} retryLabel="Retry card status" /> : null}
 
@@ -319,7 +321,7 @@ function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
                   <p className="text-xs font-semibold text-obligon-text">{mtdSpendHelper}</p>
                 ) : null}
               </div>
-              <p className="mt-4 font-display text-[32px] font-extrabold text-[#b51f24]">{mtdSpend}</p>
+              <p className={`mt-4 break-words font-display text-[32px] font-extrabold tabular-nums ${usagePercent >= 100 ? "text-[#b51f24]" : "text-obligon-navy"}`}>{mtdSpend}</p>
               <div className="mt-6 flex justify-between text-sm">
                 <span className="font-bold text-[#3f463d]">Budget Usage</span>
                 <span className="font-extrabold text-obligon-navy">{budgetUsage}</span>
@@ -347,18 +349,18 @@ function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
           </Card>
         </div>
 
-        <div className="mt-6 grid gap-6 sm:grid-cols-3">
-          <Card className="p-5">
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5">
+          <Card className="p-4 sm:p-5">
             <Fuel className="text-obligon-green" size={22} />
             <p className="mt-2 text-xs font-bold uppercase text-[#3f463d]">Fuel quantities</p>
             <p className="mt-1 text-2xl font-extrabold text-obligon-navy">{litres}</p>
           </Card>
-          <Card className="p-5">
+          <Card className="p-4 sm:p-5">
             <History className="text-obligon-blue" size={22} />
             <p className="mt-2 text-xs font-bold uppercase text-[#3f463d]">Transactions</p>
             <p className="mt-1 text-2xl font-extrabold text-obligon-navy">{txnCount}</p>
           </Card>
-          <Card className="p-5">
+          <Card className="col-span-2 p-4 sm:col-span-1 sm:p-5">
             <ShieldCheck className="text-obligon-green" size={22} />
             <p className="mt-2 text-xs font-bold uppercase text-[#3f463d]">Security Status</p>
             <p className="mt-1 text-sm font-bold text-obligon-navy flex items-center gap-2">
@@ -462,14 +464,6 @@ function TransactionsPage() {
   }
 
   return (
-    <AsyncBoundary
-      status={txnStatus}
-      error={txnError?.message ?? null}
-      isEmpty={rows.length === 0}
-      onRetry={reload}
-      loadingLabel="Loading transactions…"
-      empty={{ title: "No transactions found", message: "Your transaction history will appear here once activity is recorded." }}
-    >
       <Canvas compact>
         <DashboardSearchQuery onSearch={value => {
           setQuery(value); setCurrentPage(1);
@@ -480,7 +474,7 @@ function TransactionsPage() {
         }} />
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
-            <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Transaction History</h2>
+            <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Transaction History</h1>
             <p className="mt-1 text-sm text-obligon-text">Complete ledger of fuel card dispenses and wallet top-ups.</p>
           </div>
           <div className="flex gap-2">
@@ -532,9 +526,26 @@ function TransactionsPage() {
           </div>
         ) : null}
 
+    <AsyncBoundary
+      status={txnStatus}
+      error={txnError?.message ?? null}
+      isEmpty={rows.length === 0}
+      onRetry={reload}
+      loadingLabel="Loading transactions…"
+      empty={{ title: "No transactions found", message: "Your transaction history will appear here once activity is recorded." }}
+    >
         <Card className="overflow-hidden">
-          <p className="border-b border-obligon-border bg-obligon-mist/60 px-5 py-3 text-xs leading-5 text-obligon-text xl:hidden">Scroll horizontally to view amounts, balances and receipts.</p>
-          <div tabIndex={0} role="region" aria-label="Transaction history table, scroll horizontally to see all columns" className="overflow-x-auto overscroll-x-contain focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-obligon-green">
+          <ul aria-label="Transaction history records" className="divide-y divide-obligon-border sm:hidden">
+            {paginated.length ? paginated.map(row => <li key={row.id} className="p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0"><h2 className="text-sm font-bold text-obligon-navy">{row.title}</h2>{row.subtitle ? <p className="mt-1 break-words text-xs text-obligon-text">{row.subtitle}</p> : null}</div>
+                <strong className={`whitespace-nowrap text-lg tabular-nums ${row.signedKobo >= 0 ? "text-obligon-green" : "text-obligon-navy"}`}>{row.amount}</strong>
+              </div>
+              <dl className="mt-4 space-y-2 text-xs"><div className="flex justify-between gap-4"><dt className="text-obligon-text">Balance after</dt><dd className="whitespace-nowrap font-semibold tabular-nums text-obligon-navy">{row.balanceAfterLabel ?? "N/A"}</dd></div><div className="flex justify-between gap-4"><dt className="text-obligon-text">Recorded</dt><dd className="text-right text-obligon-navy">{row.time}</dd></div><div><dt className="text-obligon-text">Reference</dt><dd className="mt-1 break-all text-obligon-navy">{row.reference ?? "N/A"}</dd></div></dl>
+              <button type="button" onClick={() => setSelectedTxn(row)} className="mt-4 min-h-11 rounded-xl border border-obligon-border px-4 text-sm font-semibold text-obligon-green">View Receipt</button>
+            </li>) : <li className="p-6 text-sm text-obligon-text">No transactions match the active filters.</li>}
+          </ul>
+          <div tabIndex={0} role="region" aria-label="Transaction history table, scroll horizontally to see all columns" className="hidden overflow-x-auto overscroll-x-contain focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-obligon-green sm:block">
             <table className="w-full text-left min-w-[640px]">
               <thead className="bg-[#f0f4f0] text-xs uppercase text-[#3f463d]">
                 <tr>
@@ -594,7 +605,7 @@ function TransactionsPage() {
 
           <div className="flex items-center justify-between border-t border-[#eef3ee] p-5 text-sm">
             <span className="text-xs font-bold text-obligon-text">
-              Showing {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filtered.length)} of {filtered.length} transactions
+              Showing {filtered.length ? (currentPage - 1) * pageSize + 1 : 0} - {Math.min(currentPage * pageSize, filtered.length)} of {filtered.length} transactions
             </span>
             <div className="flex items-center gap-2">
               <button
@@ -619,6 +630,7 @@ function TransactionsPage() {
             </div>
           </div>
         </Card>
+    </AsyncBoundary>
 
         {/* Filter Modal */}
         {filtersOpen ? (
@@ -694,7 +706,7 @@ function TransactionsPage() {
                 </span>
               </div>
               <h2 className="mt-4 font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Transaction Receipt</h2>
-              <p className="mt-1 text-xs text-obligon-text">
+              <p className="mt-1 break-all text-xs text-obligon-text">
                 {selectedTxn.reference ? "Reference" : "Record ID"}: <span className="font-mono font-extrabold text-obligon-navy">
                   {selectedTxn.reference ?? selectedTxn.id}
                 </span>
@@ -702,7 +714,7 @@ function TransactionsPage() {
 
               <div className="mt-6 rounded-2xl bg-obligon-mist/60 p-5 border border-obligon-border">
                 <p className="text-xs font-bold uppercase text-obligon-text">Recorded Amount</p>
-                <p className="mt-1 font-display text-4xl font-extrabold text-obligon-green">{selectedTxn.amount}</p>
+                <p className="mt-1 break-words font-display text-xl font-extrabold tabular-nums text-obligon-green min-[390px]:text-2xl sm:text-4xl">{selectedTxn.amount}</p>
               </div>
 
               <div className="mt-5 space-y-3.5 text-sm divide-y divide-[#eef3ee]">
@@ -733,7 +745,6 @@ function TransactionsPage() {
           </ModalFrame>
         ) : null}
       </Canvas>
-    </AsyncBoundary>
   );
 }
 
@@ -741,7 +752,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4 pt-3 first:pt-0">
       <span className="text-sm font-medium text-obligon-text">{label}</span>
-      <span className="text-right text-sm font-extrabold text-obligon-navy">{value}</span>
+      <span className="min-w-0 break-words text-right text-sm font-extrabold text-obligon-navy [overflow-wrap:anywhere]">{value}</span>
     </div>
   );
 }
@@ -1179,15 +1190,25 @@ function CardPage({
     <Canvas>
       {(progressLoading || withdrawing || refundChecking) ? <StatusPopup tone="pending" message={withdrawing ? "Withdrawing card application…" : refundChecking ? "Checking refund status…" : "Loading verification status…"} /> : null}
       <div className="mb-8">
-        <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Card Management</h2>
+        <h1 id="card-status" className="scroll-mt-24 font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">My Card</h1>
         <p className="mt-1 text-obligon-text">View your Fuelvista card status and manage your subscription.</p>
       </div>
+      <nav aria-label="My Card sections" className="mb-7 flex flex-wrap gap-2">
+        <a href="#card-status" className="inline-flex min-h-11 items-center rounded-xl border border-obligon-border bg-white px-4 text-sm font-semibold text-obligon-navy">Status</a>
+        <a href="#subscription" className="inline-flex min-h-11 items-center rounded-xl border border-obligon-border bg-white px-4 text-sm font-semibold text-obligon-navy">Plans</a>
+        {subscription?.active ? <>
+          <a href="#fuel-budget" className="inline-flex min-h-11 items-center rounded-xl border border-obligon-border bg-white px-4 text-sm font-semibold text-obligon-navy">Budget</a>
+          <a href="#fuel" className="inline-flex min-h-11 items-center rounded-xl border border-obligon-border bg-white px-4 text-sm font-semibold text-obligon-navy">Pay</a>
+          <a href="#fuel-orders" className="inline-flex min-h-11 items-center rounded-xl border border-obligon-border bg-white px-4 text-sm font-semibold text-obligon-navy">Orders</a>
+        </> : null}
+      </nav>
 
       {cardLoading ? <StatusPopup tone="loading" message={hasCard === null ? "Loading your card and request status…" : "Refreshing your card and request status…"} /> : null}
       {cardLoadError || openRequestError ? <StatusPopup tone="error" message={[cardLoadError || openRequestError, "Your latest card or payment request status could not be checked."].join(" ").trim()} action={<button type="button" disabled={cardLoading} onClick={() => setCardLoadRevision((revision) => revision + 1)} className="mt-3 min-h-11 rounded-lg border border-current px-4 font-bold disabled:opacity-50">Retry loading card</button>} /> : null}
 
       {hasCard === false ? (
         <Card className="mb-8 border-obligon-green/30 bg-obligon-mist/60 p-6">
+          {!subscription?.subscription ? <div id="subscription" className="scroll-mt-24" /> : null}
           <h2 className="font-display text-lg font-bold tracking-tight sm:text-xl text-obligon-navy">Get your Fuelvista Card</h2>
           <p className="mt-1 text-sm text-obligon-text">
             Choose a subscription plan, pay for it, then verify your identity. We issue your card once
@@ -1500,7 +1521,7 @@ function WalletPage({
       {walletStatus === "loading" ? <StatusPopup tone="loading" message="Loading balance and payment history…" /> : null}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Wallet Management</h2>
+          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Wallet Management</h1>
           <p className="mt-1 text-obligon-text">Fund your prepaid fuel balance and manage your spending.</p>
         </div>
         <button
@@ -1689,6 +1710,8 @@ function StationsPage() {
   const [directionTarget, setDirectionTarget] = React.useState<{ name: string; address: string; distance: string } | null>(null);
 
   const allFuels = partnerAllowedFuels({ role: "partner", partnerType: "fuel_station" }).map(stationFuelName);
+  const filtersApplied = Boolean(query.trim() || selectedFuels.length);
+  const clearFilters = () => { setQuery(""); setSelectedFuels([]); setDraftFuels([]); };
 
   const visible = stations?.filter((station) => {
     const matchesQuery =
@@ -1701,19 +1724,11 @@ function StationsPage() {
 
   return (
     <Canvas>
-      <div className="mb-6"><h2 className="font-display text-2xl font-bold tracking-tight text-obligon-navy">Find a station</h2><p className="mt-2 text-sm text-obligon-text">Search locations, view fuel prices and get directions.</p></div>
+      <div className="mb-6"><h1 className="font-display text-2xl font-bold tracking-tight text-obligon-navy">Find a station</h1><p className="mt-2 text-sm text-obligon-text">Search locations, view fuel prices and get directions.</p></div>
       <DashboardSearchQuery onSearch={value => { setQuery(value); if (value) setSelectedFuels([]); }} />
       <StationLocationControl state={stationLocation} />
-    <AsyncBoundary
-      status={status}
-      error={error?.message ?? null}
-      isEmpty={!stations || stations.length === 0}
-      onRetry={reload}
-      loadingLabel="Loading station network…"
-      empty={{ title: "No stations found", message: "Station locations will appear here." }}
-    >
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="flex flex-1 items-center gap-2 rounded-xl border border-obligon-border bg-white p-3">
+          <div className="flex flex-1 items-center gap-2 rounded-xl border border-obligon-border bg-white p-3 focus-within:ring-2 focus-within:ring-obligon-green">
             <MapPinned size={18} className="text-obligon-green shrink-0" />
             <input
               value={query}
@@ -1741,7 +1756,7 @@ function StationsPage() {
                 key={fuel}
                 type="button"
                 onClick={() => setSelectedFuels((prev) => prev.filter((f) => f !== fuel))}
-                className="rounded-full bg-[#e8fbd7] px-3 py-1 text-xs font-bold text-obligon-green"
+                className="min-h-11 rounded-full bg-obligon-mist px-3 py-2 text-xs font-bold text-obligon-green"
               >
                 {fuel} ✕
               </button>
@@ -1756,6 +1771,14 @@ function StationsPage() {
           </div>
         ) : null}
 
+      <AsyncBoundary
+        status={status}
+        error={error?.message ?? null}
+        isEmpty={visible.length === 0}
+        onRetry={reload}
+        loadingLabel="Loading station network…"
+        empty={{ title: filtersApplied ? "No stations match your search" : "No stations available yet", message: filtersApplied ? "Try another name, city or fuel type." : "Approved stations will appear here when they join the network.", action: filtersApplied ? <button type="button" onClick={clearFilters} className="min-h-11 rounded-xl border border-obligon-border px-4 text-sm font-semibold text-obligon-green">Clear filters</button> : undefined }}
+      >
         <div className="grid items-start gap-6 xl:grid-cols-[minmax(280px,380px)_minmax(0,1fr)]">
           <div aria-label="Available stations" className="grid gap-4 sm:grid-cols-2 xl:max-h-[560px] xl:grid-cols-1 xl:overflow-y-auto xl:overscroll-contain xl:pr-1">
             {visible.map((st) => (
@@ -1798,8 +1821,9 @@ function StationsPage() {
 
         </div>
 
+      </AsyncBoundary>
+
         {fuelsOpen && <ModalFrame title="Filter stations by fuel" onClose={() => setFuelsOpen(false)}><div className="p-6"><h2 className="text-2xl font-bold">Filter by fuel</h2>{allFuels.map(fuel => <label key={fuel} className="flex min-h-12 items-center gap-3"><input type="checkbox" checked={draftFuels.includes(fuel)} onChange={e => setDraftFuels(prev => e.target.checked ? [...prev, fuel] : prev.filter(f => f !== fuel))} />{fuel}</label>)}<button type="button" className="mt-4 min-h-12 rounded-lg bg-obligon-green px-6 font-bold text-white" onClick={() => { setSelectedFuels(draftFuels); setFuelsOpen(false); }}>Show stations</button></div></ModalFrame>}
-        {!visible.length && <p role="status">No stations match your search. Clear the filters to see all available stations.</p>}
         {/* Station Detail Modal */}
         {detail ? (
           <ModalFrame title="Station details" onClose={() => setDetail(null)}>
@@ -1852,8 +1876,8 @@ function StationsPage() {
               <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl text-obligon-navy">Route Directions</h2>
               <p className="mt-1 text-sm text-obligon-text">Navigating to {directionTarget.name}</p>
               <div className="mt-4 rounded-xl bg-obligon-mist/60 p-4 space-y-2 text-sm font-bold text-obligon-navy">
-                <p>📍 Destination: {directionTarget.address}</p>
-                <p>📏 Distance: {directionTarget.distance}</p>
+                <p>Destination: {directionTarget.address}</p>
+                <p>Distance: {directionTarget.distance}</p>
                 <p>Open the route below for current travel times.</p>
               </div>
               <a
@@ -1867,7 +1891,6 @@ function StationsPage() {
             </div>
           </ModalFrame>
         ) : null}
-    </AsyncBoundary>
     </Canvas>
   );
 }
@@ -1966,7 +1989,7 @@ function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void 
     <Canvas>
       {(sending) ? <StatusPopup tone="pending" message="Sending support message…" /> : null}
       <div className="mb-8">
-        <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Customer Support Center</h2>
+        <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Customer Support Center</h1>
         <p className="mt-1 text-obligon-text">Billing, card, and transaction assistance.</p>
       </div>
       <div className="grid gap-6 sm:grid-cols-2">
@@ -2220,12 +2243,15 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
       <Canvas>
         <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
         <Card className="p-6 sm:p-8">
-          <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Profile &amp; Settings</h2>
+          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Profile &amp; Settings</h1>
           <p className="mt-1 text-sm text-obligon-text">Manage your personal details and communication preferences.</p>
+          <nav aria-label="Profile settings sections" className="mt-5 flex flex-wrap gap-2">
+            {[["profile-details", "Details"], ["customer-appearance-title", "Appearance"], ["sign-in-options", "Sign-in"], ["profile-notifications", "Notifications"], ["profile-security", "Security"]].map(([id, label]) => <a key={id} href={`#${id}`} className="inline-flex min-h-11 items-center rounded-xl border border-obligon-border px-3 text-sm font-semibold text-obligon-green">{label}</a>)}
+          </nav>
 
           <CustomerPreferencesPanel />
           {customerFeatureAvailable(subscription, "Intelligence Notifications") ? <CustomerSpendingAlerts embedded /> : null}
-          <form onSubmit={handleSave} className="mt-6 space-y-4">
+          <form id="profile-details" tabIndex={-1} onSubmit={handleSave} className="mt-6 scroll-mt-28 space-y-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-obligon-green">
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block">
                 <span className="text-xs font-semibold uppercase text-obligon-text">Full Name</span>
@@ -2266,7 +2292,7 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
               </label>
             </div>
 
-            <div className="pt-6 border-t border-[#eef3ee]">
+            <div id="profile-notifications" tabIndex={-1} className="scroll-mt-28 border-t border-[#eef3ee] pt-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-obligon-green">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="font-display text-lg font-bold tracking-tight sm:text-xl text-obligon-navy">Notification Preferences</h2>
                 {prefsSaving ? (
@@ -2380,7 +2406,7 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
 
         <div className="space-y-6">
           <Card className="p-6">
-            <h2 className="font-display text-lg font-bold tracking-tight sm:text-xl text-obligon-navy">Security Settings</h2>
+            <h2 id="profile-security" tabIndex={-1} className="scroll-mt-28 font-display text-lg font-bold tracking-tight sm:text-xl text-obligon-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-obligon-green">Security Settings</h2>
             <div className="mt-4 space-y-3">
               <button
                 type="button"
@@ -2500,7 +2526,7 @@ function NotificationsPage() {
       {(saving) ? <StatusPopup tone="pending" message="Saving notification preferences…" /> : null}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
           <div>
-            <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Notifications</h2>
+            <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Notifications</h1>
             <p className="mt-1 text-obligon-text">Security alerts, transaction confirmations, and system notices.</p>
           </div>
           <button

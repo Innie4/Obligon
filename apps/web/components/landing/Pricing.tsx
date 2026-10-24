@@ -184,6 +184,7 @@ function resolvePlans(source: SourcePlan[], usesSharedLabels: boolean): Resolved
 
 export function Pricing() {
   const [tab, setTab] = useState<"individual" | "organization">("individual");
+  const [comparedPlans, setComparedPlans] = useState({ individual: "Gold", organization: "Business" });
   const plans =
     tab === "individual" ? resolvePlans(individualPlans, true) : resolvePlans(organizationPlans, false);
 
@@ -191,9 +192,8 @@ export function Pricing() {
     <section id="pricing" className="bg-obligon-mist py-20 lg:py-32" data-node-id="2:71">
       <div className="mx-auto w-full max-w-[1216px] min-w-0 px-5 sm:px-8">
         <div className="mx-auto max-w-[672px] text-center">
-          <p className="text-[13px] font-semibold text-obligon-green">Plans and Access</p>
-          <h2 className="mt-4 font-display text-[32px] leading-10 text-obligon-navy sm:text-4xl">
-            Plans for People and Businesses
+          <h2 className="font-display text-[32px] font-bold leading-tight tracking-tight text-obligon-navy sm:text-4xl">
+            Plans and access
           </h2>
           <p className="mt-4 text-base leading-6 text-obligon-text">
             Compare personal plans and organization options. Company access requires an agreed contract.
@@ -201,7 +201,7 @@ export function Pricing() {
         </div>
 
         <div className="mt-10 flex justify-center">
-          <div className="flex rounded-full border border-[#e5e7eb] bg-[#f3f4f6] p-[5px]">
+          <div role="group" aria-label="Plan audience" className="flex rounded-full border border-[#e5e7eb] bg-[#f3f4f6] p-[5px]">
             <button
               type="button"
               onClick={() => setTab("individual")}
@@ -235,6 +235,10 @@ export function Pricing() {
           </p>
         )}
 
+        <div role="group" aria-label={`Compare ${tab} plans`} className={`mt-8 grid gap-2 lg:hidden ${plans.length === 4 ? "grid-cols-2" : "grid-cols-3"}`}>
+          {plans.map(plan => <button key={plan.name} type="button" aria-pressed={comparedPlans[tab] === plan.name} aria-controls={`public-plan-${plan.name.toLowerCase()}`} onClick={() => setComparedPlans(current => ({ ...current, [tab]: plan.name }))} className={`min-h-12 min-w-0 rounded-xl px-2 py-3 text-sm font-semibold transition-colors ${comparedPlans[tab] === plan.name ? "bg-obligon-green text-white" : "bg-white text-obligon-text hover:bg-obligon-panel"}`}>{plan.name}</button>)}
+        </div>
+
         <div
           className={`mt-[52px] grid min-w-0 gap-5 lg:items-start ${
             plans.length === 4 ? "lg:grid-cols-4" : "lg:grid-cols-3"
@@ -243,7 +247,8 @@ export function Pricing() {
           {plans.map((plan) => (
             <article
               key={plan.name}
-              className={`relative flex min-h-[384px] min-w-0 flex-col rounded-3xl p-8 ${
+              id={`public-plan-${plan.name.toLowerCase()}`}
+              className={`relative ${comparedPlans[tab] === plan.name ? "flex" : "hidden lg:flex"} min-h-[384px] min-w-0 flex-col rounded-3xl p-6 sm:p-8 ${
                 plan.dark
                   ? "border border-obligon-blue bg-obligon-blue text-white"
                   : plan.recommended
@@ -257,13 +262,13 @@ export function Pricing() {
                 </div>
               ) : null}
 
-              <p
-                className={`text-[13px] font-bold ${
+              <h3
+                className={`font-display text-xl font-bold tracking-tight ${
                   plan.dark ? "text-obligon-lime" : plan.recommended ? "text-obligon-green" : "text-obligon-text"
                 }`}
               >
                 {plan.name}
-              </p>
+              </h3>
 
               <div className="mt-3 flex items-end gap-1">
                 {plan.price === "Custom" ? (

@@ -22,9 +22,8 @@ export function Story() {
     <section id="about-us" className="bg-white py-20 sm:py-24 lg:py-32" data-node-id="2:279">
       <div className="mx-auto grid w-full max-w-landing min-w-0 gap-16 px-5 sm:px-8 lg:grid-cols-[442.67px_1fr] lg:px-0">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-obligon-green">The Obligon LTD Story</p>
-          <h2 className="mt-4 font-display text-3xl leading-tight text-obligon-navy sm:text-4xl">
-            Fuel tools for people and businesses.
+          <h2 className="font-display text-3xl font-bold leading-tight tracking-tight text-obligon-navy sm:text-4xl">
+            Fuel tools for Nigeria
           </h2>
 
           <div className="mt-4 space-y-6 text-base leading-[26px] text-obligon-text lg:mt-4">

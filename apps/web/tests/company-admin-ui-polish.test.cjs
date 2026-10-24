@@ -9,7 +9,7 @@ const nodes = tree => !tree || typeof tree !== 'object' ? [] : Array.isArray(tre
 function load(file, expose = '', dependencies = {}) {
   const exports = {}, filename = require.resolve(file);
   const source = ts.transpileModule(fs.readFileSync(filename, 'utf8') + expose, { fileName: filename, compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }).outputText;
-  vm.runInNewContext(source, { exports, URLSearchParams, require: name => dependencies[name] ?? (name === 'react' ? React : name === '@/components/shared/States' ? { EmptyState: ({ title }) => React.createElement('p', { role: 'status' }, title) } : {}) });
+  vm.runInNewContext(source, { exports, URLSearchParams, require: name => dependencies[name] ?? (name === 'react' ? React : name === '@/components/shared/States' ? { EmptyState: ({ title, message, action }) => React.createElement('div', { role: 'status' }, title, message, action) } : {}) });
   return exports;
 }
 const { Table, Metrics, CompanyPagination } = load('../components/company-dashboard/CompanyScreen.tsx', '\nexport { Table, Metrics, CompanyPagination };');
@@ -30,6 +30,24 @@ test('company compact records retain visible field labels and the existing row a
 test('company empty records present their recovery copy without inventing data', () => {
   const html = renderToStaticMarkup(Table({ title: 'Cards', columns: ['Card'], rows: [], empty: 'Issue your first card above.' }));
   assert.match(html, /Issue your first card above/); assert.doesNotMatch(html, /<table/);
+});
+
+test('company purchase empty states explain their source and keep the existing cards destination', () => {
+  const result = { status: 'success', data: { metrics: [], recentTransactions: [], transactions: [], vehicles: [], drivers: [] }, reload() {} };
+  const { Overview, Transactions } = load('../components/company-dashboard/CompanyScreen.tsx', '\nexport { Overview, Transactions };', {
+    react: { ...React, useState: initial => [initial, () => {}] },
+    'next/link': { __esModule: true, default: 'a' },
+    '@/lib/services/company': { companyApi: { overview() {}, choices() {}, transactions() {} } },
+    '@/components/shared/useAsync': { useAsync: () => result },
+  });
+  for (const [Component, title] of [[Overview, 'Recent transactions'], [Transactions, 'Transactions']]) {
+    const table = nodes(Component({ onModal() {} })).find(node => node.props?.title === title);
+    const html = renderToStaticMarkup(Table(table.props));
+    assert.match(html, /Purchases made with company cards will appear here\./);
+    assert.equal(table.props.emptyAction.props.href, '/company/cards');
+    assert.match(html, /View cards/);
+    assert.doesNotMatch(html, /<table/);
+  }
 });
 
 test('admin compact records preserve the same scoped review row and disabled state', () => {
@@ -72,6 +90,52 @@ function stateFixture(file, name, request) {
   return { render() { cursor = 0; tree = component(); const pending = effects; effects = []; pending.forEach(effect => effect()); return renderToStaticMarkup(tree); }, nodes() { return nodes(tree); } };
 }
 const operationalResult = path => path.endsWith('/support') ? { tickets: [] } : path.endsWith('/fuel-review') ? { orders: [] } : path.endsWith('/payout-accounts') ? { accounts: [] } : { payouts: [], settlements: [] };
+
+test('the compact intake queue control keeps all eight queues connected to their existing routes', async () => {
+  const reads = [];
+  const ui = stateFixture('../components/admin-dashboard/IntakeConsole.tsx', 'IntakeConsole', async path => { reads.push(path); return { records: [], total: 0 }; });
+  ui.render(); await flush(); ui.render();
+  const queues = [
+    ['stations', 'Station publication', '/stations/review'],
+    ['applications', 'Job applications', '/intake/applications'],
+    ['leads', 'Sales and enquiries', '/intake/leads'],
+    ['privacy', 'Privacy requests', '/intake/privacy'],
+    ['jobs', 'Job postings', '/jobs'],
+    ['email', 'Email delivery', '/email-delivery'],
+    ['activity', 'Business activity', '/activity'],
+    ['financial', 'Money movements', '/financial-activity'],
+  ];
+  for (const [value, title, path] of queues) {
+    const select = ui.nodes().find(node => node.type === 'select' && node.props.id === 'admin-review-queue');
+    assert.ok(select, 'a labelled compact queue selector is available');
+    assert.equal(nodes(select).filter(node => node.type === 'option').length, 8);
+    select.props.onChange({ target: { value } }); ui.render(); await flush(); ui.render();
+    assert.equal(ui.nodes().find(node => node.type === 'select' && node.props.id === 'admin-review-queue').props.value, value);
+    assert.ok(reads.at(-1).startsWith(`/api/admin${path}?`));
+    assert.equal(ui.nodes().find(node => node.type === 'button' && node.props.children === title).props['aria-pressed'], true);
+  }
+});
+
+test('support ticket selection is announced and follows the conversation being opened', async () => {
+  const tickets = [
+    { id: 'ticket-one', reference: 'UI-TICKET-ONE', subject: 'First support request', status: 'open', message: 'First message' },
+    { id: 'ticket-two', reference: 'UI-TICKET-TWO', subject: 'Second support request', status: 'open', message: 'Second message' },
+  ];
+  const ui = stateFixture('../components/admin-dashboard/OperationsInbox.tsx', 'OperationsInbox', async path => {
+    if (path === '/api/admin/support') return { tickets };
+    if (path.includes('/messages')) return { ticket: tickets.find(ticket => path.includes(ticket.id)), messages: [] };
+    return operationalResult(path);
+  });
+  const ticketButton = reference => ui.nodes().find(node => node.type === 'button' && renderToStaticMarkup(node).includes(reference));
+  ui.render(); await flush(); ui.render();
+  assert.equal(ticketButton('UI-TICKET-ONE').props['aria-pressed'], false);
+  ticketButton('UI-TICKET-ONE').props.onClick(); await flush(); ui.render();
+  assert.equal(ticketButton('UI-TICKET-ONE').props['aria-pressed'], true);
+  assert.equal(ticketButton('UI-TICKET-TWO').props['aria-pressed'], false);
+  ticketButton('UI-TICKET-TWO').props.onClick(); await flush(); ui.render();
+  assert.equal(ticketButton('UI-TICKET-ONE').props['aria-pressed'], false);
+  assert.equal(ticketButton('UI-TICKET-TWO').props['aria-pressed'], true);
+});
 
 test('partner bank verification distinguishes loading, failed reads and an empty successful response', async () => {
   const ready = stateFixture('../components/admin-dashboard/OperationsInbox.tsx', 'OperationsInbox', async path => operationalResult(path));
