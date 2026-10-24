@@ -1,0 +1,68 @@
+{
+  "date": "2026-10-24",
+  "render_status": "blocked, no PNG or slop-scan pass claimed",
+  "renderer_preflight": {
+    "node": "24.21.0",
+    "chrome": "/usr/bin/google-chrome",
+    "exit_code": 2,
+    "error": "playwright-core not found"
+  },
+  "browser_static_preview": "rejected: file protocol not allowed; workaround explicitly prohibited",
+  "contrast": [
+    {
+      "role": "light primary",
+      "foreground": "#ffffff",
+      "background": "#3d6a00",
+      "ratio": 6.442,
+      "AA_normal": true
+    },
+    {
+      "role": "light secondary",
+      "foreground": "#454650",
+      "background": "#ffffff",
+      "ratio": 9.354,
+      "AA_normal": true
+    },
+    {
+      "role": "dark primary",
+      "foreground": "#17220f",
+      "background": "#b7d693",
+      "ratio": 10.261,
+      "AA_normal": true
+    },
+    {
+      "role": "dark secondary",
+      "foreground": "#b8c3cb",
+      "background": "#192229",
+      "ratio": 8.99,
+      "AA_normal": true
+    },
+    {
+      "role": "dark foreground",
+      "foreground": "#f3f6f7",
+      "background": "#11181e",
+      "ratio": 16.481,
+      "AA_normal": true
+    }
+  ],
+  "html_files": [
+    "screen-profile-light.html",
+    "before-after.html",
+    "screen-stations.html",
+    "screen-profile-dark.html",
+    "mockup.html",
+    "desktop.html",
+    "screen-subscription.html",
+    "explore-3.html",
+    "screen-location-error.html",
+    "explore-2.html",
+    "explore.html",
+    "screen-location.html",
+    "explore-1.html",
+    "before.html"
+  ],
+  "product_copy_has_em_dash": false,
+  "appearance_radio_semantics": true,
+  "browser_privacy_claim_removed": true,
+  "critical_flow_verification": "delegated to parent actual application tests"
+}

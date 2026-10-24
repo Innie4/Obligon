@@ -10,6 +10,8 @@ import { naira, reference } from "../lib/format.js";
 import { notify, audit } from "../lib/notify.js";
 import { env } from "../config/env.js";
 import crypto from "node:crypto";
+import { activateCustomerSubscription } from "../lib/subscriptions.js";
+import { confirmBenefitFunding } from "../lib/benefit-budget.js";
 
 const router = Router();
 
@@ -144,6 +146,8 @@ router.post("/flutterwave", webhookLimiter, async (req,res)=>{
   const eventKey=`webhook:flutterwave:${parsed.transactionId??crypto.createHash('sha256').update(raw).digest('hex')}`;
   try {
     if(!parsed.reference)throw new Error('charge.completed payload has no tx_ref');
+    const benefitFunding=await one("SELECT id FROM benefit_funding WHERE reference=$1 AND provider='flutterwave'",[parsed.reference]);
+    if(benefitFunding)await confirmBenefitFunding(parsed.reference,parsed.transactionId);
     const subscriptionPayment=await one("SELECT id FROM subscription_payments WHERE reference=$1 AND provider='flutterwave'",[parsed.reference]);
     if(subscriptionPayment)await confirmSubscriptionPayment(parsed.reference,parsed.transactionId,false);
     const fuelOrder=await one("SELECT id FROM fuel_orders WHERE reference=$1 AND provider='flutterwave'",[parsed.reference]);
@@ -170,8 +174,9 @@ router.post("/flutterwave", webhookLimiter, async (req,res)=>{
       if(cardRequest){
         const current=await t.one('SELECT * FROM card_requests WHERE id=$1 FOR UPDATE',[cardRequest.id]);
         if(String(current.charged_kobo)!==String(cardRequest.charged_kobo)||current.payment_reference!==cardRequest.payment_reference||current.payment_provider!==cardRequest.payment_provider)throw new Error('Card payment quote changed during verification');
-        await t.query(`UPDATE card_requests SET payment_status='paid',paid_at=COALESCE(paid_at,now()),provider_transaction_id=COALESCE($2,provider_transaction_id),updated_at=now()
-          WHERE id=$1 AND payment_status IN('unpaid','pending','failed')`,[current.id,cardCheck.providerTransactionId]);
+        const paid=await t.one(`UPDATE card_requests SET payment_status='paid',paid_at=COALESCE(paid_at,now()),provider_transaction_id=COALESCE($2,provider_transaction_id),updated_at=now()
+          WHERE id=$1 AND payment_status IN('unpaid','pending','failed') RETURNING *`,[current.id,cardCheck.providerTransactionId]);
+        if(paid)await activateCustomerSubscription(t,paid);
         const {integerKobo}=await import('../lib/money-amounts.js');
         const paidKobo=integerKobo(cardCheck.amountKobo,{max:Number.MAX_SAFE_INTEGER,label:'Verified card payment'});
         const dueKobo=integerKobo(current.charged_kobo,{max:Number.MAX_SAFE_INTEGER,label:'Recorded card quote'});

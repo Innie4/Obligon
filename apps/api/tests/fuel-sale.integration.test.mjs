@@ -30,7 +30,8 @@ before(async () => {
  INSERT INTO discount_review_states(code) VALUES ('pending'),('approved'),('rejected');
  CREATE TABLE station_discount_requests(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),station_id uuid,fuel_type text,rate_bp int,review_state_id bigint,starts_at timestamptz,ends_at timestamptz,reviewed_at timestamptz DEFAULT now());
  CREATE TABLE card_plans(code text PRIMARY KEY,name text,features jsonb DEFAULT '[]');
- INSERT INTO card_plans(code,name) VALUES ('gold','Gold');
+ INSERT INTO card_plans(code,name,features) VALUES ('gold','Gold','[{"label": "Digital Fuel Wallet", "state": "included"}, {"label": "Fuel Purchase", "state": "included"}, {"label": "Digital Receipts", "state": "included"}, {"label": "Transaction History", "state": "included"}, {"label": "Fuel Spend Tracking", "state": "included"}, {"label": "Fuel Budget Management", "state": "included"}, {"label": "Spending Limits", "state": "included"}, {"label": "Partner Discounts", "state": "included"}]');
+ CREATE TABLE card_requests(id uuid PRIMARY KEY,user_id uuid,plan_code text,payment_reference text,payment_status text,paid_at timestamptz,status text,issuance_state text,subscription_activated_at timestamptz);
  CREATE TABLE customer_subscriptions(user_id uuid PRIMARY KEY,plan_code text,payment_reference text,status text DEFAULT 'active',current_period_start timestamptz,current_period_end timestamptz,updated_at timestamptz DEFAULT now());
  CREATE TABLE wallets(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid,organization_id uuid,currency text DEFAULT 'NGN',balance_kobo bigint CHECK(balance_kobo>=0),budget_limit_kobo bigint DEFAULT 0);
  CREATE TABLE wallet_ledger(wallet_id uuid,direction text,amount_kobo bigint,balance_after_kobo bigint,reference text,idempotency_key text UNIQUE,description text,created_at timestamptz DEFAULT now());
@@ -41,10 +42,12 @@ before(async () => {
  ALTER TABLE stations ADD COLUMN fuels text[] DEFAULT '{}',ADD COLUMN selling_units jsonb DEFAULT '{}',ADD COLUMN approved_selling_units jsonb DEFAULT '{}';
  ALTER TABLE fuel_prices ADD COLUMN selling_unit text DEFAULT 'litre';
  ALTER TABLE transactions ADD COLUMN selling_unit text DEFAULT 'litre';
+ ALTER TABLE transactions ADD COLUMN cashback_rate_bp int DEFAULT 0,ADD COLUMN cashback_plan_code text;
+ ALTER TABLE fuel_orders ADD COLUMN cashback_rate_bp int DEFAULT 0,ADD COLUMN cashback_plan_code text;
  ALTER TABLE fueling_logs ADD COLUMN selling_unit text DEFAULT 'litre';
  `);
 });
-beforeEach(async () => { if(url) await pool.query('TRUNCATE cards,stations,bank_accounts,fuel_prices,station_discount_requests,customer_subscriptions,wallets,wallet_ledger,transactions,fueling_logs,fuel_orders,organizations'); });
+beforeEach(async () => { if(url) await pool.query('TRUNCATE card_requests,cards,stations,bank_accounts,fuel_prices,station_discount_requests,customer_subscriptions,wallets,wallet_ledger,transactions,fueling_logs,fuel_orders,organizations'); });
 after(async () => { if(!url) return; await pool?.end(); await admin.query(`DROP SCHEMA ${schema} CASCADE`); await admin.end(); });
 async function setup() {
  const user = randomUUID(), org = randomUUID();
@@ -177,9 +180,17 @@ integration('future approved discount does not apply before its scheduled start'
  const f=await setup();await discount(f,'approved',"now()+interval '1 day'","now()+interval '2 days'");const result=await buy(f);assert.equal(Number(result.sale.amount_kobo),10000);
 });
 integration('replaying approval never extends an already activated paid subscription',async()=>{
- const f=await setup(); const request={user_id:f.user,plan_code:'gold',payment_reference:'new-approved'};
+ const f=await setup(); const request={id:randomUUID(),user_id:f.user,plan_code:'gold',payment_reference:'new-approved'};
+ await pool.query("INSERT INTO card_requests VALUES($1,$2,'gold','new-approved','paid',now(),'pending','not_started',NULL)",[request.id,f.user]);
  await tx(t=>activateCustomerSubscription(t,request));const before=await customerSubscription(f.user);await tx(t=>activateCustomerSubscription(t,request));const after=await customerSubscription(f.user);
  assert.equal(after.subscription.current_period_end.toISOString(),before.subscription.current_period_end.toISOString());assert.equal(after.active,true);
+});
+integration('fuel purchases snapshot eligible cashback before a later plan feature change',async()=>{
+ const f=await setup();const previous=(await pool.query("SELECT features FROM card_plans WHERE code='gold'")).rows[0].features;await pool.query(`UPDATE card_plans SET features=features||'[{"label":"Loyalty Rewards","state":"Premium"}]'::jsonb WHERE code='gold'`);
+ const result=await buy(f);await pool.query("UPDATE card_plans SET features='[]' WHERE code='gold'");
+ const row=(await pool.query('SELECT cashback_rate_bp,cashback_plan_code FROM transactions WHERE id=$1',[result.sale.id])).rows[0];
+ await pool.query("UPDATE card_plans SET features=$1 WHERE code='gold'",[JSON.stringify(previous)]);
+ assert.equal(row.cashback_rate_bp,500);assert.equal(row.cashback_plan_code,'gold');
 });
 
 integration('monthly wallet budget includes previous fuel debits and rolls back excess purchases',async()=>{
@@ -203,7 +214,7 @@ integration('fuel codes cannot debit non-NGN personal or company wallets as nair
  for(const fleet of [false,true]){
   const f=await setup();if(fleet){const organization=randomUUID();await pool.query('INSERT INTO organizations(id)VALUES($1)',[organization]);await pool.query('UPDATE cards SET organization_id=$2 WHERE id=$1',[f.card,organization]);await pool.query('UPDATE wallets SET organization_id=$2 WHERE id=$1',[f.wallet,organization]);}
   await pool.query("UPDATE wallets SET currency='USD' WHERE id=$1",[f.wallet]);await assert.rejects(buy(f),/NGN wallet/);await unchanged(f);
-  await pool.query('TRUNCATE cards,stations,bank_accounts,fuel_prices,customer_subscriptions,wallets');
+  await pool.query('TRUNCATE card_requests,cards,stations,bank_accounts,fuel_prices,customer_subscriptions,wallets');
  }
 });
 integration('an existing company fuel code cannot spend after contract approval is revoked',async()=>{

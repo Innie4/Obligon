@@ -44,12 +44,13 @@ test('URL search sync follows same-page navigation, clearing, back/forward and p
   query = `?search=${'a'.repeat(1000)}`; render(); assert.equal(seen.at(-1).length, 254);
 });
 
-function fixture(file, name, { result = {}, services = {}, company = {}, session = {}, globals = {} } = {}) {
+function fixture(file, name, { result = {}, services = {}, company = {}, session = {}, globals = {}, origin } = {}) {
   const runtime = hooks(), calls = [];
   const defaults = { api: {}, mutationsApi: {}, authenticatedRequest: async path => { calls.push(path); return { metrics: [], companies: [], staff: [], disputes: [], total: 0 }; }, ...services };
   const dependencies = { react: runtime.React, 'next/dynamic': { __esModule: true, default: () => function Dynamic() {} }, 'next/navigation': { useRouter: () => ({ push() {} }) }, '@/components/shared/DashboardSearchQuery': { DashboardSearchQuery: QueryBridge }, '@/components/shared/useAsync': { useAsync: fn => { Promise.resolve(fn()).catch(() => {}); return { status: 'success', data: typeof result === 'function' ? result() : result, error: null, reload() {}, refresh() {} }; } }, '@/components/shared/usePolling': { usePolling() {} }, '@/components/shared/Toast': { useToast: () => ({ success() {}, error() {} }) }, '@/components/shared/AuthContext': { useSession: () => ({ user: { role: 'partner', partnerType: 'fuel_station', ...session } }) }, '@/lib/services': defaults, '@/lib/services/company': { companyApi: new Proxy(company, { get: (target, key) => target[key] ?? (() => ({})) }) } };
   dependencies['@/lib/mock/admin-data'] = { adminPageCopy: Object.fromEntries(['companies', 'applications', 'staff', 'disputes', 'reports'].map(key => [key, { title: key }])) };
   dependencies['@/lib/station-fuels'] = { stationFuelName: value => value };
+  dependencies['./StationLocationControl'] = { useStationLocation: () => ({ location: origin, mode: origin ? 'manual' : 'browse', promptOpen: false, busy: false, loading: false, saving: false, error: '' }), StationLocationControl: 'StationLocationControl' };
   const component = load(file, dependencies, `\nexport { ${name} };`, globals)[name];
   return { ...runtime, component, calls, render: props => runtime.render(component, props) };
 }
@@ -110,11 +111,9 @@ test('customer station URL query filters loaded station names and can be cleared
 test('customer station search requests a station outside the initial nearest-list limit', () => {
   const initial = [{ id: 'near', name: 'Nearby station', address: 'Fixture road', fuels: [], lat: null, lng: null }], target = [{ id: 'outside', name: 'Outside station', address: 'Other road', fuels: [], lat: null, lng: null }], calls = [];
   let current = initial;
-  const fixtureValue = fixture('../components/customer-dashboard/CustomerScreen.tsx', 'StationsPage', { result: () => current, services: { api: { getStations: async () => { current = initial; return initial; }, request: async path => { calls.push(path); current = target; return { stations: target }; } } }, globals: { navigator: {}, document: { addEventListener() {} }, window: { setInterval: () => 1, addEventListener() {} } } });
+  const fixtureValue = fixture('../components/customer-dashboard/CustomerScreen.tsx', 'StationsPage', { result: () => current, origin: { lat: 5.03, lng: 7.93 }, services: { api: { getStations: async () => { current = initial; return initial; }, request: async path => { calls.push(path); current = target; return { stations: target }; } } }, globals: { navigator: {}, document: { addEventListener() {} }, window: { setInterval: () => 1, addEventListener() {} } } });
   let tree = fixtureValue.render();
-  nodes(tree).filter(node => node.type === 'input' && node.props.type === 'number')[0].props.onChange({ target: { value: '5.03' } }); tree = fixtureValue.render();
-  nodes(tree).filter(node => node.type === 'input' && node.props.type === 'number')[1].props.onChange({ target: { value: '7.93' } }); tree = fixtureValue.render();
-  nodes(tree).find(node => node.type === 'form').props.onSubmit({ preventDefault() {} }); tree = fixtureValue.render();
+  assert.equal(nodes(tree).find(node => node.type === 'StationLocationControl').props.state.mode, 'manual');
   applySearch(tree, 'Outside station'); tree = fixtureValue.render();
   const params = new URL(calls.at(-1), 'https://fixture.invalid').searchParams;
   assert.equal(params.get('search'), 'Outside station'); assert.equal(params.get('lat'), '5.03'); assert.equal(params.get('lng'), '7.93');

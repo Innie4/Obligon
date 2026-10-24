@@ -15,6 +15,8 @@ function ui(file, exportName, dependencies, props = {}, globals = {}, expose = '
   let cursor = 0, tree;
   const React = {
     createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
+    createContext: value => ({ Provider: 'ContextProvider', value }),
+    useContext: context => context.value,
     useState(value) { const i = cursor++; if (!(i in slots)) slots[i] = typeof value === 'function' ? value() : value; return [slots[i], next => { slots[i] = typeof next === 'function' ? next(slots[i]) : next; }]; },
     useRef(value) { const i = cursor++; if (!(i in slots)) slots[i] = { current: value }; return slots[i]; },
     useCallback(callback, deps) { const i = cursor++; const saved = slots[i]; if (!saved || !deps || deps.some((value, n) => !Object.is(value, saved.deps[n]))) slots[i] = { deps, value: callback }; return slots[i].value; },
@@ -282,13 +284,20 @@ test('customer profile links to real Google and passkey management and preserves
     '@/components/shared/AuthContext': { useSession: () => ({ user: { id: 'synthetic-customer' } }) },
     '@/components/shared/Toast': { useToast: () => ({ success() {}, error() {} }) },
     '@/components/shared/useAsync': { useAsync: () => ({ status: 'success', data: { user: {} } }) },
+    './CustomerAccess': { useCustomerAccess: () => ({ status: 'success', data: { active: true, features: [] } }) },
+    '@/lib/customer-entitlements': { customerFeatureAvailable: () => false },
+    './CustomerTheme': { CustomerPreferencesPanel: 'CustomerPreferencesPanel' },
     '../site/routes': { routes: { signInOptions: '/auth/sign-in-options' } }
   }, { onModal() {} }, {}, '\nexport { ProfilePage };');
-  const link = fixture.nodes().find(node => node.type === 'Link' && node.props.href === '/auth/sign-in-options');
+  assert.ok(fixture.nodes().some(node => node.type === 'CustomerPreferencesPanel'), 'profile renders the account appearance and sign-in settings');
+  const preferences = ui('../components/customer-dashboard/CustomerTheme.tsx', 'CustomerPreferencesPanel', {
+    'next/link': { default: 'Link', __esModule: true }
+  }, {}, {}, '\nObject.assign(CustomerThemeContext, {value: {preferences: {theme: "light", stationLocation: {prompted: true, enabled: false}}, loading: false, saving: false, error: "", saved: false}});');
+  const link = preferences.nodes().find(node => node.type === 'Link' && node.props.href === '/auth/sign-in-options');
   assert.ok(link);
-  assert.match(text(link), /Google and passkey sign-in/);
-  assert.match(text(link), /device may use fingerprint, face recognition, or its PIN/);
-  assert.match(text(link), /Transaction approvals still use your password, card PIN, and two-factor authentication/);
+  assert.match(preferences.text(), /Google sign-in and passkeys/);
+  assert.match(preferences.text(), /device may use fingerprint, Face ID or its PIN/);
+  assert.match(preferences.text(), /Transaction approvals still use your password, card PIN and two-factor authentication/);
   assert.doesNotMatch(fixture.text(), /Biometric Sign-In \(not available yet\)/);
 });
 

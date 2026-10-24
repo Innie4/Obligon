@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { q, one } from '../db.js';
 import { asyncHandler, badRequest, notFound } from '../lib/errors.js';
-import { requireCustomerPlan } from '../lib/subscriptions.js';
+import { requireCustomerPlan, customerFeatureIncluded } from '../lib/subscriptions.js';
 import { startFuelOrder, confirmFuelOrder, customerFuelOrders } from '../lib/fuel-checkout.js';
 import { approvedStationPrice, canonicalStationPrices, canonicalFuelSql } from '../lib/station-approval.js';
 
@@ -14,7 +14,7 @@ function publicOrder(row) {
 export function customerFuelCheckoutRouter() {
  const router=Router();
  router.get('/stations',asyncHandler(async(req,res)=>{
-  await requireCustomerPlan(req.user.id);
+  const subscription=await requireCustomerPlan(req.user.id,'Fuel Purchase');
   const rows=await q(`SELECT s.id AS station_id,s.name,s.city,s.fuels,s.approved_selling_units,o.partner_type,o.type AS org_type,fp.fuel_type,fp.price_kobo,fp.selling_unit,fp.updated_at,
    COALESCE((SELECT CASE WHEN d.ends_at>now() THEN d.rate_bp ELSE 0 END FROM station_discount_requests d JOIN discount_review_states r ON r.id=d.review_state_id
      WHERE d.station_id=s.id AND ${canonicalFuelSql('d.fuel_type')}=${canonicalFuelSql('fp.fuel_type')} AND r.code='approved' AND d.starts_at<=now()
@@ -27,7 +27,7 @@ export function customerFuelCheckoutRouter() {
      (SELECT 1 FROM bank_accounts ba WHERE ba.id=sa.bank_account_id AND ba.organization_id=s.partner_org_id AND ba.is_default=TRUE AND ba.verified=TRUE)
    ORDER BY s.name,fp.fuel_type LIMIT 250`);
   const available=canonicalStationPrices(rows).filter(row=>{try{approvedStationPrice(row,row);return true;}catch{return false;}});
-  res.json({stations:available.map(r=>({stationId:r.station_id,name:r.name,city:r.city,fuelType:r.fuel_type,sellingUnit:r.selling_unit,unitPriceKobo:Number(r.price_kobo),discountPercent:Number(r.discount_bp)/100}))});
+  res.json({stations:available.map(r=>({stationId:r.station_id,name:r.name,city:r.city,fuelType:r.fuel_type,sellingUnit:r.selling_unit,unitPriceKobo:Number(r.price_kobo),discountPercent:customerFeatureIncluded(subscription.features,'Partner Discounts')?Number(r.discount_bp)/100:0}))});
  }));
  router.get('/',asyncHandler(async(req,res)=>res.json({orders:(await customerFuelOrders(req.user.id)).map(publicOrder)})));
  router.post('/checkout',asyncHandler(async(req,res)=>{

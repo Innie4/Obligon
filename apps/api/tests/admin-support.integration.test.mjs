@@ -334,6 +334,8 @@ integration('verified contacts do not attempt another OTP delivery and malformed
  await pool.query('UPDATE users SET email_verified=TRUE,phone_verified=TRUE WHERE id=$1',[fixtures.partner.id]);
  fixtures.partner.email_verified=true;fixtures.partner.phone_verified=true;
  const response=await originalFetch(`${base}/api/auth/verify/send`,{method:'POST',headers:{'content-type':'application/json','x-test-role':'partner'},body:'{}'});assert.equal(response.status,200);assert.equal((await response.json()).allVerified,true);
+ await pool.query(`INSERT INTO card_plans(code,name,amount_kobo,features)VALUES('receipts','Receipts',100,'[{"label":"Digital Receipts","state":"included"}]')`);
+ await pool.query("INSERT INTO customer_subscriptions(user_id,plan_code,payment_reference,status,current_period_start,current_period_end)VALUES($1,'receipts','receipts-payment','active',now(),now()+interval '1 month')",[fixtures.customer.id]);
  const receipt=await originalFetch(`${base}/api/customer/transactions/not-a-uuid/receipt`,{headers:{'x-test-role':'customer'}});assert.equal(receipt.status,400);
 });
 

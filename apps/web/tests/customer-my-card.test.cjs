@@ -29,7 +29,7 @@ const react = {
   useCallback: fn => fn,
 };
 
-test('Overview directs budget changes to My Card without a subscription gate', () => {
+test('Overview directs budget changes to My Card inside the paid dashboard boundary', () => {
   const navigations = [];
   const { OverviewPage } = load('../components/customer-dashboard/CustomerScreen.tsx', {
     expose: '\nexport { OverviewPage };',
@@ -161,6 +161,7 @@ test('customer navigation keeps My Card as the only subscription entry', () => {
       '@/components/shared/useAsync': { useAsync: () => ({ data: null }) },
       '@/components/shared/usePolling': { usePolling() {} },
       '@/lib/customer-entitlements': load('../lib/customer-entitlements.ts'),
+      './CustomerAccess': { useCustomerAccess: () => ({ data: { active: true, features: [] } }) },
     },
   });
   const links = allNodes(Sidebar()).filter(node => node.type === Link).map(node => node.props.href);
@@ -212,14 +213,14 @@ test('only My Card opens the monthly projection prompt for an entitled customer'
   const CustomerModals = () => null;
   for (const pageKey of ['overview', 'wallet', 'card']) {
     const runtime = hooks();
-    let query = 0;
     const { CustomerScreen } = load('../components/customer-dashboard/CustomerScreen.tsx', {
       globals: { window: browser('') },
       dependencies: {
         react: runtime.React,
         './CustomerModals': { CustomerModals },
         '@/lib/customer-entitlements': load('../lib/customer-entitlements.ts'),
-        '@/components/shared/useAsync': { useAsync: () => ++query % 2 === 1 ? { data: { active: true, features: [{ label: 'Fuel Budget Management', state: 'included' }] } } : { data: { month: '2026-10', needsProjection: true } } },
+        './CustomerAccess': { useCustomerAccess: () => ({ data: { active: true, features: [{ label: 'Fuel Budget Management', state: 'included' }] }, refresh() {} }) },
+        '@/components/shared/useAsync': { useAsync: () => ({ data: { month: '2026-10', needsProjection: true } }) },
         '@/components/shared/usePolling': { usePolling() {} },
       },
     });

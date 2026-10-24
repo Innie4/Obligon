@@ -25,7 +25,8 @@ const privateTables = [
   "payment_refunds", "plan_wallet_credits", "settlement_accounts", "payment_splits", "monthly_spend_projections", "settlement_periods",
   "customer_subscriptions", "subscription_payments", "discount_review_states", "station_discount_requests", "fuel_orders",
   "email_outbox", "partner_api_keys", "schema_migrations", "company_card_issuances",
-  "account_google_identities", "account_passkeys", "account_auth_challenges", "nigeria_cities"
+  "account_google_identities", "account_passkeys", "account_auth_challenges", "nigeria_cities",
+"benefit_budget", "benefit_funding", "cashback_balances", "cashback_awards", "cashback_redemptions", "benefit_budget_reservations", "benefit_movements", "generator_repairs", "generator_repair_quotes", "generator_repair_money", "generator_repair_payables", "generator_repair_events"
 ];
 const catalogs = ["pricing_plans", "card_plans", "job_postings", "content_items"];
 const suffix = `${process.pid}_${randomUUID().replaceAll("-", "")}`;
@@ -79,7 +80,7 @@ before(async () => {
   await pool.query("INSERT INTO public.card_plans(code,name,amount_kobo,active) VALUES('private_access_fixture','Fixture',10000,true),('private_access_inactive','Inactive',10000,false)");
   await pool.query("INSERT INTO public.job_postings(title,status) VALUES('Private access fixture open','open'),('Private access fixture closed','closed')");
   await pool.query("INSERT INTO public.content_items(kind,title,active) VALUES('faq','Private access fixture active',true),('faq','Private access fixture inactive',false)");
-  const names = [...privateTables, ...catalogs].filter(table => !["company_card_issuances","account_google_identities","account_passkeys","account_auth_challenges","nigeria_cities"].includes(table)).map(table => `public.${table}`).join(", ");
+  const names = [...privateTables, ...catalogs].filter(table => !["company_card_issuances","account_google_identities","account_passkeys","account_auth_challenges","nigeria_cities","benefit_budget", "benefit_funding", "cashback_balances", "cashback_awards", "cashback_redemptions", "benefit_budget_reservations", "benefit_movements", "generator_repairs", "generator_repair_quotes", "generator_repair_money", "generator_repair_payables", "generator_repair_events"].includes(table)).map(table => `public.${table}`).join(", ");
   await pool.query(`GRANT USAGE ON SCHEMA public TO ${backendRole}; GRANT SELECT,INSERT,UPDATE,DELETE ON TABLE ${names} TO ${backendRole}; GRANT EXECUTE ON FUNCTION public.current_obligon_user_id(),public.current_obligon_org_ids() TO ${backendRole}`);
   await pool.query(`CREATE POLICY fixture_backend_private_read ON public.wallets FOR SELECT TO ${backendRole} USING(true)`);
 });

@@ -17,6 +17,9 @@ import { approveCardRequest, providerCardDetails, decryptIdentity, finishReplace
 import { getSudoCard, getSudoCustomer } from "../lib/sudo.js";
 import { integerKobo, nairaToKobo } from "../lib/money-amounts.js";
 import { createWalletForAccount } from "../lib/wallets.js";
+import { revokeCustomerSubscription } from "../lib/subscriptions.js";
+import benefitsAdminRouter from "./benefits-admin.routes.js";
+import { generatorRepairAdminRouter } from "./generator-repairs.routes.js";
 
 import { identityRequestFields, runCardBvnCheck } from "../lib/card-identity.js";
 import { sensitiveLimiter } from "../middleware/security.js";
@@ -36,6 +39,8 @@ router.use("/discount-requests", discountRouter);
 router.use(supportAdminRouter);
 router.use(intakeAdminRouter);
 router.use(companyCardIssuancesAdminRouter);
+router.use("/benefits", benefitsAdminRouter());
+router.use("/generator-repairs", generatorRepairAdminRouter());
 
 // Card identity review is explicitly restricted by the admin middleware above.
 router.get("/card-requests", asyncHandler(async (_req,res) => {
@@ -302,6 +307,7 @@ router.post("/refunds", asyncHandler(async (req, res) => {
       withdrawn_at=CASE WHEN $2 THEN clock_timestamp() ELSE withdrawn_at END,
       refund_id=CASE WHEN $2 THEN $3 ELSE refund_id END,updated_at=clock_timestamp() WHERE id=$1`,
     [target.id, full, queued.refund.id]);
+    if(full)await revokeCustomerSubscription(t,target);
     return { ...queued, target, kobo };
   });
   let refund;

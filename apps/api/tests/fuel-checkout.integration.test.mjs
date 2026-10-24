@@ -37,9 +37,11 @@ before(async()=>{
  ALTER TABLE stations ADD COLUMN fuels text[] DEFAULT '{}',ADD COLUMN selling_units jsonb DEFAULT '{}',ADD COLUMN approved_selling_units jsonb DEFAULT '{}';
  ALTER TABLE fuel_prices ADD COLUMN selling_unit text DEFAULT 'litre';
  ALTER TABLE transactions ADD COLUMN selling_unit text DEFAULT 'litre';
+ ALTER TABLE transactions ADD COLUMN cashback_rate_bp int DEFAULT 0,ADD COLUMN cashback_plan_code text;
  ALTER TABLE fueling_logs ADD COLUMN selling_unit text DEFAULT 'litre';
  `);
  const migration=await readFile(new URL('../src/migrations/023_fuel_orders.sql',import.meta.url),'utf8');await pool.query(`BEGIN;${migration}COMMIT;`);
+ await pool.query("ALTER TABLE fuel_orders ADD COLUMN cashback_rate_bp int DEFAULT 0,ADD COLUMN cashback_plan_code text");
  await pool.query("ALTER TABLE fuel_orders ADD COLUMN selling_unit text DEFAULT 'litre'");
  service=await import('../src/lib/fuel-checkout.js');
 });
@@ -51,7 +53,7 @@ beforeEach(async()=>{
  const {rows:[station]}=await pool.query(`INSERT INTO stations(partner_org_id,fuels,selling_units,approved_selling_units)VALUES($1,'{PMS}','{"PMS":"litre"}','{"PMS":"litre"}')RETURNING id`,[org.id]);
  await pool.query("INSERT INTO pricing_plans(code,name)VALUES('basic','Basic')");
  await pool.query("INSERT INTO subscriptions VALUES($1,'basic','active',now()-interval '1 day',now()+interval '1 month')",[org.id]);
- await pool.query("INSERT INTO card_plans(code,name)VALUES('basic','Basic');");
+ await pool.query(`INSERT INTO card_plans(code,name,features)VALUES('basic','Basic','[{"label": "Digital Fuel Wallet", "state": "included"}, {"label": "Fuel Purchase", "state": "included"}, {"label": "Digital Receipts", "state": "included"}, {"label": "Transaction History", "state": "included"}, {"label": "Fuel Spend Tracking", "state": "included"}, {"label": "Fuel Budget Management", "state": "included"}, {"label": "Spending Limits", "state": "included"}, {"label": "Partner Discounts", "state": "included"}]');`);
  await pool.query("INSERT INTO customer_subscriptions VALUES($1,'basic',now()-interval '1 day',now()+interval '1 month','active')",[user.id]);
  const {rows:[card]}=await pool.query('INSERT INTO cards(owner_user_id)VALUES($1)RETURNING id',[user.id]);
  await pool.query("INSERT INTO fuel_prices(station_id,fuel_type,price_kobo) VALUES($1,'PMS Petrol',1000)",[station.id]);
@@ -115,6 +117,15 @@ integration('fuel checkout returns to My Card with its own payment flow and refe
  assert.equal(redirect.pathname,'/customer/card');
  assert.equal(redirect.searchParams.get('paymentFlow'),'fuel');
  assert.equal(redirect.searchParams.get('reference'),order.reference);
+});
+integration('direct checkout preserves its paid plan snapshot through a later plan change',async()=>{
+ await pool.query(`UPDATE card_plans SET code='gold',features=features||'[{"label":"Loyalty Rewards","state":"Premium"}]'::jsonb WHERE code='basic'`);
+ await pool.query("UPDATE customer_subscriptions SET plan_code='gold'");
+ const {order}=await service.startFuelOrder(fixtures.user,fixtures.input,payments());assert.equal(order.cashback_rate_bp,500);assert.equal(order.cashback_plan_code,'gold');
+ await pool.query("UPDATE customer_subscriptions SET plan_code='basic'");
+ await service.confirmFuelOrder(order.reference,'101',false,payments());
+ const sale=(await pool.query('SELECT cashback_rate_bp,cashback_plan_code FROM transactions WHERE reference=$1',[order.reference])).rows[0];
+ assert.equal(sale.cashback_rate_bp,500);assert.equal(sale.cashback_plan_code,'gold');
 });
 integration('the same checkout idempotency key opens one provider payment',async()=>{
  const a=await service.startFuelOrder(fixtures.user,fixtures.input,payments());

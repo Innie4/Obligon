@@ -67,6 +67,8 @@ async function login(email='workshop-owner@example.invalid') {
 }
 
 async function fixtures(role='customer') {
+  await pool.query(`INSERT INTO card_plans(code,name,amount_kobo,features)VALUES('personal-projection','Personal projection',10000,'[{"label":"Fuel Spend Tracking","state":"included"},{"label":"Transaction History","state":"included"},{"label":"Digital Receipts","state":"included"}]')`);
+  await pool.query("INSERT INTO customer_subscriptions(user_id,plan_code,payment_reference,current_period_start,current_period_end)VALUES($1,'personal-projection','personal-projection-paid',now(),now()+interval '1 month')",[owner]);
   await pool.query('UPDATE users SET role=$2 WHERE id=$1',[owner,role]);
   await pool.query("UPDATE users SET role='admin' WHERE id=$1",[staff]);
   await pool.query("UPDATE organizations SET type='company',partner_type='other' WHERE id=$1",[org]);

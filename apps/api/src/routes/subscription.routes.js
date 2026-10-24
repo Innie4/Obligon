@@ -49,17 +49,18 @@ export async function confirmSubscriptionPayment(referenceValue, transactionId =
 export function subscriptionRouter(kind) {
   const router=Router(); const partner=kind==='partner';
   const state = req => partner ? partnerSubscription(req.user.orgId) : customerSubscription(req.user.id);
+  const canRenew = async req => Boolean(await one(`SELECT 1 FROM cards WHERE owner_user_id=$1 AND organization_id IS NULL AND status NOT IN('terminated','replaced','pending')
+    UNION ALL SELECT 1 FROM card_requests WHERE user_id=$1 AND payment_status='paid' AND subscription_activated_at IS NOT NULL
+      AND status NOT IN('withdrawn','cancelled','rejected') AND issuance_state NOT IN('refund_pending','refunded') LIMIT 1`,[req.user.id]));
   const owner = partner ? requireOrgRole('admin') : (_req,_res,next)=>next();
   router.get('/',asyncHandler(async(req,res)=>{
     const plans = partner ? await q('SELECT code,name,price_kobo,interval,features FROM pricing_plans WHERE active ORDER BY price_kobo') :
       await q('SELECT code,name,amount_kobo AS price_kobo,interval,features FROM card_plans WHERE active ORDER BY sort_order');
-    const card=partner?true:Boolean(await one("SELECT id FROM cards WHERE owner_user_id=$1 AND status NOT IN('terminated','replaced','pending') LIMIT 1",[req.user.id]));
-    res.json({...await state(req),plans,needsFirstCard:!card,renewalMode:'manual',manualPayoutsAvailable:false});
+    res.json({...await state(req),plans,needsFirstCard:partner?false:!await canRenew(req),renewalMode:'manual',manualPayoutsAvailable:false});
   }));
   router.post('/checkout',owner,asyncHandler(async(req,res)=>{
     if (!partner) {
-      const card = await one(`SELECT id FROM cards WHERE owner_user_id=$1 AND status NOT IN('terminated','replaced','pending')`,[req.user.id]);
-      if (!card) throw forbidden('Request and verify your first card before renewing your subscription.');
+      if (!await canRenew(req)) throw forbidden('Complete your first plan payment before renewing your subscription.');
     }
     const plan = partner ? await one('SELECT * FROM pricing_plans WHERE code=$1 AND active',[req.body?.planCode]) : await one('SELECT * FROM card_plans WHERE code=$1 AND active',[req.body?.planCode]);
     if (!plan) throw badRequest('Choose an available plan.');

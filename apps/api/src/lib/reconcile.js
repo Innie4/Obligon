@@ -4,6 +4,8 @@ import { verifyCheckout, activeProvider } from "./payments.js";
 import { reconcilePaymentPlans } from "./plans.js";
 import { isTerminalPaymentFailure } from "./flutterwave.js";
 import { integerKobo } from "./money-amounts.js";
+import { activateCustomerSubscription, revokeCustomerSubscription } from "./subscriptions.js";
+import { reconcileBenefitProgramme } from "./benefit-reconcile.js";
 
 /**
  * Payment reconciliation.
@@ -185,6 +187,7 @@ async function reconcilePlanCheckouts(limit) {
            WHERE id = $1 AND payment_status <> 'paid' RETURNING *`,
           [request.id, verification.providerTransactionId ?? null]
           );
+          await activateCustomerSubscription(t, paid);
           if (verification.amountKobo > dueKobo) {
             const { queueRefund } = await import("./money.js");
             await queueRefund(t,{provider:request.payment_provider,providerRef:request.payment_reference,
@@ -306,6 +309,7 @@ export async function reconcileRefunds(limit) {
             if (BigInt(total.amount) > BigInt(charge)) throw new Error("Settled refunds exceed the original card charge; review required");
             if (BigInt(total.amount) === BigInt(charge)) {
               await t.query("UPDATE card_requests SET payment_status='refunded',issuance_state='refunded',status='withdrawn',updated_at=clock_timestamp() WHERE id=$1", [request.id]);
+              await revokeCustomerSubscription(t, request);
             }
           }
           return true;
@@ -381,8 +385,9 @@ export async function runPaymentReconciliation({ limit = DEFAULT_BATCH } = {}) {
     await reconcilePurchases("fuelOrders", limit),
     await reconcilePaymentPlans()
   ];
-  const summary = { topUps, plans, refunds, subscriptions, fuelOrders, planCatalogue };
-  const requiredAction = topUps.gaveUp + plans.gaveUp + subscriptions.errored + fuelOrders.errored + refunds.manualDebt + refunds.failedDebt + refunds.errored;
+  const benefits=await reconcileBenefitProgramme(limit);
+  const summary = { topUps, plans, refunds, subscriptions, fuelOrders, planCatalogue, benefits };
+  const requiredAction = topUps.gaveUp + plans.gaveUp + subscriptions.errored + fuelOrders.errored + refunds.manualDebt + refunds.failedDebt + refunds.errored + benefits.errored;
   if (requiredAction > 0 || planCatalogue.drift.length > 0) {
     await audit({
       action: planCatalogue.drift.length > 0

@@ -295,6 +295,7 @@ test('customer desktop and phone headers expose the same real search destination
   for (const component of ['MobileHeader', 'DesktopHeader']) {
     const search = header('../components/customer-dashboard/CustomerShell.tsx', component, { role: 'customer' }).find(node => node.type === 'DashboardSearch');
     assert.equal(search.props.scope, 'customer');
-    for (const href of ['/customer/transactions', '/customer/wallet', '/customer/profile', '/auth/sign-in-options']) assert.ok(search.props.entries.some(item => item.href === href));
+    for (const href of ['/customer/transactions', '/customer/wallet', '/customer/profile', '/customer/profile#sign-in-options']) assert.ok(search.props.entries.some(item => item.href === href));
+    assert.equal(search.props.entries.some(item => item.href === '/auth/sign-in-options'), false);
   }
 });

@@ -74,13 +74,16 @@ function screenFixture(name, dependencies = {}, globals = {}) {
  const runtime = hooks(), errors = [];
  const { [name]: component } = load('../components/customer-dashboard/CustomerScreen.tsx', { expose: `\nexport { ${name} };`, globals: { window: browser(), sessionStorage: { getItem: () => null, removeItem() {} }, ...globals }, dependencies: {
   react: runtime.React, 'next/link': { __esModule: true, default: 'Link' }, '../site/routes': load('../components/site/routes.ts'), 'next/navigation': { useRouter: () => ({ push() {} }) }, '@/lib/customer-presentation': load('../lib/customer-presentation.ts'), '@/lib/services': { api: {}, mutationsApi: {} },
+  './CustomerAccess': { useCustomerAccess: () => ({ status: 'success', data: { active: true, features: [] }, error: null, refresh() {}, reload() {} }) },
+  './StationLocationControl': { useStationLocation: () => ({ location: undefined, mode: 'browse', promptOpen: false, busy: false, loading: false, saving: false, error: '' }), StationLocationControl: 'StationLocationControl' },
+  '@/lib/customer-entitlements': load('../lib/customer-entitlements.ts'),
   '@/components/shared/AuthContext': { useSession: () => ({ user: { name: 'Driver' }, updateProfile() {} }) }, '@/components/shared/useAsync': { useAsync: () => ({ status: 'success', data: [], refresh() {}, reload() {} }) }, '@/components/shared/usePolling': { usePolling() {} }, '@/components/shared/Toast': { useToast: () => ({ error: message => errors.push(message), success() {} }) }, ...dependencies,
  } }); return { ...runtime, component, errors };
 }
 test('My Card load failure is explicit and retry recovers real card state', async () => {
  let fail = true;
  const fixture = screenFixture('CardPage', { '@/lib/services': { api: { request: async () => { if (fail) throw Error('Card service unavailable'); return { card: { id: 'card', status: 'active' } }; } }, mutationsApi: { getCardRequest: async () => ({ request: null }), getOpenCardRequest: async () => ({ request: null }) } } });
- const props = { onModal() {}, refreshKey: 0, subscriptionActive: false }; assert.match(text(fixture.render(fixture.component, props)), /Loading your card and request status/); await flush();
+ const props = { onModal() {}, refreshKey: 0, subscription: { active: true } }; assert.match(text(fixture.render(fixture.component, props)), /Loading your card and request status/); await flush();
  let tree = fixture.render(fixture.component, props); assert.match(text(tree), /Card service unavailable/);
  const retry = nodes(tree).find(node => node.type === 'button' && /Retry.*card/i.test(text(node))); assert.ok(retry);
  fail = false; retry.props.onClick(); fixture.render(fixture.component, props); await flush(); tree = fixture.render(fixture.component, props);
@@ -333,7 +336,7 @@ test('quote conflict discards old total, reloads settings, and waits for fresh a
 test('partial My Card failure keeps a known card useful but blocks a new request when unknown', async () => {
  for (const card of [null, { id: 'card', status: 'active' }]) {
   const fixture = screenFixture('CardPage', { '@/lib/services': { api: { request: async () => ({ card }) }, mutationsApi: { getCardRequest: async () => { throw Error('Card request unavailable'); }, getOpenCardRequest: async () => ({ request: null }) } } });
-  const props = { onModal() {}, refreshKey: 0, subscriptionActive: false }; fixture.render(fixture.component, props); await flush();
+  const props = { onModal() {}, refreshKey: 0, subscription: { active: true } }; fixture.render(fixture.component, props); await flush();
   const output = text(fixture.render(fixture.component, props)); assert.match(output, /Card request unavailable/);
   assert.ok(!output.includes('Choose a plan'));
   if (card) assert.match(output, /CARDHOLDER NAME/);

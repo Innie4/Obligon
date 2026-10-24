@@ -4,7 +4,7 @@ import { env } from '../config/env.js';
 import { badRequest, conflict, notFound } from './errors.js';
 import { reference } from './format.js';
 import { approvedDiscount, discountAmounts } from './discounts.js';
-import { requireCustomerPlan, partnerSubscription } from './subscriptions.js';
+import { requireCustomerPlan, partnerSubscription, customerFeatureIncluded } from './subscriptions.js';
 import { businessTimeZone } from './time.js';
 import { startCheckout, verifyCheckout, activeProvider } from './payments.js';
 import { fuelAmountKobo, quantityHundredths, integerKobo } from './money-amounts.js';
@@ -12,6 +12,7 @@ import { queueRefund } from './money.js';
 import { approvedStationUnit, approvedStationPrice, canonicalStationPrices } from './station-approval.js';
 import { partnerFuelCode, fuelSellingUnits } from '../../../../packages/shared/partner-access.mjs';
 import { quantityLabel } from './fuel-quantity.js';
+import { customerCashbackRate } from './customer-rewards.js';
 
 const providers={startCheckout,verifyCheckout,activeProvider};
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -35,7 +36,7 @@ export async function startFuelOrder(user,input,payment=providers) {
    if(existing.station_id!==data.stationId||partnerFuelCode(existing.fuel_type)!==data.fuelType||Number(existing.litres)!==data.litres||existing.selling_unit!==data.sellingUnit)throw conflict('This request key was already used for another fuel order.');
    return existing;
   }
-  await requireCustomerPlan(user.id,null,t);
+  const subscription=await requireCustomerPlan(user.id,'Fuel Purchase',t);
   const station=await t.one("SELECT s.*,o.partner_type,o.type AS org_type FROM stations s JOIN organizations o ON o.id=s.partner_org_id WHERE s.id=$1 AND s.status='active' AND s.is_open=TRUE FOR SHARE OF s,o",[data.stationId]);
   if(!station)throw notFound('An open station was not found.');
   if(!(await partnerSubscription(station.partner_org_id,t)).active)throw badRequest('This station subscription is inactive. Choose another station.');
@@ -44,7 +45,7 @@ export async function startFuelOrder(user,input,payment=providers) {
   const price=canonicalStationPrices(await t.query('SELECT * FROM fuel_prices WHERE station_id=$1 FOR SHARE',[station.id])).find(p=>p.fuel_type===data.fuelType);
   if(!price)throw badRequest('No published price for this station and fuel.');
   const approved=approvedStationPrice(station,price,data.sellingUnit,{requireExpected:true});
-  const discount=await approvedDiscount(station.id,data.fuelType,t);
+  const discount=customerFeatureIncluded(subscription.features,'Partner Discounts') ? await approvedDiscount(station.id,data.fuelType,t) : null;
   const amounts=discountAmounts(fuelAmountKobo(price.price_kobo,data.litres),discount?.rate_bp??0);
   const card=await t.one(`SELECT * FROM cards WHERE owner_user_id=$1 AND organization_id IS NULL AND status='active'
    AND ($2::uuid IS NULL OR id=$2) ORDER BY created_at DESC LIMIT 1 FOR UPDATE`,[user.id,data.cardId??null]);
@@ -60,9 +61,9 @@ export async function startFuelOrder(user,input,payment=providers) {
   }
   const provider=payment.activeProvider();
   if(provider!=='flutterwave')throw badRequest('Direct station settlement requires Flutterwave.');
-  return t.one(`INSERT INTO fuel_orders(reference,idempotency_key,user_id,station_id,card_id,settlement_account_id,discount_request_id,fuel_type,litres,unit_price_kobo,base_amount_kobo,amount_kobo,platform_fee_kobo,partner_net_kobo,provider,selling_unit)
-   VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
-   [reference('FUEL'),data.idempotencyKey,user.id,station.id,card?.id??null,account.id,discount?.id??null,data.fuelType,data.litres,price.price_kobo,amounts.baseKobo,amounts.chargedKobo,amounts.platformFeeKobo,amounts.partnerNetKobo,provider,approved.sellingUnit]);
+  return t.one(`INSERT INTO fuel_orders(reference,idempotency_key,user_id,station_id,card_id,settlement_account_id,discount_request_id,fuel_type,litres,unit_price_kobo,base_amount_kobo,amount_kobo,platform_fee_kobo,partner_net_kobo,provider,selling_unit,cashback_rate_bp,cashback_plan_code)
+   VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING *`,
+   [reference('FUEL'),data.idempotencyKey,user.id,station.id,card?.id??null,account.id,discount?.id??null,data.fuelType,data.litres,price.price_kobo,amounts.baseKobo,amounts.chargedKobo,amounts.platformFeeKobo,amounts.partnerNetKobo,provider,approved.sellingUnit,customerCashbackRate(subscription),subscription.subscription.plan_code]);
  });
  // Persist the order first so a provider callback can always recover it. The row
  // lock serializes retries of the same checkout without creating extra charges.
@@ -92,7 +93,7 @@ export async function confirmFuelOrder(referenceValue,transactionId=null,simulat
  return tx(async t=>{
   const locked=await t.one('SELECT * FROM fuel_orders WHERE id=$1 FOR UPDATE',[order.id]);
   if(locked.status!=='awaiting_payment')return locked;
-  for(const field of ['reference','provider','user_id','card_id','station_id','fuel_type','litres','selling_unit','unit_price_kobo','amount_kobo','base_amount_kobo','platform_fee_kobo','partner_net_kobo','settlement_account_id']) {
+  for(const field of ['reference','provider','user_id','card_id','station_id','fuel_type','litres','selling_unit','unit_price_kobo','amount_kobo','base_amount_kobo','platform_fee_kobo','partner_net_kobo','settlement_account_id','cashback_rate_bp','cashback_plan_code']) {
    if(String(locked[field]??'')!==String(order[field]??''))throw conflict('The fuel order quote changed during provider verification. Support review is required.');
   }
   if(paidKobo>dueKobo)await queueRefund(t,{provider:locked.provider,providerRef:locked.reference,providerTransactionId,userId:locked.user_id,
@@ -132,6 +133,7 @@ export async function confirmFuelOrder(referenceValue,transactionId=null,simulat
   const sale=await t.one(`INSERT INTO transactions(reference,customer_user_id,station_id,card_id,fuel_type,litres,unit_price_kobo,amount_kobo,base_amount_kobo,platform_fee_kobo,partner_net_kobo,discount_request_id,settlement_method,status,meta,selling_unit)
    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'processor_split',$13,$14,$15) RETURNING id`,
    [locked.reference,locked.user_id,locked.station_id,locked.card_id,locked.fuel_type,locked.litres,locked.unit_price_kobo,locked.amount_kobo,locked.base_amount_kobo,locked.platform_fee_kobo,locked.partner_net_kobo,locked.discount_request_id,reviewReason?'pending':'success',reviewReason??'Direct station checkout; awaiting fuel fulfillment',locked.selling_unit]);
+  await t.query('UPDATE transactions SET cashback_rate_bp=$2,cashback_plan_code=$3 WHERE id=$1',[sale.id,locked.cashback_rate_bp,locked.cashback_plan_code]);
   return t.one(`UPDATE fuel_orders SET status=$5,review_reason=$6,provider_transaction_id=$2,authorization_code=$3,transaction_id=$4,paid_at=now(),updated_at=now() WHERE id=$1 RETURNING *`,[locked.id,providerTransactionId?String(providerTransactionId):null,code,sale.id,reviewReason?'paid_review':'paid',reviewReason]);
  });
 }

@@ -3,6 +3,7 @@ import { partnerApiAllowed, partnerTypeFor, partnerAllowedFuels, sellingUnitLabe
 import { fulfillFuelOrder } from "../lib/fuel-checkout.js";
 import { createCollectionSubaccount, listBanks } from "../lib/flutterwave.js";
 import { authorizeWalletFuelSale } from "../lib/fuel-sale.js";
+import { personalFuelAlerts } from "../lib/personal-fuel-alerts.js";
 import { Router } from "express";
 import { q, one, tx } from "../db.js";
 import { asyncHandler, badRequest, notFound, forbidden } from "../lib/errors.js";
@@ -1051,6 +1052,7 @@ router.post("/discounts",requireOrgRole("manager"),asyncHandler(async(req,res)=>
 router.post("/pos/fulfill",requireCapability("pos.operate"),sensitiveLimiter,asyncHandler(async(req,res)=>{
  const stationId=requireUuid(req.body?.stationId,"station");
  const order=await fulfillFuelOrder({partnerOrgId:partnerOrgId(req),stationId,code:String(req.body?.code??"")});
+ await personalFuelAlerts({userId:order.user_id,organizationId:order.organization_id});
  await audit({actorUserId:req.user.id,actorRole:req.user.role,action:"fuel_order.fulfilled",entityType:"fuel_order",entityId:order.id});
  res.json({ok:true,reference:order.reference,fuelType:order.fuel_type,litres:Number(order.litres),quantity:Number(order.litres),sellingUnit:order.selling_unit,amountLabel:naira(order.amount_kobo),partnerNetLabel:naira(order.partner_net_kobo)});
 }));
@@ -1062,6 +1064,7 @@ router.post("/pos/authorize",requireCapability("pos.operate"),sensitiveLimiter,a
  const id=requireUuid(stationId,"station");
  const txRef=reference("TXN");
  const result=await tx(t=>authorizeWalletFuelSale(t,{partnerOrgId:partnerOrgId(req),stationId:id,code:String(code),litres,fuelType:String(fuelType??"").trim(),sellingUnit,reference:txRef}));
+ await personalFuelAlerts({userId:result.card.owner_user_id,organizationId:result.card.organization_id});
  emitToOrg(partnerOrgId(req),"pos.approved",{reference:txRef,amountLabel:naira(result.amounts.chargedKobo),card:result.card.masked_pan,time:fmtDateTime(new Date())});
  await audit({actorUserId:req.user.id,actorRole:req.user.role,action:"pos.approved",entityType:"transaction",entityId:result.sale.id,metadata:result.amounts});
  res.json({ok:true,approved:true,reference:txRef,card:result.card.masked_pan,fuelType:result.sale.fuel_type,litres:Number(result.sale.litres),quantity:Number(result.sale.litres),sellingUnit:result.sale.selling_unit,amountLabel:naira(result.amounts.chargedKobo),partnerNetLabel:naira(result.amounts.partnerNetKobo),time:fmtDateTime(new Date())});

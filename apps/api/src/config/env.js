@@ -64,6 +64,7 @@ const schema = z.object({
   FLW_PUBLIC_KEY: z.string().default(process.env.NEXT_PUBLIC_FLW_PUBLIC_KEY || ""),
   FLW_SECRET_KEY: z.string().default(""),
   FLW_BVN_ENABLED: z.string().default("false").transform(value => value === "true"),
+  BENEFIT_FUNDING_ENABLED: z.string().default("false").transform(value => value === "true"),
   FLW_ENCRYPTION_KEY: z.string().default(""),
   FLW_SECRET_HASH: z.string().default(""),
   // Paystack. Retained only so a webhook for a charge taken before the switch can

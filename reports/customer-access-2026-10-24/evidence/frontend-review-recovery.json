@@ -1,0 +1,30 @@
+{
+  "immediateDuplicate": {
+    "requests": 1,
+    "distinctRequestKeys": 1
+  },
+  "definitiveDecline": {
+    "inputEnabled": true,
+    "recoveryCleared": true
+  },
+  "crossTabSavedRequest": {
+    "requests": 1,
+    "reusedStoredKey": true
+  },
+  "adminExistingFunding": {
+    "newCheckouts": 0,
+    "recoveryButtonPresent": true,
+    "recoveryPath": "/api/admin/benefits/funding/confirm",
+    "originalReference": "EXISTING-FUNDING"
+  },
+  "adminImmediateDuplicate": {
+    "newCheckouts": 1
+  },
+  "zeroCustomerPayment": {
+    "buttonLabel": [
+      "Accept quote"
+    ],
+    "confirmation": "Accept quote 1? Obligon covers the labour. No wallet payment is due.",
+    "confirmationLabel": "Accept quote"
+  }
+}

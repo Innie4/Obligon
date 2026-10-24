@@ -38,6 +38,8 @@ beforeEach(async()=>{
  await pool.query(`INSERT INTO users(id,email,password_hash,full_name,role,status,phone,email_verified,phone_verified,notification_prefs) VALUES
  ($1,'customer@example.invalid','unused','Fixture Customer','customer','active','08000000001',true,true,'{"email":false,"sms":false,"push":false}'),
  ($2,'other@example.invalid','unused','Other Fixture','customer','active',NULL,true,false,'{"email":false,"sms":false,"push":false}')`,[user,other]);
+ await pool.query(`INSERT INTO card_plans(code,name,amount_kobo,features)VALUES('fixture','Fixture',10000,'[{"label": "Digital Fuel Wallet", "state": "included"}, {"label": "Fuel Purchase", "state": "included"}, {"label": "Digital Receipts", "state": "included"}, {"label": "Transaction History", "state": "included"}, {"label": "Fuel Spend Tracking", "state": "included"}, {"label": "Fuel Budget Management", "state": "included"}, {"label": "Spending Limits", "state": "included"}, {"label": "Partner Discounts", "state": "included"}]') ON CONFLICT(code) DO UPDATE SET features=EXCLUDED.features`);
+ await pool.query("INSERT INTO customer_subscriptions(user_id,plan_code,status,current_period_start,current_period_end,payment_reference)VALUES($1,'fixture','active',now(),now()+interval '1 month','fixture')",[user]);
  await pool.query("INSERT INTO organizations(id,owner_user_id,name,type) VALUES($1,$2,'Inactive context','company')",[org,user]);
  await pool.query("INSERT INTO wallets(id,user_id,organization_id,kind,balance_kobo) VALUES($1,$2,NULL,'individual',0),($3,$2,$4,'company',99000)",[personal,user,company,org]);
 });
@@ -122,8 +124,7 @@ check('personal support listing excludes company and foreign tickets',async()=>{
 check('concurrent personal fuel codes stay unique, expire and record the authorized issuer',async()=>{
  const pin=await (await import('../src/lib/security.js')).hashPin('1234');
  const ids=Array.from({length:20},()=>randomUUID());
- await pool.query("INSERT INTO customer_subscriptions(user_id,plan_code,status,current_period_start,current_period_end,payment_reference)VALUES($1,'fixture','active',now(),now()+interval '1 month','fixture')",[user]);
- await pool.query("INSERT INTO card_plans(code,name,amount_kobo,features)VALUES('fixture','Fixture',10000,'[]') ON CONFLICT(code) DO NOTHING");
+
  for(const id of ids)await pool.query("INSERT INTO cards(id,owner_user_id,label,status,pin_hash)VALUES($1,$2,'Personal','active',$3)",[id,user,pin]);
  assert.equal((await request(`/api/customer/cards/${ids[0]}/pos-code`,{pin:'9999'})).status,403);
  const results=await Promise.all(ids.map(id=>request(`/api/customer/cards/${id}/pos-code`,{pin:'1234'})));

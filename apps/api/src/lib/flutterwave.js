@@ -339,10 +339,13 @@ export async function verifyCheckout({ transactionId, reference, expectedAmountK
     }
   }
 
+    let settledAmountKobo=null;
+    try { if(data?.amount_settled!=null)settledAmountKobo=toKobo(data.amount_settled,"major"); } catch { /* Optional net settlement cannot invalidate a verified ordinary charge. */ }
     return {
       status: data?.status ?? status,
       paid,
       amountKobo,
+      ...(settledAmountKobo!=null ? {settledAmountKobo} : {}),
       currency,
       reference: data?.tx_ref ?? reference ?? null,
       // Flutterwave's own transaction id. Recorded against the top-up so the

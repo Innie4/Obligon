@@ -44,6 +44,8 @@ before(async () => {
   await pool.query("INSERT INTO memberships(organization_id,user_id,email,role,status) VALUES($1,$2,'partner@example.invalid','owner','active')", [ids.org, ids.partner]);
   await pool.query("INSERT INTO pricing_plans(code,name,price_kobo,interval,features) VALUES('upload-fixture','Fixture',10000,'month','[]')");
   await pool.query("INSERT INTO subscriptions(organization_id,plan_code,status,current_period_start,current_period_end) VALUES($1,'upload-fixture','active',now(),now()+interval '1 month')", [ids.org]);
+  await pool.query("INSERT INTO card_plans(code,name,amount_kobo,features)VALUES('personal-upload','Personal upload',10000,'[]')");
+  await pool.query("INSERT INTO customer_subscriptions(user_id,plan_code,payment_reference,current_period_start,current_period_end)VALUES($1,'personal-upload','personal-upload-paid',now(),now()+interval '1 month')",[ids.customer]);
   await pool.query("INSERT INTO job_postings(id,title,department,location,description,status) VALUES($1,'Fixture role','Engineering','Lagos','Fixture description','open')", [ids.job]);
   await pool.query("INSERT INTO stations(id,name,address,city,partner_org_id) VALUES($1,'Fixture station','Fixture address','Lagos',$2)", [ids.station, ids.org]);
   globalThis.fetch = async (input, init) => {

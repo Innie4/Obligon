@@ -1,3 +1,4 @@
+- [2026-10-24] [Customer access and funded plan benefits](2026-10-24-customer-access-and-benefits.md): Enforce paid access and persist preferences while reserving real programme funds for cashback and labour discounts.
 - [2026-10-24] [Card identity verification](2026-10-24-card-identity-verification.md): Bind email and BVN evidence to submitted card details, with dependent addresses and audited recovery.
 - [2026-10-23] [Floating operation feedback](2026-10-23-popup-operation-feedback.md): Keep request feedback visible in shared popups with dialog-aware placement and account-scoped notification cleanup.
 - [2026-10-23] [Clear dashboards and truthful interface states](2026-10-23-ui-polish-and-states.md): Share visual patterns while preserving scoped actions, usable scrolling and accurate feedback.

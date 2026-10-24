@@ -16,6 +16,7 @@ function handler(route, dependencies) {
     requirePositiveNumber: value => Number(value),
     partnerOrgId: () => 'partner-org',
     audit: async () => {},
+    personalFuelAlerts: async () => ({generated:0}),
     reference: () => 'TXN-recorded',
     emitToOrg() {},
     fmtDateTime: () => 'recorded time',

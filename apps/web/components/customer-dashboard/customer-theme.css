@@ -1,0 +1,122 @@
+/* The body scope also reaches customer dialogs, search and feedback rendered in portals. */
+body[data-customer-theme="dark"] {
+  color-scheme: dark;
+  --customer-canvas: #101812;
+  --customer-surface: #19251d;
+  --customer-raised: #243329;
+  --customer-text: #f1f5f0;
+  --customer-muted: #bcc9bf;
+  --customer-border: #6d8273;
+  --customer-accent: #b8ee86;
+  --customer-danger: #ffb3b6;
+  --customer-danger-surface: #402125;
+  --customer-warning: #f2cc80;
+  --customer-warning-surface: #3c301a;
+  --customer-info: #b5caff;
+  --customer-info-surface: #21304d;
+  background: var(--customer-canvas);
+  color: var(--customer-text);
+}
+
+body[data-customer-theme="dark"] :where([class~="bg-obligon-mist/50"]) {
+  background-color: var(--customer-canvas);
+}
+
+body[data-customer-theme="dark"] :where([class~="bg-white"], [class~="bg-white/95"], [data-status-popup]) {
+  background-color: var(--customer-surface);
+}
+
+body[data-customer-theme="dark"] :where(
+  [class~="bg-obligon-mist"], [class~="bg-obligon-mist/40"], [class~="bg-obligon-mist/60"], [class~="bg-obligon-panel"],
+  [class~="bg-[#f0f4f0]"], [class~="bg-[#f1f5f0]"], [class~="bg-[#f2f6f2]"], [class~="bg-[#f7f9f8]"],
+  [class~="bg-[#eef3ee]"], [class~="bg-[#e0e7de]"], [class~="bg-[#e2eae0]"], [class~="bg-[#dce5da]"], [class~="bg-[#cfd8cc]"]
+) {
+  background-color: var(--customer-raised);
+}
+
+body[data-customer-theme="dark"] :where(
+  [class~="text-obligon-navy"], [class~="text-[#20251f]"], [class~="text-[#131f00]"]
+) { color: var(--customer-text); }
+
+body[data-customer-theme="dark"] :where(
+  [class~="text-obligon-text"], [class~="text-obligon-text/50"], [class~="text-obligon-text/60"], [class~="text-obligon-text/80"],
+  [class~="text-[#3f463d]"], [class~="text-[#4f5663]"], [class~="text-[#9aa79b]"], [class~="text-slate-500"], [class~="text-slate-600"]
+) { color: var(--customer-muted); }
+
+body[data-customer-theme="dark"] :where([class~="text-obligon-green"]) { color: var(--customer-accent); }
+body[data-customer-theme="dark"] :where([class~="text-obligon-blue"]) { color: var(--customer-info); }
+body[data-customer-theme="dark"] :where(
+  [class~="text-[#c1121f]"], [class~="text-[#b42318]"], [class~="text-[#b51f24]"], [class~="text-[#d71920]"], [class~="text-[#93000a]"], [class~="text-red-700"]
+) { color: var(--customer-danger); }
+body[data-customer-theme="dark"] :where([class~="text-[#9a6300]"]) { color: var(--customer-warning); }
+
+body[data-customer-theme="dark"] :where(
+  [class~="border"], [class~="border-t"], [class~="border-b"], [class~="border-l"], [class~="border-r"],
+  [class~="border-obligon-border"], [class~="border-obligon-border/60"], [class~="border-obligon-navy/10"], [class~="border-obligon-navy/20"],
+  [class~="border-[#20251f]"], [class~="border-[#eef3ee]"], [class~="border-[#d0d8cf]"], [class~="border-[#e0e7de]"], [class~="border-[#e6ede4]"], [class~="border-[#cfd8cc]"]
+) { border-color: var(--customer-border); }
+
+body[data-customer-theme="dark"] :where([class~="divide-[#eef3ee]"], [class~="divide-obligon-border"]) > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--customer-border);
+}
+
+body[data-customer-theme="dark"] :where([class~="border-obligon-green"], [class~="border-obligon-green/30"], [class~="border-obligon-green/40"]) {
+  border-color: var(--customer-accent);
+}
+
+body[data-customer-theme="dark"] :where([class~="bg-obligon-lime/30"], [class~="bg-[#e8fbd7]"], [class~="bg-[#eef6ea]"], [class~="bg-[#f3ffe8]"], [class~="bg-green-50"]) {
+  background-color: #304526;
+}
+
+body[data-customer-theme="dark"] :where([class~="bg-[#ffe8e8]"], [class~="bg-[#ffecef]"], [class~="bg-[#fff5f5]"]) {
+  background-color: var(--customer-danger-surface);
+}
+
+body[data-customer-theme="dark"] :where([class~="bg-[#eef3ff]"], [class~="bg-[#e8efff]"], [class~="bg-obligon-blue/10"]) {
+  background-color: var(--customer-info-surface);
+}
+body[data-customer-theme="dark"] :where([class~="bg-[#fff3d8]"], [class~="bg-amber-50"]) { background-color: var(--customer-warning-surface); }
+body[data-customer-theme="dark"] :where([class~="text-amber-800"], [class~="text-amber-900"]) { color: var(--customer-warning); }
+body[data-customer-theme="dark"] :where([class~="border-obligon-blue/30"], [class~="border-obligon-blue/40"]) { border-color: var(--customer-info); }
+body[data-customer-theme="dark"] :where([class~="border-[#c1121f]"], [class~="border-[#c1121f]/35"], [class~="border-[#c1121f]/40"], [class~="border-[#e0a3a3]"], [class~="border-[#fecaca]"]) { border-color: var(--customer-danger); }
+body[data-customer-theme="dark"] :where([class~="border-[#c98a00]/40"]) { border-color: var(--customer-warning); }
+
+body[data-customer-theme="dark"] :where([class~="hover:bg-obligon-mist"], [class~="hover:bg-obligon-panel"], [class~="hover:bg-[#f2f6f2]"]):hover {
+  background-color: var(--customer-raised);
+}
+body[data-customer-theme="dark"] :where([class~="hover:text-obligon-green"]):hover { color: var(--customer-accent); }
+body[data-customer-theme="dark"] :where([class~="focus:border-obligon-green"]):focus { border-color: var(--customer-accent); }
+body[data-customer-theme="dark"] :where([class~="hover:border-obligon-green"]):hover { border-color: var(--customer-accent); }
+
+body[data-customer-theme="dark"] :where(input, select, textarea) {
+  accent-color: var(--customer-accent);
+  caret-color: var(--customer-accent);
+}
+body[data-customer-theme="dark"] :where(input:not([type="radio"]):not([type="checkbox"]):not([type="range"]), select, textarea) {
+  background-color: var(--customer-surface);
+}
+body[data-customer-theme="dark"] :where(input, textarea)::placeholder { color: var(--customer-muted); opacity: 1; }
+body[data-customer-theme="dark"] :where(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--customer-accent);
+  outline-offset: 3px;
+}
+body[data-customer-theme="dark"] .customer-theme-choice:focus-within { outline: 2px solid var(--customer-accent); outline-offset: 3px; }
+body[data-customer-theme="dark"] ::selection { background: #33522d; color: var(--customer-text); }
+
+/* Preserve branded card art; map only neutral plot labels and grid lines. */
+body[data-customer-theme="dark"] svg :where([fill="#3f463d"]) { fill: var(--customer-muted); }
+body[data-customer-theme="dark"] svg :where([stroke="#e5ebe2"]) { stroke: var(--customer-border); }
+body[data-customer-theme="dark"] svg :where([fill="#061958"]) { fill: var(--customer-info); }
+
+/* The original blue-and-green wordmark needs a light ground in both headers. */
+body[data-customer-theme="dark"] a[aria-label="Obligon LTD customer dashboard"] {
+  width: fit-content;
+  border-radius: 4px;
+  background-color: #f1f5f0;
+  box-shadow: 0 0 0 6px #f1f5f0;
+}
+
+.customer-theme-choice { transition: background-color 140ms ease, border-color 140ms ease; }
+.customer-theme-choice:focus-within { outline: 2px solid #3d6a00; outline-offset: 3px; }
+.customer-theme-choice:has(input:disabled) { cursor: wait; opacity: 0.65; }
+@media (prefers-reduced-motion: reduce) { .customer-theme-choice { transition: none; } }

@@ -24,12 +24,17 @@ import { emitToUser } from "../lib/sse.js";
 import multer from "multer";
 import { providerCardDetails, replacementFunding, finishReplacement } from "../lib/card-approval.js";
 import { subscriptionRouter } from "./subscription.routes.js";
-import { requireCustomerPlan, customerSubscription } from "../lib/subscriptions.js";
+import { requireCustomerPlan, customerSubscription, customerFeatureIncluded, enforceCustomerPlan, activateCustomerSubscription, revokeCustomerSubscription } from "../lib/subscriptions.js";
 import { nairaToKobo, integerKobo } from "../lib/money-amounts.js";
 import { isTerminalPaymentFailure } from "../lib/flutterwave.js";
 
 import { identityRequestFields, submitCardIdentity, sendCardIdentityCode, confirmCardIdentityCode } from "../lib/card-identity.js";
 import { sensitiveLimiter } from "../middleware/security.js";
+import customerPreferencesRouter from "./customer-preferences.routes.js";
+import customerBenefitsRouter from "./customer-benefits.routes.js";
+import { generateCustomerSpendingAlerts } from "../lib/customer-benefits.js";
+import customerRewardsRouter from "./customer-rewards.routes.js";
+import { generatorRepairCustomerRouter } from "./generator-repairs.routes.js";
 
 const router = Router();
 for(const name of ['id','orgId','memberId'])router.param(name,(req,_res,next,value)=>{
@@ -55,6 +60,11 @@ router.use(requireAuth, (req, _res, next) => {
   req.user = { ...req.user, orgId: null, orgType: null };
   next();
 });
+router.use(enforceCustomerPlan);
+router.use("/preferences", customerPreferencesRouter());
+router.use("/benefits", customerBenefitsRouter());
+router.use("/rewards", customerRewardsRouter());
+router.use("/generator-repairs", generatorRepairCustomerRouter());
 router.use("/subscription", subscriptionRouter("customer"));
 router.use("/fuel-checkout",customerFuelCheckoutRouter());
 
@@ -111,6 +121,7 @@ router.get("/overview", asyncHandler(async (req, res) => {
   // Same reason as the wallet: a settled payment must not be able to sit behind
   // a balance that has not caught up yet.
   await settlePendingForUser(userId, { waitMs: SETTLE_WAIT_MS });
+  try { await generateCustomerSpendingAlerts(userId); } catch (error) { console.error('[customer-spending-alerts]', error?.message); }
   const wallet = await getWallet(userId);
   const monthStartDate = monthStart();
   const agg = await one(
@@ -1204,6 +1215,7 @@ router.post("/card-request/withdraw", asyncHandler(async (req, res) => {
       simulated: Boolean(req.body?.simulated) });
     const updated = await t.one(`UPDATE card_requests SET status='withdrawn',withdrawn_at=clock_timestamp(),
       refund_id=$2,issuance_state='refund_pending',updated_at=clock_timestamp() WHERE id=$1 RETURNING *`, [request.id, queued.refund.id]);
+    await revokeCustomerSubscription(t, updated);
     return { ...queued, alreadyWithdrawn: false, request: updated, clawbackKobo };
   });
   let refund = intent.refund;
@@ -1329,6 +1341,7 @@ router.post("/card-request/verify-payment", asyncHandler(async (req, res) => {
     if (locked.status !== "awaiting_payment") throw conflict("This card request is no longer awaiting payment");
     const paid = await t.one(`UPDATE card_requests SET payment_status='paid',paid_at=now(),provider_transaction_id=COALESCE($2,provider_transaction_id),updated_at=now()
       WHERE id=$1 RETURNING *`, [locked.id, verification.providerTransactionId]);
+    await activateCustomerSubscription(t, paid);
     if (paidKobo > chargedKobo) {
       excessRefundKobo = paidKobo - chargedKobo;
       const intent = await queueRefund(t, { provider: locked.payment_provider, providerRef: locked.payment_reference,
@@ -1575,7 +1588,13 @@ router.post("/cards", asyncHandler(async (req, res) => {
 
 // ============ STATIONS ============
 router.get("/stations", asyncHandler(async (req, res) => {
-  const { search, fuel, lat, lng } = req.query;
+  const { search, fuel, fuels, lat, lng } = req.query;
+  if (search !== undefined && (typeof search !== 'string' || search.length > 200)) throw badRequest('Search must be text of at most 200 characters');
+  if (fuel !== undefined && typeof fuel !== 'string') throw badRequest('Choose a supported fuel');
+  if (fuels !== undefined && (typeof fuels !== 'string' || fuels.length > 160)) throw badRequest('Choose up to five supported fuels');
+  const selected = fuels === undefined ? (fuel === undefined ? [] : [fuel]) : fuels.split(',');
+  if (selected.length > 5 || selected.some(value => !value.trim() || !partnerFuelCode(value))) throw badRequest('Choose up to five supported fuels');
+  const fuelCodes = [...new Set(selected.map(partnerFuelCode))];
   let origin = null;
   if (lat !== undefined || lng !== undefined) {
     if (typeof lat !== "string" || typeof lng !== "string" || !lat.trim() || !lng.trim() ||
@@ -1587,7 +1606,7 @@ router.get("/stations", asyncHandler(async (req, res) => {
   const params = [];
   let where = `s.status = 'active' AND EXISTS(SELECT 1 FROM organizations o WHERE o.id=s.partner_org_id AND o.verification_status='verified')`;
   if (search) { params.push(`%${search}%`); where += ` AND (s.name ILIKE $${params.length} OR s.address ILIKE $${params.length} OR s.city ILIKE $${params.length})`; }
-  if (fuel) { const code=partnerFuelCode(fuel); if(!code) throw badRequest('Choose a supported fuel'); params.push(code); where += ` AND EXISTS(SELECT 1 FROM unnest(s.fuels) AS f(fuel) WHERE ${canonicalFuelSql('f.fuel')}=$${params.length})`; }
+  if (fuelCodes.length) { params.push(fuelCodes); where += ` AND EXISTS(SELECT 1 FROM unnest(s.fuels) AS f(fuel) WHERE ${canonicalFuelSql('f.fuel')}=ANY($${params.length}::text[]))`; }
   let distanceSql = "NULL::double precision";
   if (origin) {
     params.push(origin.lat, origin.lng);
@@ -1802,7 +1821,7 @@ router.get("/profile", asyncHandler(async (req, res) => {
 const assistedServices=['Partner Mechanics','Generator Repairer','Access to Car Wash','VIP Lounge','Towing Services'];
 router.get('/services',asyncHandler(async(req,res)=>{
  const state=await customerSubscription(req.user.id);
- res.json({services:assistedServices.map(label=>({label,available:state.active&&state.features.some(feature=>feature.label===label&&feature.state!=='unavailable')})),message:'Obligon coordinates these services through support. Availability and any quote are confirmed before booking.'});
+ res.json({services:assistedServices.map(label=>({label,available:state.active&&customerFeatureIncluded(state.features,label)})),message:'Obligon coordinates these services through support. Availability and any quote are confirmed before booking.'});
 }));
 router.post('/services',asyncHandler(async(req,res)=>{
  const service=req.body?.service,message=String(req.body?.message??'').trim();if(!assistedServices.includes(service)||!message||message.length>5000)throw badRequest('Choose a service and describe your location and requirements');
@@ -1816,8 +1835,7 @@ router.post('/services',asyncHandler(async(req,res)=>{
 router.post("/support/tickets", upload.array("attachments", 4), asyncHandler(async (req, res) => {
   const { subject, category = "general", message } = req.valid ?? req.body ?? {};
   const subscription = await customerSubscription(req.user.id);
-  const priorityFeature = subscription.features.find(f => String(f.label ?? f.name ?? "").toLowerCase() === "priority support");
-  const priority = subscription.active && priorityFeature && priorityFeature.state !== "unavailable" && priorityFeature.included !== false && ![false,"—","Not included"].includes(priorityFeature.value) ? "high" : "normal";
+  const priority = subscription.active && customerFeatureIncluded(subscription.features, "Priority Support") ? "high" : "normal";
   if (typeof subject!=="string"||!subject.trim()||subject.length>200||typeof message!=="string"||!message.trim()||message.length>5000) throw badRequest("Subject (1–200 characters) and message (1–5000 characters) are required");
   const attachments = [];
   for (const file of req.files ?? []) {

@@ -29,6 +29,7 @@ export const adminNav: Array<{ key: AdminPageKey; label: string; href: string; i
   { key: "companies", label: "Dashboard", href: "/admin", icon: "dashboard" },
   { key: "applications", label: "Discount Approvals", href: "/admin/discount-approvals", icon: "fuelStations" },
   { key: "applications", label: "Partner Applications", href: "/admin/partner-applications", icon: "partners" },
+  { key: "applications", label: "Customer Benefits", href: "/admin/customer-benefits", icon: "settings" },
   { key: "applications", label:"Support & Settlements", href:"/admin/operations", icon:"settings" },
   { key: "applications", label: "Requests & Activity", href: "/admin/intake", icon: "settings" },
   { key: "reports", label: "Platform Reports", href: "/admin/reports", icon: "analytics" },

@@ -42,6 +42,8 @@ before(async () => {
     CREATE TABLE top_ups(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid,reference text,amount_kobo bigint,fee_kobo bigint,charged_kobo bigint,method text,status text,provider text,wallet_id uuid,provider_reference text,provider_transaction_id text,created_at timestamptz DEFAULT now());
     CREATE TABLE audit_logs(actor_user_id uuid,actor_role text,action text,entity_type text,entity_id uuid,ip text,metadata jsonb);
   `);
+  await pool.query(`CREATE TABLE card_plans(code text PRIMARY KEY,name text,features jsonb);CREATE TABLE customer_subscriptions(user_id uuid,plan_code text,status text,current_period_start timestamptz,current_period_end timestamptz);INSERT INTO card_plans VALUES('test','Test','[{"label": "Digital Fuel Wallet", "state": "included"}, {"label": "Fuel Purchase", "state": "included"}, {"label": "Digital Receipts", "state": "included"}, {"label": "Transaction History", "state": "included"}, {"label": "Fuel Spend Tracking", "state": "included"}, {"label": "Fuel Budget Management", "state": "included"}, {"label": "Spending Limits", "state": "included"}, {"label": "Partner Discounts", "state": "included"}]')`);
+  await pool.query("INSERT INTO customer_subscriptions VALUES($1,'test','active',now(),now()+interval '1 month')",[customer]);
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => { req.user = { id: customer, role: "customer", email: "customer@example.com", full_name: "Synthetic customer" }; next(); });

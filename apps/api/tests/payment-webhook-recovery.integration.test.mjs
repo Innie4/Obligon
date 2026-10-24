@@ -29,7 +29,7 @@ before(async()=>{
 });
 beforeEach(async()=>{
  if(!database)return;evidence={};providerCalls=0;
- await pool.query('TRUNCATE users,wallets,wallet_ledger,top_ups,payment_refunds,notifications,audit_logs,idempotency_keys,cards,card_actions,card_requests,subscription_payments,fuel_orders');
+ await pool.query('TRUNCATE users,wallets,wallet_ledger,top_ups,payment_refunds,notifications,audit_logs,idempotency_keys,cards,card_actions,card_requests,subscription_payments,fuel_orders,card_plans,customer_subscriptions');
  await pool.query(`INSERT INTO users(id,email,password_hash,full_name,role,status,notification_prefs) VALUES($1,'fixture@example.invalid','unused','Fixture','customer','active','{"email":false,"sms":false,"push":false}')`,[user]);
  await pool.query("INSERT INTO wallets(id,user_id,kind,balance_kobo) VALUES($1,$2,'individual',0)",[wallet,user]);
  await pool.query("INSERT INTO cards(id,owner_user_id,label,status,masked_pan,sudo_card_id) VALUES($1,$2,'Fixture','active','•••• 1234','issuer-card')",[card,user]);
@@ -46,6 +46,22 @@ async function deliver(provider,body,valid=true){
 }
 const event=(ref,provider='paystack')=>provider==='paystack'?{id:'fixture-event',event:'charge.success',data:{reference:ref,amount:10000,currency:'NGN'}}:{event:'charge.completed',data:{id:123,tx_ref:ref,amount:100,currency:'NGN',status:'successful'}};
 async function balance(){return Number((await pool.query('SELECT balance_kobo FROM wallets WHERE id=$1',[wallet])).rows[0].balance_kobo);}
+check('provider-confirmed first card payment activates one period and withdrawn callbacks cannot revive it',async()=>{
+ const ref=`PLAN-${randomUUID()}`;
+ await pool.query("INSERT INTO card_plans(code,name,amount_kobo)VALUES('gold','Gold',350000)");
+ await pool.query("INSERT INTO card_requests(user_id,label,plan_code,payment_reference,payment_provider,charged_kobo,payment_status,status)VALUES($1,'Personal','gold',$2,'flutterwave',350000,'unpaid','awaiting_payment')",[user,ref]);
+ evidence={tx_ref:ref,amount:3500};
+ const body={event:'charge.completed',data:{id:123,tx_ref:ref,amount:3500,currency:'NGN',status:'successful'}};
+ assert.equal((await deliver('flutterwave',body)).status,200);
+ const original=(await pool.query('SELECT * FROM customer_subscriptions WHERE user_id=$1',[user])).rows[0];assert.equal(original.status,'active');
+ for(let index=0;index<10;index++)assert.equal((await deliver('flutterwave',body)).status,200);
+ assert.equal((await pool.query('SELECT current_period_end FROM customer_subscriptions WHERE user_id=$1',[user])).rows[0].current_period_end.toISOString(),original.current_period_end.toISOString());
+ await pool.query("UPDATE card_requests SET status='withdrawn',issuance_state='refund_pending' WHERE payment_reference=$1",[ref]);
+ await pool.query("UPDATE customer_subscriptions SET status='canceled' WHERE user_id=$1",[user]);
+ await pool.query('DELETE FROM idempotency_keys');
+ assert.equal((await deliver('flutterwave',body)).status,200);
+ assert.equal((await pool.query('SELECT status FROM customer_subscriptions WHERE user_id=$1',[user])).rows[0].status,'canceled');
+});
 check('forged provider webhooks cannot look up payments or claim events',async()=>{
  const ref=await topup();for(const provider of ['paystack','flutterwave','sudo'])assert.equal((await deliver(provider,event(ref,provider),false)).status,401);
  assert.equal(providerCalls,0);assert.equal(await balance(),0);assert.equal((await pool.query('SELECT count(*)::int AS n FROM idempotency_keys')).rows[0].n,0);

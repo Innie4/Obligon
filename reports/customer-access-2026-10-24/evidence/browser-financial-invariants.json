@@ -1,0 +1,19 @@
+{
+  "environment": "disposable-local-synthetic-only",
+  "programmeKobo": {
+    "funded": "5000000",
+    "available": "4928000",
+    "cashback": "2000",
+    "redeemed": "10000",
+    "repair": "60000"
+  },
+  "partnerPayableKobo": {
+    "customer_kobo": "90000",
+    "subsidy_kobo": "60000",
+    "amount_kobo": "150000",
+    "status": "unpaid"
+  },
+  "customerWalletKobo": "1920000",
+  "conservationPassed": true,
+  "noExternalPayout": true
+}

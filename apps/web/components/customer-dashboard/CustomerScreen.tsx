@@ -4,8 +4,12 @@ import { StatusPopup } from "@/components/shared/StatusPopup";
 import React, { useState } from "react";
 import Link from "next/link";
 import { SubscriptionPanel } from "@/components/shared/SubscriptionPanel";
-import { sellingUnitLabel } from "../../../../packages/shared/partner-access.mjs";
+import { sellingUnitLabel, partnerAllowedFuels } from "../../../../packages/shared/partner-access.mjs";
 import { CustomerFuelCheckout } from "./CustomerFuelCheckout";
+import { CustomerBenefitsOverview, CustomerGeneratorRepairs, CustomerSpendingAlerts } from "./CustomerBenefits";
+import { StationLocationControl, useStationLocation } from "./StationLocationControl";
+import { CustomerPreferencesPanel } from "./CustomerTheme";
+import { useCustomerAccess } from "./CustomerAccess";
 import type { ComponentType } from "react";
 import {
   AlertTriangle,
@@ -1358,7 +1362,7 @@ function CardPage({
         />
       ) : null}
 
-      {hasCard === true ? <div className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
+      {hasCard === true && subscription?.active ? <div className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
         <article
           className={`relative min-h-[260px] overflow-hidden rounded-2xl p-5 text-white shadow-sm sm:min-h-[290px] sm:p-8 ${
             blocked
@@ -1419,14 +1423,15 @@ function CardPage({
         </div>
       </div> : null}
 
-      {hasCard === true ? (
+      {hasCard === true || subscription?.subscription ? (
         <section id="subscription" className="mt-8 scroll-mt-24">
           <SubscriptionPanel kind="customer" embedded preferredPlan={preferredPlan} onSubscriptionChange={onSubscriptionChange} />
         </section>
       ) : null}
 
+      {subscription?.active ? <>
       <Card className="mt-8 p-6">
-        <SectionTitle title="Fuel Budget" />
+        <div id="fuel-budget" className="scroll-mt-24"><SectionTitle title="Fuel Budget" /></div>
         <p className="mt-2 text-sm text-obligon-text">Set your projected fuel spend for this month and track it in Overview.</p>
         <p className="mt-4 text-2xl font-extrabold text-obligon-navy">{projectionLabel}</p>
         <button type="button" disabled={!canEditProjection} onClick={onEditProjection} className="mt-4 rounded-xl bg-obligon-green px-5 py-3 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50">
@@ -1435,7 +1440,8 @@ function CardPage({
         {!canEditProjection ? <p className="mt-3 text-sm text-obligon-text">Choose or renew a plan that includes Fuel Budget Management to use this feature.</p> : null}
       </Card>
 
-      <CustomerFuelCheckout subscriptionActive={subscription?.active === true} refreshKey={refreshKey} embedded />
+      <CustomerFuelCheckout subscriptionActive={true} refreshKey={refreshKey} embedded />
+      </> : null}
     </Canvas>
   );
 }
@@ -1656,34 +1662,20 @@ function buildMapUrl(list: Array<{ lat: number; lng: number }>) {
 
 function StationsPage() {
   const router = useRouter();
-  const [location, setLocation] = React.useState<{ lat: number; lng: number }>();
-  const [locationMessage, setLocationMessage] = React.useState("Share your location to see the closest stations first.");
-  const [coordinates, setCoordinates] = React.useState({ lat: "", lng: "" });
-  const watchId = React.useRef<number | null>(null);
-  const startLocation = React.useCallback(() => {
-    if (!navigator.geolocation) { setLocationMessage("Location is unavailable. Enter coordinates below."); return; }
-    if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current);
-    setLocationMessage("Finding your location…");
-    watchId.current = navigator.geolocation.watchPosition(({ coords }) => {
-      setLocation({ lat: coords.latitude, lng: coords.longitude });
-      setLocationMessage("Closest stations first · distances are in a straight line.");
-    }, () => { setLocation(undefined); setLocationMessage("Location could not be obtained. Enable location access or enter coordinates below."); },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
-  }, []);
-  React.useEffect(() => {
-    let active = true;
-    navigator.permissions?.query({ name: "geolocation" }).then(result => {
-      if (active && result.state === "granted") startLocation();
-    }).catch(() => {});
-    return () => { active = false; if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current); };
-  }, [startLocation]);
+  const stationLocation = useStationLocation();
+  const { location } = stationLocation;
   const [query, setQuery] = React.useState("");
+  const [fuelsOpen, setFuelsOpen] = React.useState(false);
+  const [selectedFuels, setSelectedFuels] = React.useState<string[]>([]);
+  const [draftFuels, setDraftFuels] = React.useState<string[]>([]);
   const { status, data: stations, error, reload, refresh } = useAsync(() => {
-    if (!query.trim()) return api.getStations(location);
-    const params = new URLSearchParams({ search: query.trim() });
+    if (!query.trim() && !selectedFuels.length) return api.getStations(location);
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("search", query.trim());
+    if (selectedFuels.length) params.set("fuels", selectedFuels.join(","));
     if (location) { params.set("lat", String(location.lat)); params.set("lng", String(location.lng)); }
     return api.request<{ stations: Station[] }>(`/api/customer/stations?${params}`).then(result => result.stations);
-  }, [query, location?.lat, location?.lng]);
+  }, [query, selectedFuels.join(","), location?.lat, location?.lng]);
   const refreshRef = React.useRef(refresh);
   refreshRef.current = refresh;
   React.useEffect(() => {
@@ -1693,12 +1685,10 @@ function StationsPage() {
     document.addEventListener("visibilitychange", update);
     return () => { clearInterval(timer); window.removeEventListener("focus", update); document.removeEventListener("visibilitychange", update); };
   }, []);
-  const [fuelsOpen, setFuelsOpen] = React.useState(false);
-  const [selectedFuels, setSelectedFuels] = React.useState<string[]>([]);
   const [detail, setDetail] = React.useState<{ name: string; address: string; distance: string; distanceKm?: number | null; hours?: string; diesel?: string; unleaded?: string; fuels?: string[]; prices?: Array<{fuelType:string;priceLabel:string;sellingUnit:"litre"|"kg"|"scm"}> } | null>(null);
   const [directionTarget, setDirectionTarget] = React.useState<{ name: string; address: string; distance: string } | null>(null);
 
-  const allFuels = Array.from(new Set(stations?.flatMap((station) => station.fuels.map(stationFuelName)) ?? []));
+  const allFuels = partnerAllowedFuels({ role: "partner", partnerType: "fuel_station" }).map(stationFuelName);
 
   const visible = stations?.filter((station) => {
     const matchesQuery =
@@ -1713,23 +1703,7 @@ function StationsPage() {
     <Canvas>
       <div className="mb-6"><h2 className="font-display text-2xl font-bold tracking-tight text-obligon-navy">Find a station</h2><p className="mt-2 text-sm text-obligon-text">Search locations, view fuel prices and get directions.</p></div>
       <DashboardSearchQuery onSearch={value => { setQuery(value); if (value) setSelectedFuels([]); }} />
-      <div className="mb-4 rounded-xl border border-obligon-border bg-white p-4">
-        {locationMessage === "Finding your location…" ? <StatusPopup tone="loading" message={locationMessage} /> : locationMessage.startsWith("Location is unavailable.") || locationMessage.startsWith("Location could not be obtained.") ? <StatusPopup tone="error" message={locationMessage} /> : <p role="status" className="text-sm text-obligon-text">{locationMessage}</p>}
-        <button type="button" onClick={startLocation} className="mt-2 inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold text-obligon-green">Use my location</button>
-        <details className="mt-2 text-sm">
-          <summary className="min-h-11 cursor-pointer py-3 font-medium">Set location manually</summary>
-          <form className="mt-2 flex flex-wrap gap-2" onSubmit={e => {
-            e.preventDefault();
-            if (watchId.current !== null) { navigator.geolocation.clearWatch(watchId.current); watchId.current = null; }
-            setLocation({ lat: Number(coordinates.lat), lng: Number(coordinates.lng) });
-            setLocationMessage("Closest stations first · using your selected location.");
-          }}>
-            <label>Latitude<input required type="number" step="any" min="-90" max="90" value={coordinates.lat} onChange={e => setCoordinates({ ...coordinates, lat: e.target.value })} className="mx-2 min-h-11 w-36 rounded-lg border border-obligon-border p-2" /></label>
-            <label>Longitude<input required type="number" step="any" min="-180" max="180" value={coordinates.lng} onChange={e => setCoordinates({ ...coordinates, lng: e.target.value })} className="mx-2 min-h-11 w-36 rounded-lg border border-obligon-border p-2" /></label>
-            <button type="submit" className="min-h-11 rounded-lg px-3 font-semibold text-obligon-green">Find closest stations</button>
-          </form>
-        </details>
-      </div>
+      <StationLocationControl state={stationLocation} />
     <AsyncBoundary
       status={status}
       error={error?.message ?? null}
@@ -1751,7 +1725,7 @@ function StationsPage() {
             />
           </div>
           <button
-            onClick={() => setFuelsOpen(true)}
+            onClick={() => { setDraftFuels(selectedFuels); setFuelsOpen(true); }}
             className="h-12 rounded-xl bg-obligon-green px-5 font-bold text-white shadow-none hover:bg-obligon-green/90 transition text-sm"
             type="button"
           >
@@ -1824,7 +1798,7 @@ function StationsPage() {
 
         </div>
 
-        {fuelsOpen && <ModalFrame title="Filter stations by fuel" onClose={() => setFuelsOpen(false)}><div className="p-6"><h2 className="text-2xl font-bold">Filter by fuel</h2>{allFuels.map(fuel => <label key={fuel} className="flex min-h-12 items-center gap-3"><input type="checkbox" checked={selectedFuels.includes(fuel)} onChange={e => setSelectedFuels(prev => e.target.checked ? [...prev, fuel] : prev.filter(f => f !== fuel))} />{fuel}</label>)}<button type="button" className="mt-4 min-h-12 rounded-lg bg-obligon-green px-6 font-bold text-white" onClick={() => setFuelsOpen(false)}>Show stations</button></div></ModalFrame>}
+        {fuelsOpen && <ModalFrame title="Filter stations by fuel" onClose={() => setFuelsOpen(false)}><div className="p-6"><h2 className="text-2xl font-bold">Filter by fuel</h2>{allFuels.map(fuel => <label key={fuel} className="flex min-h-12 items-center gap-3"><input type="checkbox" checked={draftFuels.includes(fuel)} onChange={e => setDraftFuels(prev => e.target.checked ? [...prev, fuel] : prev.filter(f => f !== fuel))} />{fuel}</label>)}<button type="button" className="mt-4 min-h-12 rounded-lg bg-obligon-green px-6 font-bold text-white" onClick={() => { setSelectedFuels(draftFuels); setFuelsOpen(false); }}>Show stations</button></div></ModalFrame>}
         {!visible.length && <p role="status">No stations match your search. Clear the filters to see all available stations.</p>}
         {/* Station Detail Modal */}
         {detail ? (
@@ -2014,7 +1988,7 @@ function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void 
         <AsyncBoundary status={servicesStatus} error={servicesError?.message ?? null} onRetry={reloadServices} loadingLabel="Loading included services…">
           {services ? <>
             <p className="mt-2 text-sm leading-6 text-obligon-text">{services.message}</p>
-            {services.services.some(service => service.available) ? <form className="mt-5 space-y-5" onSubmit={async event => {
+            {services.services.some(service => service.available && service.label !== "Generator Repairer") ? <form className="mt-5 space-y-5" onSubmit={async event => {
               event.preventDefault();
               const form = new FormData(event.currentTarget);
               setSending(true); setServiceError(null); setServiceReference("");
@@ -2030,14 +2004,14 @@ function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void 
               <label className="block text-sm font-semibold text-obligon-navy">Service
                 <select name="service" required disabled={sending} className="mt-2 block min-h-12 w-full rounded-xl border border-obligon-border bg-white p-3 font-normal disabled:opacity-60">
                   <option value="">Choose an included service</option>
-                  {services.services.map(service => <option key={service.label} disabled={!service.available} value={service.label}>{service.label}{!service.available ? " · Not included / active plan required" : ""}</option>)}
+                  {services.services.filter(service => service.label !== "Generator Repairer").map(service => <option key={service.label} disabled={!service.available} value={service.label}>{service.label}{!service.available ? " · Not included / active plan required" : ""}</option>)}
                 </select>
               </label>
               <label className="block text-sm font-semibold text-obligon-navy">Location and requirements<textarea name="message" required disabled={sending} maxLength={5000} className="mt-2 block min-h-28 w-full rounded-xl border border-obligon-border bg-white p-3 font-normal disabled:opacity-60" /></label>
-              <button type="submit" disabled={sending || !services.services.some(service => service.available)} className="min-h-12 rounded-xl bg-obligon-green px-5 text-sm font-semibold text-white disabled:opacity-60">{sending ? "Submitting…" : "Request coordination"}</button>
-              {!services.services.some(service => service.available) ? <p className="text-sm text-obligon-text">Your current plan has no available coordination services. You can still contact Support below.</p> : null}
+              <button type="submit" disabled={sending || !services.services.some(service => service.available && service.label !== "Generator Repairer")} className="min-h-12 rounded-xl bg-obligon-green px-5 text-sm font-semibold text-white disabled:opacity-60">{sending ? "Submitting…" : "Request coordination"}</button>
+              {!services.services.some(service => service.available && service.label !== "Generator Repairer") ? <p className="text-sm text-obligon-text">Your current plan has no available coordination services. You can still contact Support below.</p> : null}
             </form> : <p className="mt-4 rounded-xl bg-obligon-mist/60 p-4 text-sm text-obligon-text">Coordination services require an eligible active plan. You can still send messages or report an issue above.</p>}
-            {!services.services.some(service => service.available) ? <Link href="/customer/card#subscription" className="mt-2 inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold text-obligon-green underline">View plans in My Card</Link> : null}
+            {!services.services.some(service => service.available && service.label !== "Generator Repairer") ? <Link href="/customer/card#subscription" className="mt-2 inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold text-obligon-green underline">View plans in My Card</Link> : null}
           </> : null}
         </AsyncBoundary>
         {serviceError ? <StatusPopup tone="error" message={serviceError} /> : null}
@@ -2087,6 +2061,7 @@ function SupportPage({ onModal }: { onModal: (modal: CustomerModalType) => void 
 }
 
 function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void }) {
+  const { data: subscription } = useCustomerAccess();
   const { user, updateProfile } = useSession();
   const { success: toastSuccess, error: toastError } = useToast();
   const router = useRouter();
@@ -2243,11 +2218,13 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
     >
       {(saving || prefsSaving || pushBusy || pushChecking) ? <StatusPopup tone="pending" message={pushChecking ? "Checking push setup in this browser…" : pushBusy ? "Contacting your browser…" : "Saving account preferences…"} /> : null}
       <Canvas>
-        <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
+        <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
         <Card className="p-6 sm:p-8">
           <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl text-obligon-navy">Profile &amp; Settings</h2>
           <p className="mt-1 text-sm text-obligon-text">Manage your personal details and communication preferences.</p>
 
+          <CustomerPreferencesPanel />
+          {customerFeatureAvailable(subscription, "Intelligence Notifications") ? <CustomerSpendingAlerts embedded /> : null}
           <form onSubmit={handleSave} className="mt-6 space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block">
@@ -2458,13 +2435,7 @@ function ProfilePage({ onModal }: { onModal: (modal: CustomerModalType) => void 
                 </span>
               </button>
 
-              <Link href={routes.signInOptions} className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-obligon-border p-3.5 text-left transition hover:bg-obligon-mist/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-obligon-green">
-                <div>
-                  <p className="text-sm font-bold text-obligon-navy">Google and passkey sign-in</p>
-                  <p className="mt-1 text-xs text-obligon-text">Manage Google sign-in or add a passkey. Your device may use fingerprint, face recognition, or its PIN. Transaction approvals still use your password, card PIN, and two-factor authentication.</p>
-                </div>
-                <ArrowRight size={16} className="shrink-0 text-obligon-text" aria-hidden="true" />
-              </Link>
+
             </div>
 
             <button
@@ -2585,10 +2556,7 @@ function NotificationsPage() {
 export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
   const [modal, setModal] = React.useState<CustomerModalType>(null);
   React.useEffect(() => {if (pageKey === "reportProblem") setModal("report");},[pageKey]);
-  const { data: subscription, refresh: refreshSubscription } = useAsync(
-    () => api.request<CustomerEntitlementState>("/api/customer/subscription")
-  );
-  usePolling(refreshSubscription, { intervalMs: BALANCE_POLL_MS });
+  const { data: subscription, refresh: refreshSubscription } = useCustomerAccess();
   const canEditProjection = customerFeatureAvailable(subscription, "Fuel Budget Management");
   const [cardStatus, setCardStatus] = React.useState<string | null>(null);
   const [cardRefreshKey, setCardRefreshKey] = React.useState(0);
@@ -2596,7 +2564,8 @@ export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
   // My Card owns projection editing. Shared state lets a saved projection
   // refresh the Overview summary when the customer returns there.
   const { data: projection, refresh: refreshProjection } = useAsync(
-    () => api.getCustomerSpendProjection()
+    () => canEditProjection ? api.getCustomerSpendProjection() : Promise.resolve(null),
+    [canEditProjection]
   );
   // Which month the prompt has already been raised for this session. Without it
   // the modal reopens on every navigation, because a customer who chose "Not
@@ -2651,6 +2620,8 @@ export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
   return (
     <>
       {pages[pageKey]}
+      {pageKey === "overview" ? <CustomerBenefitsOverview /> : null}
+      {pageKey === "support" ? <div className="mx-auto max-w-[1440px] px-4 pb-12 sm:px-8 lg:px-12"><CustomerGeneratorRepairs /></div> : null}
       <CustomerModals
         modal={modal === "spendProjection" && (pageKey !== "card" || !canEditProjection) ? null : modal}
         onClose={() => setModal(null)}

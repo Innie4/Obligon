@@ -18,16 +18,17 @@ import {
 import { customerNav, secondaryCustomerNav, pageTitles, type CustomerPageKey } from "@/lib/mock/customer-data";
 import { useSession } from "@/components/shared/AuthContext";
 import { AuthGuard } from "@/components/auth/AuthGuard";
-import { LogoutButton, SignInOptionsLink } from "@/components/auth/LogoutButton";
-import { api } from "@/lib/services";
-import { useAsync } from "@/components/shared/useAsync";
-import { usePolling } from "@/components/shared/usePolling";
-import { customerAccountLabel, type CustomerEntitlementState } from "@/lib/customer-entitlements";
+import { LogoutButton } from "@/components/auth/LogoutButton";
+import { customerAccountLabel } from "@/lib/customer-entitlements";
+import { CustomerAccessProvider, CustomerAccessBoundary, useCustomerAccess } from "./CustomerAccess";
 import { DashboardSearch } from "@/components/shared/DashboardSearch";
+import { CustomerThemeProvider } from "./CustomerTheme";
+import "./customer-theme.css";
 
 const customerSearchEntries = [
   ...[...customerNav, ...secondaryCustomerNav].map(item => ({ ...item, keywords: item.key === "card" ? "buy fuel authorize subscription renew plan" : item.key === "transactions" ? "transactions receipts reference" : "" })),
-  { label: "Sign-in options", href: "/auth/sign-in-options", keywords: "Google passkey password security" }
+  { label: "Sign-in options", href: "/customer/profile#sign-in-options", keywords: "Google passkey password security" },
+  { label: "Appearance", href: "/customer/profile#customer-appearance-title", keywords: "theme light dark" }
 ];
 
 type CustomerShellProps = {
@@ -63,8 +64,7 @@ function pageForPath(pathname: string): CustomerPageKey {
 function Sidebar() {
   const pathname = usePathname();
   const { user } = useSession();
-  const { data: subscription, refresh: refreshSubscription } = useAsync(() => api.request<CustomerEntitlementState>("/api/customer/subscription"));
-  usePolling(refreshSubscription, { intervalMs: 4000 });
+  const { data: subscription } = useCustomerAccess();
   const accountLabel = customerAccountLabel(subscription);
   const active = pageForPath(pathname);
   const accountKeys: CustomerPageKey[] = secondaryCustomerNav.map((item) => item.key);
@@ -123,8 +123,7 @@ function Sidebar() {
         {accountOpen ? <div className="space-y-2 pl-4 border-l-2 border-obligon-border/60 ml-2 mt-1">{secondaryCustomerNav.map(renderLink)}</div> : null}
       </nav>
 
-      <SignInOptionsLink className="mt-auto shrink-0 w-full justify-start gap-3 px-4 py-3 text-[#4f5663]" />
-      <LogoutButton className="shrink-0 w-full justify-start gap-3 px-4 py-3 rounded-xl text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green" />
+      <LogoutButton className="mt-auto shrink-0 w-full justify-start gap-3 px-4 py-3 rounded-xl text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green" />
     </aside>
   );
 }
@@ -170,7 +169,6 @@ function MobileCustomerAccount() {
       {secondaryCustomerNav.map(item => <Link key={item.key} href={item.href} aria-current={pathname === item.href ? "page" : undefined} onClick={() => setAccountOpen(false)} className="flex min-h-12 items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-obligon-navy hover:bg-obligon-mist">
         {iconMap[item.key]} {item.label}
       </Link>)}
-      <SignInOptionsLink onClick={() => setAccountOpen(false)} className="min-h-12 w-full justify-start px-3" />
       <LogoutButton className="min-h-12 w-full justify-start rounded-lg px-3 text-sm text-obligon-navy hover:bg-obligon-mist" />
     </nav> : null}
   </div>;
@@ -238,18 +236,26 @@ function MobileBottomNav() {
   );
 }
 
-export function CustomerShell({ children }: CustomerShellProps) {
-  return (
-    <AuthGuard allowedRoles={["customer"]}>
-      <main className="min-h-screen bg-obligon-mist/50 text-obligon-navy">
-        <Sidebar />
-      <div className="lg:pl-64">
-        <DesktopHeader />
-        <MobileHeader />
-        {children}
+function CustomerShellContents({ children }: CustomerShellProps) {
+  const { data, status, error } = useCustomerAccess();
+  const active = status === "success" && !error && data?.active === true;
+  return <CustomerThemeProvider enabled={active}>
+    <main className="min-h-screen bg-obligon-mist/50 text-obligon-navy">
+      {active ? <Sidebar /> : null}
+      <div className={active ? "lg:pl-64" : ""}>
+        {active ? <><DesktopHeader /><MobileHeader /></> : <header className="flex min-h-[84px] items-center justify-between gap-4 border-b border-obligon-border bg-white px-4 sm:px-8">
+          <Link href="/customer/card" aria-label="Obligon LTD My Card"><DashboardLogo priority /></Link>
+          <LogoutButton className="min-h-11 shrink-0 rounded-xl border border-obligon-border px-4 text-sm font-bold text-obligon-navy" />
+        </header>}
+        <CustomerAccessBoundary>{children}</CustomerAccessBoundary>
       </div>
-      <MobileBottomNav />
-      </main>
-    </AuthGuard>
-  );
+      {active ? <MobileBottomNav /> : null}
+    </main>
+  </CustomerThemeProvider>;
+}
+
+export function CustomerShell({ children }: CustomerShellProps) {
+  return <AuthGuard allowedRoles={["customer"]}>
+    <CustomerAccessProvider><CustomerShellContents>{children}</CustomerShellContents></CustomerAccessProvider>
+  </AuthGuard>;
 }

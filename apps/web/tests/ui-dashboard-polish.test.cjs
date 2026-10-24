@@ -25,6 +25,7 @@ function fixture(name, request, dependencies = {}, globals = {}, props = {}) {
     exports: exported, Date, Error, ...globals,
     require(id) {
       if (id === 'react') return React;
+      if (id.endsWith('/partner-access.mjs')) return require('../../../packages/shared/partner-access.mjs');
       if (id in dependencies) return dependencies[id];
       if (id === '@/lib/services') return { authenticatedRequest: (...args) => { calls.push(args); return request(...args); } };
       if (customerScreen || name === 'CardPlanModal') return id === 'lucide-react' ? new Proxy({}, { get: (_, icon) => String(icon) }) : {};
@@ -378,6 +379,7 @@ test('customer stations put real station details before the optional map without
     '@/components/shared/useAsync': { useAsync: () => ({ status: 'success', data: stations, refresh() {} }) },
     '@/components/shared/States': { AsyncBoundary: 'AsyncBoundary' },
     '@/lib/station-fuels': { stationFuelName: value => value },
+    './StationLocationControl': { useStationLocation: () => ({ location: undefined, mode: 'browse', promptOpen: false, busy: false, loading: false, saving: false, error: '' }), StationLocationControl: 'StationLocationControl' },
     '../shared/StationMap': { StationMap: 'StationMap' }
   }, { navigator: { permissions: { query: async () => ({ state: 'prompt' }) }, geolocation: { watchPosition: () => gps++ } }, window: { setInterval: () => 1, addEventListener() {}, removeEventListener() {} }, document: { addEventListener() {}, removeEventListener() {} }, clearInterval() {} });
   await ui.settle();

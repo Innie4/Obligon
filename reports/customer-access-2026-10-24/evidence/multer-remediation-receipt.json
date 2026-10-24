@@ -1,0 +1,69 @@
+{
+  "checkedDate": "2026-10-24",
+  "advisory": {
+    "id": "GHSA-q7qp-rjg7-q26m",
+    "url": "https://github.com/advisories/GHSA-q7qp-rjg7-q26m",
+    "severity": "high",
+    "affectedRange": ">=2.0.0 <2.5.0",
+    "patchedVersion": "2.5.0"
+  },
+  "registry": {
+    "url": "https://registry.npmjs.org/multer",
+    "version": "2.5.0",
+    "integrity": "sha512-BsqOzYGVq49JcW2IzoSAxeKYRevb+dGGPPWleOR8Lrlk4igwxu1/9pwSXlByhCb7MVZDrNJFC0IBP5/O5nLYRw==",
+    "tarball": "https://registry.npmjs.org/multer/-/multer-2.5.0.tgz",
+    "repository": "git+https://github.com/expressjs/multer.git"
+  },
+  "change": {
+    "manifest": "apps/api/package.json",
+    "previousRange": "^2.4.0",
+    "newRange": "^2.5.0",
+    "previousLockedVersion": "2.4.0",
+    "newLockedVersion": "2.5.0",
+    "packageManager": "pnpm 11.25.0",
+    "command": "pnpm --filter @obligon/api update 'multer@^2.5.0' --ignore-scripts",
+    "unrelatedDependencyChanges": false
+  },
+  "verification": {
+    "installedVersion": "2.5.0",
+    "uploadCompatibility": {
+      "tests": 12,
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "database": "isolated localhost PostgreSQL fixture"
+    },
+    "productionAudit": {
+      "registry": "https://registry.npmjs.org",
+      "exitCode": 0,
+      "severityCounts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0
+      },
+      "dependencyMetadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0
+        },
+        "dependencies": 262,
+        "devDependencies": 0,
+        "optionalDependencies": 43,
+        "totalDependencies": 305
+      }
+    }
+  },
+  "fileSha256": {
+    "apps/api/package.json": "1bf0b95b080fd9b560bae141b67009fb905cd7fc4294fc353f636e030ff60010",
+    "pnpm-lock.yaml": "db37facc1fc066ac1f83ae83040af25bfbdfb4124bc5cbcb5daeee46b78415a7"
+  },
+  "limits": [
+    "Production dependency audit only; development dependencies were excluded.",
+    "No production uploads, real funds, provider sends or deployment were exercised by this dependency-only increment."
+  ]
+}

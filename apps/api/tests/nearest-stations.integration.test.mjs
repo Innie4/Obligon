@@ -7,6 +7,7 @@ import { readFile } from 'node:fs/promises';
 const url = process.env.OBLIGON_TEST_DATABASE_URL;
 if (url) assert.ok(['localhost', '127.0.0.1', '[::1]'].includes(new URL(url).hostname));
 const schema = `nearest_stations_${process.pid}_${randomUUID().replaceAll('-', '')}`;
+const userId = randomUUID();
 const check = (name, fn) => test(name, { skip: !url }, fn);
 let admin, pool, server, base;
 before(async () => {
@@ -33,13 +34,15 @@ before(async () => {
   assert.equal(legacy.lng, 3.3792);
   assert.equal(legacy.location_confirmed, false);
   const app = express();
-  app.use((req, res, next) => { req.user = { id: randomUUID(), role: 'customer' }; next(); });
+  await pool.query("CREATE TABLE card_plans(code text PRIMARY KEY,name text,features jsonb);CREATE TABLE customer_subscriptions(user_id uuid,plan_code text,status text,current_period_start timestamptz,current_period_end timestamptz);INSERT INTO card_plans VALUES('test','Test','[]')");
+  await pool.query("INSERT INTO customer_subscriptions VALUES($1,'test','active',now(),now()+interval '1 month')",[userId]);
+  app.use((req, res, next) => { req.user = { id: userId, role: 'customer' }; next(); });
   app.use('/api/customer', (await import('../src/routes/customer.routes.js')).default);
   app.use((error, req, res, next) => res.status(error.status ?? 500).json({ message: error.message }));
   await new Promise(resolve => { server = app.listen(0, '127.0.0.1', resolve); });
   base = `http://127.0.0.1:${server.address().port}/api/customer/stations`;
 });
-beforeEach(async () => { if (url) await pool.query('TRUNCATE stations,fuel_prices'); });
+beforeEach(async () => { if (url) { await pool.query('TRUNCATE stations,fuel_prices'); await pool.query("UPDATE organizations SET verification_status='verified'"); } });
 after(async () => {
   if (!url) return;
   await new Promise(resolve => server.close(resolve));
@@ -105,6 +108,22 @@ check('fuel filtering preserves nearest ordering and missing fuel prices do not 
   await add('Far', 10, 10);
   assert.equal((await list('?lat=0&lng=0&fuel=Petrol'))[0].name, 'Nearby');
   assert.equal((await list('?lat=0&lng=0&fuel=Diesel')).length, 0);
+});
+check('multi-fuel filtering ranks matching verified stations before the network limit',async()=>{
+  for(let index=0;index<55;index++) await add(`Nearby petrol ${index}`,0,0);
+  const diesel=(await add('Far diesel',10,10)).rows[0];
+  const gas=(await add('Far gas',20,20)).rows[0];
+  await pool.query("UPDATE stations SET fuels='{Diesel}' WHERE id=$1",[diesel.id]);
+  await pool.query("UPDATE stations SET fuels='{LPG}' WHERE id=$1",[gas.id]);
+  const pending=(await add('Pending diesel',0,0,'pending')).rows[0];
+  await pool.query("UPDATE stations SET fuels='{Diesel}' WHERE id=$1",[pending.id]);
+  assert.deepEqual((await list('?lat=0&lng=0&fuels=Diesel,LPG')).map(row=>row.name),['Far diesel','Far gas']);
+  assert.deepEqual((await list('?lat=0&lng=0&fuels=Diesel,LPG&search=gas')).map(row=>row.name),['Far gas']);
+  await pool.query("UPDATE organizations SET verification_status='pending'");
+  assert.equal((await list('?lat=0&lng=0&fuels=Diesel,LPG')).length,0);
+});
+check('invalid multi-fuel filters and malformed search values are rejected',async()=>{
+  for(const query of ['?fuels=','?fuels=Petrol,unknown','?fuels=Petrol,,Diesel','?fuels=Petrol&fuels=Diesel','?fuels=Petrol,Petrol,Petrol,Petrol,Petrol,Petrol','?fuel=Petrol&fuel=Diesel','?search=x&search=y']) assert.equal((await fetch(base+query)).status,400,query);
 });
 
 check('new registrations never inherit guessed coordinates and unconfirmed legacy locations stay unranked', async () => {
