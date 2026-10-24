@@ -34,6 +34,37 @@ test('unsubscribed direct dashboard URLs show only plan entry, while My Card rem
   }
 });
 
+test('subscription checking and failed checks keep a non-dismissible gate with retry and sign-in recovery', () => {
+  let access, pathname = '/customer/profile', retries = 0;
+  const reload = () => { retries++; };
+  const React = { createContext: () => ({}), useContext: () => access, createElement: (type, props, ...children) => ({ type, props: { ...props, children } }) };
+  const c = load('../components/customer-dashboard/CustomerAccess.tsx', {
+    react: React,
+    'next/link': { default: 'Link', __esModule: true },
+    'next/navigation': { usePathname: () => pathname },
+    '@/components/shared/StatusPopup': { StatusPopup: 'StatusPopup' }
+  });
+  for (pathname of ['/customer/profile', '/customer/card']) {
+    access = { status: 'loading', data: { active: true }, error: null, reload };
+    let popup = c.CustomerAccessBoundary({ children: 'PROTECTED_CUSTOMER_CONTENT' });
+    assert.equal(popup.type, 'StatusPopup'); assert.equal(popup.props.tone, 'loading'); assert.equal(popup.props.dismissible, false);
+    assert.ok(!JSON.stringify(popup).includes('PROTECTED_CUSTOMER_CONTENT'));
+    for (access of [
+      { status: 'error', data: null, error: new Error('Unauthorized'), reload },
+      { status: 'success', data: { active: true }, error: new Error('Stale subscription'), reload }
+    ]) {
+      popup = c.CustomerAccessBoundary({ children: 'PROTECTED_CUSTOMER_CONTENT' });
+      assert.equal(popup.type, 'StatusPopup'); assert.equal(popup.props.tone, 'error'); assert.equal(popup.props.dismissible, false);
+      assert.ok(!JSON.stringify(popup).includes('PROTECTED_CUSTOMER_CONTENT'));
+      assert.equal(popup.props.onRetry, reload); popup.props.onRetry();
+      const links = elements(popup.props.action).filter(node => node.type === 'Link');
+      assert.equal(links.length, 1); assert.equal(links[0].props.href, '/auth/login');
+      assert.deepEqual(links[0].props.children, ['Sign in again']);
+    }
+  }
+  assert.equal(retries, 4);
+});
+
 function fixture(initial = { prompted: true, enabled: false }) {
   const slots = [], pendingEffects = [], apiCalls = [], saves = [], watches = new Map(), cleared = [];
   let cursor = 0, nextWatch = 0, ctx;

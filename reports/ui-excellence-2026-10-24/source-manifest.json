@@ -17,6 +17,7 @@
     "apps/web/components/auth/SuccessAutoRedirect.tsx",
     "apps/web/components/company-dashboard/CompanyScreen.tsx",
     "apps/web/components/company-dashboard/CompanyShell.tsx",
+    "apps/web/components/customer-dashboard/CustomerAccess.tsx",
     "apps/web/components/customer-dashboard/CustomerFuelCheckout.tsx",
     "apps/web/components/customer-dashboard/CustomerScreen.tsx",
     "apps/web/components/customer-dashboard/CustomerShell.tsx",
@@ -38,6 +39,7 @@
     "apps/web/tests/admin-screen-loading.test.cjs",
     "apps/web/tests/auth-method-ui.test.cjs",
     "apps/web/tests/company-admin-ui-polish.test.cjs",
+    "apps/web/tests/customer-access-location.test.cjs",
     "apps/web/tests/customer-my-card.test.cjs",
     "apps/web/tests/landing-plans-regression.test.cjs",
     "apps/web/tests/partner-audit-regression.test.cjs",
@@ -45,8 +47,8 @@
     "apps/web/tests/production-auth-navigation.test.cjs",
     "apps/web/tests/production-customer-controls.test.cjs",
     "apps/web/tests/station-profile-form.test.cjs",
-    "apps/web/tests/ui-dashboard-polish.test.cjs",
-    "apps/web/tests/subscription-comparison.test.cjs"
+    "apps/web/tests/subscription-comparison.test.cjs",
+    "apps/web/tests/ui-dashboard-polish.test.cjs"
   ],
   "scope": "frontend UI/page markup and focused regression tests; no API/schema/environment/dependency changes"
 }

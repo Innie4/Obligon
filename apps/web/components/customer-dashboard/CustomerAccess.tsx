@@ -33,8 +33,8 @@ export function useCustomerAccess() {
 export function CustomerAccessBoundary({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { data, status, error, reload } = useCustomerAccess();
-  if (status === "loading") return <StatusPopup tone="loading" message="Checking your subscription…" />;
-  if (error || status === "error") return <StatusPopup tone="error" message="Your subscription could not be checked. Try again to continue." onRetry={reload} />;
+  if (status === "loading") return <StatusPopup tone="loading" message="Checking your subscription…" dismissible={false} />;
+  if (error || status === "error") return <StatusPopup tone="error" message="Your subscription could not be checked. Try again or sign in again to continue." onRetry={reload} dismissible={false} action={<Link href="/auth/login" className="inline-flex min-h-11 items-center rounded-lg border border-obligon-border px-4 text-sm font-bold text-obligon-navy">Sign in again</Link>} />;
   if (data?.active || pathname === "/customer/card") return <>{children}</>;
   return <section className="mx-auto flex min-h-[70dvh] max-w-2xl items-center px-5 py-12 sm:px-8">
     <div className="w-full">

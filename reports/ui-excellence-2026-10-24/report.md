@@ -23,7 +23,7 @@
 
 ## Verification
 
-- Final full web regression: **707 passed, 0 failed, 0 skipped**.
+- Final full web regression: **708 passed, 0 failed, 0 skipped**.
 - Production build and TypeScript passed. Lint exits successfully with existing warning output; it is not warning-free. The local build uses a disposable localhost API and is never uploaded; Vercel builds from Git using its own production configuration.
 - Production-mode route sweep: **324 frames, 81 route/role contexts**, at **1440, 768, 390 and 320px**. No uncaught page errors and no document-width overflow.
 - Final representative WCAG axe 4.11 run: **38 frames**, 19 contexts at desktop/phone, **0 detected A/AA violations**. Automated rules do not establish full accessibility compliance.
@@ -151,3 +151,13 @@ Push and deployment are explicitly authorized by the user. This increment is pre
 The current hosting workflow is Git-triggered deployment, without configured percentage canaries. Validate provider Ready/Live against the exact pushed revision and smoke-test public pages/customer navigation. Abort on build failure, app errors, login/navigation failure or fresh health failure. This is not a claim of measured production traffic error rates or transaction readiness.
 
 Source changes and this report are committed together. Generated PNGs and raw local QA artifacts remain in this workspace to avoid adding the large screenshot set to the repository. A separate local release receipt records the pushed SHA and provider verification after deployment.
+
+## Live release findings and recovery follow-up
+
+The main UI commit `fad05e8db9cd5c44d96815c070fcb4fddfd41f37` was pushed to master and observed as Vercel Ready/Current and Render Live. Public homepage, sign-in, FuelVista and admin sign-in returned HTTP 200; API health returned HTTP 200. The existing customer test account signed in and loaded Overview and My Card, including current plan and gated card state. No payment, identity submission or provider enrollment was performed.
+
+During a long-lived browser session, the subscription lookup returned 401 and its popup offered only retry. A small display-only follow-up keeps required subscription loading/error feedback non-dismissible and adds the existing `/auth/login` **Sign in again** route beside retry. It does not alter tokens, refresh logic, entitlement checks, polling or authentication handlers. Focused tests prove protected children remain hidden during error and stale data; independent review is clear. This recovery-state follow-up is verified separately and is not a fifth aesthetic-scoring round.
+
+**Remaining live launch blockers:** Render logged `EMAIL_DOMAIN_UNVERIFIED` from Resend when sending a notification: the configured sender uses an unverified gmail.com domain. The provider configuration flag in health is not proof of delivery. Descope contact verification and general notification email are separate paths. Issuing/BVN and benefit funding/reconciliation requirements remain as previously recorded. This UI release does not establish full financial or provider readiness.
+
+The live customer session needed fresh sign-in after observed unauthorized subscription reads; fresh sign-in recovered the dashboard/card view. The underlying cause and long-duration multi-tab refresh behavior are not certified by this UI-only recovery fix. Live company/admin/partner accounts were unavailable for new authenticated smoke tests; isolated role testing provides their recorded evidence.

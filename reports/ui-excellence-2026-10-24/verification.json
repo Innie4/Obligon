@@ -1,7 +1,7 @@
 {
   "base": "a28e2564a08bbaad40b63b9c9addfea51e1a3f38",
   "webTests": {
-    "passed": 707,
+    "passed": 708,
     "failed": 0,
     "skipped": 0
   },
@@ -36,5 +36,15 @@
     "incomplete": 0
   },
   "providerEffects": "disabled in isolated fixtures; no real funds moved",
-  "publicDesignInspector": "style-rule FAILs preserved and disclosed; not all-pass"
+  "publicDesignInspector": "style-rule FAILs preserved and disclosed; not all-pass",
+  "recoveryFollowup": {
+    "focusedTests": {
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    "build": "passed",
+    "independentReview": "clear",
+    "scope": "popup persistence and existing sign-in link only; no entitlement/authentication logic change"
+  }
 }

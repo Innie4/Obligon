@@ -13,7 +13,7 @@ Paths below are under `apps/web/`; the complete source list is in `reports/ui-ex
 - `components/solutions/SolutionPage.tsx`: compact mobile facts and specific headings across all three solutions.
 - `components/auth/AuthForms.tsx`, `AuthShell.tsx`: task headings and compact account choices. `AdditionalSignInMethods.tsx`, `SignInOptions.tsx`: availability wording. `AuthStatus.tsx`: popup recovery cannot disappear into a blank page. `SuccessAutoRedirect.tsx`: stable first render.
 - `components/shared/SubscriptionPanel.tsx`: compared and purchased plans stay distinct, with full benefits. `States.tsx`: optional compact summaries preserve full-size defaults.
-- `components/customer-dashboard/CustomerScreen.tsx`, `CustomerShell.tsx`: headings, phone records, wrapping receipts, neutral spend styling, compact summaries, persistent filters and section links. `CustomerTheme.tsx`: focusable section destinations. `CustomerFuelCheckout.tsx`: section targets and readable empty copy.
+- `components/customer-dashboard/CustomerScreen.tsx`, `CustomerShell.tsx`: headings, phone records, wrapping receipts, neutral spend styling, compact summaries, persistent filters and section links. `CustomerAccess.tsx`: non-dismissible checks and direct sign-in recovery without changing access gates. `CustomerTheme.tsx`: focusable section destinations. `CustomerFuelCheckout.tsx`: section targets and readable empty copy.
 - `components/dashboard/DashboardScreen.tsx`, `StationDiscounts.tsx`: compact metrics and existing-role edit affordances. `StationProfileForm.tsx`, `WorkshopDashboard.tsx`: section links and two Save controls sharing one form.
 - `components/company-dashboard/CompanyScreen.tsx`, `CompanyShell.tsx`: phone controls, contextual empty records and consistent active navigation.
 - `components/admin-dashboard/AdminBenefits.tsx`, `AdminScreen.tsx`, `DiscountApprovals.tsx`, `IntakeConsole.tsx`, `OperationsInbox.tsx`: safe wrapping, labelled controls, compact queue selection and selected-ticket semantics.
@@ -33,7 +33,7 @@ Native links, disclosures and form submission preserve keyboard behavior and exi
 A shop display can show a different product without changing your basket. Likewise, comparing a plan must not change your active subscription or start a purchase. `SubscriptionPanel` keeps those values separate, and regression tests check the exact checkout payload.
 
 ## Watch out for
-Automated accessibility checks do not replace screen-reader or physical-device testing. Provider availability still affects issuing, BVN and SMS. The map’s WebGL canvas can appear blank in full-page screenshots while rendering correctly in an ordinary viewport; inspect the visible map before changing its sizing.
+Automated accessibility checks do not replace screen-reader or physical-device testing. Provider availability still affects issuing, BVN and SMS. Live notification email also failed because the Resend sender domain is unverified. The map’s WebGL canvas can appear blank in full-page screenshots while rendering correctly in an ordinary viewport; inspect the visible map before changing its sizing.
 
 ## Check yourself
 1. Why keep preview and purchased plan separate?
