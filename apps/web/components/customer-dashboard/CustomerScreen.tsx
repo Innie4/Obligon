@@ -2574,7 +2574,7 @@ export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
   const [promptedForMonth, setPromptedForMonth] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (pageKey !== "card" || !canEditProjection || !projection?.needsProjection) return;
+    if (pageKey !== "card" || cardStatus === null || !canEditProjection || !projection?.needsProjection) return;
     const params = new URLSearchParams(window.location.search);
     if (params.has("chosenPlan") || params.has("plan") || params.has("tx_ref") || params.has("reference")) return;
     // Never displace something the customer opened deliberately.
@@ -2582,7 +2582,7 @@ export function CustomerScreen({ pageKey }: { pageKey: CustomerPageKey }) {
     if (promptedForMonth === projection.month) return;
     setPromptedForMonth(projection.month);
     setModal("spendProjection");
-  }, [pageKey, projection, modal, promptedForMonth, canEditProjection]);
+  }, [pageKey, projection, modal, promptedForMonth, canEditProjection, cardStatus]);
 
   const handleTopUpSuccess = () => {
     setBalanceRefreshKey((key) => key + 1);

@@ -1,0 +1,7 @@
+{
+  "base": "9a08c00982a3dd840c282b3f1d8133be1dc3cee8",
+  "files": {
+    "apps/web/components/customer-dashboard/CustomerScreen.tsx": "4c0180cb4e3c439973c6166ed343acbed95eb15cb9613280b3616fe6397505f0",
+    "apps/web/tests/customer-my-card.test.cjs": "efa46a2a79a0fd53de4fa802b7878c8b464646976de163fdc51c2b34201ba99f"
+  }
+}

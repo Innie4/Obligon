@@ -34,6 +34,8 @@ The browser gate improves navigation; server checks enforce access. Database tra
 
 Think of a receipt number: asking twice about one receipt should not create a second purchase. An idempotency key identifies one intended action. Here it is bound durably to the caller and amount. Repeating it returns the existing outcome; changing the amount under that key is rejected. A confirmed decline is also saved, so it cannot unexpectedly succeed later.
 
+The live release check also found overlapping My Card prompts before issuance. `CustomerScreen.tsx` now waits for `cardStatus` before automatically asking for the monthly budget. Manual `openSpendProjection` remains available, and `customer-my-card.test.cjs` covers both paths, issued-card loading and dismissal.
+
 ## Watch out for
 
 Local tests use synthetic providers and funds. Actual settlement, card issuing, physical GPS and email receipt remain separate checks. Repair completion does not pay the mechanic externally. Purchase analytics do not estimate vehicle efficiency. Production release requires qualified human review.

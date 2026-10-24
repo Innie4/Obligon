@@ -209,25 +209,63 @@ test('first-card processor return still verifies issuance payment', async () => 
   assert.deepEqual(fixture.calls, ['issuance']);
 });
 
-test('only My Card opens the monthly projection prompt for an entitled customer', () => {
+function projectionScreenFixture(pageKey = 'card') {
   const CustomerModals = () => null;
+  const runtime = hooks();
+  const { CustomerScreen, CardPage } = load('../components/customer-dashboard/CustomerScreen.tsx', {
+    expose: '\nexport { CardPage };',
+    globals: { window: browser('') },
+    dependencies: {
+      react: runtime.React,
+      './CustomerModals': { CustomerModals },
+      '@/lib/customer-entitlements': load('../lib/customer-entitlements.ts'),
+      './CustomerAccess': { useCustomerAccess: () => ({ data: { active: true, features: [{ label: 'Fuel Budget Management', state: 'included' }] }, refresh() {} }) },
+      '@/components/shared/useAsync': { useAsync: () => ({ data: { month: '2026-10', needsProjection: true } }) },
+      '@/components/shared/usePolling': { usePolling() {} },
+    },
+  });
+  return {
+    render: () => runtime.render(CustomerScreen, { pageKey }),
+    modal: tree => allNodes(tree).find(node => node.type === CustomerModals),
+    card: tree => allNodes(tree).find(node => node.type === CardPage),
+  };
+}
+
+test('only My Card opens the monthly projection prompt after an entitled customer loads an issued card', () => {
   for (const pageKey of ['overview', 'wallet', 'card']) {
-    const runtime = hooks();
-    const { CustomerScreen } = load('../components/customer-dashboard/CustomerScreen.tsx', {
-      globals: { window: browser('') },
-      dependencies: {
-        react: runtime.React,
-        './CustomerModals': { CustomerModals },
-        '@/lib/customer-entitlements': load('../lib/customer-entitlements.ts'),
-        './CustomerAccess': { useCustomerAccess: () => ({ data: { active: true, features: [{ label: 'Fuel Budget Management', state: 'included' }] }, refresh() {} }) },
-        '@/components/shared/useAsync': { useAsync: () => ({ data: { month: '2026-10', needsProjection: true } }) },
-        '@/components/shared/usePolling': { usePolling() {} },
-      },
-    });
-    runtime.render(CustomerScreen, { pageKey });
-    const modal = allNodes(runtime.render(CustomerScreen, { pageKey })).find(node => node.type === CustomerModals);
+    const fixture = projectionScreenFixture(pageKey);
+    const first = fixture.render();
+    if (pageKey === 'card') fixture.card(first).props.onCardChange({ id: 'card', status: 'active' });
+    fixture.render();
+    const modal = fixture.modal(fixture.render());
     assert.equal(modal.props.modal, pageKey === 'card' ? 'spendProjection' : null);
+    if (pageKey === 'card') {
+      modal.props.onClose();
+      fixture.render();
+      assert.equal(fixture.modal(fixture.render()).props.modal, null, 'closing the monthly prompt does not reopen it');
+    }
   }
+});
+
+test('paid applicants without an issued card do not receive an automatic budget popup over identity details', () => {
+  const fixture = projectionScreenFixture();
+  fixture.render();
+  let tree = fixture.render();
+  assert.equal(fixture.modal(tree).props.modal, null, 'card loading must not open an automatic budget popup');
+  fixture.card(tree).props.onCardChange(null);
+  fixture.render();
+  tree = fixture.render();
+  assert.equal(fixture.modal(tree).props.modal, null, 'a paid applicant without a card keeps identity collection as the automatic dialog');
+});
+
+test('paid applicants can still open budget editing deliberately without an issued card', () => {
+  const fixture = projectionScreenFixture();
+  let tree = fixture.render();
+  fixture.card(tree).props.onCardChange(null);
+  tree = fixture.render();
+  fixture.card(tree).props.onEditProjection();
+  tree = fixture.render();
+  assert.equal(fixture.modal(tree).props.modal, 'spendProjection');
 });
 
 test('embedded subscription and fuel panels each confirm only their own payment return', async () => {
