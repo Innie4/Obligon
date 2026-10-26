@@ -3,76 +3,44 @@
 import { DashboardLogo } from "@/components/shared/DashboardLogo";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import * as React from "react";
-import type { ComponentType } from "react";
-import {
-  AlertTriangle,
-  BarChart3,
-  Building2,
-  Grid2X2,
-  Handshake,
-  Settings,
-  WalletCards
-} from "lucide-react";
-import { adminNav, type AdminIconKey } from "@/lib/mock/admin-data";
+import { AlertTriangle, BarChart3, Building2, Grid2X2, Handshake, Settings, WalletCards } from "lucide-react";
+import { adminNav } from "@/lib/mock/admin-data";
 import { useSession } from "@/components/shared/AuthContext";
 import { LogoutButton, SignInOptionsLink } from "@/components/auth/LogoutButton";
 
-const iconMap = {
-  dashboard: Grid2X2,
-  transactions: WalletCards,
-  fuelStations: Building2,
-  analytics: BarChart3,
-  partners: Handshake,
-  settings: Settings,
-  disputes: AlertTriangle
-} satisfies Record<AdminIconKey, ComponentType<{ size?: number; className?: string }>>;
+const icons = { dashboard: Grid2X2, transactions: WalletCards, fuelStations: Building2, analytics: BarChart3, partners: Handshake, settings: Settings, disputes: AlertTriangle };
+const groups = [
+  { label: "Workspace", paths: ["/admin", "/admin/intake"] },
+  { label: "Review queues", paths: ["/admin/partner-applications", "/admin/discount-approvals", "/admin/customer-benefits", "/admin/operations", "/admin/disputes"] },
+  { label: "Management", paths: ["/admin/reports", "/admin/staff"] },
+];
 
 export function AdminSidebar() {
   const pathname = usePathname();
   const { user } = useSession();
-
-  return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r border-obligon-border bg-white px-5 py-6 text-obligon-navy lg:flex">
-      <div>
-        <Link href="/admin" className="block" aria-label="Obligon LTD home">
-          <DashboardLogo priority />
-        </Link>
-      </div>
-
-      <nav aria-label="Admin sections" className="mt-8 min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
-        {adminNav.map((item) => {
-          const Icon = iconMap[item.icon];
-          const active = pathname === item.href || (item.href === "/admin" && pathname === "/admin");
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={active ? "page" : undefined}
-              className={`relative flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
-                active ? "bg-obligon-green text-white" : "text-obligon-text hover:bg-obligon-mist hover:text-obligon-navy"
-              }`}
-            >
-              <Icon size={18} className="shrink-0" />
-              <span>{item.label}</span>
-            </Link>
-          );
+  return <aside className="admin-sidebar">
+    <div className="admin-sidebar-brand">
+      <Link href="/admin" aria-label="Obligon LTD home"><DashboardLogo priority width={155} /></Link>
+      <p>Administration</p>
+    </div>
+    <nav aria-label="Admin sections">
+      {groups.map(group => <div key={group.label} className="admin-nav-group">
+        <p className="admin-nav-label">{group.label}</p>
+        {adminNav.filter(item => group.paths.includes(item.href)).map(item => {
+          const path = item.href;
+          const Icon = icons[item.icon];
+          const active = pathname === path || (path === "/admin" && pathname === "/admin/companies");
+          return <Link key={path} href={path} aria-current={active ? "page" : undefined} className="admin-nav-link"><Icon size={18} className="shrink-0" aria-hidden="true" /><span>{item.label}</span></Link>;
         })}
-      </nav>
-
-      <div className="mt-4 shrink-0 border-t border-obligon-border pt-4">
-        <div className="flex items-center gap-3 py-2">
-          <span className="grid size-10 place-items-center rounded-full bg-obligon-lime text-sm font-extrabold text-[#061958]">{user?.initials ?? "OA"}</span>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-extrabold text-obligon-navy truncate">{user?.name ?? "Obligon Admin"}</p>
-            <p className="text-xs font-medium text-obligon-text truncate">{user?.accountTier ?? "Level 4 Access"}</p>
-          </div>
-        </div>
-        <SignInOptionsLink className="mt-2 min-h-11 w-full justify-start text-sm" />
-        <LogoutButton className="min-h-11 w-full justify-start rounded-lg px-4 text-sm text-[#c1121f] hover:bg-[#fff0f3]" />
+      </div>)}
+    </nav>
+    <div className="admin-sidebar-footer">
+      <div className="flex items-center gap-3 pb-3">
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#e5efdc] text-xs font-bold text-[#243f19]">{user?.initials ?? "OA"}</span>
+        <div className="min-w-0"><p className="truncate text-xs font-semibold">{user?.name ?? "Administrator"}</p><p className="mt-1 text-xs opacity-75">Platform administrator</p></div>
       </div>
-
-    </aside>
-  );
+      <SignInOptionsLink className="min-h-11 w-full justify-start rounded-lg px-2 text-xs" />
+      <LogoutButton className="min-h-11 w-full justify-start rounded-lg px-2 text-xs" />
+    </div>
+  </aside>;
 }

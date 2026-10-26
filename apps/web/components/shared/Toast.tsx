@@ -34,7 +34,7 @@ const toneConfig: Record<ToastTone, { icon: React.ComponentType<LucideProps>; ri
   info: { icon: Info, ring: "border-obligon-blue/40", bg: "bg-white", text: "text-obligon-blue" }
 };
 
-export function ToastProvider({ children }: { children: React.ReactNode }) {
+export function ToastProvider({ children, placement = "corner" }: { children: React.ReactNode; placement?: "corner" | "center" }) {
   const [items, setItems] = React.useState<ToastItem[]>([]);
   const itemsRef = React.useRef<ToastItem[]>([]);
   const timers = React.useRef(new Map<number, number>());
@@ -97,8 +97,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ToastContext.Provider value={value}>
-      <StatusPopupProvider>{children}</StatusPopupProvider>
-      <div className="pointer-events-none fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-4 z-[100] flex w-[min(92vw,360px)] flex-col gap-3 lg:bottom-4">
+      <StatusPopupProvider placement={placement}>{children}</StatusPopupProvider>
+      <div data-toast-placement={placement} className={placement === "center"
+        ? "admin-feedback-stack pointer-events-none fixed left-1/2 top-1/2 z-[120] flex max-h-[calc(100dvh-2rem)] w-[min(calc(100vw-2rem),440px)] -translate-x-1/2 -translate-y-1/2 flex-col gap-3 overflow-y-auto"
+        : "pointer-events-none fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-4 z-[100] flex w-[min(92vw,360px)] flex-col gap-3 lg:bottom-4"}>
         {items.map((item) => {
           const config = toneConfig[item.tone];
           const Icon = config.icon;

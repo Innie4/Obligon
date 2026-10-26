@@ -449,3 +449,16 @@ integration('station fuel units require admin approval and repricing before gas 
  assert.deepEqual((await pool.query('SELECT fuel_type,litres,selling_unit FROM resupply_orders')).rows,[{fuel_type:'CNG',litres:25,selling_unit:'scm'}]);
  assert.equal((await pool.query('SELECT selling_unit FROM fuel_price_history ORDER BY created_at,id')).rows.length,2);
 });
+integration('admin support exposes separate requester roles and organization context for list and detail', async()=>{
+ const {rows:[company]}=await pool.query("INSERT INTO organizations(name,type,owner_user_id)VALUES('Source Fleet','company',$1)RETURNING *",[fixtures.customer.id]);
+ const {rows:[companyTicket]}=await pool.query("INSERT INTO support_tickets(reference,user_id,organization_id,subject,message)VALUES('SUP_COMPANY',$1,$2,'Company request','A member request')RETURNING *",[fixtures.customer.id,company.id]);
+ const {rows:[partnerTicket]}=await pool.query("INSERT INTO support_tickets(reference,user_id,organization_id,subject,message)VALUES('SUP_PARTNER',$1,$2,'Partner request','A station request')RETURNING *",[fixtures.partner.id,fixtures.org.id]);
+ const {rows:[publicContact]}=await pool.query("INSERT INTO contact_messages(name,email,message)VALUES('Company Partner','public-source@test.invalid','A public request')RETURNING *");
+ const {rows:[publicTicket]}=await pool.query("INSERT INTO support_tickets(reference,contact_message_id,contact_name,subject,message)VALUES('SUP_PUBLIC',$1,'Company Partner','Public request','A public request')RETURNING *",[publicContact.id]);
+ const listing=await request('/support');assert.equal(listing.status,200);
+ for(const [ticket,role,orgType,orgName] of [[fixtures.ticket,'customer',null,null],[companyTicket,'customer','company','Source Fleet'],[partnerTicket,'partner','partner','Partner org'],[publicTicket,null,null,null]]) {
+  const list=listing.body.tickets.find(item=>item.id===ticket.id);assert.ok(list);assert.equal(list.requester_role,role);assert.equal(list.organization_type,orgType);assert.equal(list.organization_name,orgName);
+  const detail=await request(`/support/${ticket.id}/messages`);assert.equal(detail.status,200);assert.equal(detail.body.ticket.requester_role,role);assert.equal(detail.body.ticket.organization_type,orgType);assert.equal(detail.body.ticket.organization_name,orgName);
+ }
+ assert.equal(listing.body.tickets.find(item=>item.id===publicTicket.id).contact_message_id,publicContact.id);
+});

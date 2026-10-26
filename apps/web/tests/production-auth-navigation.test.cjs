@@ -16,7 +16,7 @@ function fixture(path, { status = 'authenticated', role = 'customer', loginResul
   let user = role ? { id: 'synthetic-user', role } : null;
   const router = { push: value => events.push(['push', value]), replace: value => events.push(['replace', value]), refresh: () => events.push(['refresh']) };
   const React = {
-    createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
+    createElement: (type, props, ...children) => typeof type === 'function' ? type({ ...props, children }) : ({ type, props: { ...props, children } }),
     useState(initial) {
       const index = stateIndex++;
       if (!(index in states)) states[index] = typeof initial === 'function' ? initial() : initial;
@@ -48,7 +48,7 @@ function fixture(path, { status = 'authenticated', role = 'customer', loginResul
         if (name === '@/components/site/routes') return load('../components/site/routes.ts');
         if (name === '@/lib/auth-routing') return load('../lib/auth-routing.ts');
         if (name === '@/components/shared/AuthContext') return { useSession: () => ({ status, user, login: async payload => { events.push(['login', payload]); return loginResult; }, logout: async () => events.push(['logout']) }) };
-        if (name === '@/components/shared/Toast') return { useToast: () => ({ success: value => events.push(['success', value]), error: value => events.push(['error', value]) }) };
+        if (name === '@/components/shared/Toast') return { ToastProvider: 'ToastProvider', useToast: () => ({ success: value => events.push(['success', value]), error: value => events.push(['error', value]) }) };
         if (name === '@/lib/services') return { api: { getSession: async () => { events.push(['session']); if (sessionError) throw new Error(sessionError); return user; } } };
         return new Proxy({}, { get: (_, key) => String(key) });
       },
@@ -108,6 +108,7 @@ test('expired session cannot announce success when post-login verification fails
 });
 test('admin sign-in checks verified role and clears a non-admin session', async () => {
   const ui = fixture('../app/admin/login/page.tsx', { role: 'customer' });
+  assert.equal(ui.nodes().find(node => node.type === 'ToastProvider').props.placement, 'center');
   await ui.submit();
   assert.equal(ui.events.some(([event]) => event === 'success' || event === 'push'), false);
   assert.ok(ui.events.some(([event]) => event === 'logout'));

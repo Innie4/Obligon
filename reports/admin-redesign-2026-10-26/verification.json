@@ -1,0 +1,76 @@
+{
+  "routeViewports": 40,
+  "authenticatedRoutes": [
+    "/admin",
+    "/admin/companies",
+    "/admin/customer-benefits",
+    "/admin/discount-approvals",
+    "/admin/disputes",
+    "/admin/intake",
+    "/admin/operations",
+    "/admin/partner-applications",
+    "/admin/reports",
+    "/admin/staff"
+  ],
+  "widths": [
+    320,
+    390,
+    768,
+    1440
+  ],
+  "horizontalOverflow": 0,
+  "pageErrors": 0,
+  "axeCaptures": 20,
+  "detectedAxeViolations": 0,
+  "web": {
+    "tests": 733,
+    "passed": 733,
+    "failed": 0,
+    "skipped": 0,
+    "receipt": "evidence/web-tests-final.tap"
+  },
+  "api": {
+    "tests": 55,
+    "passed": 55,
+    "failed": 0,
+    "skipped": 0,
+    "receipt": "evidence/admin-api-tests.tap"
+  },
+  "interactions": {
+    "baselineRecords": 41,
+    "lifecycleCases": 8,
+    "unresolvedFailures": 0,
+    "axeRepresentativeCaptures": 10,
+    "detectedViolations": 0,
+    "incompleteNodes": 18
+  },
+  "conceptScan": {
+    "main3x": "no FAILs",
+    "smallPhone": "renderer emitted empty scan; not counted"
+  },
+  "build": {
+    "passed": true,
+    "typecheck": "passed in production build",
+    "receipt": "evidence/build.log"
+  },
+  "lint": {
+    "passed": true,
+    "warnings": 75,
+    "errors": 0,
+    "receipt": "evidence/lint.log"
+  },
+  "finalCopyFocusedTests": {
+    "tests": 28,
+    "passed": 28,
+    "failed": 0,
+    "skipped": 0
+  },
+  "navigation": {
+    "cases": 3,
+    "passed": 3,
+    "pageErrors": 0,
+    "logoutRequests": 0,
+    "smallestMeasuredContrast": 6.22,
+    "receipt": "evidence/states/mobile-nav-acceptance.json"
+  }
+}

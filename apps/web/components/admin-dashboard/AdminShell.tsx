@@ -9,6 +9,8 @@ import { adminNav } from "@/lib/mock/admin-data";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { LogoutButton, SignInOptionsLink } from "@/components/auth/LogoutButton";
 import { useDialogFocus } from "@/components/shared/useDialogFocus";
+import { ToastProvider } from "@/components/shared/Toast";
+import "./admin.css";
 
 type AdminShellProps = {
   children: React.ReactNode;
@@ -26,18 +28,20 @@ export function AdminShell({ children }: AdminShellProps) {
   }, []);
 
   return (
+    <ToastProvider placement="center">
     <AuthGuard allowedRoles={["admin"]}>
-      <main className="min-h-screen bg-[#f8fafc] text-obligon-navy">
+      <main className="admin-workspace min-h-screen text-obligon-navy">
+        <a href="#admin-content" className="admin-skip-link">Skip to page content</a>
         <AdminSidebar />
       {mobileMenuOpen ? (
         <div className="fixed inset-0 z-50 bg-[#050816]/75 lg:hidden" onMouseDown={() => setMobileMenuOpen(false)}>
-          <aside ref={menuRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Admin navigation" onMouseDown={(event) => event.stopPropagation()} className="flex h-full w-[min(300px,100%)] flex-col overflow-y-auto border-r border-obligon-border bg-white p-5 text-obligon-navy shadow-lg outline-none">
+          <aside ref={menuRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Admin navigation" onMouseDown={(event) => event.stopPropagation()} className="admin-mobile-menu flex h-full w-[min(320px,100%)] flex-col overflow-y-auto p-5 shadow-lg outline-none">
             <div className="flex shrink-0 items-center justify-between gap-3">
-              <p className="font-display text-xl font-bold">Admin workspace</p>
+              <p className="font-display text-xl font-bold">Administration</p>
               <button type="button" onClick={() => setMobileMenuOpen(false)} className="grid size-11 shrink-0 place-items-center rounded-lg bg-obligon-mist" aria-label="Close admin menu"><X size={20} /></button>
             </div>
             <nav aria-label="Admin sections" className="mt-8 space-y-2">
-              {adminNav.map((item) => <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)} className="flex min-h-11 items-center rounded-lg px-4 text-sm font-semibold text-obligon-text hover:bg-obligon-mist hover:text-obligon-navy">{item.label}</Link>)}
+              {adminNav.map((item) => <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)} className="admin-mobile-link">{item.label}</Link>)}
             </nav>
             <div className="mt-auto border-t border-obligon-border pt-4">
               <SignInOptionsLink className="w-full justify-start" />
@@ -46,11 +50,12 @@ export function AdminShell({ children }: AdminShellProps) {
           </aside>
         </div>
       ) : null}
-      <div className="min-w-0 lg:pl-[280px]">
+      <div className="admin-main min-w-0 lg:pl-[260px]">
         <AdminHeader onOpenMenu={() => setMobileMenuOpen(true)} />
-        {children}
+        <div id="admin-content" className="admin-content" tabIndex={-1}>{children}</div>
       </div>
       </main>
     </AuthGuard>
+    </ToastProvider>
   );
 }

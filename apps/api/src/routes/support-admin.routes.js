@@ -8,10 +8,10 @@ import { issueRefund } from '../lib/money.js';
 const router=Router();
 const uuid = value=>{if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(String(value))) throw badRequest('Invalid ID');return value;};
 router.get('/support',asyncHandler(async(req,res)=>{
- res.json({tickets:await q(`SELECT t.*,u.full_name FROM support_tickets t LEFT JOIN users u ON u.id=t.user_id ORDER BY t.created_at DESC LIMIT 200`)});
+ res.json({tickets:await q(`SELECT t.*,u.full_name,u.role AS requester_role,o.type AS organization_type,o.name AS organization_name FROM support_tickets t LEFT JOIN users u ON u.id=t.user_id LEFT JOIN organizations o ON o.id=t.organization_id ORDER BY t.created_at DESC LIMIT 200`)});
 }));
 router.get('/support/:id/messages',asyncHandler(async(req,res)=>{
- const ticket=await one('SELECT * FROM support_tickets WHERE id=$1',[uuid(req.params.id)]);if(!ticket)throw notFound('Ticket not found');
+ const ticket=await one('SELECT t.*,u.full_name,u.role AS requester_role,o.type AS organization_type,o.name AS organization_name FROM support_tickets t LEFT JOIN users u ON u.id=t.user_id LEFT JOIN organizations o ON o.id=t.organization_id WHERE t.id=$1',[uuid(req.params.id)]);if(!ticket)throw notFound('Ticket not found');
  res.json({ticket,messages:await q('SELECT * FROM ticket_messages WHERE ticket_id=$1 ORDER BY created_at,id',[ticket.id])});
 }));
 router.post('/support/:id/messages',asyncHandler(async(req,res)=>{

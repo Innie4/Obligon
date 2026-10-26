@@ -109,7 +109,7 @@ test('admin station review submits its explicitly selected legal gas unit for ap
  const row={id:'gas-review',name:'Gas station',status:'pending',fuels:['CNG'],sellingUnits:{CNG:'kg'},approvedSellingUnits:{CNG:'kg'}};
  const {IntakeConsole}=compile('../components/admin-dashboard/IntakeConsole.tsx',{react:React,'../../../../packages/shared/partner-access.mjs':access,'@/lib/services':{authenticatedRequest:async(path,options)=>{calls.push({path,options});return options?{ok:true}:{stations:[row],total:1};}}});
  function render(){cursor=0;tree=IntakeConsole();const jobs=pending;pending=[];jobs.forEach(fn=>fn());}const flush=async()=>{for(let i=0;i<10;i++)await Promise.resolve();};
- render();await flush();render();nodes(tree).find(n=>n.type==='button'&&text(n).trim()==='Review record').props.onClick();render();
+ render();await flush();render();nodes(tree).find(n=>n.type==='button'&&text(n).trim().startsWith('Review record')).props.onClick();render();
  const unit=nodes(tree).find(n=>n.props?.['aria-label']==='CNG approved selling unit');assert.equal(unit.props.value,'kg');unit.props.onChange({target:{value:'scm'}});render();
  const reviewForm=nodes(tree).find(n=>n.type==='form');
  const decision=nodes(reviewForm).find(n=>n.type==='select'&&!n.props['aria-label']);assert.ok(decision,'the selected station review has a decision control');decision.props.onChange({target:{value:'active'}});render();
@@ -129,7 +129,7 @@ function recoveryFixture({reject,pending,screen='RecoveryReview'}={}){
 }
 
 test('issuer recovery requires the exact existing provider ID even for a locally recorded provider card',async()=>{
- const ui=recoveryFixture({screen:'IssuanceRecovery'});assert.equal(ui.nodes().find(n=>n.type==='button').props.disabled,true);await ui.submit();assert.equal(ui.calls.length,0);ui.nodes().find(n=>n.type==='input').props.onChange({target:{value:'existing-provider-card'}});ui.render();await ui.submit();assert.equal(ui.calls[0].path,'/api/admin/company-card-issuances/operation-id/reconcile');assert.deepEqual(JSON.parse(ui.calls[0].options.body),{providerCardId:'existing-provider-card'});ui.render();assert.match(ui.text(),/local issuance reconciled/);
+ const ui=recoveryFixture({screen:'IssuanceRecovery'});assert.equal(ui.nodes().find(n=>n.type==='button'&&n.props.type==='submit').props.disabled,true);await ui.submit();assert.equal(ui.calls.length,0);ui.nodes().find(n=>n.type==='input').props.onChange({target:{value:'existing-provider-card'}});ui.render();await ui.submit();assert.equal(ui.calls[0].path,'/api/admin/company-card-issuances/operation-id/reconcile');assert.deepEqual(JSON.parse(ui.calls[0].options.body),{providerCardId:'existing-provider-card'});ui.render();assert.match(ui.text(),/local issuance reconciled/);
 });
 
 test('issuer lookup refusal stays visible and does not announce reconciliation success',async()=>{
@@ -137,5 +137,5 @@ test('issuer lookup refusal stays visible and does not announce reconciliation s
 });
 
 test('admin bounded payment recovery calls only reconciliation and refreshes existing queues',async()=>{
- const ui=recoveryFixture();const action=ui.nodes().find(n=>n.type==='button'&&text(n).includes('Reconcile payments and refunds'));await action.props.onClick();for(let i=0;i<10;i++)await Promise.resolve();ui.render();const write=ui.calls.find(c=>c.options);assert.equal(write.path,'/api/admin/reconcile');assert.deepEqual(JSON.parse(write.options.body),{limit:100});assert.equal(ui.calls.filter(c=>c.refresh).length,2);assert.match(ui.text(),/Provider review required/);assert.doesNotMatch(ui.text(),/mark as paid|create new card/i);
+ const ui=recoveryFixture();const action=ui.nodes().find(n=>n.type==='button'&&text(n).includes('Reconcile payments and refunds'));await action.props.onClick();for(let i=0;i<10;i++)await Promise.resolve();ui.render();const write=ui.calls.find(c=>c.options);assert.equal(write.path,'/api/admin/reconcile');assert.deepEqual(JSON.parse(write.options.body),{limit:100});assert.equal(ui.calls.filter(c=>c.refresh).length,2);ui.nodes().find(n=>n.type==='button'&&text(n).includes('Review record')&&text(n).includes('REF')).props.onClick();ui.render();assert.match(ui.text(),/Provider review required/);assert.doesNotMatch(ui.text(),/mark as paid|create new card/i);
 });

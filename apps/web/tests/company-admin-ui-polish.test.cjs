@@ -9,7 +9,7 @@ const nodes = tree => !tree || typeof tree !== 'object' ? [] : Array.isArray(tre
 function load(file, expose = '', dependencies = {}) {
   const exports = {}, filename = require.resolve(file);
   const source = ts.transpileModule(fs.readFileSync(filename, 'utf8') + expose, { fileName: filename, compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }).outputText;
-  vm.runInNewContext(source, { exports, URLSearchParams, require: name => dependencies[name] ?? (name === 'react' ? React : name === '@/components/shared/States' ? { EmptyState: ({ title, message, action }) => React.createElement('div', { role: 'status' }, title, message, action) } : {}) });
+  vm.runInNewContext(source, { exports, URLSearchParams, require: name => dependencies[name] ?? (name === 'react' ? React : name === 'next/link' ? { __esModule: true, default: 'a' } : name === 'lucide-react' ? require('lucide-react') : name === './AdminDialog' ? { AdminDialog: ({ open, title, children }) => open ? React.createElement('section', { role: 'dialog', 'aria-label': title }, children) : null } : name === '@/components/shared/States' ? { EmptyState: ({ title, message, action }) => React.createElement('div', { role: 'status' }, title, message, action) } : {}) });
   return exports;
 }
 const { Table, Metrics, CompanyPagination } = load('../components/company-dashboard/CompanyScreen.tsx', '\nexport { Table, Metrics, CompanyPagination };');
@@ -139,23 +139,44 @@ test('support ticket selection is announced and follows the conversation being o
 
 test('partner bank verification distinguishes loading, failed reads and an empty successful response', async () => {
   const ready = stateFixture('../components/admin-dashboard/OperationsInbox.tsx', 'OperationsInbox', async path => operationalResult(path));
-  const loading = ready.render(); assert.match(loading, /Loading partner bank accounts/); assert.doesNotMatch(loading, /No partner bank accounts/);
-  await flush(); const empty = ready.render(); assert.match(empty, /No partner bank accounts are available for verification/); assert.doesNotMatch(empty, /Loading partner bank accounts/);
+  const loading = ready.render(); assert.match(loading, /Loading operational records/); assert.doesNotMatch(loading, /No partner bank accounts/);
+  await flush(); const empty = ready.render(); assert.match(empty, /No partner bank accounts are available for verification/); assert.doesNotMatch(empty, /Loading operational records/);
   const failed = stateFixture('../components/admin-dashboard/OperationsInbox.tsx', 'OperationsInbox', async () => { throw Error('Fixture unavailable'); }); failed.render(); await flush(); const error = failed.render();
-  assert.match(error, /Bank accounts could not be loaded/); assert.doesNotMatch(error, /No partner bank accounts/);
+  assert.match(error, /Fixture unavailable/); assert.doesNotMatch(error, /No partner bank accounts/);
 });
 
-test('discount review reason appears only after a pending request is loaded and is disabled while saving', async () => {
+test('discount review fields open for the selected pending request and remain disabled while saving', async () => {
   for (const requests of [[], [{ id: 'closed', status: 'approved' }]]) {
     const ui = stateFixture('../components/admin-dashboard/DiscountApprovals.tsx', 'DiscountApprovals', async () => ({ requests }));
-    assert.doesNotMatch(ui.render(), /<input/); await flush(); assert.doesNotMatch(ui.render(), /<input/);
+    assert.doesNotMatch(ui.render(), /<textarea/); await flush(); assert.doesNotMatch(ui.render(), /<textarea/);
   }
-  const pending = { id: 'pending', status: 'pending', starts_at: '2026-10-23', ends_at: '2026-10-24', rate_bp: 100 };
+  const pending = { id: 'pending', station_name: 'Test station', partner_name: 'Test partner', fuel_type: 'PMS', status: 'pending', starts_at: '2026-10-23', ends_at: '2026-10-24', rate_bp: 100 };
   const ui = stateFixture('../components/admin-dashboard/DiscountApprovals.tsx', 'DiscountApprovals', async (path, init) => init ? new Promise(() => {}) : ({ requests: [pending] }));
-  assert.doesNotMatch(ui.render(), /<input/); await flush(); assert.match(ui.render(), /<input/);
-  assert.equal(ui.nodes().find(node => node.type === 'input').props.disabled, false);
-  ui.nodes().find(node => node.type === 'button' && node.props.children === 'Approve').props.onClick(); ui.render();
-  assert.equal(ui.nodes().find(node => node.type === 'input').props.disabled, true);
+  assert.doesNotMatch(ui.render(), /<textarea/); await flush(); assert.doesNotMatch(ui.render(), /<textarea/);
+  ui.nodes().find(node => node.type === 'button' && nodes(node).some(child => child.type === 'span' && child.props.className === 'sr-only')).props.onClick();
+  assert.match(ui.render(), /role="dialog"/); assert.match(ui.render(), /<textarea/);
+  assert.equal(ui.nodes().find(node => node.type === 'textarea').props.disabled, false);
+  ui.nodes().find(node => node.type === 'button' && node.props.children === 'Approve discount').props.onClick(); ui.render();
+  assert.equal(ui.nodes().find(node => node.type === 'textarea').props.disabled, true);
+  const dialog = ui.nodes().find(node => node.props?.title === 'Review station discount');
+  assert.ok(nodes(dialog).some(node => node.props?.['data-status-popup'] === 'pending'), 'pending feedback is hosted inside the active review');
+});
+
+test('discount dialog submits the selected request and reason, then closes after confirmed success', async () => {
+  const requests = ['one', 'two'].map(id => ({ id, station_name: `Station ${id}`, partner_name: 'Partner', fuel_type: 'PMS', status: 'pending', starts_at: '2026-10-23', ends_at: '2026-10-24', rate_bp: 125 }));
+  const writes = [];
+  const ui = stateFixture('../components/admin-dashboard/DiscountApprovals.tsx', 'DiscountApprovals', async (path, init) => { if (init) { writes.push({ path, body: JSON.parse(init.body) }); return {}; } return { requests }; });
+  ui.render(); await flush(); ui.render();
+  const reviews = ui.nodes().filter(node => node.type === 'button' && renderToStaticMarkup(node).includes('Review record'));
+  reviews[1].props.onClick(); ui.render();
+  const reject = () => ui.nodes().find(node => node.type === 'button' && node.props.children === 'Reject request');
+  assert.equal(reject().props.disabled, true);
+  ui.nodes().find(node => node.type === 'textarea').props.onChange({ target: { value: 'Dates do not match the agreed promotion.' } }); ui.render();
+  assert.equal(reject().props.disabled, false); reject().props.onClick(); await flush();
+  const html = ui.render();
+  assert.deepEqual(writes, [{ path: '/api/admin/discount-requests/two/review', body: { decision: 'rejected', reason: 'Dates do not match the agreed promotion.' } }]);
+  assert.doesNotMatch(html, /role="dialog"/);
+  assert.match(html, /data-status-popup="success"/);
 });
 
 test('compact company metric summaries retain every label and value as a definition list', () => {

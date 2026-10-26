@@ -5,6 +5,7 @@ import * as React from "react";
 import { Check, Grid2X2, ReceiptText, ShieldCheck, UserRoundCheck, X, Loader2, Building2, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/components/shared/Toast";
 import { mutationsApi } from "@/lib/services";
+import { AdminDialog } from "./AdminDialog";
 
 export type AdminModalType = "permissions" | "fleet" | "resolve" | "partnerReview" | "addStaff" | "action" | null;
 
@@ -18,21 +19,7 @@ type AdminModalsProps = {
 };
 
 function ModalShell({ children, onClose, label }: { children: React.ReactNode; onClose: () => void; label: string }) {
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-[#050816]/78 px-5 backdrop-blur-sm" onMouseDown={onClose}>
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-label={label}
-        tabIndex={-1}
-        onMouseDown={(event) => event.stopPropagation()}
-        onKeyDown={(event) => { if (event.key === "Escape") onClose(); }}
-        className="max-h-[92vh] w-full max-w-[896px] overflow-hidden rounded-2xl bg-white shadow-hero outline-none"
-      >
-        {children}
-      </section>
-    </div>
-  );
+  return <AdminDialog open title={label} onClose={onClose} wide>{children}</AdminDialog>;
 }
 
 export function AdminModals({ modal, onClose, selectedApplicationId, selectedDisputeId, onFleetProvisioned, onDisputeResolved }: AdminModalsProps) {

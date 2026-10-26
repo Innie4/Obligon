@@ -11,7 +11,7 @@ const text = value => Array.isArray(value) ? value.map(text).join(' ') : value &
 
 function compile(file, react, extras = {}) {
   const exports = {};
-  const code = fs.readFileSync(require.resolve(file), 'utf8') + (file.includes('StatusPopup') ? '\nexport { PopupContext, PopupCard, groupFeedback };' : file.endsWith('/Toast.tsx') ? '\nexport { ToastContext };' : file.endsWith('/Providers.tsx') ? '\nexport { SessionToastScope };' : '');
+  const code = fs.readFileSync(require.resolve(file), 'utf8') + (file.includes('StatusPopup') ? '\nexport { PopupContext, PopupCard, PopupStack, groupFeedback };' : file.endsWith('/Toast.tsx') ? '\nexport { ToastContext };' : file.endsWith('/Providers.tsx') ? '\nexport { SessionToastScope };' : '');
   vm.runInNewContext(ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }).outputText, {
     exports, document: { body: extras.body ?? { role: 'body' } }, window: extras.window,
     require(name) {
@@ -233,4 +233,53 @@ test('session scope keys change only for account, role, organization type or org
   const providers = f.mount('Providers', { children: 'Page' });
   const auth = providers.nodes().find(node => node.type === 'AuthProvider');
   assert.ok(flatten(auth.props.children).some(node => node.type === f.exports.SessionToastScope), 'session-derived scope runs beneath AuthProvider');
+});
+
+test('admin feedback opts into centered positioning while other dashboards retain corner placement', () => {
+  const f = environment();
+  const provider = f.mount('StatusPopupProvider', { children: 'Admin page', placement: 'center' });
+  f.exports.PopupContext.value = provider.tree.props.value;
+  f.mount('StatusPopup', { tone: 'error', message: 'Review could not be saved' });
+  provider.commit();
+  const stack = provider.nodes().find(node => node.type === f.exports.PopupStack);
+  assert.equal(stack.props.placement, 'center');
+  const centered = renderToStaticMarkup(React.createElement(compile('../components/shared/StatusPopup.tsx', React, { modules: {} }).PopupStack, { placement: 'center' }, 'Feedback'));
+  assert.match(centered, /data-popup-placement="center"/);
+  assert.match(centered, /left-1\/2 top-1\/2/);
+  provider.commit({ children: 'Other dashboard' });
+  assert.equal(provider.nodes().find(node => node.type === f.exports.PopupStack).props.placement, 'corner');
+});
+
+test('admin toast placement also applies to its status provider without changing defaults', () => {
+  const f = environment('../components/shared/Toast.tsx', { modules: { './StatusPopup': { StatusPopupProvider: 'StatusPopupProvider' } } });
+  const provider = f.mount('ToastProvider', { children: 'Admin', placement: 'center' });
+  assert.equal(provider.nodes().find(node => node.type === 'StatusPopupProvider').props.placement, 'center');
+  assert.equal(provider.nodes().find(node => node.props['data-toast-placement']).props['data-toast-placement'], 'center');
+  provider.commit({ children: 'Other dashboard' });
+  assert.equal(provider.nodes().find(node => node.type === 'StatusPopupProvider').props.placement, 'corner');
+});
+
+test('concurrent admin section feedback follows the top review without replaying dismissed notices', () => {
+  const f = environment();
+  const provider = f.mount('StatusPopupProvider', { children: 'Admin', placement: 'center' });
+  f.exports.PopupContext.value = provider.tree.props.value;
+  const owner = f.mount('StatusPopup', { tone: 'loading', message: 'Loading recovery records' });
+  const controls = provider.tree.props.value;
+  const first = { role: 'review-one' }, second = { role: 'review-two' };
+  const cards = () => { provider.commit(); return provider.nodes().filter(node => node.type === f.exports.PopupCard); };
+  assert.equal(cards()[0].props.popup.host, f.body);
+  controls.registerOverlay('first', first);
+  assert.equal(cards()[0].props.popup.host, first, 'an unrelated loader is now reachable within the review');
+  controls.registerOverlay('second', second);
+  assert.equal(cards()[0].props.popup.host, second);
+  controls.removeOverlay('second');
+  assert.equal(cards()[0].props.popup.host, first);
+  cards()[0].props.onDismiss();
+  controls.removeOverlay('first');
+  assert.equal(cards().length, 0, 'returning feedback to the page does not undo dismissal');
+  owner.commit({ tone: 'error', message: 'Recovery records unavailable' });
+  assert.equal(cards()[0].props.popup.host, f.body);
+  controls.registerOverlay('first', first);
+  provider.commit({ children: 'Other dashboard', placement: 'corner' });
+  assert.equal(cards()[0].props.popup.host, f.body, 'non-admin corner placement ignores an overlay override');
 });

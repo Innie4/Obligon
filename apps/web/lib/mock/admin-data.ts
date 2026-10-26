@@ -27,14 +27,14 @@ export type AdminRow = {
 
 export const adminNav: Array<{ key: AdminPageKey; label: string; href: string; icon: AdminIconKey }> = [
   { key: "companies", label: "Dashboard", href: "/admin", icon: "dashboard" },
-  { key: "applications", label: "Discount Approvals", href: "/admin/discount-approvals", icon: "fuelStations" },
-  { key: "applications", label: "Partner Applications", href: "/admin/partner-applications", icon: "partners" },
-  { key: "applications", label: "Customer Benefits", href: "/admin/customer-benefits", icon: "settings" },
-  { key: "applications", label:"Support & Settlements", href:"/admin/operations", icon:"settings" },
-  { key: "applications", label: "Requests & Activity", href: "/admin/intake", icon: "settings" },
-  { key: "reports", label: "Platform Reports", href: "/admin/reports", icon: "analytics" },
-  { key: "disputes", label: "Dispute Resolution", href: "/admin/disputes", icon: "disputes" },
-  { key: "staff", label: "Staff & Access", href: "/admin/staff", icon: "settings" }
+  { key: "applications", label: "Discount approvals", href: "/admin/discount-approvals", icon: "fuelStations" },
+  { key: "applications", label: "Partner applications", href: "/admin/partner-applications", icon: "partners" },
+  { key: "applications", label: "Customer benefits", href: "/admin/customer-benefits", icon: "settings" },
+  { key: "applications", label:"Support & settlements", href:"/admin/operations", icon:"settings" },
+  { key: "applications", label: "Requests & activity", href: "/admin/intake", icon: "settings" },
+  { key: "reports", label: "Platform reports", href: "/admin/reports", icon: "analytics" },
+  { key: "disputes", label: "Dispute resolution", href: "/admin/disputes", icon: "disputes" },
+  { key: "staff", label: "Staff & access", href: "/admin/staff", icon: "settings" }
 ];
 
 export const adminPageCopy: Record<AdminPageKey, {
@@ -46,7 +46,7 @@ export const adminPageCopy: Record<AdminPageKey, {
   eyebrow?: string;
 }> = {
   applications: {
-    title: "Application Review Queue",
+    title: "Partner applications",
     description: "Review and verify station credentials for platform onboarding. Ensure all documentation meets regulatory compliance.",
     search: "Search applications...",
     user: "Amara Okafor",
@@ -54,28 +54,28 @@ export const adminPageCopy: Record<AdminPageKey, {
     eyebrow: "OBLIGON INTERNAL"
   },
   reports: {
-    title: "Platform Analytics",
+    title: "Platform reports",
     search: "Global Admin Search...",
     user: "Admin User",
     role: "OBLIGON INTERNAL",
     eyebrow: "OBLIGON INTERNAL"
   },
   disputes: {
-    title: "Dispute Resolution",
+    title: "Dispute resolution",
     description: "Late shift: Review and resolve operational discrepancies across the network.",
     search: "Search Ticket ID, Station, or Transaction...",
     user: "K. Balogun",
     role: "Tier 4 Clearance"
   },
   companies: {
-    title: "Company Oversight",
+    title: "Company oversight",
     description: "Review company accounts, subscription plans, and recorded fleet activity.",
     search: "Global Admin Search...",
     user: "Adekunle Smith",
     role: "Fleet Overseer"
   },
   staff: {
-    title: "Staff & Access Control",
+    title: "Staff and access",
     description: "Manage internal permissions and staff access levels.",
     search: "Search staff or roles...",
     user: "Octavia Benson",

@@ -22,6 +22,8 @@ type PopupGroup = PopupItem & { ids: string[] };
 const PopupContext = React.createContext<{
   register: (item: PopupItem) => void;
   remove: (id: string) => void;
+  registerOverlay: (id: string, host: HTMLElement) => void;
+  removeOverlay: (id: string) => void;
 } | null>(null);
 
 const tones: Record<StatusPopupTone, { icon: React.ComponentType<LucideProps>; color: string; border: string; title: string }> = {
@@ -79,12 +81,15 @@ function PopupCard({ popup, onDismiss, otherProgress = 0 }: { popup: StatusPopup
   );
 }
 
-function PopupStack({ children }: { children: React.ReactNode }) {
-  return <div data-status-popup-stack className="pointer-events-none fixed right-3 top-[calc(5rem+env(safe-area-inset-top))] z-[120] flex max-h-[calc(100dvh-11rem)] w-[min(calc(100vw-1.5rem),400px)] flex-col gap-3 overflow-y-auto overscroll-contain sm:right-5 sm:top-5">{children}</div>;
+function PopupStack({ children, placement = "corner" }: { children: React.ReactNode; placement?: "corner" | "center" }) {
+  return <div data-status-popup-stack data-popup-placement={placement} className={placement === "center"
+    ? "admin-feedback-stack pointer-events-none fixed left-1/2 top-1/2 z-[120] flex max-h-[calc(100dvh-2rem)] w-[min(calc(100vw-2rem),440px)] -translate-x-1/2 -translate-y-1/2 flex-col gap-3 overflow-y-auto overscroll-contain"
+    : "pointer-events-none fixed right-3 top-[calc(5rem+env(safe-area-inset-top))] z-[120] flex max-h-[calc(100dvh-11rem)] w-[min(calc(100vw-1.5rem),400px)] flex-col gap-3 overflow-y-auto overscroll-contain sm:right-5 sm:top-5"}>{children}</div>;
 }
 
-export function StatusPopupProvider({ children }: { children: React.ReactNode }) {
+export function StatusPopupProvider({ children, placement = "corner" }: { children: React.ReactNode; placement?: "corner" | "center" }) {
   const [items, setItems] = React.useState<PopupItem[]>([]);
+  const [overlays, setOverlays] = React.useState<{ id: string; host: HTMLElement }[]>([]);
   const hostKeys = React.useRef(new WeakMap<HTMLElement, string>());
   const nextHostKey = React.useRef(0);
   const register = React.useCallback((item: PopupItem) => {
@@ -96,8 +101,14 @@ export function StatusPopupProvider({ children }: { children: React.ReactNode })
     });
   }, []);
   const remove = React.useCallback((id: string) => setItems(previous => previous.some(item => item.id === id) ? previous.filter(item => item.id !== id) : previous), []);
-  const context = React.useMemo(() => ({ register, remove }), [register, remove]);
-  const groups = groupFeedback(items);
+  const registerOverlay = React.useCallback((id: string, host: HTMLElement) => setOverlays(previous => {
+    if (previous.some(item => item.id === id && item.host === host)) return previous;
+    return [...previous.filter(item => item.id !== id), { id, host }];
+  }), []);
+  const removeOverlay = React.useCallback((id: string) => setOverlays(previous => previous.some(item => item.id === id) ? previous.filter(item => item.id !== id) : previous), []);
+  const context = React.useMemo(() => ({ register, remove, registerOverlay, removeOverlay }), [register, remove, registerOverlay, removeOverlay]);
+  const activeOverlay = placement === "center" ? overlays.at(-1)?.host : undefined;
+  const groups = groupFeedback(activeOverlay ? items.map(item => ({ ...item, host: activeOverlay })) : items);
   const hosts = Array.from(new Set(groups.map(item => item.host)));
   function dismiss(ids: string[]) {
     setItems(previous => previous.map(item => ids.includes(item.id) ? { ...item, dismissed: true } : item));
@@ -110,12 +121,23 @@ export function StatusPopupProvider({ children }: { children: React.ReactNode })
       const progress = local.filter(isProgress);
       const visible = [...local.filter(item => !isProgress(item)).slice(0, 2), ...progress.slice(0, 1)];
       const hidden = local.filter(item => !isProgress(item)).length - visible.filter(item => !isProgress(item)).length;
-      return createPortal(<PopupStack>
+      return createPortal(<PopupStack placement={placement}>
         {visible.map(item => <PopupCard key={item.id} popup={item} onDismiss={() => dismiss(isProgress(item) ? progress.flatMap(group => group.ids) : item.ids)} otherProgress={isProgress(item) ? progress.reduce((count, group) => count + group.ids.length, 0) - 1 : 0} />)}
         {hidden > 0 ? <p role="status" className="rounded-lg border border-obligon-border bg-white px-4 py-2 text-xs font-semibold leading-5 text-obligon-text">{hidden} more {hidden === 1 ? "update" : "updates"}. Dismiss a notification to view.</p> : null}
       </PopupStack>, host, hostKeys.current.get(host));
     })}
   </PopupContext.Provider>;
+}
+
+/** Centered admin feedback from sibling sections stays within the active focus boundary. */
+export function useStatusPopupHost(ref: React.RefObject<HTMLElement | null>, open: boolean) {
+  const context = React.useContext(PopupContext);
+  const id = React.useId();
+  React.useEffect(() => {
+    if (!open || !ref.current || !context) return;
+    context.registerOverlay(id, ref.current);
+    return () => context.removeOverlay(id);
+  }, [context, id, ref, open]);
 }
 
 /** Feedback lasts only as long as its owning state, without changing the request. */

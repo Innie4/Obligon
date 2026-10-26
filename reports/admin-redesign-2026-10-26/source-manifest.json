@@ -1,0 +1,117 @@
+{
+  "base": "eeb38d1feeb9bb36c78600266e05860918b71215",
+  "files": [
+    {
+      "path": "apps/api/src/routes/support-admin.routes.js",
+      "sha256": "c6985bbfb7e90d6ec4741bd6a67ffd17eb6405035a24c934a1e63aa2526a6012"
+    },
+    {
+      "path": "apps/api/tests/admin-support.integration.test.mjs",
+      "sha256": "dd85388d27e9979a66c5f4593937af48a4527a99b246f7de7191e9f1d27aa12b"
+    },
+    {
+      "path": "apps/web/app/admin/login/page.tsx",
+      "sha256": "ccf3f891131b44bf5115f09dc7fa2271a3c380e968da80dfc1d651ccff58c3d8"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/AdminBenefits.tsx",
+      "sha256": "cbd637070636386765d89a6cdc180fa2371b5387431aaa1af4a46f2b5692415a"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/AdminDialog.tsx",
+      "sha256": "60842f24ff52fd3609ce0ad94434d14496744ef3266df8d2dbe8df1288df4356"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/AdminHeader.tsx",
+      "sha256": "d87940a227e2198f1febb1a828d323feebc9efa13c16e35ebb51f12724435291"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/AdminModals.tsx",
+      "sha256": "2a4a48b221857e027bfea9e7a395f8acca971d7b0e944277e367a346cc1fc364"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/AdminRecords.tsx",
+      "sha256": "c5a62575220d83542e6430fbb7967a5432dc076c09344bd7d5766c65362ce3dc"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/AdminScreen.tsx",
+      "sha256": "d2c86fdad44c601013c7481fabae9e8f3ae6a07a51343a8f8cf2eed1ad9bdfb8"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/AdminShell.tsx",
+      "sha256": "ad5c6684504f88e195a93d12efded179cac99eda08988cd8066d7f6ee60e4650"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/AdminSidebar.tsx",
+      "sha256": "049a5a43797d5a542df574fc27969cb69b848d09005534fe95e34991d060a7f2"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/CardApprovalQueue.tsx",
+      "sha256": "fb2dae387121863de463e17ebe4d31c3ed8e0de17a7669b1895c0432bb5680de"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/DiscountApprovals.tsx",
+      "sha256": "e335ca4208cf2af8756ce83859b18b80d6a84de20ffc311a691792630e347086"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/IntakeConsole.tsx",
+      "sha256": "9e0aa0b21343e2c61897e47cbf56aa6d8e0baa2051878fe45ebe93d054603d45"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/OperationsInbox.tsx",
+      "sha256": "e9b0c79723b4973d7a0a09f129004991ffaf95215059e700c276603e0ed260b7"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/RecoveryReview.tsx",
+      "sha256": "26147bbf7cf6b541c61006808ca434a65afea21f2fcc55701606b61cc61dedcc"
+    },
+    {
+      "path": "apps/web/components/admin-dashboard/admin.css",
+      "sha256": "4d706e1187608e2438f1c00176a7295efc53d7148a9059cad54d935c0a03bd02"
+    },
+    {
+      "path": "apps/web/components/shared/StatusPopup.tsx",
+      "sha256": "579062a83146836e637e431a7b14f55a0167a7bda5b95dd3bdbe25e9753fc097"
+    },
+    {
+      "path": "apps/web/components/shared/Toast.tsx",
+      "sha256": "099622eb7c739da09ac4722a111217478016dabea85c15683b30a27cba8d7b38"
+    },
+    {
+      "path": "apps/web/lib/mock/admin-data.ts",
+      "sha256": "fc04372495852c0f773837d05e36e84e8141fdf20ed6d169cecf811bbc4fcffe"
+    },
+    {
+      "path": "apps/web/tests/admin-company-approval.test.cjs",
+      "sha256": "47e6fb85f1e6dca712dac5c561aa85d6446d1234ca05d3780e5c91c5b016e7e4"
+    },
+    {
+      "path": "apps/web/tests/admin-dialog.test.cjs",
+      "sha256": "77184f21db8ddbbcb25886777628ad2280b74d1d6833e49c49c7e573694dd75f"
+    },
+    {
+      "path": "apps/web/tests/admin-request-origin.test.cjs",
+      "sha256": "127f4819cf275c8f582f14dfa639ced88270c8d7d6cc878a080a9fada53c096f"
+    },
+    {
+      "path": "apps/web/tests/company-admin-ui-polish.test.cjs",
+      "sha256": "3b7913de0b7870e1fdebd1cdb88418b6a00a622c223a5835135507e0a3276693"
+    },
+    {
+      "path": "apps/web/tests/partner-subtype-workshop.test.cjs",
+      "sha256": "5f2f7525a769b579eca3adb3bc536f68d8defaa3179a450bdf4f63ae48a48541"
+    },
+    {
+      "path": "apps/web/tests/production-auth-navigation.test.cjs",
+      "sha256": "b50308f165c30e42d1caf2edf864a09e7c7224555f34ed4582429ca92fc66496"
+    },
+    {
+      "path": "apps/web/tests/status-popup.test.cjs",
+      "sha256": "fc2c5ef2c1c3c4f40ba7c70fde515077dafdb5952318cb9bd37e311868bd2c4e"
+    },
+    {
+      "path": "learn/INDEX.md",
+      "sha256": "23c97c7804b18f51b7f60f9a4abb6e70946a623fa9de010f9c916a1b29b6ab6b"
+    }
+  ]
+}

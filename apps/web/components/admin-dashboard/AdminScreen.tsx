@@ -6,6 +6,7 @@ import { api, authenticatedRequest, saveBlob } from "@/lib/services";
 import { CardApprovalQueue } from "./CardApprovalQueue";
 import { DashboardSearchQuery } from "@/components/shared/DashboardSearchQuery";
 import { AdminRecords } from "./AdminRecords";
+import { AdminDialog } from "./AdminDialog";
 import {
   adminPageCopy,
   type AdminPageKey,
@@ -87,6 +88,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
     [creating, setCreating] = React.useState(false),
     [notice, setNotice] = React.useState(""),
     [reviewVerification, setReviewVerification] = React.useState("pending");
+  const [busyMessage, setBusyMessage] = React.useState("Saving review…");
   const sequence = React.useRef(0);
   const load = React.useCallback(async () => {
     const current = ++sequence.current;
@@ -107,6 +109,8 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
       if (current === sequence.current) setLoading(false);
     }
   }, [pageKey, page, search, range]);
+  const latestLoad = React.useRef(load);
+  latestLoad.current = load;
   React.useEffect(() => {
     setSelected(null);
     setCreating(false);
@@ -118,6 +122,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
     ] ??
     data?.stations ??
     [];
+  const selectedDetails = [selected?.address, selected?.city, selected?.rcNumber, selected?.contactEmail, selected?.description, selected?.transactionRef, selected?.reviewNote].filter(Boolean);
   const field = "mt-2 block min-h-11 w-full min-w-0 rounded-xl border border-obligon-border bg-white p-3 text-sm text-obligon-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-obligon-green";
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -130,10 +135,12 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
       }
       Object.assign(body, { contractAgreed });
     }
+    setBusyMessage("Saving review…");
     setBusy(true);
     setError("");
+    setNotice("");
     try {
-      let savedMessage = "Saved to the backend and activity register.";
+      let savedMessage = "Record saved. The decision is in the activity register.";
       if (creating) {
         const result = await authenticatedRequest<{ message?: string }>(`/api/admin/${paths[pageKey]}`, {
           method: "POST",
@@ -157,29 +164,30 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
       setNotice(savedMessage);
       setSelected(null);
       setCreating(false);
-      await load();
+      await latestLoad.current();
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setBusy(false);
     }
   }
+  const feedback = <>{busy ? <StatusPopup tone="pending" message={busyMessage} /> : null}{error ? <StatusPopup tone="error" message={error} onRetry={loadFailed ? load : undefined} /> : null}{notice ? <StatusPopup tone="success" message={notice} /> : null}</>;
   return (
-    <section className="mx-auto w-full min-w-0 max-w-[1600px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-      {(busy) ? <StatusPopup tone="pending" message="Saving review…" /> : null}
+    <section className="admin-page mx-auto w-full min-w-0 max-w-[1600px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      {!selected && !creating ? feedback : null}
       <DashboardSearchQuery onSearch={value => { setSearch(value); setPage(0); }} />
-      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-obligon-border pb-6">
+      <header className="admin-page-heading flex flex-wrap items-end justify-between gap-4 pb-6">
         <div>
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-obligon-green">Platform management</p>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{adminPageCopy[pageKey].title}</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-obligon-text">
-            Live platform records. Changes are recorded in Requests &amp;
-            Activity.
+            {{ companies: "Manage company access, contracts and credit ceilings.", applications: "Review partner applications and customer card identity checks.", reports: "Compare station sales and revenue across the platform.", disputes: "Review transaction disputes and record a clear outcome.", staff: "Manage administrator accounts and platform access." }[pageKey]}
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
           <button
             disabled={busy}
-            className="min-h-12 rounded border px-5"
+            className="admin-button-secondary min-h-12 rounded-xl border border-obligon-border bg-white px-5 text-sm font-semibold"
             onClick={() => void load()}
           >
             Refresh
@@ -187,8 +195,10 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
           {["companies", "staff"].includes(pageKey) && (
             <button
               disabled={busy}
-              className="min-h-12 rounded bg-obligon-green px-5 font-bold text-white"
+              className="admin-button-primary min-h-12 rounded-xl bg-obligon-green px-5 text-sm font-bold text-white"
               onClick={() => {
+                setError("");
+                setNotice("");
                 setCreating(true);
                 setSelected(null);
               }}
@@ -201,8 +211,10 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
           {pageKey === "reports" && (
             <button
               disabled={busy}
-              className="min-h-12 rounded border px-5"
+              className="admin-button-secondary min-h-12 rounded-xl border border-obligon-border bg-white px-5 text-sm font-semibold"
               onClick={async () => {
+                setBusyMessage("Preparing report download…");
+                setError(""); setNotice("");
                 setBusy(true);
                 try {
                   saveBlob(
@@ -211,6 +223,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
                     ),
                     "obligon-platform-report.pdf",
                   );
+                  setNotice("Report downloaded.");
                 } catch (e) {
                   setError((e as Error).message);
                 } finally {
@@ -223,23 +236,18 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
           )}
         </div>
       </header>
-      {error && (
-        <StatusPopup tone="error" message={error} />
-      )}
-      {notice && (
-        <StatusPopup tone="info" message={notice} />
-      )}
       {!loading && !loadFailed && (
         <dl aria-label="Platform metrics" className={`my-6 grid grid-cols-2 gap-3 sm:gap-4 ${(data?.metrics.length ?? 0) > 3 ? "xl:grid-cols-4" : "lg:grid-cols-3"}`}>
           {data?.metrics.map((metric) => (
-            <div key={metric.label} className="min-w-0 rounded-xl border border-obligon-border bg-white p-3 sm:p-5">
-              <dt className="text-xs font-medium leading-5 text-obligon-text sm:text-sm">{metric.label}</dt>
-                <dd className="mt-1 break-words text-xl font-bold tracking-tight tabular-nums min-[390px]:text-2xl sm:mt-2 sm:text-3xl">{metric.value.split(/(\s+(?:standard m³|kg|L)(?=\s|$|·))/).map((part, index) => index % 2 ? <span key={index} className="whitespace-nowrap text-sm font-medium tracking-normal text-obligon-text sm:text-base">{part}</span> : part)}</dd>
+            <div key={metric.label} className="admin-metric min-w-0 rounded-2xl border border-obligon-border bg-white p-3 sm:p-5">
+              <dt className="text-xs font-medium leading-5 text-obligon-text sm:text-sm">{metric.label === metric.label.toUpperCase() ? metric.label[0] + metric.label.slice(1).toLowerCase() : metric.label}</dt>
+                <dd data-value-type={/^[₦\d]/.test(metric.value) ? "number" : "text"} className="mt-1 break-words text-xl font-bold tracking-tight tabular-nums min-[390px]:text-2xl sm:mt-2 sm:text-3xl">{metric.value.split(/(\s+(?:standard m³|kg|L)(?=\s|$|·))/).map((part, index) => index % 2 ? <span key={index} className="whitespace-nowrap text-sm font-medium tracking-normal text-obligon-text sm:text-base">{part}</span> : part)}</dd>
               {metric.helper && <dd className="mt-1 text-xs leading-5 text-obligon-text">{metric.helper}</dd>}
             </div>
           ))}
         </dl>
       )}
+      <div className="admin-toolbar my-6 [&_label]:block [&_label]:w-full [&_label]:max-w-[480px]">
       {pageKey === "reports" ? (
         <label>
           Reporting window
@@ -259,6 +267,8 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
           <input
             className={field}
             value={search}
+            type="search"
+            placeholder={`Search ${adminPageCopy[pageKey].title.toLowerCase()}`}
             maxLength={254}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -267,11 +277,14 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
           />
         </label>
       )}
+      </div>
       {loading ? (
         <StatusPopup tone="loading" message="Loading live records…" />
       ) : !loadFailed ? (
         <>
           <AdminRecords title={adminPageCopy[pageKey].title} columns={columns[pageKey]} rows={rows} busy={busy} onReview={pageKey === "reports" ? undefined : row => {
+            setError("");
+            setNotice("");
             setSelected(row);
             setCreating(false);
             setReviewVerification(row.verificationStatus ?? "pending");
@@ -286,7 +299,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
                 Previous
               </button>
               <span>
-                {data.total} records · Page {page + 1}
+                {data.total} {data.total === 1 ? "record" : "records"} · Page {page + 1}
               </span>
               <button
                 disabled={(page + 1) * 20 >= data.total}
@@ -299,30 +312,17 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
           )}
         </>
       ) : null}
+      <AdminDialog open={Boolean(selected || creating)} title={creating ? (pageKey === "companies" ? "Provision a company" : "Add an administrator") : `Review ${selected?.name ?? selected?.businessName ?? selected?.cells[0] ?? "record"}`} description="Review the details and record your decision. Changes appear in Requests & Activity." onClose={() => { setSelected(null); setCreating(false); }}>
+      {(selected || creating) ? feedback : null}
       {(selected || creating) && (
         <form
           key={selected?.id ?? "new"}
           onSubmit={submit}
-          className="mt-7 max-w-2xl space-y-5 rounded-xl border border-obligon-border bg-white p-5 sm:p-6"
+          className="admin-form space-y-5"
         >
-          <h2 className="text-2xl font-bold">
-            {creating
-              ? "Create account"
-              : `Review ${selected?.name ?? selected?.businessName ?? selected?.cells[0] ?? "record"}`}
-          </h2>
-          {selected && (
-            <p className="whitespace-pre-line">
-              {[
-                selected.address,
-                selected.city,
-                selected.rcNumber,
-                selected.contactEmail,
-                selected.description,
-                selected.transactionRef,
-                selected.reviewNote,
-              ]
-                .filter(Boolean)
-                .join("\n")}
+          {selectedDetails.length > 0 && (
+            <p className="admin-review-summary whitespace-pre-line rounded-xl bg-obligon-mist p-4 text-sm leading-6 text-obligon-text">
+              {selectedDetails.join("\n")}
             </p>
           )}
           {creating ? (
@@ -489,17 +489,17 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
               />
             </label>
           )}
-          <div className="flex gap-4">
+          <div className="admin-actions flex flex-wrap gap-3 border-t border-obligon-border pt-5">
             <button
               disabled={busy}
-              className="min-h-12 rounded bg-obligon-green px-5 font-bold text-white"
+              className="admin-button-primary min-h-12 rounded-xl bg-obligon-green px-5 text-sm font-bold text-white"
             >
               {busy ? "Saving…" : "Save record"}
             </button>
             <button
               type="button"
               disabled={busy}
-              className="min-h-12 underline"
+              className="min-h-12 rounded-xl border border-obligon-border px-5 text-sm font-semibold"
               onClick={() => {
                 setSelected(null);
                 setCreating(false);
@@ -510,6 +510,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
           </div>
         </form>
       )}
+      </AdminDialog>
       {pageKey === "applications" && <CardApprovalQueue />}
     </section>
   );

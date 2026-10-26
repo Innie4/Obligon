@@ -9,10 +9,15 @@ import { ShieldCheck, Loader2, Mail, Lock } from "lucide-react";
 import { useSession } from "@/components/shared/AuthContext";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { routes } from "@/components/site/routes";
-import { useToast } from "@/components/shared/Toast";
+import { ToastProvider, useToast } from "@/components/shared/Toast";
 import { api } from "@/lib/services";
+import "@/components/admin-dashboard/admin.css";
 
 export default function AdminLoginPage() {
+  return <ToastProvider placement="center"><AdminLoginForm /></ToastProvider>;
+}
+
+function AdminLoginForm() {
   const router = useRouter();
   const { login, logout } = useSession();
   const { success: toastSuccess } = useToast();
@@ -49,7 +54,7 @@ export default function AdminLoginPage() {
         await logout();
         throw new Error("This account does not have admin access. Use the standard sign-in page for your account.");
       }
-      toastSuccess("Admin authorization granted. Welcome back.");
+      toastSuccess("Signed in. Opening the admin workspace.");
       router.push(routes.adminDashboard);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Invalid credentials. Please try again.";
@@ -61,11 +66,11 @@ export default function AdminLoginPage() {
 
   return (
     <AuthShell>
-      <div className="w-full max-w-[440px] mx-auto p-4 sm:p-6">
-        <div className="rounded-2xl border border-obligon-border bg-white p-5 sm:p-8">
+      <div className="admin-workspace mx-auto w-full max-w-[480px] rounded-2xl p-4 sm:p-5">
+        <div className="rounded-xl border border-obligon-border bg-white p-5 sm:p-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="font-display text-2xl font-bold text-obligon-navy">Admin sign in</h1>
+              <h1 className="admin-login-heading">Admin sign in</h1>
             </div>
             <div className="grid size-11 place-items-center rounded-xl bg-obligon-lime/20 text-obligon-green">
               <ShieldCheck size={24} />
@@ -82,7 +87,7 @@ export default function AdminLoginPage() {
           <form className="mt-6 space-y-4" onSubmit={handleLogin}>
             <div>
               <label htmlFor="admin-email" className="text-sm font-semibold text-obligon-text block mb-1">
-                Admin Email
+                Email address
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-obligon-text/50" />
@@ -90,7 +95,7 @@ export default function AdminLoginPage() {
                   id="admin-email"
                   name="email"
                   type="email"
-                  placeholder="admin@obligon.energy"
+                  placeholder="you@company.com"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
@@ -144,15 +149,15 @@ export default function AdminLoginPage() {
             <button
               type="submit"
               disabled={submitting || !email.trim() || !password}
-              className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-obligon-green text-base font-bold text-white shadow-green transition hover:bg-obligon-green/90 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-obligon-green text-base font-bold text-white transition hover:bg-obligon-green/90 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {submitting ? (
                 <>
                   <Loader2 size={18} className="animate-spin" />
-                  Verifying Credentials...
+                  Signing in…
                 </>
               ) : (
-                "Authenticate Admin"
+                "Sign in"
               )}
             </button>
           </form>
