@@ -150,7 +150,7 @@ router.get("/companies", asyncHandler(async (req, res) => {
     companies: rows.map((r) => ({
       id: r.id,
       avatar: initialsOf(r.name),
-      cells: [`${r.name.split(" ")[0]}\n${r.name.split(" ").slice(1).join(" ") || "Not available"}\n${r.city ?? "NG"}`, r.fleet_id ?? "Not available", (r.plan_name ?? r.plan_code ?? "basic").toUpperCase(), r.subscription_status === "active" ? String(r.active_cards) : "ONBOARDING", naira(r.credit_limit_kobo)],
+      cells: [`${r.name.split(" ")[0]}\n${r.name.split(" ").slice(1).join(" ") || "Not available"}\n${r.city ?? "NG"}`, r.fleet_id ?? "Not available", (r.plan_name ?? r.plan_code ?? "basic").toUpperCase(), String(r.active_cards), naira(r.credit_limit_kobo)],
       status: r.verification_status === "rejected" ? "Rejected" : r.verification_status !== "verified" ? "Pending"
         : r.subscription_status === "active" ? "Active" : r.subscription_status === "canceled" ? "Frozen" : "Pending",
       tone: r.verification_status === "rejected" ? "red" : r.verification_status !== "verified" ? "amber"

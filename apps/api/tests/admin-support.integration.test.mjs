@@ -92,6 +92,20 @@ integration('pending company verification takes priority over the canceled subsc
  const company=await companyForApproval();const listing=await request('/companies');const row=listing.body.companies.find(row=>row.id===company.id);
  assert.equal(row.status,'Pending');assert.equal(row.tone,'amber');assert.equal(row.verificationStatus,'pending');assert.equal(row.subscriptionStatus,'canceled');
 });
+for (const [verification, expectedStatus] of [['pending','Pending'],['verified','Frozen']]) {
+ for (const activeCards of [0,2]) {
+  integration(`company active-card column stays numeric for ${verification} canceled companies with ${activeCards} active cards`,async()=>{
+   const company=await companyForApproval(verification,'canceled');
+   await pool.query("INSERT INTO cards(owner_user_id,organization_id,label,status)VALUES($1,$2,'Frozen company card','frozen')",[fixtures.customer.id,company.id]);
+   await pool.query("INSERT INTO cards(owner_user_id,organization_id,label,status)SELECT $1,$2,'Active company card '||card_number,'active' FROM generate_series(1,$3::int) AS card_number",[fixtures.customer.id,company.id,activeCards]);
+   await pool.query("INSERT INTO cards(owner_user_id,organization_id,label,status)VALUES($1,$2,'Foreign active card','active')",[fixtures.partner.id,fixtures.org.id]);
+   const listing=await request('/companies');assert.equal(listing.status,200,JSON.stringify(listing.body));
+   const row=listing.body.companies.find(item=>item.id===company.id);assert.ok(row);
+   assert.equal(row.status,expectedStatus);assert.equal(row.verificationStatus,verification);assert.equal(row.subscriptionStatus,'canceled');
+   assert.equal(row.cells.length,5);assert.equal(row.cells[3],String(activeCards),'Active cards must contain this company’s active-card count independently of subscription or verification state');
+  });
+ }
+}
 integration('verification approval requires a literal contract confirmation before any state write',async()=>{
  const company=await companyForApproval();
  for(const contractAgreed of [undefined,false,'true']) {

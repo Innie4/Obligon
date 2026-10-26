@@ -1,3 +1,4 @@
+- [2026-10-26] [Accurate admin table readouts](2026-10-26-admin-table-readouts.md): Keep company card counts separate from account status and label report data precisely.
 - [2026-10-26] [Focused admin reviews](2026-10-26-focused-admin-reviews.md): Center record reviews and feedback while preserving request ownership and account provenance.
 - [2026-10-24] [Clearer tasks across Obligon](2026-10-24-refine-dashboard-ui.md): Compact responsive tasks, reliable recovery and preserved purchase paths.
 - [2026-10-24] [Customer access and funded plan benefits](2026-10-24-customer-access-and-benefits.md): Enforce paid access and persist preferences while reserving real programme funds for cashback and labour discounts.

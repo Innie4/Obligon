@@ -69,10 +69,10 @@ const columns: Record<AdminPageKey, string[]> = {
     "Location",
     "Quantities",
     "Transactions",
-    "Revenue share",
+    "Share of listed revenue",
     "Status",
   ],
-  disputes: ["Reference", "Filed", "Station", "Subject", "Amount", "Status"],
+  disputes: ["Reference", "Filed", "Station", "Category", "Amount", "Status"],
   staff: ["Name / email", "Role label", "Access", "Status"],
 };
 export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
