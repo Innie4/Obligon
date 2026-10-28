@@ -473,6 +473,14 @@ integration('station fuel units require admin approval and repricing before gas 
  assert.deepEqual((await pool.query('SELECT fuel_type,litres,selling_unit FROM resupply_orders')).rows,[{fuel_type:'CNG',litres:25,selling_unit:'scm'}]);
  assert.equal((await pool.query('SELECT selling_unit FROM fuel_price_history ORDER BY created_at,id')).rows.length,2);
 });
+integration('admin support preserves the original requester category after that user becomes an administrator', async()=>{
+ await pool.query("INSERT INTO ticket_messages(ticket_id,sender_user_id,sender_role,body,created_at)VALUES($1,$2,'partner','Earlier reply by another person',now()-interval '1 day')",[fixtures.ticket.id,fixtures.partner.id]);
+ await pool.query("INSERT INTO ticket_messages(ticket_id,sender_user_id,sender_role,body,created_at)VALUES($1,$2,'admin','Later administrator reply',now()+interval '1 second'),($1,$2,'partner','Later role must not replace the original category',now()+interval '2 seconds')",[fixtures.ticket.id,fixtures.customer.id]);
+ await pool.query("UPDATE users SET role='admin' WHERE id=$1",[fixtures.customer.id]);
+ const listing=await request('/support');assert.equal(listing.status,200);
+ const ticket=listing.body.tickets.find(item=>item.id===fixtures.ticket.id);assert.ok(ticket);assert.equal(ticket.requester_role,'customer');assert.equal(ticket.organization_type,null);
+ const detail=await request(`/support/${fixtures.ticket.id}/messages`);assert.equal(detail.status,200);assert.equal(detail.body.ticket.requester_role,'customer');assert.equal(detail.body.ticket.organization_type,null);
+});
 integration('admin support exposes separate requester roles and organization context for list and detail', async()=>{
  const {rows:[company]}=await pool.query("INSERT INTO organizations(name,type,owner_user_id)VALUES('Source Fleet','company',$1)RETURNING *",[fixtures.customer.id]);
  const {rows:[companyTicket]}=await pool.query("INSERT INTO support_tickets(reference,user_id,organization_id,subject,message)VALUES('SUP_COMPANY',$1,$2,'Company request','A member request')RETURNING *",[fixtures.customer.id,company.id]);

@@ -722,6 +722,7 @@ router.get("/session", requireAuth, asyncHandler(async (req, res) => {
 
 // Existing account roles stay unchanged: selecting a company only changes signed org claims.
 router.get("/company-contexts", requireAuth, asyncHandler(async (req, res) => {
+  if (req.user.role === "admin") return res.json({ organizations: [] });
   const rows = await q(`SELECT o.id,o.name FROM organizations o
     LEFT JOIN memberships m ON m.organization_id=o.id AND m.user_id=$1
     WHERE o.type='company' AND ((o.owner_user_id=$1 AND (m.status IS NULL OR m.status='active')) OR m.status='active')
@@ -754,6 +755,7 @@ function invitationToken(req) {
   return token;
 }
 function invitationEmail(invite,user) {
+  if (user.role === "admin") throw forbidden("Administrator accounts use the admin dashboard and cannot join company workspaces.");
   if (invite.email.trim().toLowerCase() !== user.email.trim().toLowerCase()) throw forbidden("Sign in with the email address that received this invitation");
 }
 router.get("/company-invitations/:token", requireAuth, authLimiter, asyncHandler(async (req,res) => {

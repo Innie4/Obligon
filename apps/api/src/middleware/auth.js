@@ -44,7 +44,7 @@ export async function attachUser(req, _res, next) {
           JOIN memberships m ON m.organization_id=o.id AND m.user_id=u.id
           JOIN subscriptions s ON s.organization_id=o.id JOIN pricing_plans p ON p.code=s.plan_code
           WHERE k.token_hash=$1 AND k.revoked_at IS NULL AND k.expires_at>now() AND u.status='active'
-          AND (u.access_expires_at IS NULL OR u.access_expires_at>clock_timestamp())
+          AND (u.access_expires_at IS NULL OR u.access_expires_at>clock_timestamp()) AND u.role IN ('partner','mechanic')
           AND m.status='active' AND m.role IN('owner','admin') AND s.status='active'
           AND s.current_period_start<=now() AND s.current_period_end>now() AND p.active AND p.features @> '["API access"]'::jsonb`,
           [createHash("sha256").update(token).digest("hex")],
@@ -160,6 +160,7 @@ export async function requireOrgMembership(req, _res, next) {
 
 /** Resolve an explicitly selected company from current database membership. */
 export async function companyContext(user, orgId, executor = { one }) {
+  if (user.role === "admin") throw forbidden("Administrator accounts use the admin dashboard and cannot open company workspaces.");
   const org = await executor.one(
     `SELECT o.*, m.role AS member_role, m.status AS member_status, m.permissions, count(m.id) OVER() AS membership_count
      FROM organizations o LEFT JOIN memberships m ON m.organization_id=o.id AND m.user_id=$2

@@ -5,9 +5,10 @@ import companyCardIssuancesAdminRouter from "./company-card-issuances-admin.rout
 import discountRouter from "./discount.routes.js";
 import { Router } from "express";
 import { q, one, tx } from "../db.js";
-import { asyncHandler, badRequest, notFound, forbidden } from "../lib/errors.js";
+import { asyncHandler, badRequest, notFound, forbidden, conflict } from "../lib/errors.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requireAdminPage, validateAdminGrants, lockAdminStaffManager } from "../middleware/admin-access.js";
+import { TEMPORARY_PARTNER_ACCOUNT } from "../lib/temporaryPartnerAccount.js";
 import { naira, fmtDate, fmtDateTime, relativeTime, dayGroup, reference, toCsv, initials as initialsOf } from "../lib/format.js";
 import { notify, audit, securityLog } from "../lib/notify.js";
 import { hashPassword, randomToken } from "../lib/security.js";
@@ -712,33 +713,34 @@ router.get("/staff", asyncHandler(async (req, res) => {
 }));
 
 router.post("/staff", asyncHandler(async (req, res) => {
-  const { fullName, email, role, permissions } = req.body ?? {};
-  if(typeof fullName!=="string"||!fullName.trim()||fullName.length>200||typeof email!=="string"||email.length>254||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))throw badRequest("Enter valid staff details");
+  const { email, role, permissions } = req.body ?? {};
+  const registeredEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+  if(registeredEmail.length>254||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(registeredEmail))throw badRequest("Enter the user's registered email address");
   validateAdminGrants(role, permissions);
-  const tempPassword = randomToken(6);
-  const passwordHash = await hashPassword(tempPassword);
   const user = await tx(async t => {
     await lockAdminStaffManager(t, req);
-    const existing = await t.one("SELECT id FROM users WHERE lower(email) = lower($1)", [email]);
-    if (existing) throw badRequest("A user with that email already exists");
-    const created = await t.one(
-      `INSERT INTO users (email, password_hash, full_name, role, organization_name, email_verified, account_tier, staff_role, staff_permissions)
-       VALUES ($1,$2,$3,'admin','Obligon LTD Internal',TRUE,'Platform Admin',$4,$5) RETURNING id`,
-      [email.toLowerCase(), passwordHash, fullName.trim(), role, JSON.stringify(permissions)]
+    const matches = await t.query(`SELECT id,role,status,email,access_expires_at,
+      access_expires_at<=clock_timestamp() AS access_expired FROM users
+      WHERE lower(email)=$1 ORDER BY id LIMIT 2 FOR UPDATE`, [registeredEmail]);
+    if (!matches.length) throw notFound("No user has that email address. They must register before becoming an administrator.");
+    if (matches.length !== 1) throw conflict("More than one account matches that email. Resolve the duplicate accounts before assigning admin access.");
+    const existing = matches[0];
+    if (existing.id === TEMPORARY_PARTNER_ACCOUNT.userId || existing.email.toLowerCase() === TEMPORARY_PARTNER_ACCOUNT.email.toLowerCase()) throw badRequest("Temporary testing accounts cannot become administrators. Use a permanent registered account.");
+    if (existing.role === 'admin') throw conflict("This user is already an administrator. Open their review record to change access.");
+    if (existing.status !== 'active' || existing.access_expired) throw badRequest("This account must be active and unexpired before becoming an administrator.");
+    await t.query(
+      `UPDATE users SET role='admin',staff_role=$2,staff_permissions=$3,updated_at=clock_timestamp() WHERE id=$1`,
+      [existing.id, role, JSON.stringify(permissions)]
     );
+    await t.query("UPDATE sessions SET revoked_at=clock_timestamp() WHERE user_id=$1 AND revoked_at IS NULL", [existing.id]);
+    await t.query("UPDATE verification_codes SET consumed_at=clock_timestamp() WHERE user_id=$1 AND purpose IN ('two_factor','password_reset') AND consumed_at IS NULL", [existing.id]);
+    await t.query("UPDATE account_auth_challenges SET consumed_at=clock_timestamp() WHERE user_id=$1 AND consumed_at IS NULL", [existing.id]);
+    await t.query("UPDATE partner_api_keys SET revoked_at=clock_timestamp() WHERE created_by=$1 AND revoked_at IS NULL", [existing.id]);
     await t.query(`INSERT INTO audit_logs(actor_user_id,actor_role,action,entity_type,entity_id,metadata)
-      VALUES($1,'admin','admin.staff_created','user',$2,$3)`, [req.user.id, created.id, JSON.stringify({ email: email.toLowerCase(), role, permissions })]);
-    return created;
+      VALUES($1,'admin','admin.staff_converted','user',$2,$3)`, [req.user.id, existing.id, JSON.stringify({ previousRole: existing.role, role, permissions })]);
+    return existing;
   });
-  const { sendEmail } = await import("../lib/notify.js");
-  const { env } = await import("../config/env.js");
-  void sendEmail({
-    to: email,
-    subject: "Your Obligon internal staff account",
-    text: `Sign in at ${env.APP_URL}/admin/login - email: ${email}, temporary password: ${tempPassword}`,
-    html: `<div style="font-family:sans-serif"><h2>Internal account created</h2><p>Sign in at ${env.APP_URL}/admin/login</p><p>Email: ${email}<br/>Temporary password: <b>${tempPassword}</b></p></div>`
-  });
-  res.json({ ok: true, staffId: user.id });
+  res.json({ ok: true, staffId: user.id, converted: true, previousRole: user.role });
 }));
 
 router.put("/staff/:id", asyncHandler(async (req, res) => {

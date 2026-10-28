@@ -146,7 +146,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
       }
       Object.assign(body, { contractAgreed });
     }
-    setBusyMessage("Saving review…");
+    setBusyMessage(creating && pageKey === "staff" ? "Assigning administrator access…" : "Saving review…");
     setBusy(true);
     setError("");
     setNotice("");
@@ -158,6 +158,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
           body: JSON.stringify(body),
         });
         if (pageKey === "companies") savedMessage = result.message ?? "Fleet created pending contract approval.";
+        if (pageKey === "staff") savedMessage = "Administrator access assigned. The user must sign in again with their existing sign-in details.";
       } else if (selected?.id) {
         const path =
           pageKey === "applications"
@@ -323,7 +324,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
           )}
         </>
       ) : null}
-      <AdminDialog open={Boolean(selected || creating)} title={creating ? (pageKey === "companies" ? "Provision a company" : "Add an administrator") : `Review ${selected?.name ?? selected?.businessName ?? selected?.cells[0] ?? "record"}`} description={creating && pageKey === "staff" ? "Enter account details, choose a role and assign pages." : "Review the details and record your decision. Changes appear in Requests & Activity."} onClose={() => { setSelected(null); setCreating(false); }}>
+      <AdminDialog open={Boolean(selected || creating)} title={creating ? (pageKey === "companies" ? "Provision a company" : "Make an existing user an administrator") : `Review ${selected?.name ?? selected?.businessName ?? selected?.cells[0] ?? "record"}`} description={creating && pageKey === "staff" ? "Enter their registered email, choose a role and assign pages." : "Review the details and record your decision. Changes appear in Requests & Activity."} onClose={() => { setSelected(null); setCreating(false); }}>
       {(selected || creating) ? feedback : null}
       {(selected || creating) && (
         <form
@@ -373,21 +374,15 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
                 </>
               ) : (
                 <>
+                  <p className="admin-review-summary rounded-xl bg-obligon-mist p-4 text-sm leading-6 text-obligon-text">This replaces their current role with administrator access. They keep their name and sign-in details. All current sessions will end; they must sign in again.</p>
                   <label>
-                    Full name
-                    <input
-                      name="fullName"
-                      required
-                      maxLength={200}
-                      className={field}
-                    />
-                  </label>
-                  <label>
-                    Email
+                    Registered email
                     <input
                       name="email"
                       type="email"
+                      autoComplete="email"
                       required
+                      maxLength={254}
                       className={field}
                     />
                   </label>
@@ -500,7 +495,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
               disabled={busy}
               className="admin-button-primary min-h-12 rounded-xl bg-obligon-green px-5 text-sm font-bold text-white"
             >
-              {busy ? "Saving…" : "Save record"}
+              {busy ? "Saving…" : creating && pageKey === "staff" ? "Make administrator" : "Save record"}
             </button>
             <button
               type="button"

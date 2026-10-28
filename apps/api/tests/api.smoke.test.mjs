@@ -66,7 +66,7 @@ test("login succeeds for seeded customer and session works", { skip: !BASE }, as
   assert.ok(stations.data.stations.length > 0);
 });
 
-test("card requests require a paid plan, and staff can still open one directly", { skip: !BASE }, async () => {
+test("card requests require a paid plan, and admins cannot use the personal customer endpoint", { skip: !BASE }, async () => {
   const login = await api("/api/auth/login", {
     method: "POST",
     body: { email: "customer@obligon.com", password: "Customer#123" }
@@ -133,9 +133,7 @@ test("card requests require a paid plan, and staff can still open one directly",
     assert.equal(checkout.status, 409);
   }
 
-  // Back-office path is still available to staff. Re-running against a database
-  // that already holds an open staff request is not an error, so accept either
-  // outcome and assert the resulting state instead.
+  // Admins must use their permitted back-office routes rather than personal card onboarding.
   const admin = await api("/api/auth/login", {
     method: "POST",
     body: { email: "admin@obligon.com", password: "Admin#1234" }
@@ -144,10 +142,7 @@ test("card requests require a paid plan, and staff can still open one directly",
   const staffCreated = await api("/api/customer/card-request", {
     method: "POST", token: admin.data.accessToken, body: { label: "Smoke Test Card" }
   });
-  assert.ok([201, 409].includes(staffCreated.status), `unexpected status ${staffCreated.status}`);
-  if (staffCreated.status === 201) {
-    assert.equal(staffCreated.data.request.status, "pending");
-  }
+  assert.equal(staffCreated.status, 403);
 });
 
 test("refresh and logout preserve and revoke the authenticated session", { skip: !BASE }, async () => {

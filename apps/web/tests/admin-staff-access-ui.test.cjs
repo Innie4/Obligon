@@ -55,19 +55,19 @@ test('page selectors retain saved grants and select only pages available to the 
   ui.all().find(node => node.type === 'button' && text(node) === 'Clear selection').props.onClick(); ui.render();
   assert.equal(ui.all().filter(node => node.type === 'input' && node.props.checked).length, 0);
 });
-function screenFixture() {
-  const state = runtime(), calls = []; let tree;
+function screenFixture({ staff = [], failure = '' } = {}) {
+  const state = runtime(), calls = [], writes = []; let tree;
   const { AdminScreen } = load('../components/admin-dashboard/AdminScreen.tsx', {
     react: state.React,
     '@/lib/mock/admin-data': { adminPageCopy: { staff: { title: 'Staff and access' } } },
-    '@/lib/services': { authenticatedRequest: async (path, init) => { if (init) calls.push(JSON.parse(init.body)); return { metrics: [], staff: [], total: 0 }; } },
+    '@/lib/services': { authenticatedRequest: async (path, init) => { if (init) { const body = JSON.parse(init.body); calls.push(body); writes.push({ path, method: init.method, body }); if (failure) throw new Error(failure); } return { metrics: [], staff, total: staff.length }; } },
   }, { FormData: class {
     constructor(form) { this.entries = form.entries; }
     [Symbol.iterator]() { return this.entries[Symbol.iterator](); }
     getAll(name) { return this.entries.filter(([key]) => key === name).map(([, value]) => value); }
   } });
   return {
-    calls,
+    calls, writes,
     render() { state.start(); tree = AdminScreen({ pageKey: 'staff' }); state.end(); },
     all: () => walk(tree),
     async submit(entries) { await walk(tree).find(node => node.type === 'form').props.onSubmit({ preventDefault() {}, currentTarget: { entries } }); },
@@ -77,15 +77,49 @@ async function newAdministrator() {
   const ui = screenFixture(); ui.render(); await flush(); ui.render();
   ui.all().find(node => node.type === 'button' && text(node) === 'Add administrator').props.onClick(); ui.render(); return ui;
 }
-test('staff creation serializes every checked page as an array with the required role', async () => {
+test('administrator conversion asks for an existing email and explains the role replacement', async () => {
   const ui = await newAdministrator();
-  await ui.submit([['fullName', 'Test supervisor'], ['email', 'supervisor@test.invalid'], ['role', 'supervisor'], ['permissions', 'operations'], ['permissions', 'reports']]);
+  assert.equal(ui.all().some(node => node.props?.name === 'fullName'), false);
+  const email = ui.all().find(node => node.props?.name === 'email');
+  assert.equal(email.props.required, true); assert.equal(email.props.type, 'email');
+  const dialog = ui.all().find(node => node.props?.title === 'Make an existing user an administrator');
+  assert.ok(dialog);
+  assert.match(dialog.props.description, /registered email/i);
+  assert.match(text(ui.all()), /replaces their current role/i);
+  assert.match(text(ui.all()), /keep their name and sign-in details/i);
+  assert.match(text(ui.all()), /sign in again/i);
+  assert.ok(ui.all().some(node => node.type === 'button' && text(node) === 'Make administrator'));
+});
+test('administrator conversion submits only the registered email, role and every checked page', async () => {
+  const ui = await newAdministrator();
+  await ui.submit([['email', 'supervisor@test.invalid'], ['role', 'supervisor'], ['permissions', 'operations'], ['permissions', 'reports']]);
   assert.equal(ui.calls.length, 1);
-  assert.deepEqual(ui.calls[0].permissions, ['operations', 'reports']); assert.equal(ui.calls[0].role, 'supervisor');
+  assert.deepEqual(ui.writes[0], { path: '/api/admin/staff', method: 'POST', body: { email: 'supervisor@test.invalid', role: 'supervisor', permissions: ['operations', 'reports'] } });
+  ui.render();
+  assert.ok(ui.all().some(node => node.props?.role === 'status' && text(node).includes('Administrator access assigned')));
 });
 test('missing role or page selection keeps the popup open without sending a create request', async () => {
   const ui = await newAdministrator();
-  for (const entries of [[['fullName', 'Test staff'], ['permissions', 'operations']], [['fullName', 'Test staff'], ['role', 'staff']]]) await ui.submit(entries);
+  for (const entries of [[['email', 'staff@test.invalid'], ['permissions', 'operations']], [['email', 'staff@test.invalid'], ['role', 'staff']]]) await ui.submit(entries);
   ui.render(); assert.equal(ui.calls.length, 0); assert.ok(ui.all().some(node => node.type === 'form'));
   assert.ok(ui.all().some(node => node.props?.role === 'alert' && text(node).includes('Select a role and at least one page')));
+});
+test('unknown registered email keeps the conversion popup open and shows the server error', async () => {
+  const ui = screenFixture({ failure: 'No registered user has this email address.' }); ui.render(); await flush(); ui.render();
+  ui.all().find(node => node.type === 'button' && text(node) === 'Add administrator').props.onClick(); ui.render();
+  await ui.submit([['email', 'unknown@test.invalid'], ['role', 'staff'], ['permissions', 'operations']]); ui.render();
+  assert.ok(ui.all().some(node => node.type === 'form'));
+  assert.ok(ui.all().some(node => node.props?.role === 'alert' && text(node).includes('No registered user has this email address.')));
+});
+test('reviewing an existing administrator keeps saved role, grants and account status editable', async () => {
+  const staff = { id: 'staff-one', name: 'Test administrator', cells: ['Test administrator'], role: 'supervisor', permissions: ['operations', 'reports'], statusRaw: 'active' };
+  const ui = screenFixture({ staff: [staff] }); ui.render(); await flush(); ui.render();
+  ui.all().find(node => node.props?.rows).props.onReview(staff); ui.render();
+  const fields = ui.all().find(node => node.props?.initialRole);
+  assert.equal(fields.props.initialRole, 'supervisor'); assert.deepEqual(fields.props.initialPages, ['operations', 'reports']);
+  assert.equal(ui.all().find(node => node.props?.name === 'status').props.defaultValue, 'active');
+  assert.equal(ui.all().some(node => node.props?.name === 'email'), false);
+  assert.ok(ui.all().some(node => node.type === 'button' && text(node) === 'Save record'));
+  await ui.submit([['role', 'staff'], ['permissions', 'operations'], ['status', 'suspended']]);
+  assert.deepEqual(ui.writes[0], { path: '/api/admin/staff/staff-one', method: 'PUT', body: { role: 'staff', permissions: ['operations'], status: 'suspended' } });
 });

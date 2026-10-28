@@ -1,0 +1,11 @@
+apps/api/src/middleware/auth.js
+apps/api/src/routes/admin.routes.js
+apps/api/src/routes/auth.routes.js
+apps/api/src/routes/customer.routes.js
+apps/api/src/routes/support-admin.routes.js
+apps/api/tests/admin-access.integration.test.mjs
+apps/api/tests/admin-support.integration.test.mjs
+apps/api/tests/api.smoke.test.mjs
+apps/web/components/admin-dashboard/AdminScreen.tsx
+apps/web/tests/admin-staff-access-ui.test.cjs
+apps/api/tests/admin-user-conversion.integration.test.mjs

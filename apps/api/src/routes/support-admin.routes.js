@@ -7,7 +7,9 @@ import { signedUrl } from '../lib/storage.js';
 import { issueRefund } from '../lib/money.js';
 const router=Router();
 const uuid = value=>{if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(String(value))) throw badRequest('Invalid ID');return value;};
-const supportSelect=`SELECT t.*,u.full_name,u.role AS requester_role,o.type AS organization_type,o.name AS organization_name,
+const supportSelect=`SELECT t.*,u.full_name,CASE WHEN u.role='admin' THEN COALESCE((SELECT m.sender_role FROM ticket_messages m
+WHERE m.ticket_id=t.id AND m.sender_user_id=t.user_id AND m.sender_role IN ('customer','company','partner','mechanic')
+ORDER BY m.created_at,m.id LIMIT 1),u.role) ELSE u.role END AS requester_role,o.type AS organization_type,o.name AS organization_name,
   CASE WHEN c.id IS NOT NULL THEN jsonb_build_object('id',c.id,'reason',c.reason,'status',c.status,'requested_by',c.requested_by,'requester_name',requester.full_name,'created_at',c.created_at,'decided_by',c.decided_by,'decider_name',decider.full_name,'decision_note',c.decision_note,'decided_at',c.decided_at) ELSE NULL END AS close_request
   FROM support_tickets t LEFT JOIN users u ON u.id=t.user_id LEFT JOIN organizations o ON o.id=t.organization_id
   LEFT JOIN LATERAL (SELECT * FROM support_ticket_close_requests WHERE ticket_id=t.id ORDER BY created_at DESC,id DESC LIMIT 1) c ON true

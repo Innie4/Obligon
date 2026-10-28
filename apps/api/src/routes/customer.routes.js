@@ -55,6 +55,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 const SETTLE_WAIT_MS = 2500;
 
 router.use(requireAuth, (req, _res, next) => {
+  if (req.user.role === "admin") return next(forbidden("Administrator accounts use the admin dashboard and cannot open customer services."));
   // Personal APIs do not inherit fleet permissions from a navigation token.
   // Fleet resources use the company router's current membership/capability gate.
   req.user = { ...req.user, orgId: null, orgType: null };
@@ -1406,20 +1407,20 @@ router.post("/card-request/confirm-email", sensitiveLimiter, asyncHandler(async 
 }));
 
 /**
- * Back-office path. Customers must buy a plan first, so this is restricted to
- * staff and cannot be used to obtain a card without payment.
+ * Company requests stay separate from a customer's paid-plan application.
+ * Administrator reviews use the admin router and its assigned page permissions.
  */
 router.post("/card-request", asyncHandler(async (req, res) => {
-  if (!["admin", "company"].includes(req.user.role)) {
+  if (req.user.role !== "company") {
     throw forbidden("Card requests must be started by choosing a subscription plan");
   }
   const targetUserId = req.body?.userId ?? req.user.id;
   const label = typeof req.body?.label === "string" && req.body.label.trim() ? req.body.label.trim().slice(0, 100) : "Fuel Card";
   const request = await one(
-    // Staff-created requests are not paid through checkout, so there is nothing
+    // Company-created requests are not paid through checkout, so there is nothing
     // to charge. charged_kobo is NOT NULL with no default precisely so this case
-    // has to be stated rather than assumed, and zero is the truthful value: an
-    // admin or company raising a request on someone's behalf is not billing them.
+    // has to be stated rather than assumed, and zero is the truthful value: a
+    // company raising a request on someone's behalf is not billing them.
     `INSERT INTO card_requests (user_id, organization_id, label, status, fee_kobo, charged_kobo)
      VALUES ($1, $2, $3, 'pending', 0, 0) ON CONFLICT DO NOTHING RETURNING id, label, status, created_at`,
     [targetUserId, req.user.orgId ?? null, label]

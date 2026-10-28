@@ -21,7 +21,7 @@ before(async () => {
   pool = (await import('../src/db.js')).getPool();
   const { env } = await import('../src/config/env.js');
   env.EMAIL_PROVIDER = 'local'; env.SMS_PROVIDER = 'local'; env.OTP_DELIVERY_MODE = 'provider'; env.LOCAL_OUTBOX_PATH = '/tmp/obligon-admin-access28-outbox.jsonl';
-  for (const table of ['users', 'audit_logs', 'invites', 'sessions', 'support_tickets', 'support_ticket_close_requests', 'ticket_messages', 'organizations', 'email_outbox', 'notifications']) await pool.query(`CREATE TABLE ${table}(LIKE public.${table} INCLUDING ALL)`);
+  for (const table of ['users', 'audit_logs', 'invites', 'sessions', 'support_tickets', 'support_ticket_close_requests', 'ticket_messages', 'organizations', 'email_outbox', 'notifications', 'memberships', 'partner_api_keys', 'verification_codes', 'account_auth_challenges']) await pool.query(`CREATE TABLE ${table}(LIKE public.${table} INCLUDING ALL)`);
   const app = express(); app.use(express.json());
   app.use((req, _res, next) => { const key = req.headers['x-test-user']; if (key && fixtures?.[key]) req.user = { ...fixtures[key], role: req.headers['x-test-claim-role'] ?? fixtures[key].role, staff_role: 'super_admin', staff_permissions: allPages }; next(); });
   app.use((await import('../src/middleware/auth.js')).attachUser);
@@ -33,7 +33,7 @@ before(async () => {
 });
 beforeEach(async () => {
   if (!url) return;
-  await pool.query('TRUNCATE users,audit_logs,invites,sessions,support_tickets,support_ticket_close_requests,ticket_messages,organizations,email_outbox,notifications CASCADE');
+  await pool.query('TRUNCATE users,audit_logs,invites,sessions,support_tickets,support_ticket_close_requests,ticket_messages,organizations,email_outbox,notifications,memberships,partner_api_keys,verification_codes,account_auth_challenges CASCADE');
   fixtures = {};
   for (const [key, role, grants, accountRole = 'admin'] of [['super', 'super_admin', allPages], ['second', 'super_admin', allPages], ['staff', 'staff', ['operations']], ['supervisor', 'supervisor', ['operations']], ['customer', 'staff', [], 'customer']]) {
     fixtures[key] = (await pool.query("INSERT INTO users(email,password_hash,full_name,role,staff_role,staff_permissions)VALUES($1,'unused',$2,$3,$4,$5)RETURNING *", [`${key}@test.invalid`, key, accountRole, role, JSON.stringify(grants)])).rows[0];
@@ -89,12 +89,13 @@ integration('staff list returns explicit role and selected page grants', async (
   assert.equal(staff.role, 'staff'); assert.deepEqual(staff.permissions, ['operations']);
 });
 integration('adding an administrator stores only the chosen pages and role and records the grant', async () => {
-  const result = await request('/staff', { method: 'POST', body: { fullName: 'Synthetic Supervisor', email: 'new@test.invalid', role: 'supervisor', permissions: ['operations', 'discounts'] } });
+  const result = await request('/staff', { method: 'POST', body: { email: fixtures.customer.email, role: 'supervisor', permissions: ['operations', 'discounts'] } });
   assert.equal(result.status, 200, JSON.stringify(result));
   const created = (await pool.query('SELECT * FROM users WHERE id=$1', [result.body.staffId])).rows[0];
+  assert.equal(created.id, fixtures.customer.id);
   assert.equal(created.role, 'admin'); assert.equal(created.staff_role, 'supervisor'); assert.deepEqual(created.staff_permissions, ['operations', 'discounts']);
   assert.equal(hasAdminPage(created, 'operations'), true); assert.equal(hasAdminPage(created, 'staff'), false); assert.equal(hasAdminPage(created, 'reports'), false);
-  assert.equal((await pool.query("SELECT count(*)::int count FROM audit_logs WHERE action='admin.staff_created' AND entity_id=$1", [created.id])).rows[0].count, 1);
+  assert.equal((await pool.query("SELECT count(*)::int count FROM audit_logs WHERE action='admin.staff_converted' AND entity_id=$1", [created.id])).rows[0].count, 1);
 });
 integration('self edits cannot remove the staff grant, suspend or demote the current super admin', async () => {
   for (const body of [{ role: 'staff' }, { status: 'suspended' }, { permissions: ['operations'] }]) assert.equal((await request(`/staff/${fixtures.super.id}`, { method: 'PUT', body })).status, 400);
