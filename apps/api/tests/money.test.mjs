@@ -25,10 +25,11 @@ test.before(async () => {
   fixtureAdmin = new pg.Pool({ connectionString: database });
   await fixtureAdmin.query(`CREATE SCHEMA ${fixtureSchema}`);
   ownsFixtureSchema = true;
-  for (const table of ["users", "organizations", "memberships", "wallets", "wallet_ledger", "idempotency_keys", "audit_logs", "notifications", "card_plans", "card_requests", "plan_wallet_credits"]) {
+  for (const table of ["users", "organizations", "memberships", "wallets", "wallet_ledger", "idempotency_keys", "audit_logs", "notifications", "card_plans", "card_requests", "plan_wallet_credits", "pricing_plans", "subscriptions"]) {
     await fixtureAdmin.query(`CREATE TABLE ${fixtureSchema}.${table} (LIKE public.${table} INCLUDING ALL)`);
   }
   await fixtureAdmin.query(`INSERT INTO ${fixtureSchema}.card_plans(code,name,amount_kobo,interval) VALUES('unit-plan','Synthetic Unit Plan',100000,'one-time')`);
+  await fixtureAdmin.query(`INSERT INTO ${fixtureSchema}.pricing_plans(code,name,price_kobo,interval) VALUES('unit-company-plan','Synthetic Company Plan',150000,'month')`);
   const isolated = new URL(database); isolated.searchParams.set("options", `-c search_path=${fixtureSchema}`);
   Object.assign(process.env, { DATABASE_URL: isolated.toString(), DATABASE_SSL: "false", DOTENV_CONFIG_PATH: "/dev/null", NODE_ENV: "test", EMAIL_PROVIDER: "local", SMS_PROVIDER: "local", LOCAL_OUTBOX_PATH: `/tmp/obligon-money-${fixtureSchema}.jsonl`, RESEND_API_KEY: "", TERMII_API_KEY: "", WEB_PUSH_VAPID_PRIVATE_KEY: "" });
   const db = await import("../src/db.js");
@@ -53,6 +54,7 @@ async function seedOrg(label) {
     [org.id, user.id, email]
   );
   const wallet = await createWalletForAccount({ userId: user.id, organizationId: org.id });
+  await q("INSERT INTO subscriptions(organization_id,plan_code,status,current_period_start,current_period_end)VALUES($1,'unit-company-plan','active',now()-interval '1 day',now()+interval '1 month')",[org.id]);
   return { user, org, wallet };
 }
 

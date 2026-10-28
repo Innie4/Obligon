@@ -1,3 +1,4 @@
+import { requireCompanyPlan } from './subscriptions.js';
 import { q, one, tx } from "../db.js";
 import { badRequest, conflict, forbidden, notFound } from "./errors.js";
 import { audit, notify } from "./notify.js";
@@ -141,7 +142,7 @@ export async function transferFromCompanyWallet({
     const organization = await t.one("SELECT owner_user_id,type,verification_status FROM organizations WHERE id=$1 FOR SHARE", [organizationId]);
     const actor = await t.one("SELECT id,role FROM users WHERE id=$1 AND status='active' FOR SHARE", [actorUserId]);
     if (!organization || organization.type !== "company" || !actor || actor.role !== actorRole) throw forbidden("An authorized company actor is required");
-    if (organization.verification_status !== "verified") throw forbidden("Company wallet operations require contract approval by an admin");
+    await requireCompanyPlan(organizationId, t);
     if (organization.owner_user_id !== actorUserId) {
       const actorMembership = await t.one("SELECT role,permissions FROM memberships WHERE organization_id=$1 AND user_id=$2 AND status='active' FOR SHARE", [organizationId, actorUserId]);
       if (!actorMembership || (!["owner", "admin"].includes(actorMembership.role) && !actorMembership.permissions?.includes("wallet.manage"))) throw forbidden("The actor does not have permission to manage this company wallet");

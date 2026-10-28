@@ -8,23 +8,26 @@ import { StatusPopup } from "./StatusPopup";
 import { EmptyState } from "./States";
 interface State {
   active: boolean;
+  temporaryAccess?: boolean;
+  expiresAt?: string | null;
   needsFirstCard?: boolean;
-  subscription: { name: string; current_period_end: string } | null;
+  subscription: { name: string; plan_code?: string; current_period_end: string } | null;
   plans: Array<{
     code: string;
     name: string;
     price_kobo: number;
+    interval?: string;
     features: Array<string | { label: string; state: string }>;
   }>;
 }
 export function SubscriptionPanel({ kind, embedded = false, preferredPlan: selectedPlan, onSubscriptionChange }: {
-  kind: "partner" | "customer";
+  kind: "company" | "customer";
   embedded?: boolean;
   preferredPlan?: string;
   onSubscriptionChange?: () => void;
 }) {
   const endpoint =
-    kind === "partner" ? "/api/partner/billing" : "/api/customer/subscription";
+    kind === "company" ? "/api/company/subscription" : "/api/customer/subscription";
   const [preferredPlan, setPreferredPlan] = React.useState<string>();
   React.useEffect(() => {
     const plan = selectedPlan ?? (!embedded ? sessionStorage.getItem("obligon_selected_plan") : null);
@@ -49,7 +52,7 @@ export function SubscriptionPanel({ kind, embedded = false, preferredPlan: selec
     const params = new URLSearchParams(window.location.search);
     const reference = kind === "customer"
       ? customerPaymentReference(window.location.search, "subscription")
-      : params.get("reference");
+      : params.get("paymentFlow") === "subscription" ? params.get("reference") : null;
     if (reference) {
       setBusy(true);
       void authenticatedRequest(endpoint + "/confirm", {
@@ -102,7 +105,7 @@ export function SubscriptionPanel({ kind, embedded = false, preferredPlan: selec
   }
   const plans = data?.plans ?? [];
   const currentPlanCode = data?.active
-    ? plans.find(plan => plan.name.toLowerCase() === data.subscription?.name?.toLowerCase())?.code
+    ? data.subscription?.plan_code ?? plans.find(plan => plan.name.toLowerCase() === data.subscription?.name?.toLowerCase())?.code
     : undefined;
   const previewCode = plans.find(plan => plan.code === preferredPlan)?.code ?? currentPlanCode ?? plans[0]?.code;
   const comparisonLabels = ["Fuel Spend Tracking", "Loyalty Rewards", "Generator Repairer", "Towing Services"];
@@ -113,15 +116,16 @@ export function SubscriptionPanel({ kind, embedded = false, preferredPlan: selec
   const PlanHeading = embedded ? "h3" : "h2";
   return (
     <section className={embedded ? "rounded-2xl border border-obligon-border bg-white p-5 sm:p-6" : "p-5 sm:p-10"}>
-      {embedded ? <h2 className="font-display text-2xl font-extrabold text-obligon-navy">Subscription</h2> : <h1 className="text-3xl font-extrabold">{kind === "partner" ? "Partner" : "Customer"} Subscription</h1>}
+      {embedded ? <h2 className="font-display text-2xl font-extrabold text-obligon-navy">{kind === "company" ? "Organization subscription" : "Subscription"}</h2> : <h1 className="text-3xl font-extrabold">{kind === "company" ? "Organization" : "Customer"} Subscription</h1>}
       <p className="mt-3">
-        {data?.active
+        {data?.temporaryAccess
+          ? `Temporary test access${data.expiresAt ? ` until ${new Date(data.expiresAt).toLocaleString("en-GB")}` : " is active"}. This is not a paid subscription.`
+          : data?.active
           ? `${data.subscription?.name ?? "Your plan"}${data.subscription?.current_period_end ? ` active until ${new Date(data.subscription.current_period_end).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}` : " is active"}`
           : "Choose and pay for a plan to activate dashboard features."}
       </p>
       <p className="mt-2 text-sm text-slate-600">
-        Each payment covers one month. Renew here before expiry. Subscription
-        fees are separate from fuel funds.
+        {kind === "company" ? "An active Organization plan unlocks fleet operations. Renew before expiry. " : "Each payment covers one month. Renew here before expiry. "}Subscription fees are separate from fuel funds.
       </p>
       {error ? <StatusPopup tone="error" title="Could not load or update your plan" message={error} onRetry={() => void refresh()} /> : null}
       {busy ? <StatusPopup tone="pending" message="Preparing your plan payment…" /> : null}
@@ -140,7 +144,7 @@ export function SubscriptionPanel({ kind, embedded = false, preferredPlan: selec
                 {p.code === currentPlanCode ? <span className="text-xs font-bold text-obligon-green">Current plan</span> : null}
               </div>
               <p className="my-3 text-lg font-bold tabular-nums">
-                ₦{(p.price_kobo / 100).toLocaleString()} / month
+                ₦{(p.price_kobo / 100).toLocaleString()} / {p.interval === "year" ? "year" : "month"}
               </p>
               <ul className="space-y-3 text-sm leading-5">
                 {previewFeatures(p).map((f, i) => <li key={i}>{typeof f === "string" ? f : `${f.label}: ${f.state}`}</li>)}

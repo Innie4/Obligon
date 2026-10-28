@@ -20,6 +20,30 @@ const id = (value) => {
     throw badRequest("Invalid record ID");
   return value;
 };
+const jobFields = {
+  title: { column: "title", max: 200 },
+  department: { column: "department" },
+  location: { column: "location" },
+  description: { column: "description", max: 10000 },
+  employmentType: { column: "employment_type", max: 80 },
+};
+function jobChanges(body, creating = false) {
+  const changes = [];
+  for (const [field, { column, max }] of Object.entries(jobFields)) {
+    if (!creating && !Object.hasOwn(body ?? {}, field)) continue;
+    const value = creating && field === "employmentType" && body?.[field] === undefined
+      ? "Full-time" : body?.[field];
+    if (typeof value !== "string" || !value.trim() || (max && value.length > max))
+      throw badRequest(`A valid ${field === "employmentType" ? "employment type" : field} is required${max ? ` (maximum ${max} characters)` : ""}`);
+    changes.push([column, value.trim()]);
+  }
+  if (!creating && Object.hasOwn(body ?? {}, "status")) {
+    if (!["open", "closed"].includes(body.status)) throw badRequest("Choose open or closed");
+    changes.push(["status", body.status]);
+  }
+  if (!changes.length) throw badRequest("Provide job details or a status to update");
+  return changes;
+}
 const catalogs = {
   applications: {
     table: "job_applications",
@@ -144,27 +168,10 @@ router.get(
 router.post(
   "/jobs",
   asyncHandler(async (req, res) => {
-    const { title, department, location, description, employmentType } =
-      req.body ?? {};
-    if (
-      [title, department, location, description].some(
-        (v) => typeof v !== "string" || !v.trim(),
-      ) ||
-      String(description).length > 10000 ||
-      String(title).length > 200
-    )
-      throw badRequest(
-        "Title, department, location and description are required",
-      );
+    const changes = jobChanges(req.body, true);
     const job = await one(
-      "INSERT INTO job_postings(title,department,location,description,employment_type)VALUES($1,$2,$3,$4,$5)RETURNING id",
-      [
-        title.trim(),
-        department.trim(),
-        location.trim(),
-        description.trim(),
-        String(employmentType ?? "Full-time").slice(0, 80),
-      ],
+      `INSERT INTO job_postings(${changes.map(([column]) => column).join(",")})VALUES(${changes.map((_, index) => `$${index + 1}`).join(",")})RETURNING id`,
+      changes.map(([, value]) => value),
     );
     await audit({
       actorUserId: req.user.id,
@@ -178,20 +185,28 @@ router.post(
 router.patch(
   "/jobs/:id",
   asyncHandler(async (req, res) => {
-    if (!["open", "closed"].includes(req.body?.status))
-      throw badRequest("Choose open or closed");
+    const changes = jobChanges(req.body);
     const row = await one(
-      "UPDATE job_postings SET status=$2 WHERE id=$1 RETURNING id",
-      [id(req.params.id), req.body.status],
+      `UPDATE job_postings SET ${changes.map(([column], index) => `${column}=$${index + 2}`).join(",")} WHERE id=$1 RETURNING id`,
+      [id(req.params.id), ...changes.map(([, value]) => value)],
     );
     if (!row) throw notFound("Job not found");
     await audit({
       actorUserId: req.user.id,
       actorRole: "admin",
-      action: "job.status_changed",
+      action: changes.length === 1 && changes[0][0] === "status" ? "job.status_changed" : "job.updated",
       entityId: row.id,
-      metadata: { status: req.body.status },
+      metadata: { fields: changes.map(([column]) => column), ...(req.body.status ? { status: req.body.status } : {}) },
     });
+    res.json({ ok: true });
+  }),
+);
+router.delete(
+  "/jobs/:id",
+  asyncHandler(async (req, res) => {
+    const row = await one("DELETE FROM job_postings WHERE id=$1 RETURNING id", [id(req.params.id)]);
+    if (!row) throw notFound("Job not found");
+    await audit({ actorUserId: req.user.id, actorRole: "admin", action: "job.deleted", entityId: row.id });
     res.json({ ok: true });
   }),
 );

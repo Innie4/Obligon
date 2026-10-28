@@ -17,20 +17,14 @@ import { reportPdf } from "../lib/pdf.js";
 import { env } from "../config/env.js";
 import { integerKobo, nairaToKobo } from "../lib/money-amounts.js";
 
+import { enforceCompanyPlan, requireCompanyPlan, subscriptionIsActive } from '../lib/subscriptions.js';
+import { subscriptionRouter } from './subscription.routes.js';
+
 const router = Router();
 
 router.use(requireAuth, requireCompanyMembership);
-router.use((req, _res, next) => {
-  const onboarding = req.path === "/overview" && req.method === "GET" ||
-    req.path === "/billing" && req.method === "GET" ||
-    /^\/support\/tickets(?:\/[^/]+\/messages)?\/?$/.test(req.path) ||
-    /^\/notifications(?:\/[^/]+(?:\/read|\/dismiss)?|\/read-all)?\/?$/.test(req.path) ||
-    req.path === "/settings" && ["GET", "PUT"].includes(req.method);
-  if (req.org?.verification_status !== "verified" && !onboarding) {
-    return next(forbidden("Company operations require admin approval after your contract is agreed. Contact Support to confirm your contract."));
-  }
-  next();
-});
+router.use('/subscription', subscriptionRouter('company'));
+router.use(enforceCompanyPlan);
 
 function orgWhere(req) {
   // Scope every query to the caller's organization
@@ -134,11 +128,17 @@ router.post("/vehicles", requireOrg, requirePermission("fleet.manage"), asyncHan
   const tankCapacityLitres = tankCapacity == null ? 100 : Number(tankCapacity);
   if (!Number.isFinite(tankCapacityLitres) || tankCapacityLitres <= 0 || tankCapacityLitres > 5000) throw badRequest("Tank capacity must be between 1 and 5,000 litres");
   if (driverId && !(await one("SELECT id FROM drivers WHERE id = $1 AND organization_id = $2 AND status = 'active'", [driverId, req.user.orgId]))) throw badRequest("Selected driver is not part of this fleet");
-  const vehicle = await one(
-    `INSERT INTO vehicles (organization_id, plate, model, vehicle_type, fuel_type, tank_capacity_l, driver_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-    [req.user.orgId, plate.toUpperCase(), model ?? "", vehicleType ?? "truck", fuelType ?? "diesel", tankCapacityLitres, driverId ?? null]
-  );
+  const vehicle = await tx(async t => {
+    await t.one('SELECT id FROM organizations WHERE id=$1 FOR UPDATE', [req.user.orgId]);
+    const state = await requireCompanyPlan(req.user.orgId, t);
+    const total = await t.one('SELECT count(*)::int AS count FROM vehicles WHERE organization_id=$1', [req.user.orgId]);
+    if (state.entitlements.vehicles != null && total.count >= state.entitlements.vehicles) throw forbidden('Your Organization plan vehicle limit has been reached. Upgrade your plan in Billing.');
+    return t.one(
+      `INSERT INTO vehicles (organization_id, plate, model, vehicle_type, fuel_type, tank_capacity_l, driver_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [req.user.orgId, plate.toUpperCase(), model ?? "", vehicleType ?? "truck", fuelType ?? "diesel", tankCapacityLitres, driverId ?? null]
+    );
+  });
   await audit({ actorUserId: req.user.id, actorRole: req.user.role, action: "vehicle.created", entityType: "vehicle", entityId: vehicle.id, metadata: { plate: vehicle.plate } });
   emitToOrg(req.user.orgId, "fleet.updated", { plate: vehicle.plate });
   const driver = driverId ? await one("SELECT id, name FROM drivers WHERE id = $1", [driverId]) : null;
@@ -549,7 +549,7 @@ router.get("/billing", requireOrg, asyncHandler(async (req, res) => {
   res.json({
     plan: subscription ? {
       code: subscription.plan_code, name: subscription.plan_name,
-      priceLabel: naira(subscription.price_kobo), status: subscription.status,
+      priceLabel: naira(subscription.price_kobo), status: subscription.status === "active" && !subscriptionIsActive(subscription) ? "expired" : subscription.status,
       nextBilling: subscription.current_period_end ? fmtDate(subscription.current_period_end) : null,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
       features: subscription.features ?? []
@@ -582,11 +582,12 @@ router.get("/invoices/:id/download", requireOrg, asyncHandler(async (req, res) =
 }));
 
 router.post("/billing/plan", requireOrg, requirePermission("billing.manage"), asyncHandler(async (req, res) => {
-  throw forbidden("Company billing changes require an agreed contract. Contact Support to confirm your terms.");
+  throw badRequest("Choose an Organization plan through the subscription checkout.");
 }));
 
 router.post("/billing/cancel", requireOrg, requirePermission("billing.manage"), asyncHandler(async (req, res) => {
-  throw forbidden("Company cancellation terms follow your agreed contract. Contact Support to request a contract change.");
+  await q('UPDATE subscriptions SET cancel_at_period_end=true WHERE organization_id=$1', [req.user.orgId]);
+  res.json({ok:true});
 }));
 
 // ============ TEAM ============

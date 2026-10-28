@@ -268,22 +268,22 @@ function gateFixture(request, pathname = '/dashboard/fuel-pricing') {
     'next/navigation': { usePathname: () => pathname },
     '@/components/shared/AuthContext': { useSession: () => ({ user: { role: 'partner' } }) },
     '../../../../packages/shared/partner-access.mjs': { partnerAllowedFuels: () => ['LPG'] },
-    '@/components/shared/SubscriptionPanel': { SubscriptionPanel: 'SubscriptionPanel' }
+    './PartnerContractPanel': { PartnerContractPanel: 'PartnerContractPanel' }
   }, { window: { location: { reload: () => reloads.push(true) } } }, { children: 'Operational page' });
   return { ...ui, reloads };
 }
 
-test('subscription gate announces pending and error states and keeps protected content hidden', async () => {
+test('contract gate announces pending and error states and keeps protected content hidden', async () => {
   const pending = deferred(); const ui = gateFixture(() => pending.promise);
-  assert.match(ui.text(), /Checking subscription/); assert.ok(ui.nodes().some(node => node.props?.role === 'status')); assert.doesNotMatch(ui.text(), /Operational page/);
+  assert.match(ui.text(), /Checking contract approval/); assert.ok(ui.nodes().some(node => node.props?.role === 'status')); assert.doesNotMatch(ui.text(), /Operational page/);
   pending.reject(new Error('Billing unavailable')); await ui.settle();
-  assert.match(ui.text(), /Your subscription status could not be checked/); assert.doesNotMatch(ui.text(), /Operational page/);
+  assert.match(ui.text(), /Your contract status could not be checked/); assert.doesNotMatch(ui.text(), /Operational page/);
   ui.button('Retry').props.onClick(); assert.equal(ui.reloads.length, 1);
 });
 
-test('subscription gate preserves active, inactive and exempt route behavior', async () => {
+test('contract gate preserves active, inactive and exempt route behavior', async () => {
   const active = gateFixture(async () => ({ active: true })); await active.settle(); assert.match(active.text(), /Operational page/);
-  const inactive = gateFixture(async () => ({ active: false })); await inactive.settle(); assert.ok(inactive.nodes().some(node => node.type === 'SubscriptionPanel')); assert.doesNotMatch(inactive.text(), /Operational page/);
+  const inactive = gateFixture(async () => ({ active: false })); await inactive.settle(); assert.ok(inactive.nodes().some(node => node.type === 'PartnerContractPanel')); assert.doesNotMatch(inactive.text(), /Operational page/);
   const exempt = gateFixture(async () => { throw new Error('Must not load'); }, '/dashboard/settings'); await exempt.settle(); assert.equal(exempt.calls.length, 0); assert.match(exempt.text(), /Operational page/);
 });
 

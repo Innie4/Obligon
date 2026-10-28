@@ -65,7 +65,7 @@ export type DashboardPageCopy = {
 export const dashboardNav: Array<{ key: DashboardPageKey; label: string; href: string; icon: DashboardIcon }> = [
   { key: "overview", label: "Dashboard", href: "/dashboard", icon: "overview" },
   { key: "workshop", label: "Workshop Profile", href: "/dashboard/workshop", icon: "station" },
-  { key: "billing", label: "Subscription", href: "/dashboard/billing", icon: "wallet" },
+  { key: "billing", label: "Contract", href: "/dashboard/billing", icon: "wallet" },
   { key: "transactions", label: "Transactions", href: "/dashboard/transactions", icon: "transactions" },
   { key: "station", label: "Fuel Stations", href: "/dashboard/station-profile", icon: "station" },
   { key: "reports", label: "Analytics", href: "/dashboard/reports", icon: "reports" },
@@ -90,8 +90,8 @@ export const pageCopy: Record<DashboardPageKey, DashboardPageCopy> = {
   },
   billing: {
     key: "billing",
-    title: "Partner Subscription",
-    description: "Manage your plan and renew before expiry.",
+    title: "Partner Contract",
+    description: "Review your partner contract and approval status.",
     searchPlaceholder: "Search dashboard sections"
   },
   overview: {

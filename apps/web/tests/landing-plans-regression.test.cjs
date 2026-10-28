@@ -62,7 +62,7 @@ test('individual pricing immediately renders the restored plan comparison and se
   assert.doesNotMatch(text(tree), /Contact sales for a custom requirement/);
 });
 
-test('organization pricing restores the annual plans and routes every CTA to a contract inquiry', () => {
+test('organization pricing preserves annual rates and routes paid plans to company signup', () => {
   const render = loadComponent('../components/landing/Pricing.tsx', 'Pricing');
   nodes(render(), node => node.type === 'button' && text(node) === 'Organization')[0].props.onClick();
   const tree = render();
@@ -71,10 +71,12 @@ test('organization pricing restores the annual plans and routes every CTA to a c
   for (const [index, [name, price]] of [['Starter', '150k'], ['Business', '250k'], ['Enterprise', '500k'], ['Organization', 'Custom']].entries()) {
     assert.match(text(cards[index]), new RegExp(`${name}.*${price}`));
     const href = nodes(cards[index], node => node.type === 'a')[0].props.href;
-    assert.equal(new URL(href, 'https://obligon.test').pathname, '/support');
-    assert.match(new URL(href, 'https://obligon.test').searchParams.get('request'), /contract/);
+    const url = new URL(href, 'https://obligon.test');
+    assert.equal(url.pathname, name === 'Organization' ? '/support' : '/auth/signup');
+    if (name === 'Organization') assert.match(url.searchParams.get('request'), /Custom Organization plan quote/);
+    else { assert.equal(url.searchParams.get('role'), 'company'); assert.equal(url.searchParams.get('plan'), `organization_${name.toLowerCase()}`); }
   }
-  assert.match(text(tree), /Companies and organizations must agree a contract before proceeding/);
+  assert.match(text(tree), /Subscribe to an Organization plan to activate company fleet operations/);
 });
 
 test('product showcase has a single-line Get started CTA with a small arrow', () => {
@@ -118,7 +120,8 @@ test('organization plan comparison keeps its own selection and every contract in
   assert.match(text(selected[0]), /^Enterprise/);
   for (const article of nodes(tree, node => node.type === 'article')) {
     const href = nodes(article, node => node.type === 'a')[0].props.href;
-    assert.match(new URL(href, 'https://obligon.test').searchParams.get('request'), /contract/);
+    const url = new URL(href, 'https://obligon.test');
+    assert.ok(url.pathname === '/support' || (url.pathname === '/auth/signup' && url.searchParams.get('role') === 'company'));
   }
   nodes(audience(), node => node.type === 'button' && text(node) === 'Individual')[0].props.onClick();
   tree = render();

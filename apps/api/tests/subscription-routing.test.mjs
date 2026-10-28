@@ -16,10 +16,11 @@ async function checkoutFor(kind) {
   one:async sql=>sql.includes('FROM cards')?{id:'test-card'}:plan,
   q:async(_sql,args)=>{insert=args;},
   asyncHandler:fn=>fn,
-  requireOrgRole:()=>()=>{},
+  requirePermission:()=>()=>{},
   activeProvider:()=> 'flutterwave',reference:()=> 'SUB/test & reference',
   startCheckout:async args=>{checkout=args;return{authorization_url:args.redirectUrl,simulated:true};},
   env:{APP_URL:'https://app.example.invalid'},
+  integerKobo:value=>String(value),
   badRequest:message=>new Error(message),forbidden:message=>new Error(message)
  };
  vm.runInNewContext(source+'\nsubscriptionRouter("'+kind+'");',context);
@@ -37,10 +38,10 @@ test('customer subscription payment returns to My Card with an encoded reference
  assert.equal(insert[2],null);
 });
 
-test('partner subscription payment keeps its billing destination',async()=>{
- const {redirect,insert}=await checkoutFor('partner');
- assert.equal(redirect.pathname,'/dashboard/billing');
- assert.equal(redirect.searchParams.has('paymentFlow'),false);
+test('company subscription payment returns to organization billing',async()=>{
+ const {redirect,insert}=await checkoutFor('company');
+ assert.equal(redirect.pathname,'/company/billing');
+ assert.equal(redirect.searchParams.get('paymentFlow'),'subscription');
  assert.equal(redirect.searchParams.get('reference'),'SUB/test & reference');
  assert.equal(insert[2],'test-org');
 });

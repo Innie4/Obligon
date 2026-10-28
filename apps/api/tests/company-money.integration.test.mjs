@@ -16,7 +16,7 @@ before(async () => {
   if (!database) return;
   admin = new pg.Pool({ connectionString: database });
   await admin.query(`CREATE SCHEMA ${schema}`);
-  const tables = ['users', 'organizations', 'memberships', 'wallets', 'wallet_ledger', 'top_ups', 'idempotency_keys', 'audit_logs', 'notifications', 'payment_splits', 'settlement_accounts'];
+  const tables = ['users', 'organizations', 'memberships', 'wallets', 'wallet_ledger', 'top_ups', 'idempotency_keys', 'audit_logs', 'notifications', 'payment_splits', 'settlement_accounts', 'pricing_plans', 'subscriptions'];
   for (const table of tables) await admin.query(`CREATE TABLE ${schema}.${table} (LIKE public.${table} INCLUDING ALL)`);
   const isolated = new URL(database); isolated.searchParams.set('options', `-c search_path=${schema}`);
   Object.assign(process.env, { DATABASE_URL: isolated.toString(), DATABASE_SSL: 'false', DOTENV_CONFIG_PATH: '/dev/null', NODE_ENV: 'test', PAYMENT_PROVIDER: 'flutterwave', FLW_SECRET_KEY: 'isolated-fixture-key', FLW_PUBLIC_KEY: 'isolated-fixture-key', ALLOW_PAYMENT_SIMULATION: 'false', PROVIDER_RETRY_COUNT: '0' });
@@ -46,21 +46,23 @@ beforeEach(async () => {
   if (!database) return;
   providerMode = 'paid'; calls = []; duringVerification = null;
   env.PAYMENT_FEE_BEARER = 'customer'; env.PAYMENT_FEE_BASIS_POINTS = '150'; env.MIN_TOPUP_NAIRA = '100';
-  await pool.query('TRUNCATE users,organizations,memberships,wallets,wallet_ledger,top_ups,idempotency_keys,audit_logs,notifications,payment_splits,settlement_accounts');
+  await pool.query('TRUNCATE users,organizations,memberships,wallets,wallet_ledger,top_ups,idempotency_keys,audit_logs,notifications,payment_splits,settlement_accounts,pricing_plans,subscriptions');
   await pool.query(`INSERT INTO users(id,email,password_hash,full_name,role,status,notification_prefs) VALUES
     ($1,'owner@example.invalid','unused','Company owner','company','active','{"email":false,"sms":false,"push":false}'),
     ($2,'manager@example.invalid','unused','Company manager','company','active','{"email":false,"sms":false,"push":false}'),
     ($3,'member@example.invalid','unused','Member','customer','active','{"email":false,"sms":false,"push":false}'),
     ($4,'foreign@example.invalid','unused','Foreign owner','company','active','{"email":false,"sms":false,"push":false}')`, [owner, manager, member, foreignOwner]);
   await pool.query("INSERT INTO organizations(id,owner_user_id,name,type,verification_status) VALUES($1,$2,'Company fixture','company','verified'),($3,$4,'Foreign fixture','company','verified')", [org, owner, foreignOrg, foreignOwner]);
+  await pool.query("INSERT INTO pricing_plans(code,name,price_kobo,interval,features)VALUES('active-fixture','Active fixture',150000,'month','[\"Advanced analytics\"]')");
+  await pool.query("INSERT INTO subscriptions(organization_id,plan_code,status,current_period_start,current_period_end)VALUES($1,'active-fixture','active',now()-interval '1 day',now()+interval '1 month'),($2,'active-fixture','active',now()-interval '1 day',now()+interval '1 month')",[org,foreignOrg]);
   await pool.query(`INSERT INTO memberships(organization_id,user_id,email,role,status,permissions) VALUES
     ($1,$2,'manager@example.invalid','manager','active','["wallet.manage","billing.manage"]'),
     ($1,$3,'member@example.invalid','viewer','active','[]')`, [org, manager, member]);
   await pool.query("INSERT INTO wallets(id,user_id,organization_id,kind,balance_kobo) VALUES($1,$2,$3,'company',100000),($4,$5,NULL,'individual',0),($6,$7,$8,'company',0)", [wallet, owner, org, personalWallet, member, foreignWallet, foreignOwner, foreignOrg]);
 });
-check('pending company approval prevents direct allocation without any money effect',async()=>{
- await pool.query("UPDATE organizations SET verification_status='pending' WHERE id=$1",[org]);
- await assert.rejects(()=>transfer({organizationId:org,toUserId:member,amountKobo:100,actorUserId:owner,actorRole:'company',idempotencyKey:'pending-contract'}),/contract.*approval|approval.*contract/i);
+check('expired company subscription prevents direct allocation without any money effect',async()=>{
+ await pool.query("UPDATE subscriptions SET current_period_end=now()-interval '1 minute' WHERE organization_id=$1",[org]);
+ await assert.rejects(()=>transfer({organizationId:org,toUserId:member,amountKobo:100,actorUserId:owner,actorRole:'company',idempotencyKey:'expired-subscription'}),/active.*subscription/i);
  assert.equal((await pool.query('SELECT count(*)::int AS n FROM wallet_ledger')).rows[0].n,0);
  assert.equal((await pool.query('SELECT balance_kobo FROM wallets WHERE id=$1',[wallet])).rows[0].balance_kobo,'100000');
 });

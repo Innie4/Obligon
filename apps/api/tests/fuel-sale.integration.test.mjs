@@ -17,6 +17,7 @@ before(async () => {
  process.env.DATABASE_URL = isolated.toString();
  process.env.DOTENV_CONFIG_PATH = '/dev/null'; process.env.NODE_ENV = 'test'; process.env.BUSINESS_TIMEZONE = 'Africa/Lagos';
  const db = await import('../src/db.js'); pool = db.getPool(); tx = db.tx;
+ for(const table of ['pricing_plans','subscriptions'])await pool.query(`CREATE TABLE ${table}(LIKE public.${table} INCLUDING ALL)`);
  ({ authorizeWalletFuelSale: authorize } = await import('../src/lib/fuel-sale.js'));
  ({ approvedDiscount } = await import('../src/lib/discounts.js'));
  ({ customerSubscription, activateCustomerSubscription } = await import('../src/lib/subscriptions.js'));
@@ -47,7 +48,7 @@ before(async () => {
  ALTER TABLE fueling_logs ADD COLUMN selling_unit text DEFAULT 'litre';
  `);
 });
-beforeEach(async () => { if(url) await pool.query('TRUNCATE card_requests,cards,stations,bank_accounts,fuel_prices,station_discount_requests,customer_subscriptions,wallets,wallet_ledger,transactions,fueling_logs,fuel_orders,organizations'); });
+beforeEach(async () => { if(url) await pool.query('TRUNCATE card_requests,cards,stations,bank_accounts,fuel_prices,station_discount_requests,customer_subscriptions,wallets,wallet_ledger,transactions,fueling_logs,fuel_orders,organizations,pricing_plans,subscriptions'); });
 after(async () => { if(!url) return; await pool?.end(); await admin.query(`DROP SCHEMA ${schema} CASCADE`); await admin.end(); });
 async function setup() {
  const user = randomUUID(), org = randomUUID();
@@ -61,6 +62,11 @@ async function setup() {
  return { user, org, station: station.id, card: card.id, wallet: wallet.id };
 }
 const buy = (f, overrides={}) => tx(t => authorize(t,{ partnerOrgId:f.org, stationId:f.station,code:'123456',litres:10,fuelType:'Petrol',reference:`TXN-${randomUUID()}`,...overrides }));
+
+integration('direct POS authorization refuses a revoked partner contract without any ledger effect',async()=>{
+ const f=await setup();await pool.query("UPDATE organizations SET verification_status='pending' WHERE id=$1",[f.org]);
+ await assert.rejects(buy(f),/station|approval|approved/i);await unchanged(f);
+});
 
 async function gasStation(f) {
  await pool.query("UPDATE organizations SET partner_type='gas_station' WHERE id=$1",[f.org]);
@@ -212,15 +218,20 @@ integration('expired direct checkout reservations do not block wallet POS purcha
 
 integration('fuel codes cannot debit non-NGN personal or company wallets as naira',async()=>{
  for(const fleet of [false,true]){
-  const f=await setup();if(fleet){const organization=randomUUID();await pool.query('INSERT INTO organizations(id)VALUES($1)',[organization]);await pool.query('UPDATE cards SET organization_id=$2 WHERE id=$1',[f.card,organization]);await pool.query('UPDATE wallets SET organization_id=$2 WHERE id=$1',[f.wallet,organization]);}
+  const f=await setup();if(fleet){const organization=randomUUID();await pool.query('INSERT INTO organizations(id)VALUES($1)',[organization]);await activeCompany(organization);await pool.query('UPDATE cards SET organization_id=$2 WHERE id=$1',[f.card,organization]);await pool.query('UPDATE wallets SET organization_id=$2 WHERE id=$1',[f.wallet,organization]);}
   await pool.query("UPDATE wallets SET currency='USD' WHERE id=$1",[f.wallet]);await assert.rejects(buy(f),/NGN wallet/);await unchanged(f);
   await pool.query('TRUNCATE card_requests,cards,stations,bank_accounts,fuel_prices,customer_subscriptions,wallets');
  }
 });
-integration('an existing company fuel code cannot spend after contract approval is revoked',async()=>{
+async function activeCompany(organization){
+ await pool.query("INSERT INTO pricing_plans(code,name,price_kobo,interval)VALUES('active-fixture','Active fixture',150000,'month') ON CONFLICT(code) DO NOTHING");
+ await pool.query("INSERT INTO subscriptions(organization_id,plan_code,status,current_period_start,current_period_end)VALUES($1,'active-fixture','active',now()-interval '1 day',now()+interval '1 month')",[organization]);
+}
+integration('an existing company fuel code cannot spend after its paid subscription expires',async()=>{
  const f=await setup(),organization=randomUUID();await pool.query("INSERT INTO organizations(id,verification_status)VALUES($1,'pending')",[organization]);
  await pool.query('UPDATE cards SET organization_id=$2 WHERE id=$1',[f.card,organization]);await pool.query('UPDATE wallets SET organization_id=$2 WHERE id=$1',[f.wallet,organization]);
- await assert.rejects(buy(f),/contract.*approval|approval.*contract/i);await unchanged(f);
- await pool.query("UPDATE organizations SET verification_status='verified' WHERE id=$1",[organization]);
+ await activeCompany(organization);await pool.query("UPDATE subscriptions SET current_period_end=now()-interval '1 minute' WHERE organization_id=$1",[organization]);
+ await assert.rejects(buy(f),/active.*subscription/i);await unchanged(f);
+ await pool.query("UPDATE subscriptions SET current_period_end=now()+interval '1 month' WHERE organization_id=$1",[organization]);
  assert.equal(Number((await buy(f)).sale.amount_kobo),10000);
 });

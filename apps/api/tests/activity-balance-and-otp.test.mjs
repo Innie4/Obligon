@@ -182,7 +182,7 @@ test("signup sends the customer through verification", () => {
   // It used to redirect to a page reading "Identity Verified" while nothing had
   // been verified at all. It is now one step rather than a chain of two, and the
   // detail is covered in verification-flow.test.mjs.
-  assert.match(signupForm, /router\.push\(withAuthReturn\(routes\.verifyEmail, returnPath\)\);/);
+  assert.match(signupForm, /router\.push\(withAuthReturn\(routes\.verifyEmail, returnPath \?\? \(topRole === "company" \? destination : null\)\)\);/);
 });
 
 test("the success page reports what was verified, not what it wishes", () => {

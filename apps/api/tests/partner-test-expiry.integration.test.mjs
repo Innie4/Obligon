@@ -65,6 +65,8 @@ beforeEach(async () => {
   await pool.query(`TRUNCATE ${tables.map(identifier).join(", ")}`);
   await pool.query(`INSERT INTO pricing_plans(code,name,price_kobo,features)
     VALUES('enterprise','Enterprise',50000000,'["Advanced analytics","API access","SLA support"]')`);
+  await pool.query(`INSERT INTO pricing_plans(code,name,price_kobo,interval,features)
+    VALUES('organization_enterprise','Enterprise',50000000,'year','["Up to 200 Vehicles","Advanced Analytics","Custom API Integration","Full Network Access"]')`);
 });
 
 afterEach(() => {
@@ -97,6 +99,10 @@ async function call(path, { body, token, method = body ? "POST" : "GET" } = {}) 
   return { status: response.status, body: await response.json() };
 }
 const grant = () => temporary.grantTemporaryPartnerAccess({ password: fixturePassword });
+const grantCompany = () => temporary.grantTemporaryCompanyAccess({ password: fixturePassword });
+const companyLogin = () => call("/api/auth/login", {
+  body: { email: temporary.TEMPORARY_COMPANY_ACCOUNT.email, password: fixturePassword, role: "company", rememberMe: true },
+});
 const login = (overrides = {}) => call("/api/auth/login", {
   body: { email: account.email, password: fixturePassword, role: "partner", ...overrides },
 });
@@ -121,22 +127,91 @@ async function protectedState() {
   return result;
 }
 
+integration("explicit company grant creates one read-only 24-hour Organization identity without a paid subscription", async () => {
+  const account = temporary.TEMPORARY_COMPANY_ACCOUNT;
+  await pool.query("UPDATE pricing_plans SET active=false WHERE code='enterprise'");
+  const granted = await grantCompany();
+  assert.equal(new Date(granted.expiresAt) - new Date(granted.startsAt), 86400 * 1000);
+  const user = await row("SELECT * FROM users WHERE id=$1", [account.userId]);
+  assert.equal(user.email, account.email);
+  assert.equal(user.role, "company");
+  assert.equal(user.access_expires_at.getTime(), new Date(granted.expiresAt).getTime());
+  assert.equal(user.supabase_auth_uid, null);
+  assert.equal(await security.verifyPassword(fixturePassword, user.password_hash), true);
+  const org = await row("SELECT * FROM organizations WHERE id=$1", [account.orgId]);
+  assert.equal(org.owner_user_id, account.userId);
+  assert.equal(org.type, "company");
+  assert.equal(org.plan_code, "organization_enterprise");
+  assert.equal(org.subscription_status, "canceled");
+  assert.equal(org.next_billing_date, null);
+  assert.equal((await row("SELECT count(*)::int AS count FROM memberships WHERE organization_id=$1 AND user_id=$2 AND role='owner' AND status='active'", [account.orgId, account.userId])).count, 1);
+  for (const table of ["subscriptions", "subscription_payments", "invoices", "transactions", "wallet_ledger"]) {
+    assert.equal((await row(`SELECT count(*)::int AS count FROM ${identifier(table)}`)).count, 0, table);
+  }
+});
+
+integration("company grants are single identity, cannot extend an active lease, and survive startup unchanged", async () => {
+  const outcomes = await Promise.allSettled(Array.from({ length: 4 }, () => grantCompany()));
+  assert.equal(outcomes.filter(result => result.status === "fulfilled").length, 1);
+  assert.equal(outcomes.filter(result => result.status === "rejected").length, 3);
+  const before = await protectedState();
+  env.NODE_ENV = "production";
+  assert.equal((await temporary.ensureTemporaryCompanyAccount()).status, "unchanged");
+  assert.deepEqual(await protectedState(), before);
+  await assert.rejects(grantCompany(), /cannot be reset or extended/);
+  assert.deepEqual(await protectedState(), before);
+});
+
+integration("temporary company login stays local, reads dashboards, blocks writes and expires old sessions", async () => {
+  await grantCompany();
+  Object.assign(env, { SUPABASE_AUTH_ENABLED: true, SUPABASE_URL: "https://temporary-company.example.invalid", SUPABASE_SERVICE_ROLE_KEY: "synthetic-company-service-key", SUPABASE_ANON_KEY: "synthetic-company-anon-key" });
+  const authenticated = await companyLogin();
+  assert.equal(authenticated.status, 200);
+  const token = authenticated.body.accessToken;
+  const company = temporary.TEMPORARY_COMPANY_ACCOUNT;
+  const persisted = await row("SELECT s.expires_at,u.access_expires_at FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.id=$1", [authenticated.body.sessionId]);
+  assert.equal(persisted.expires_at.getTime(), persisted.access_expires_at.getTime());
+  for (const path of ["/api/auth/session", "/api/company/overview", "/api/company/vehicles", "/api/company/billing", "/api/company/settings"]) {
+    assert.equal((await call(path, { token })).status, 200, path);
+  }
+  const before = await protectedState();
+  for (const path of ["/api/company/vehicles", "/api/company/billing/plan", "/api/auth/companies"]) {
+    assert.equal((await call(path, { body: { name: "Synthetic blocked company action" }, token })).status, 403, path);
+  }
+  assert.deepEqual(await protectedState(), before);
+  await expireAccount(company.userId);
+  for (const path of ["/api/auth/session", "/api/company/overview", "/api/company/billing"]) {
+    assert.equal((await call(path, { token })).status, 401, path);
+  }
+  assert.equal((await companyLogin()).status, 401);
+  assert.equal((await call("/api/auth/refresh", { body: { refreshToken: authenticated.body.refreshToken } })).status, 401);
+  await temporary.ensureTemporaryCompanyAccount();
+  assert.equal((await row("SELECT status FROM users WHERE id=$1", [company.userId])).status, "suspended");
+});
+
+integration("company lease cannot claim a matching email under another identity", async () => {
+  await seedOther({ email: temporary.TEMPORARY_COMPANY_ACCOUNT.email.toUpperCase() });
+  const before = await protectedState();
+  await assert.rejects(grantCompany(), /identity conflicts/);
+  assert.deepEqual(await protectedState(), before);
+});
+
 integration("explicit partner grant stores exactly one 24-hour deadline and no business funds", async () => {
-  await grant();
+  const granted = await grant();
   const user = await row("SELECT * FROM users WHERE id=$1", [account.userId]);
   assert.equal(user.email, account.email);
   assert.equal(user.role, "partner");
+  assert.equal(user.partner_type, "fuel_station");
   assert.equal(user.status, "active");
   assert.equal(user.supabase_auth_uid, null);
   assert.equal(user.two_factor_enabled, false);
   assert.notEqual(user.password_hash, fixturePassword);
   assert.equal(await security.verifyPassword(fixturePassword, user.password_hash), true);
-  const lease = await row(`SELECT extract(epoch FROM u.access_expires_at-s.current_period_start)::numeric AS seconds,
-    u.access_expires_at=s.current_period_end AS same_deadline,u.access_expires_at>clock_timestamp() AS live
-    FROM users u JOIN subscriptions s ON s.organization_id=$2 WHERE u.id=$1`, [account.userId, account.orgId]);
-  assert.equal(Number(lease.seconds), 24 * 60 * 60);
-  assert.equal(lease.same_deadline, true);
-  assert.equal(lease.live, true);
+  assert.equal(new Date(granted.expiresAt) - new Date(granted.startsAt), 24 * 60 * 60 * 1000);
+  assert.equal(user.access_expires_at.getTime(), new Date(granted.expiresAt).getTime());
+  assert.ok(user.access_expires_at > new Date());
+  assert.equal((await row("SELECT verification_status FROM organizations WHERE id=$1", [account.orgId])).verification_status, "verified");
+  assert.equal((await row("SELECT count(*)::int AS count FROM subscriptions")).count, 0);
   for (const table of ["stations", "cards", "transactions", "settlements", "bank_accounts", "invoices"]) {
     assert.equal(Number((await row(`SELECT COUNT(*) AS count FROM ${identifier(table)}`)).count), 0, table);
   }
@@ -150,6 +225,7 @@ integration("temporary partner uses normal password login and rejects a wrong pa
   assert.equal(authenticated.status, 200);
   assert.equal(authenticated.body.user.role, "partner");
   assert.equal(authenticated.body.user.organizationId, account.orgId);
+  assert.equal(authenticated.body.user.partnerType, "fuel_station");
   assert.ok(authenticated.body.accessToken && authenticated.body.refreshToken && authenticated.body.sessionId);
   assert.equal((await call("/api/auth/session", { token: authenticated.body.accessToken })).status, 200);
 });
@@ -291,7 +367,7 @@ integration("startup retires an expired grant and revokes only its existing sess
   assert.equal((await row("SELECT status FROM users WHERE id=$1", [account.userId])).status, "suspended");
   assert.equal((await row("SELECT access_expires_at FROM users WHERE id=$1", [account.userId])).access_expires_at.getTime(), expiry.getTime());
   assert.ok((await row("SELECT revoked_at FROM sessions WHERE id=$1", [authenticated.body.sessionId])).revoked_at);
-  assert.equal((await row("SELECT status FROM subscriptions WHERE organization_id=$1", [account.orgId])).status, "canceled");
+  assert.equal((await row("SELECT count(*)::int AS count FROM subscriptions WHERE organization_id=$1 AND status<>'canceled'", [account.orgId])).count, 0);
   assert.deepEqual(await row("SELECT * FROM users WHERE id=$1", [other.id]), before);
   assert.equal((await row("SELECT revoked_at FROM sessions WHERE id=$1", [otherSession])).revoked_at, null);
 });
@@ -311,12 +387,12 @@ integration("concurrent grants produce exactly one fixed lease and one identity"
   const outcomes = await Promise.allSettled(Array.from({ length: 4 }, () => grant()));
   assert.equal(outcomes.filter(result => result.status === "fulfilled").length, 1);
   assert.equal(outcomes.filter(result => result.status === "rejected").length, 3);
-  for (const table of ["users", "organizations", "memberships", "wallets", "subscriptions"]) {
+  for (const table of ["users", "organizations", "memberships", "wallets"]) {
     assert.equal(Number((await row(`SELECT COUNT(*) AS count FROM ${identifier(table)}`)).count), 1, table);
   }
-  const lease = await row(`SELECT extract(epoch FROM u.access_expires_at-s.current_period_start)::numeric AS seconds
-    FROM users u JOIN subscriptions s ON s.organization_id=$2 WHERE u.id=$1`, [account.userId, account.orgId]);
-  assert.equal(Number(lease.seconds), 86400);
+  assert.equal((await row("SELECT count(*)::int AS count FROM subscriptions")).count, 0);
+  const granted = outcomes.find(result => result.status === "fulfilled").value;
+  assert.equal(new Date(granted.expiresAt) - new Date(granted.startsAt), 86400 * 1000);
 });
 
 for (const [name, identity] of [
@@ -369,14 +445,17 @@ integration("ordinary unrelated accounts retain their normal remembered-session 
 
 integration("grant preserves the existing test station and disables automatic settlement", async () => {
   await legacyFixture();
-  await pool.query("UPDATE organizations SET auto_settlement=true WHERE id=$1", [account.orgId]);
+  await pool.query("UPDATE organizations SET auto_settlement=true,partner_type='other' WHERE id=$1", [account.orgId]);
   await pool.query("INSERT INTO stations(partner_org_id,name) VALUES($1,'Synthetic preserved test station')", [account.orgId]);
   const station = await row("SELECT * FROM stations WHERE partner_org_id=$1", [account.orgId]);
   await grant();
   assert.deepEqual(await row("SELECT * FROM stations WHERE partner_org_id=$1", [account.orgId]), station);
   assert.equal((await row("SELECT auto_settlement FROM organizations WHERE id=$1", [account.orgId])).auto_settlement, false);
+  assert.equal((await row("SELECT partner_type FROM users WHERE id=$1", [account.userId])).partner_type, "fuel_station");
+  assert.equal((await row("SELECT partner_type FROM organizations WHERE id=$1", [account.orgId])).partner_type, "fuel_station");
   const authenticated = await login();
   assert.equal(authenticated.status, 200);
+  assert.equal(authenticated.body.user.partnerType, "fuel_station");
   assert.equal((await call("/api/partner/stations", { token: authenticated.body.accessToken })).status, 200);
   assert.equal((await call("/api/partner/settings", { method: "PUT", token: authenticated.body.accessToken, body: { autoSettlement: true } })).status, 403);
 });

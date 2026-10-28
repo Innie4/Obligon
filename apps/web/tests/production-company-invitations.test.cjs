@@ -102,6 +102,14 @@ test('wrong-account errors expose account switching while never accepting',async
 for(const mfa of [false,true])test(`login preserves invitation through ${mfa?'password MFA':'successful sign-in'}`,async()=>{
   const ui=fixture('../components/auth/AuthForms.tsx','LoginForm',{status:'unauthenticated',user:null,search:`?returnUrl=${encodeURIComponent(destination)}`,mfa});await ui.settle();ui.change('login-email','invitee@example.invalid');ui.change('login-password','synthetic-password');await ui.submit();assert.equal(ui.events.at(-1)[1],mfa?`/auth/mfa/challenge?returnUrl=${encodeURIComponent(destination)}`:destination);
 });
+test('company signup preserves the annual plan and returns from verification to Billing',async()=>{
+ const ui=fixture('../components/auth/AuthForms.tsx','SignupForm',{status:'unauthenticated',user:null,search:'?role=company&plan=organization_business'});await ui.settle();
+ for(const [field,value] of Object.entries({company:'Synthetic Fleet',fleetSize:'15',contact:'Synthetic Owner',email:'owner@example.invalid',phone:'08012345678',license:'RC 123456',password:'synthetic-password'}))ui.change(`signup-${field}`,value);
+ await ui.submit();
+ const signup=ui.events.find(([kind])=>kind==='signup');assert.ok(signup);
+ assert.equal(signup[1].role,'company');assert.equal(signup[1].planCode,'organization_business');
+ assert.equal(ui.events.at(-1)[1],`/auth/verify-email?returnUrl=${encodeURIComponent('/company/billing')}`);
+});
 test('signup for invitation creates a customer account and keeps the verification return path',async()=>{
   const ui=fixture('../components/auth/AuthForms.tsx','SignupForm',{status:'unauthenticated',user:null,search:`?returnUrl=${encodeURIComponent(destination)}`});await ui.settle();
   ui.change('signup-name','Synthetic Invitee');ui.change('signup-email','invitee@example.invalid');ui.change('signup-phone','08012345678');ui.change('signup-state','Lagos');ui.change('signup-localGovernmentArea','Ikeja');ui.change('signup-password','synthetic-password');await ui.submit();
@@ -123,20 +131,20 @@ test('leaving company calls context reset and preserves role before opening the 
 test('company shell gates a customer until a company context is selected',()=>{
   const ui=fixture('../components/company-dashboard/CompanyShell.tsx','CompanyShell',{user:signedUser});assert.ok(ui.text().includes('Choose your company'));assert.equal(ui.text().includes('Fleet content'),false);
 });
-test('company shell prevents pending operations and explains admin contract approval',()=>{
- const user={...signedUser,organizationId:'fleet-fixture',organizationType:'company',organizationVerificationStatus:'pending'};
- const ui=fixture('../components/company-dashboard/CompanyShell.tsx','CompanyShell',{user});
- assert.match(ui.text(),/Contract approval required/);assert.match(ui.text(),/contract is agreed/);assert.equal(ui.text().includes('Fleet content'),false);
- assert.ok(ui.nodes().some(n=>n.type==='Link'&&n.props.href==='/company/support'));
- const approved=fixture('../components/company-dashboard/CompanyShell.tsx','CompanyShell',{user:{...user,organizationVerificationStatus:'verified'}});
- assert.equal(approved.text().includes('Fleet content'),true);assert.equal(approved.text().includes('Contract approval required'),false);
+test('company shell delegates fleet access to Organization subscriptions for every verification state',()=>{
+ for(const approval of ['pending','verified']) {
+  const user={...signedUser,organizationId:'fleet-fixture',organizationType:'company',organizationVerificationStatus:approval};
+  const ui=fixture('../components/company-dashboard/CompanyShell.tsx','CompanyShell',{user});
+  assert.ok(ui.nodes().some(n=>n.type==='CompanySubscriptionGate'));
+  assert.doesNotMatch(ui.text(),/Contract approval required/);
+ }
 });
-test('company search offers only approved destinations for the current company',()=>{
+test('company search offers subscription and operations destinations without a contract prerequisite',()=>{
  for(const approval of ['pending','verified']){
   const ui=fixture('../components/company-dashboard/CompanyShell.tsx','CompanyTopbar',{user:{...signedUser,organizationType:'company',organizationVerificationStatus:approval}});
   const search=ui.nodes().find(n=>n.type==='DashboardSearch');
   const routes=search.props.entries.map(n=>n.href);
-  assert.equal(routes.includes('/company/vehicles'),approval==='verified');assert.equal(routes.includes('/company/support'),true);
+  assert.equal(routes.includes('/company/vehicles'),true);assert.equal(routes.includes('/company/support'),true);
  }
 });
 test('switching company closes its mobile menu before replacing the dialog subtree',()=>{
@@ -145,7 +153,7 @@ test('switching company closes its mobile menu before replacing the dialog subtr
  ui.nodes().find(n=>n.type?.name==='CompanyTopbar').props.onOpenMenu();ui.render();
  assert.equal(ui.nodes().filter(n=>n.props.role==='dialog').length,1);
  ui.changeUser({...user,organizationId:'fleet-B',organizationVerificationStatus:'pending'});
- assert.equal(ui.nodes().filter(n=>n.props.role==='dialog').length,0);assert.match(ui.text(),/Contract approval required/);
+ assert.equal(ui.nodes().filter(n=>n.props.role==='dialog').length,0);assert.ok(ui.nodes().some(n=>n.type==='CompanySubscriptionGate'));
 });
 function clientFixture({request}={}) {
   let tokens={accessToken:'original-access',refreshToken:'original-refresh'};

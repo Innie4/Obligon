@@ -51,10 +51,10 @@ function fixture({ prices = [], response, failed = false } = {}) {
   return { render, calls, toasts, nodes: () => nodes(tree), text: () => text(tree), control, async submit() { await nodes(tree).find(node => node.type === 'form').props.onSubmit({ preventDefault() {} }); render(); } };
 }
 
-test('partner subscription belongs to the common desktop, mobile and search navigation', () => {
+test('partner contract belongs to the common desktop, mobile and search navigation', () => {
   const { dashboardNav } = load('../lib/mock/dashboard-data.ts');
   const subscription = dashboardNav.find(item => item.href === '/dashboard/billing');
-  assert.equal(subscription?.label, 'Subscription');
+  assert.equal(subscription?.label, 'Contract');
 });
 
 test('staff access cells have a matching header and preserve the status and action columns', () => {

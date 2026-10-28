@@ -40,6 +40,8 @@ beforeEach(async () => {
  await pool.query('TRUNCATE users,organizations,memberships,vehicles,drivers,cards,stations,fuel_prices,transactions,wallets,wallet_ledger,audit_logs,notifications,support_tickets,ticket_messages,maintenance_schedules,roadside_requests,pricing_plans,subscriptions,invoices,payment_methods');
  await pool.query(`INSERT INTO users(id,email,password_hash,full_name,role,notification_prefs) VALUES($1,'owner@example.invalid','unused','Owner','company','{"email":false,"sms":false,"push":false}'),($2,'member@example.invalid','unused','Member','company','{"email":false,"sms":false,"push":false}'),($3,'stranger@example.invalid','unused','Stranger','company','{"email":false,"sms":false,"push":false}')`, [owner,member,stranger]);
  await pool.query("INSERT INTO organizations(id,owner_user_id,name,type,verification_status) VALUES($1,$2,'Fleet fixture','company','verified'),($3,$4,'Foreign fixture','company','verified')", [org,owner,foreignOrg,stranger]);
+ await pool.query("INSERT INTO pricing_plans(code,name,price_kobo,interval,features)VALUES('active-fixture','Active fixture',150000,'month','[\"Advanced analytics\"]')");
+ await pool.query("INSERT INTO subscriptions(organization_id,plan_code,status,current_period_start,current_period_end)VALUES($1,'active-fixture','active',now()-interval '1 day',now()+interval '1 month')",[org]);
  await pool.query("INSERT INTO memberships(organization_id,user_id,email,role,status,permissions) VALUES($1,$2,'member@example.invalid','dispatcher','active','[\"fleet.manage\"]')", [org,member]);
  await pool.query("INSERT INTO wallets(user_id,organization_id,kind,balance_kobo) VALUES($1,$2,'company',100000)", [owner,org]);
  await pool.query("INSERT INTO cards(id,owner_user_id,organization_id,label) VALUES($1,$2,$3,'Fleet'),($4,$5,$6,'Foreign')", [card,owner,org,foreignCard,stranger,foreignOrg]);
@@ -133,72 +135,57 @@ check('maintenance costs are exact, malformed costs cannot silently become zero,
  assert.equal((await request(`/maintenance/${schedule}`,'PUT',{status:'completed'})).status,200); assert.equal((await pool.query('SELECT status FROM maintenance_schedules WHERE id=$1',[schedule])).rows[0].status,'completed');
 });
 
-for (const [path, body] of [['/billing/plan', { planCode: 'contract-next' }], ['/billing/cancel', { confirm: 'CANCEL' }]]) {
- check(`company ${path} respects agreed contracts without any billing mutation`, async () => {
-  await pool.query("INSERT INTO pricing_plans(code,name,price_kobo,interval,active) VALUES('contract-current','Current contract',150000,'month',TRUE),('contract-next','Next contract',250000,'month',TRUE)");
-  await pool.query("UPDATE organizations SET plan_code='contract-current',next_billing_date='2026-11-14' WHERE id=$1", [org]);
-  await pool.query("INSERT INTO subscriptions(organization_id,plan_code,status,cancel_at_period_end,current_period_start,current_period_end) VALUES($1,'contract-current','active',FALSE,'2026-10-14T00:00:00Z','2026-11-14T00:00:00Z')", [org]);
-  await pool.query("INSERT INTO invoices(organization_id,number,amount_kobo,status,description) VALUES($1,'INV-CONTRACT-FIXTURE',150000,'paid','Agreed contract fixture')", [org]);
+for (const [path, body, expected] of [['/billing/plan', { planCode: 'active-fixture' }, 400], ['/billing/cancel', { confirm: 'CANCEL' }, 200]]) {
+ check(`company ${path} preserves paid records and changes only the requested cancellation flag`, async () => {
+  await pool.query("INSERT INTO invoices(organization_id,number,amount_kobo,status,description) VALUES($1,'INV-PAID-FIXTURE',150000,'paid','Paid subscription fixture')", [org]);
   const snapshot = async () => {
    const result = {};
-   for (const table of ['organizations','subscriptions','invoices','wallets','wallet_ledger','payment_methods','audit_logs']) {
-    result[table] = (await pool.query(`SELECT * FROM ${table} ORDER BY id`)).rows;
-   }
+   for (const table of ['organizations','subscriptions','invoices','wallets','wallet_ledger','payment_methods','audit_logs']) result[table] = (await pool.query(`SELECT * FROM ${table} ORDER BY id`)).rows;
    return result;
   };
   const before = await snapshot();
   const response = await request(path, 'POST', body);
-  assert.equal(response.status, 403, JSON.stringify(response.data));
-  assert.match(response.data.message, /agreed.*contract|contract.*agree/i);
-  assert.match(response.data.message, /support/i);
-  assert.deepEqual(await snapshot(), before, "contract changes cannot rewrite subscription dates, paid invoices, organization plan or ledger");
+  assert.equal(response.status, expected, JSON.stringify(response.data));
+  if (path === '/billing/plan') assert.match(response.data.message, /subscription checkout/i);
+  else before.subscriptions[0].cancel_at_period_end = true;
+  assert.deepEqual(await snapshot(), before, 'billing requests cannot rewrite paid periods, invoices, balances or ledger');
  });
 }
 
-for (const verification of ['pending', 'unverified', 'rejected']) {
- check(`${verification} company retains contract onboarding but cannot operate until approval`, async () => {
-  await pool.query('UPDATE organizations SET verification_status=$2 WHERE id=$1', [org, verification]);
+for (const status of ['trialing', 'past_due', 'canceled']) {
+ check(`${status} company retains subscription recovery but cannot operate without an active paid period`, async () => {
+  await pool.query('UPDATE subscriptions SET status=$2 WHERE organization_id=$1', [org, status]);
   const operations = [
    ['/vehicles', 'GET'], ['/cards', 'GET'], ['/wallet', 'GET'], ['/wallet/members', 'GET'],
    ['/drivers', 'GET'], ['/assignments', 'GET'], ['/transactions', 'GET'], ['/transactions/export', 'GET'],
    ['/reports', 'GET'], ['/stations', 'GET'], ['/team', 'GET'], ['/maintenance', 'GET'], ['/roadside', 'GET'],
-   ['/vehicles', 'POST', { plate: 'NOT-APPROVED', model: 'Fixture' }],
+   ['/vehicles', 'POST', { plate: 'UNPAID', model: 'Fixture' }],
    [`/cards/${card}/pos-code`, 'POST', {}],
    ['/wallet/allocate', 'POST', { userId: member, amount: 100, idempotencyKey: randomUUID() }],
    ['/wallet/topup', 'POST', { amount: 1000, method: 'banktransfer' }],
-   ['/wallet/topup/confirm', 'POST', { reference: 'UNAPPROVED-FIXTURE' }],
-   ['/team/invite', 'POST', { email: 'unapproved@example.invalid', role: 'viewer' }],
+   ['/team/invite', 'POST', { email: 'unpaid@example.invalid', role: 'viewer' }],
    ['/maintenance', 'POST', { serviceType: 'Fixture', scheduledDate: '2026-10-14' }],
    ['/roadside', 'POST', { location: 'Fixture', issueType: 'Flat tyre' }],
   ];
   const snapshot = async () => {
    const result = {};
-   for (const table of ['organizations','subscriptions','invoices','wallets','wallet_ledger','vehicles','cards','memberships','maintenance_schedules','roadside_requests','audit_logs']) {
-    result[table] = (await pool.query(`SELECT * FROM ${table} ORDER BY id`)).rows;
-   }
+   for (const table of ['organizations','subscriptions','invoices','wallets','wallet_ledger','vehicles','cards','memberships','maintenance_schedules','roadside_requests','audit_logs']) result[table] = (await pool.query(`SELECT * FROM ${table} ORDER BY id`)).rows;
    return result;
   };
   const unchanged = await snapshot();
   for (const [path, method, body] of operations) {
    const denied = await request(path, method, body);
-   assert.equal(denied.status, 403, `${verification} ${method} ${path}: ${JSON.stringify(denied.data)}`);
-   assert.match(denied.data.message, /admin approval/i); assert.match(denied.data.message, /contract/i);
+   assert.equal(denied.status, 403, `${status} ${method} ${path}: ${JSON.stringify(denied.data)}`);
+   assert.match(denied.data.message, /active.*subscription/i);
   }
-  assert.deepEqual(await snapshot(), unchanged, 'unapproved reads and mutations cannot alter the fleet, billing or ledger');
-  for (const path of ['/overview','/billing','/support/tickets',`/support/tickets/${ticket}/messages`,'/settings','/notifications']) {
-   assert.equal((await request(path)).status, 200, `onboarding GET ${path}`);
-  }
-  assert.equal((await request('/settings','PUT',{ description: 'Contract review information' })).status, 200);
-  assert.equal((await request('/support/tickets','POST',{ subject: 'Contract review', message: 'Please review this synthetic contract request.', category: 'general', priority: 'normal' })).status, 200);
-  assert.equal((await request(`/support/tickets/${ticket}/messages`,'POST',{ body: 'Synthetic contract follow-up' })).status, 200);
-  const notification = randomUUID();
-  await pool.query("INSERT INTO notifications(id,organization_id,title,body,category) VALUES($1,$2,'Contract review','Synthetic onboarding notice','support')", [notification,org]);
-  assert.equal((await request(`/notifications/${notification}/read`,'POST',{})).status, 200);
-  assert.equal((await request('/notifications/read-all','POST',{})).status, 200);
-  assert.ok((await pool.query('SELECT read_at FROM notifications WHERE id=$1', [notification])).rows[0].read_at);
-  assert.equal((await pool.query('SELECT verification_status FROM organizations WHERE id=$1', [org])).rows[0].verification_status, verification, 'onboarding does not approve itself');
-  await pool.query("UPDATE organizations SET verification_status='verified' WHERE id=$1", [org]);
-  for (const path of ['/vehicles','/cards','/wallet','/transactions']) assert.equal((await request(path)).status, 200, `approved GET ${path}`);
-  assert.equal((await request(`/cards/${card}/pos-code`,'POST',{})).status, 200, 'approval restores existing authorized fuel-code operation');
+  assert.deepEqual(await snapshot(), unchanged, 'unpaid reads and mutations cannot alter the fleet, billing or ledger');
+  for (const path of ['/billing','/subscription','/support/tickets',`/support/tickets/${ticket}/messages`,'/settings','/notifications']) assert.equal((await request(path)).status, 200, `recovery GET ${path}`);
+  assert.equal((await request('/settings','PUT',{ description: 'Subscription recovery information' })).status, 200);
+  assert.equal((await request('/support/tickets','POST',{ subject: 'Subscription review', message: 'Please review this synthetic subscription request.', category: 'general', priority: 'normal' })).status, 200);
+  assert.equal((await request(`/support/tickets/${ticket}/messages`,'POST',{ body: 'Synthetic subscription follow-up' })).status, 200);
+  await pool.query("UPDATE subscriptions SET status='active' WHERE organization_id=$1", [org]);
+  await pool.query("UPDATE organizations SET verification_status='pending' WHERE id=$1", [org]);
+  for (const path of ['/vehicles','/cards','/wallet','/transactions']) assert.equal((await request(path)).status, 200, `paid GET ${path}`);
+  assert.equal((await request(`/cards/${card}/pos-code`,'POST',{})).status, 200, 'paid subscription restores the authorized fuel-code operation without company contract approval');
  });
 }

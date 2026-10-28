@@ -64,7 +64,6 @@ export async function searchDashboardRecords(scope: DashboardSearchScope, query:
   const term = query.trim();
   if (term.length < 2) return [];
   if (term.length > 80) throw new DashboardSearchUnavailableError([], ['Search'], 'Use 80 characters or fewer to search.');
-  if (scope === 'company' && user.organizationVerificationStatus !== 'verified') throw new DashboardSearchUnavailableError([], ['Company records'], 'Company records become available after your contract is approved. You can still search available pages.');
   const selected = sources(scope, term, user), needle = term.toLowerCase();
   const settled = await Promise.allSettled(selected.map(async source => {
     const data = await api.request<Record<string, unknown>>(source.path);

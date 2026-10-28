@@ -28,6 +28,7 @@ import { AuthGuard } from "@/components/auth/AuthGuard";
 import { CompanyContextSelector, ReturnToPrimaryAccount } from "@/components/company-dashboard/CompanyContextSelector";
 import { LogoutButton, SignInOptionsLink } from "@/components/auth/LogoutButton";
 import { DashboardSearch } from "@/components/shared/DashboardSearch";
+import { CompanySubscriptionGate } from "./CompanySubscriptionGate";
 
 type CompanyShellProps = {
   children: React.ReactNode;
@@ -69,7 +70,7 @@ function CompanySidebar() {
   const pathname = usePathname();
   const { user } = useSession();
   const active = activePage(pathname);
-  const visibleNav = user?.organizationVerificationStatus === "verified" ? companyNav : companyNav.filter(item => ["overview", "support", "settings", "notifications"].includes(item.key));
+  const visibleNav = companyNav;
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-[280px] flex-col border-r border-obligon-border bg-white px-5 py-6 lg:flex">
@@ -105,7 +106,7 @@ function CompanySidebar() {
 
 function CompanyTopbar({ onOpenMenu, menuButtonRef }: { onOpenMenu: () => void; menuButtonRef?: React.RefObject<HTMLButtonElement | null> }) {
   const { user } = useSession();
-  const visibleNav = user?.organizationVerificationStatus === "verified" ? companyNav : companyNav.filter(item => ["overview", "support", "settings", "notifications"].includes(item.key));
+  const visibleNav = companyNav;
   const searchEntries = [...visibleNav, { label: "Sign-in options", href: "/auth/sign-in-options", keywords: "Google passkey password security" }];
 
   return (
@@ -133,9 +134,7 @@ function CompanyTopbar({ onOpenMenu, menuButtonRef }: { onOpenMenu: () => void; 
 export function CompanyShell({ children }: CompanyShellProps) {
   const { user } = useSession();
   const pathname = usePathname();
-  const approved = user?.organizationVerificationStatus === "verified";
-  const visibleNav = approved ? companyNav : companyNav.filter(item => ["overview", "support", "settings", "notifications"].includes(item.key));
-  const onboardingPage = ["support", "settings", "notifications"].includes(activePage(pathname));
+  const visibleNav = companyNav;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -162,8 +161,7 @@ export function CompanyShell({ children }: CompanyShellProps) {
       {mobileMenuOpen ? <div className="fixed inset-0 z-50 bg-[#07162f]/55 lg:hidden" onMouseDown={() => setMobileMenuOpen(false)}><aside ref={mobileMenuRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Company navigation" onMouseDown={(event) => event.stopPropagation()} className="h-full w-[280px] max-w-[90vw] overflow-y-auto bg-white p-5 shadow-hero"><div className="flex items-center justify-between"><p className="font-display text-xl font-extrabold">Menu</p><button type="button" onClick={() => setMobileMenuOpen(false)} className="grid size-11 shrink-0 place-items-center rounded-lg bg-obligon-mist" aria-label="Close company menu"><X size={20} /></button></div><nav className="mt-7 space-y-1">{visibleNav.map((item) => <Link key={item.key} href={item.href} onClick={() => setMobileMenuOpen(false)} aria-current={activePage(pathname) === item.key ? "page" : undefined} className={`flex h-11 items-center gap-3 rounded-lg px-4 text-sm font-bold ${activePage(pathname) === item.key ? "bg-obligon-green/10 text-obligon-green" : "text-[#4f5663] hover:bg-[#f2f6f2] hover:text-obligon-green"}`}>{iconMap[item.key]}<span>{item.label}</span></Link>)}</nav><CompanyContextSelector compact /><ReturnToPrimaryAccount /><SignInOptionsLink onClick={() => setMobileMenuOpen(false)} className="mt-4 w-full justify-start" /><LogoutButton className="mt-3 w-full justify-start" /></aside></div> : null}
       <div className="lg:pl-[280px]">
         <CompanyTopbar menuButtonRef={menuButtonRef} onOpenMenu={() => setMobileMenuOpen(true)} />
-        {user.organizationVerificationStatus !== "verified" ? <section role="status" className="mx-5 mt-5 rounded-xl border border-obligon-border bg-white p-5 lg:mx-8"><h2 className="text-lg font-extrabold">Contract approval required</h2><p className="mt-2 text-sm leading-6">Company operations become available after your contract is agreed and an admin approves your company. Refresh this page after approval.</p><Link href="/company/support" className="mt-3 inline-flex min-h-11 items-center font-bold text-obligon-green underline">Contact Support</Link></section> : null}
-        {approved || onboardingPage ? children : null}
+        <CompanySubscriptionGate>{children}</CompanySubscriptionGate>
       </div>
       </main>}
     </AuthGuard>

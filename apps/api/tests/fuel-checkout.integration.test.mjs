@@ -3,11 +3,12 @@ import { before, after, beforeEach, test } from 'node:test';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import pg from 'pg';
+import express from 'express';
 
 const url = process.env.OBLIGON_TEST_DATABASE_URL;
 if (url) assert.ok(['localhost','127.0.0.1','[::1]'].includes(new URL(url).hostname), 'Only an isolated localhost test database is allowed');
 const schema = `fuel_checkout_${process.pid}_${randomUUID().replaceAll('-','')}`;
-let admin, pool, service, fixtures, created = false;
+let admin, pool, service, fixtures, server, base, created = false;
 const integration = (name, run) => test(name,{skip:!url},run);
 before(async()=>{
  if(!url)return;
@@ -17,10 +18,10 @@ before(async()=>{
  pool=(await import('../src/db.js')).getPool();
  await pool.query(`
  CREATE TABLE users(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),email text,full_name text,phone text);
- CREATE TABLE organizations(id uuid PRIMARY KEY DEFAULT gen_random_uuid());
+ CREATE TABLE organizations(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),verification_status text DEFAULT 'verified');
  CREATE TABLE pricing_plans(code text PRIMARY KEY,name text,features jsonb DEFAULT '[]',price_kobo bigint DEFAULT 100);
  CREATE TABLE subscriptions(organization_id uuid,plan_code text,status text,current_period_start timestamptz,current_period_end timestamptz);
- CREATE TABLE stations(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),partner_org_id uuid REFERENCES organizations(id),name text DEFAULT 'Test station',status text DEFAULT 'active',is_open boolean DEFAULT true);
+ CREATE TABLE stations(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),partner_org_id uuid REFERENCES organizations(id),name text DEFAULT 'Test station',city text DEFAULT 'Lagos',status text DEFAULT 'active',is_open boolean DEFAULT true);
  CREATE TABLE card_plans(code text PRIMARY KEY,name text,features jsonb DEFAULT '[]');
  CREATE TABLE customer_subscriptions(user_id uuid,plan_code text,current_period_start timestamptz,current_period_end timestamptz,status text);
  CREATE TABLE cards(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),owner_user_id uuid,organization_id uuid,status text DEFAULT 'active',daily_limit_kobo bigint DEFAULT 100000,monthly_limit_kobo bigint DEFAULT 1000000,created_at timestamptz DEFAULT now());
@@ -35,7 +36,7 @@ before(async()=>{
  CREATE TABLE payment_refunds(id uuid DEFAULT gen_random_uuid(),user_id uuid,provider text,provider_ref text,kind text,amount_kobo bigint,currency text DEFAULT 'NGN',reason text,idempotency_key text UNIQUE,metadata jsonb,status text DEFAULT 'pending',provider_refund_id text,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now(),settled_at timestamptz);
  ALTER TABLE organizations ADD COLUMN partner_type text DEFAULT 'fuel_station',ADD COLUMN type text DEFAULT 'partner';
  ALTER TABLE stations ADD COLUMN fuels text[] DEFAULT '{}',ADD COLUMN selling_units jsonb DEFAULT '{}',ADD COLUMN approved_selling_units jsonb DEFAULT '{}';
- ALTER TABLE fuel_prices ADD COLUMN selling_unit text DEFAULT 'litre';
+ ALTER TABLE fuel_prices ADD COLUMN selling_unit text DEFAULT 'litre',ADD COLUMN updated_at timestamptz DEFAULT now();
  ALTER TABLE transactions ADD COLUMN selling_unit text DEFAULT 'litre';
  ALTER TABLE transactions ADD COLUMN cashback_rate_bp int DEFAULT 0,ADD COLUMN cashback_plan_code text;
  ALTER TABLE fueling_logs ADD COLUMN selling_unit text DEFAULT 'litre';
@@ -44,6 +45,10 @@ before(async()=>{
  await pool.query("ALTER TABLE fuel_orders ADD COLUMN cashback_rate_bp int DEFAULT 0,ADD COLUMN cashback_plan_code text");
  await pool.query("ALTER TABLE fuel_orders ADD COLUMN selling_unit text DEFAULT 'litre'");
  service=await import('../src/lib/fuel-checkout.js');
+ const app=express();app.use((req,_res,next)=>{req.user=fixtures?.user;next();});
+ app.use('/checkout',(await import('../src/routes/fuel-checkout.routes.js')).customerFuelCheckoutRouter());
+ app.use((error,_req,res,_next)=>res.status(error.status??500).json({message:error.message}));
+ server=await new Promise(resolve=>{const listener=app.listen(0,'127.0.0.1',()=>resolve(listener));});base=`http://127.0.0.1:${server.address().port}`;
 });
 beforeEach(async()=>{
  if(!url)return;
@@ -63,7 +68,7 @@ beforeEach(async()=>{
  const {rows:[account]}=await pool.query('INSERT INTO settlement_accounts(organization_id,bank_account_id)VALUES($1,$2)RETURNING id',[org.id,bank.id]);
  fixtures={user,orgId:org.id,stationId:station.id,cardId:card.id,bankId:bank.id,accountId:account.id,input:{stationId:station.id,fuelType:'PMS Petrol',litres:10,idempotencyKey:randomUUID()},calls:[]};
 });
-after(async()=>{await pool?.end();if(created)await admin.query(`DROP SCHEMA ${schema} CASCADE`);await admin?.end();});
+after(async()=>{if(server)await new Promise(resolve=>server.close(resolve));await pool?.end();if(created)await admin.query(`DROP SCHEMA ${schema} CASCADE`);await admin?.end();});
 function payments(overrides={}){
  return {activeProvider:()=> 'flutterwave',startCheckout:async args=>{fixtures.calls.push(args);return{authorization_url:'https://checkout.flutterwave.com/test',simulated:false,provider:'flutterwave',reference:args.txRef};},verifyCheckout:async args=>({paid:true,amountKobo:args.expectedAmountKobo,currency:'NGN',reference:args.reference,providerTransactionId:'101',...overrides})};
 }
@@ -188,10 +193,34 @@ integration('a paid order can only be fulfilled once at its own station and part
  assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
  const {rows:[logs]}=await pool.query('SELECT count(*)::int AS n FROM fueling_logs');assert.equal(logs.n,1);
 });
-integration('a station without a paid partner subscription cannot accept a direct customer charge',async()=>{
- await pool.query("UPDATE subscriptions SET status='cancelled'");
- await assert.rejects(service.startFuelOrder(fixtures.user,fixtures.input,payments()),/station subscription/);
+integration('a station without an approved partner contract cannot accept a direct customer charge',async()=>{
+ await pool.query("UPDATE organizations SET verification_status='pending'");
+ await assert.rejects(service.startFuelOrder(fixtures.user,fixtures.input,payments()),/station contract/);
  assert.equal(fixtures.calls.length,0);
+});
+integration('checkout station listing includes approved contracts without subscriptions and excludes unapproved paid partners',async()=>{
+ await pool.query('DELETE FROM subscriptions');
+ let response=await fetch(`${base}/checkout/stations`);let result=await response.json();assert.equal(response.status,200,JSON.stringify(result));
+ assert.equal(result.stations.length,1);assert.equal(result.stations[0].stationId,fixtures.stationId);
+ await pool.query("INSERT INTO subscriptions VALUES($1,'basic','active',now()-interval '1 day',now()+interval '1 month')",[fixtures.orgId]);
+ await pool.query("UPDATE organizations SET verification_status='pending' WHERE id=$1",[fixtures.orgId]);
+ response=await fetch(`${base}/checkout/stations`);result=await response.json();assert.equal(response.status,200,JSON.stringify(result));assert.deepEqual(result.stations,[]);
+});
+integration('contract revocation before payment confirmation records paid debt for review without dispensing',async()=>{
+ const {order}=await service.startFuelOrder(fixtures.user,fixtures.input,payments());
+ await pool.query("UPDATE organizations SET verification_status='pending' WHERE id=$1",[fixtures.orgId]);
+ const paid=await service.confirmFuelOrder(order.reference,'101',false,payments());assert.equal(paid.status,'paid_review');assert.match(paid.review_reason,/approved/i);
+ assert.equal((await pool.query('SELECT count(*)::int n FROM fueling_logs')).rows[0].n,0);
+ assert.equal((await pool.query('SELECT count(*)::int n FROM transactions')).rows[0].n,1);
+});
+integration('contract revocation after confirmation prevents fulfillment and preserves the paid order',async()=>{
+ const {order}=await service.startFuelOrder(fixtures.user,fixtures.input,payments());
+ const paid=await service.confirmFuelOrder(order.reference,'101',false,payments());
+ await pool.query("UPDATE organizations SET verification_status='pending' WHERE id=$1",[fixtures.orgId]);
+ await assert.rejects(service.fulfillFuelOrder({partnerOrgId:fixtures.orgId,stationId:fixtures.stationId,code:paid.authorization_code}),/approval/i);
+ const saved=(await pool.query('SELECT status,paid_at FROM fuel_orders WHERE id=$1',[order.id])).rows[0];assert.equal(saved.status,'paid_review');assert.ok(saved.paid_at);
+ assert.equal((await pool.query('SELECT count(*)::int n FROM fueling_logs')).rows[0].n,0);
+ assert.equal((await pool.query('SELECT count(*)::int n FROM transactions')).rows[0].n,1);
 });
 integration('an unapproved discount never changes the charged station price',async()=>{
  await pool.query("UPDATE station_discount_requests SET review_state_id=(SELECT id FROM discount_review_states WHERE code='pending')");

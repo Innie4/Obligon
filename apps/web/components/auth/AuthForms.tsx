@@ -634,7 +634,7 @@ function SignupForm() {
 
       const destination =
         topRole === "company"
-          ? routes.companyDashboard
+          ? `${routes.companyDashboard}/billing`
           : topRole === "partner"
             ? routes.dashboard
             : routes.customerDashboard;
@@ -649,7 +649,7 @@ function SignupForm() {
       // inside the signup transaction — so a customer who never finishes here
       // still has an account that can be funded.
       if (LIVE_MODE) {
-        router.push(withAuthReturn(routes.verifyEmail, returnPath));
+        router.push(withAuthReturn(routes.verifyEmail, returnPath ?? (topRole === "company" ? destination : null)));
         return;
       }
 
@@ -713,6 +713,8 @@ function SignupForm() {
           })}
         </div>
       </div>
+
+      {topRole !== "customer" ? <p className="mt-5 text-sm leading-6 text-obligon-text">{topRole === "company" ? "After creating your company account, subscribe to an Organization plan to activate fleet operations. Subscription fees are separate from fuel funds." : "Partner operations require an agreed contract and administrator approval. You can complete your profile while the contract is reviewed. No partner subscription is required."}</p> : null}
 
       {/* Sub-Partner Type Selector (When Partner Network is selected) */}
       {topRole === "partner" && (

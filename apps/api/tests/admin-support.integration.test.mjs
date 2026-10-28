@@ -84,7 +84,7 @@ async function companyForApproval(verification='pending',status='canceled') {
  const {rows:[company]}=await pool.query("INSERT INTO organizations(owner_user_id,name,type,verification_status,subscription_status)VALUES($1,'Approval Fleet','company',$2,$3)RETURNING *",[fixtures.customer.id,verification,status]);
  return company;
 }
-integration('admin provisioning creates a pending company and sends an honest review invitation',async()=>{
+integration('admin provisioning creates a pending company and sends an honest subscription invitation',async()=>{
  const result=await request('/companies',{body:{companyName:'Pending Fleet',adminEmail:'pending-owner@test.invalid',adminName:'Pending Owner'}});assert.equal(result.status,200);
  const company=(await pool.query('SELECT * FROM organizations WHERE id=$1',[result.body.orgId])).rows[0];
  assert.equal(company.verification_status,'pending');assert.equal(company.subscription_status,'canceled');assert.equal(company.next_billing_date,null);
@@ -92,11 +92,11 @@ integration('admin provisioning creates a pending company and sends an honest re
  const wallet=(await pool.query('SELECT user_id,organization_id,kind,currency,balance_kobo FROM wallets WHERE organization_id=$1',[company.id])).rows[0];
  assert.deepEqual(wallet,{user_id:company.owner_user_id,organization_id:company.id,kind:'company',currency:'NGN',balance_kobo:'0'});
  const listing=await request('/companies');assert.equal(listing.body.companies.find(row=>row.id===company.id).status,'Pending');
- // Local delivery only. The pending message must not promise operational access.
+ // Local delivery only. The invitation must require payment before operations.
  await new Promise(resolve=>setImmediate(resolve));
  const outbox=await readFile(env.LOCAL_OUTBOX_PATH,'utf8');const messages=outbox.trim().split('\n').map(line=>JSON.parse(line));
  const invitation=messages.filter(message=>message.to==='pending-owner@test.invalid').at(-1);assert.ok(invitation);
- assert.match(invitation.message,/pending.*approval|awaiting.*approval/i);assert.match(invitation.message,/contract/i);
+ assert.match(invitation.message,/pay.*Organization plan/i);assert.match(invitation.message,/Billing.*enable company operations/i);
 });
 integration('pending company verification takes priority over the canceled subscription badge',async()=>{
  const company=await companyForApproval();const listing=await request('/companies');const row=listing.body.companies.find(row=>row.id===company.id);
@@ -116,18 +116,19 @@ for (const [verification, expectedStatus] of [['pending','Pending'],['verified',
   });
  }
 }
-integration('verification approval requires a literal contract confirmation before any state write',async()=>{
+integration('company verification does not require contract confirmation or manufacture a paid subscription',async()=>{
  const company=await companyForApproval();
  for(const contractAgreed of [undefined,false,'true']) {
-  const result=await request(`/companies/${company.id}`,{method:'PUT',body:{verificationStatus:'verified',status:'active',creditLimit:'500.00',contractAgreed}});assert.equal(result.status,400);
+  const result=await request(`/companies/${company.id}`,{method:'PUT',body:{verificationStatus:'verified',contractAgreed}});assert.equal(result.status,200);
   const current=(await pool.query('SELECT verification_status,subscription_status,credit_limit_kobo FROM organizations WHERE id=$1',[company.id])).rows[0];
-  assert.deepEqual(current,{verification_status:'pending',subscription_status:'canceled',credit_limit_kobo:'0'});
+  assert.deepEqual(current,{verification_status:'verified',subscription_status:'canceled',credit_limit_kobo:'0'});
+  assert.equal((await pool.query('SELECT count(*)::int n FROM subscriptions WHERE organization_id=$1',[company.id])).rows[0].n,0);
  }
 });
-integration('explicit contract confirmation approves the company with an attributable atomic audit',async()=>{
+integration('company verification records an attributable atomic audit independently of contract approval',async()=>{
  const company=await companyForApproval();const result=await request(`/companies/${company.id}`,{method:'PUT',body:{verificationStatus:'verified',status:'active',contractAgreed:true}});assert.equal(result.status,200);
  const current=(await pool.query('SELECT verification_status,subscription_status FROM organizations WHERE id=$1',[company.id])).rows[0];assert.deepEqual(current,{verification_status:'verified',subscription_status:'active'});
- const audit=(await pool.query("SELECT * FROM audit_logs WHERE action='company.approved' AND entity_id=$1",[company.id])).rows[0];assert.ok(audit);assert.equal(audit.actor_user_id,fixtures.admin.id);assert.equal(audit.metadata.contractAgreed,true);assert.equal(audit.metadata.previousVerificationStatus,'pending');assert.equal(audit.metadata.verificationStatus,'verified');
+ const audit=(await pool.query("SELECT * FROM audit_logs WHERE action='company.approved' AND entity_id=$1",[company.id])).rows[0];assert.ok(audit);assert.equal(audit.actor_user_id,fixtures.admin.id);assert.equal(audit.metadata.contractAgreed,undefined);assert.equal(audit.metadata.previousVerificationStatus,'pending');assert.equal(audit.metadata.verificationStatus,'verified');
 });
 integration('approval audit failure leaves the company pending instead of granting operations',async()=>{
  const company=await companyForApproval();await pool.query("ALTER TABLE audit_logs ADD CONSTRAINT deny_approval_audit CHECK(action<>'company.approved')");
@@ -317,7 +318,7 @@ integration('station creation is pending; admin publication requires verified op
  await pool.query("UPDATE organizations SET verification_status='pending' WHERE id=$1",[fixtures.org.id]);assert.equal((await request(`/stations/${id}/review`,{body:{status:'active',note:'Review'}})).status,403);
  await pool.query("UPDATE organizations SET verification_status='verified' WHERE id=$1",[fixtures.org.id]);assert.equal((await request(`/stations/${id}/review`,{body:{status:'active',note:'Coordinates checked'}})).status,200);
  assert.equal((await partner('/station','PUT',{stationId:id,address:'New address'})).status,200);assert.equal((await partner(`/station?stationId=${id}`)).body.station.status,'pending');
- await pool.query('DELETE FROM subscriptions WHERE organization_id=$1',[fixtures.org.id]);assert.equal((await partner('/stations','POST',body)).status,403);
+ await pool.query('DELETE FROM subscriptions WHERE organization_id=$1',[fixtures.org.id]);assert.equal((await partner('/stations','POST',body)).status,201);
 });
 integration('admin job publication appears publicly, applications persist and status changes are audited',async()=>{
  const created=await request('/jobs',{body:{title:'Engineer',department:'Engineering',location:'Lagos',description:'Build station systems'}});assert.equal(created.status,201);
@@ -363,20 +364,26 @@ integration('verified contacts do not attempt another OTP delivery and malformed
  const receipt=await originalFetch(`${base}/api/customer/transactions/not-a-uuid/receipt`,{headers:{'x-test-role':'customer'}});assert.equal(receipt.status,400);
 });
 
-integration('new partner signup records its owner membership and supplied registration details before billing access',async()=>{
+integration('new partner signup can prepare stations while contract approval blocks operational access',async()=>{
  const result=await originalFetch(`${base}/api/auth/signup`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email:`partner-${randomUUID()}@test.invalid`,password:'TestPartner#123',fullName:'New Operator',role:'partner',partnerType:'fuel_station',organizationName:'New Forecourt',phone:'+2348010000000',address:'Test address',licenseReference:'TEST-LICENSE',fuelTypes:['Petrol']})});assert.equal(result.status,201);const account=await result.json();
  const {rows:[membership]}=await pool.query('SELECT * FROM memberships WHERE user_id=$1',[account.user.id]);assert.ok(membership);assert.equal(membership.role,'owner');
  const {rows:[application]}=await pool.query('SELECT rc_number,address FROM partner_applications WHERE user_id=$1',[account.user.id]);assert.equal(application.rc_number,'TEST-LICENSE');assert.equal(application.address,'Test address');
  const billing=await originalFetch(`${base}/api/partner/billing`,{headers:{authorization:`Bearer ${account.accessToken}`}});assert.equal(billing.status,200);assert.equal((await billing.json()).active,false);
- const stations=await originalFetch(`${base}/api/partner/stations`,{headers:{authorization:`Bearer ${account.accessToken}`}});assert.equal(stations.status,403);
+ const stations=await originalFetch(`${base}/api/partner/stations`,{headers:{authorization:`Bearer ${account.accessToken}`}});assert.equal(stations.status,200);
+ const transactions=await originalFetch(`${base}/api/partner/transactions`,{headers:{authorization:`Bearer ${account.accessToken}`}});assert.equal(transactions.status,403);
+ for(const path of ['/overview','/overview/range']){
+  const response=await originalFetch(`${base}/api/partner${path}`,{headers:{authorization:`Bearer ${account.accessToken}`}});assert.equal(response.status,403,path);
+ }
 });
 
-integration('paid integration keys are hashed, read-only, scoped, revocable and immediately lose entitlement',async()=>{
+integration('contract-approved integration keys are hashed, read-only, scoped, revocable and lose approval immediately',async()=>{
  const call=async(path,{method='GET',body,token,owner=false}={})=>{
   const res=await originalFetch(`${base}/api/partner${path}`,{method,headers:{'Content-Type':'application/json',...(owner?{'x-test-role':'partner'}:{}),...(token?{Authorization:`Bearer ${token}`}:{})},...(body?{body:JSON.stringify(body)}:{})});return{status:res.status,body:await res.json()};
  };
+ await pool.query("UPDATE organizations SET verification_status='pending' WHERE id=$1",[fixtures.org.id]);
  assert.equal((await call('/settings/api-keys',{method:'POST',body:{label:'Accounting'},owner:true})).status,403);
- await pool.query(`UPDATE pricing_plans SET features='["Advanced analytics","API access"]'`);
+ await pool.query("UPDATE organizations SET verification_status='verified' WHERE id=$1",[fixtures.org.id]);
+ await pool.query('DELETE FROM subscriptions WHERE organization_id=$1',[fixtures.org.id]);
  const created=await call('/settings/api-keys',{method:'POST',body:{label:'Accounting'},owner:true});assert.equal(created.status,201);
  const key=created.body.key,token=created.body.token;assert.match(token,/^oblp_[0-9a-f]{64}$/);
  const stored=(await pool.query('SELECT token_hash FROM partner_api_keys WHERE id=$1',[key.id])).rows[0];assert.notEqual(stored.token_hash,token);assert.equal(stored.token_hash.length,64);
@@ -386,8 +393,8 @@ integration('paid integration keys are hashed, read-only, scoped, revocable and 
  const stations=await call('/stations',{token});assert.equal(stations.status,200);assert.equal(stations.body.stations.length,1);assert.equal(stations.body.stations[0].name,'Own station');
  assert.equal((await call('/stations',{method:'POST',token,body:{name:'Unauthorised'}})).status,401);
  assert.equal((await call('/settings',{token})).status,401);
- await pool.query("UPDATE subscriptions SET status='past_due'");assert.equal((await call('/stations',{token})).status,401);
- await pool.query("UPDATE subscriptions SET status='active'");await pool.query("UPDATE memberships SET role='viewer'");assert.equal((await call('/stations',{token})).status,401);
+ await pool.query("UPDATE organizations SET verification_status='pending' WHERE id=$1",[fixtures.org.id]);assert.equal((await call('/stations',{token})).status,401);
+ await pool.query("UPDATE organizations SET verification_status='verified' WHERE id=$1",[fixtures.org.id]);await pool.query("UPDATE memberships SET role='viewer'");assert.equal((await call('/stations',{token})).status,401);
  await pool.query("UPDATE memberships SET role='owner'");assert.equal((await call(`/settings/api-keys/${key.id}`,{method:'DELETE',owner:true})).status,200);assert.equal((await call('/stations',{token})).status,401);
 });
 integration('admin financial activity includes fuel, subscription, wallet and refund lifecycles and remains admin-only',async()=>{
@@ -414,7 +421,11 @@ integration('admin reads show live records and operator approval never publishes
  const {rows:[application]}=await pool.query("INSERT INTO partner_applications(reference,business_name,contact_email,user_id,status)VALUES('APP_TEST','Operator','partner@test.invalid',$1,'submitted')RETURNING id",[fixtures.partner.id]);
  const {rows:[station]}=await pool.query("INSERT INTO stations(name,partner_org_id,status)VALUES('Pending location',$1,'pending')RETURNING id",[fixtures.org.id]);
  for(const path of ['/companies','/reports','/disputes','/staff','/applications?status=submitted'])assert.equal((await request(path)).status,200,path);
- assert.equal((await request(`/applications/${application.id}/review`,{body:{decision:'approve',note:'Operator verified; station separately reviewed'}})).status,200);
+ assert.equal((await request(`/applications/${application.id}/review`,{body:{decision:'approve',contractAgreed:false,note:'Contract not confirmed'}})).status,400);
+ assert.equal((await pool.query('SELECT status FROM partner_applications WHERE id=$1',[application.id])).rows[0].status,'submitted');
+ assert.equal((await request(`/applications/${application.id}/review`,{body:{decision:'approve',contractAgreed:true,note:'Operator verified; station separately reviewed'}})).status,200);
+ const agreement=(await pool.query("SELECT actor_user_id,entity_id,metadata FROM audit_logs WHERE action='partner.contract_approved' AND entity_id=$1",[fixtures.org.id])).rows[0];
+ assert.ok(agreement);assert.equal(agreement.actor_user_id,fixtures.admin.id);assert.equal(agreement.metadata.applicationId,application.id);assert.equal(agreement.metadata.contractAgreed,true);
  assert.equal((await pool.query('SELECT status FROM stations WHERE id=$1',[station.id])).rows[0].status,'pending');
 });
 integration('a dispute cannot manufacture money through an unbacked wallet refund',async()=>{

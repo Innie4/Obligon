@@ -61,6 +61,25 @@ test('first-card requests and legacy string benefits remain available in plan pr
   assert.equal(nodes(tree).find(node => node.type === 'a').props.href, '/customer/card?chosenPlan=bronze');
 });
 
+test('company annual plans use organization checkout and the annual price label', async () => {
+  const view = fixture({ active: false, subscription: null, plans: [{ code: 'organization_starter', name: 'Starter', price_kobo: 15000000, interval: 'year', features: ['Up to 10 Vehicles'] }] }, { kind: 'company' });
+  const tree = view.render();
+  assert.match(text(tree), /Organization subscription/);
+  assert.match(text(tree), /₦150,000 \/ year/);
+  nodes(tree).find(node => node.type === 'button' && text(node) === 'Subscribe').props.onClick();
+  await new Promise(setImmediate);
+  assert.equal(view.calls[0][0], '/api/company/subscription/checkout');
+  assert.deepEqual(JSON.parse(view.calls[0][1].body), { planCode: 'organization_starter' });
+});
+
+test('temporary company access is described honestly without a paid current-plan label', () => {
+  const view = fixture({ active: true, temporaryAccess: true, expiresAt: '2026-10-28T18:00:00.000Z', subscription: null, plans: [{ code: 'organization_starter', name: 'Starter', price_kobo: 15000000, interval: 'year', features: [] }] }, { kind: 'company' });
+  const tree = view.render();
+  assert.match(text(tree), /Temporary test access/);
+  assert.match(text(tree), /This is not a paid subscription/);
+  assert.doesNotMatch(text(tree), /Current plan/);
+});
+
 test('empty and loading plans have separate recoverable presentation', () => {
   const empty = fixture({ active: false, subscription: null, plans: [] }).render();
   const emptyPanel = nodes(empty).find(node => node.type === 'empty-state');

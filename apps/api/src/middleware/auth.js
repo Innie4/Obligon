@@ -2,13 +2,13 @@ import { createHash } from "node:crypto";
 import { verifyAccessToken } from "../lib/security.js";
 import { unauthorized, forbidden } from "../lib/errors.js";
 import { one } from "../db.js";
-import { TEMPORARY_PARTNER_ACCOUNT } from "../lib/temporaryPartnerAccount.js";
+import { isTemporaryDashboardAccount } from "../lib/temporaryPartnerAccount.js";
 
 function finishAuthentication(req, next) {
   // The shared inspection account cannot create credentials, other principals,
   // financial effects or business records that outlive its account deadline.
   const allowedAuthWrites = new Set(["/api/auth/login", "/api/auth/refresh", "/api/auth/logout"]);
-  if (req.user?.id === TEMPORARY_PARTNER_ACCOUNT.userId && req.user.access_expires_at != null &&
+  if (isTemporaryDashboardAccount(req.user) &&
       !["GET", "HEAD", "OPTIONS"].includes(req.method) &&
       !allowedAuthWrites.has(req.originalUrl.split("?")[0])) {
     return next(forbidden("This temporary testing account provides read-only dashboard access."));
@@ -42,11 +42,9 @@ export async function attachUser(req, _res, next) {
           `SELECT u.*,o.id AS "orgId",o.type AS "orgType" FROM partner_api_keys k
           JOIN users u ON u.id=k.created_by JOIN organizations o ON o.id=k.organization_id
           JOIN memberships m ON m.organization_id=o.id AND m.user_id=u.id
-          JOIN subscriptions s ON s.organization_id=o.id JOIN pricing_plans p ON p.code=s.plan_code
           WHERE k.token_hash=$1 AND k.revoked_at IS NULL AND k.expires_at>now() AND u.status='active'
           AND (u.access_expires_at IS NULL OR u.access_expires_at>clock_timestamp()) AND u.role IN ('partner','mechanic')
-          AND m.status='active' AND m.role IN('owner','admin') AND s.status='active'
-          AND s.current_period_start<=now() AND s.current_period_end>now() AND p.active AND p.features @> '["API access"]'::jsonb`,
+          AND m.status='active' AND m.role IN('owner','admin') AND o.verification_status='verified'`,
           [createHash("sha256").update(token).digest("hex")],
         );
         if (user) req.user = user;

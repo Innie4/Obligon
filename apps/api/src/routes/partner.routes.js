@@ -22,9 +22,10 @@ import { nominateTransferDestination, initiateTransfer, activeProvider } from ".
 import { businessTimeZone, dayWindowSql, daysForRange } from "../lib/time.js";
 import multer from "multer";
 import { approvedDiscount, validateDiscount } from "../lib/discounts.js";
-import { enforcePartnerPlan, partnerSubscription } from "../lib/subscriptions.js";
+import { enforcePartnerContract, partnerContract } from "../lib/subscriptions.js";
 import { nairaToKobo } from "../lib/money-amounts.js";
-import { subscriptionRouter } from "./subscription.routes.js";
+import { activeTemporaryDashboardAccess } from "../lib/temporaryPartnerAccount.js";
+import { confirmSubscriptionPayment } from "./subscription.routes.js";
 import { stationFuelConfiguration, approvedStationUnit, approvedStationPrice, canonicalStationPrices, canonicalFuelAliases } from "../lib/station-approval.js";
 import { quantityTotalsLabel } from "../lib/fuel-quantity.js";
 
@@ -118,8 +119,16 @@ router.use((req, _res, next) => {
   }
   next();
 });
-router.use("/billing", subscriptionRouter("partner"));
-router.use(enforcePartnerPlan);
+router.get('/billing',asyncHandler(async(req,res)=>res.json({...await partnerContract(req.user.orgId),temporaryAccess:activeTemporaryDashboardAccess(req.user,req.user.orgId),expiresAt:req.user.access_expires_at??null,plans:[],needsFirstCard:false,manualPayoutsAvailable:false})));
+// Reconcile a checkout started before the contract policy changed without granting a contract.
+router.post('/billing/confirm',requireOrgRole('admin'),asyncHandler(async(req,res)=>{
+  const payment=await one('SELECT * FROM subscription_payments WHERE reference=$1 AND organization_id=$2',[req.body?.reference,req.user.orgId]);
+  if(!payment)throw notFound('Subscription payment not found');
+  await confirmSubscriptionPayment(payment.reference,req.body?.transactionId,Boolean(req.body?.simulated));
+  res.json({ok:true,...await partnerContract(req.user.orgId)});
+}));
+router.post('/billing/checkout',(_req,_res,next)=>next(forbidden('Partners use an agreed contract. Contact Support to confirm your contract.')));
+router.use(enforcePartnerContract);
 
 const partnerOrgId = (req) => req.user.orgId;
 
@@ -704,11 +713,11 @@ router.get("/station", asyncHandler(async (req, res) => {
   if(!station) throw notFound("Station not found");
   const [prices, logs, equipment] = await Promise.all([
     q("SELECT * FROM fuel_prices WHERE station_id = $1", [station.id]),
-    q(
+    req.contract?.active ? q(
       `SELECT l.*, t.reference AS tx_reference FROM fueling_logs l LEFT JOIN transactions t ON t.id = l.transaction_id
        WHERE l.station_id = $1 ORDER BY l.created_at DESC LIMIT 20`,
       [station.id]
-    ),
+    ) : Promise.resolve([]),
     q("SELECT * FROM equipment WHERE station_id = $1 ORDER BY name", [station.id])
   ]);
   res.json({
@@ -717,7 +726,7 @@ router.get("/station", asyncHandler(async (req, res) => {
       lat: station.location_confirmed ? station.lat : null, lng: station.location_confirmed ? station.lng : null, fuels: station.fuels, hours: station.hours,
       sellingUnits:station.selling_units,approvedSellingUnits:station.approved_selling_units,
       assets: station.assets, status: station.status,
-      messagingTerminal: station.messaging_terminal
+      messagingTerminal: req.contract?.active ? station.messaging_terminal : null
     },
     prices: canonicalStationPrices(prices).map((p) => ({ id: p.id, stationId:p.station_id, stationName:p.station_name, fuelType: p.fuel_type, sellingUnit:p.selling_unit, price: p.price_kobo / 100, priceLabel: naira(p.price_kobo), updatedAt: fmtDateTime(p.updated_at) })),
     logs: logs.map((l) => ({ id: l.id, fuelType: l.fuel_type, litres: Number(l.litres), quantity:Number(l.litres), sellingUnit:l.selling_unit, reference: l.tx_reference, time: fmtDateTime(l.created_at) })),
@@ -770,7 +779,8 @@ router.post("/station/message-terminal", requireOrgRole("manager"), asyncHandler
   const station = await one("SELECT * FROM stations WHERE partner_org_id = $1 AND ($2::uuid IS NULL OR id=$2) ORDER BY created_at LIMIT 1", [partnerOrgId(req),req.body?.stationId ? requireUuid(req.body.stationId,"station") : null]);
   if (!station) throw notFound("No station registered");
   const terminal = { ...(station.messaging_terminal ?? {}), message, updatedAt: new Date().toISOString() };
-  await q("UPDATE stations SET messaging_terminal = $2 WHERE id = $1", [station.id, JSON.stringify(terminal)]);
+  const updated=await q("UPDATE stations s SET messaging_terminal = $2 FROM organizations o WHERE s.id=$1 AND o.id=s.partner_org_id AND o.verification_status='verified' RETURNING s.id",[station.id,JSON.stringify(terminal)]);
+  if(!updated.length)throw forbidden('Partner contract approval is required for terminal operations.');
   emitToOrg(partnerOrgId(req), "terminal.message", { message });
   res.json({ ok: true });
 }));
@@ -782,7 +792,7 @@ router.post("/station/resupply", requireOrgRole("dispatcher"), asyncHandler(asyn
   // "NaN" — a 500. A negative resupply order was accepted outright.
   const resupplyLitres = requirePositiveNumber(litres, "Whole fuel quantity", { max: 10_000_000, integer: true });
   const order = await tx(async t=>{
-    const station = await t.one("SELECT s.*,o.partner_type,o.type AS org_type FROM stations s JOIN organizations o ON o.id=s.partner_org_id WHERE s.partner_org_id=$1 AND s.status='active' AND ($2::uuid IS NULL OR s.id=$2) ORDER BY s.created_at LIMIT 1 FOR SHARE OF s,o", [partnerOrgId(req),req.body?.stationId ? requireUuid(req.body.stationId,"station") : null]);
+    const station = await t.one("SELECT s.*,o.partner_type,o.type AS org_type FROM stations s JOIN organizations o ON o.id=s.partner_org_id WHERE s.partner_org_id=$1 AND s.status='active' AND o.verification_status='verified' AND ($2::uuid IS NULL OR s.id=$2) ORDER BY s.created_at LIMIT 1 FOR SHARE OF s,o", [partnerOrgId(req),req.body?.stationId ? requireUuid(req.body.stationId,"station") : null]);
     if (!station) throw notFound("No station registered");
     const approved=approvedStationUnit(station,fuelType,sellingUnit,{requireExpected:true});
     return t.one("INSERT INTO resupply_orders (station_id,fuel_type,litres,selling_unit) VALUES($1,$2,$3,$4) RETURNING *",[station.id,approved.fuelType,resupplyLitres,approved.sellingUnit]);
@@ -1242,13 +1252,13 @@ router.get("/settings", asyncHandler(async (req, res) => {
 
 const partnerServices=['Email support','Priority support','Roadside assistance','Dedicated account manager','SLA support'];
 router.get('/settings/service-requests',asyncHandler(async(req,res)=>{
- const state=await partnerSubscription(partnerOrgId(req));
- const services=state.active?partnerServices.filter(service=>state.subscription.features.includes(service)):[];
+ const state=await partnerContract(partnerOrgId(req));
+ const services=state.active?partnerServices:[];
  const tickets=await q("SELECT id,reference,subject,status FROM support_tickets WHERE organization_id=$1 AND category LIKE 'partner-service:%' ORDER BY created_at DESC LIMIT 100",[partnerOrgId(req)]);res.json({services,tickets});
 }));
 router.post('/settings/service-requests',asyncHandler(async(req,res)=>{
  const service=req.body?.service,message=String(req.body?.message??'').trim();if(!['General support',...partnerServices].includes(service)||!message||message.length>5000)throw badRequest('Choose a service and describe your requirements');
- const state=await partnerSubscription(partnerOrgId(req));if(service!=='General support'&&(!state.active||!state.subscription.features.includes(service)))throw forbidden('Your active partner plan does not include this service');
+ const state=await partnerContract(partnerOrgId(req));if(service!=='General support'&&!state.active)throw forbidden('Partner contract approval is required for this service');
  const ticket=await tx(async t=>{
   const row=await t.one(`INSERT INTO support_tickets(reference,user_id,organization_id,subject,category,message,priority,status)VALUES($1,$2,$3,$4,$5,$6,$7,'queued')RETURNING id,reference`,[reference('PSV'),req.user.id,partnerOrgId(req),service,`partner-service:${service}`,message,state.active&&state.entitlements.prioritySupport?'high':'normal']);
   await t.query("INSERT INTO ticket_messages(ticket_id,sender_user_id,sender_role,body)VALUES($1,$2,'partner',$3)",[row.id,req.user.id,message]);return row;
@@ -1261,12 +1271,12 @@ router.get('/settings/service-requests/:id',asyncHandler(async(req,res)=>{
 
 // Read-only integrations are available only while the catalog's API entitlement is active.
 router.get('/settings/api-keys',requireOrgRole('admin'),asyncHandler(async(req,res)=>{
- const state=await partnerSubscription(partnerOrgId(req));
+ const state=await partnerContract(partnerOrgId(req));
  const keys=await q('SELECT id,label,token_hint,expires_at,revoked_at,created_at FROM partner_api_keys WHERE organization_id=$1 ORDER BY created_at DESC',[partnerOrgId(req)]);
  res.json({available:state.active&&state.entitlements.apiAccess,keys});
 }));
 router.post('/settings/api-keys',requireOrgRole('admin'),asyncHandler(async(req,res)=>{
- const state=await partnerSubscription(partnerOrgId(req));if(!state.active||!state.entitlements.apiAccess)throw forbidden('An active plan with API access is required');
+ const state=await partnerContract(partnerOrgId(req));if(!state.active||!state.entitlements.apiAccess)throw forbidden('An approved partner contract is required');
  const label=req.body?.label;if(typeof label!=='string'||!label.trim()||label.length>100)throw badRequest('Enter a label of 1–100 characters');
  const token=`oblp_${randomBytes(32).toString('hex')}`;
  const key=await tx(async t=>{

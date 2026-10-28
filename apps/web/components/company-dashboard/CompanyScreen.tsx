@@ -14,6 +14,8 @@ import { useToast } from "@/components/shared/Toast";
 import { useSession } from "@/components/shared/AuthContext";
 import { DateField } from "@/components/shared/Calendar/DateField";
 import { DashboardSearchQuery } from "@/components/shared/DashboardSearchQuery";
+import { SubscriptionPanel } from "@/components/shared/SubscriptionPanel";
+import { CompanySubscriptionGate } from "./CompanySubscriptionGate";
 type OpenModal = (modal: CompanyOperationModalKey, context?: CompanyModalContext) => void;
 type PageProps = {
   onModal: OpenModal;
@@ -485,7 +487,7 @@ function CompanyWalletPanel({ onModal }: PageProps) {
   React.useEffect(() => {
     if (!user) return;
     const query = new URLSearchParams(window.location.search);
-    const returned = query.get("topup") || query.get("tx_ref") || query.get("reference");
+    const returned = query.get("paymentFlow") === "subscription" ? "" : query.get("topup") || query.get("tx_ref") || query.get("reference");
     try { const stored = sessionStorage.getItem(companyTopupStorageKey(user.id)); setReference(returned || stored || ""); } catch { if (returned) setReference(returned); }
   }, [user]);
   async function confirm() {
@@ -518,10 +520,12 @@ function CompanyWalletPanel({ onModal }: PageProps) {
 function Billing({ onModal }: PageProps) {
   const result = useAsync(companyApi.billing);
   const { user } = useSession();
+  const [walletRevision, setWalletRevision] = React.useState(0);
   return <Canvas>
 
     <Header pageKey="billing" action={{ label: "Export Invoices", modal: "export", context: { scope: "invoices" } }} onModal={onModal} />
-    <CompanyWalletPanel onModal={onModal} />
+    <SubscriptionPanel kind="company" embedded onSubscriptionChange={() => setWalletRevision(value => value + 1)} />
+    <CompanySubscriptionGate key={walletRevision} protectedSection><CompanyWalletPanel onModal={onModal} /></CompanySubscriptionGate>
 
     <DataBoundary result={result}>
 
@@ -529,16 +533,16 @@ function Billing({ onModal }: PageProps) {
 
         <article className="rounded-xl border border-[#dfe5ec] bg-white p-5">
 
-          <h2 className="text-xl font-extrabold">Contract and billing</h2>
+          <h2 className="text-xl font-extrabold">Billing details</h2>
 
-          <p className="mt-3 text-sm text-obligon-text">Company access and commercial terms require an agreed contract.</p>
+          <p className="mt-3 text-sm text-obligon-text">Subscribe to an Organization plan above to activate fleet operations. Subscription fees are separate from fuel funds.</p>
 
           {result.data?.plan ? <>
             <p className="mt-4 text-lg font-bold">{result.data.plan.name}</p>
             <p className="mt-1">Recorded plan amount: {result.data.plan.priceLabel}</p>
             <p className="mt-1">Status: {result.data.plan.status}</p>
             {result.data.plan.nextBilling ? <p className="mt-1">Next billing: {result.data.plan.nextBilling}</p> : null}
-          </> : <p className="mt-4 text-sm">No billing plan is recorded. Use Support to confirm your contract and billing terms.</p>}
+          </> : <p className="mt-4 text-sm">No paid Organization plan is recorded. Choose a plan above to get started.</p>}
 
         </article>
 
@@ -662,7 +666,7 @@ function Support({ onModal }: PageProps) {
 
       <h2 className="text-xl font-extrabold">Frequently asked questions</h2>
 
-      {[["How do I add a fleet vehicle?", "Open Vehicles, choose Add Vehicle, and save its plate, model, fuel type and tank capacity."], ["How are company billing terms agreed?", "Company access requires a contract. Submit a billing support ticket to confirm your agreed terms."], ["When will roadside assistance arrive?", "Requests require manual coordination. Include your request ID in a support conversation to confirm arrangements; submitting a request does not confirm dispatch or arrival."]].map(([question, answer]) => <details key={question} className="border-b py-4">
+      {[["How do I add a fleet vehicle?", "Open Vehicles, choose Add Vehicle, and save its plate, model, fuel type and tank capacity."], ["How do I activate fleet operations?", "Open Billing and subscribe to an Organization plan. Renew before expiry to keep fleet operations available. Subscription fees are separate from fuel funds."], ["When will roadside assistance arrive?", "Requests require manual coordination. Include your request ID in a support conversation to confirm arrangements; submitting a request does not confirm dispatch or arrival."]].map(([question, answer]) => <details key={question} className="border-b py-4">
 
         <summary className="cursor-pointer text-sm font-bold">{question}</summary>
 

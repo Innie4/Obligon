@@ -66,7 +66,7 @@ export const pageCopy: Record<CompanyPageKey, { title: string; description?: str
   reports: { title: "Reports & Analytics", search: "Search reports..." },
   stations: { title: "Partner Stations", description: "Find network stations, published fuel prices, and directions.", search: "Search locations, zip codes..." },
   roadside: { title: "Roadside Assistance", description: "Manage and track active emergency requests.", search: "Search..." },
-  billing: { title: "Contract & Billing", description: "Review recorded billing details and invoices for your company contract.", search: "Search company billing..." },
+  billing: { title: "Subscription & Billing", description: "Choose or renew your Organization plan and review company billing details.", search: "Search company billing..." },
   team: { title: "Team & Access Control", description: "Invite team members and view who has access to your organization.", search: "Search staff..." },
   notifications: { title: "Notifications", description: "Alerts & Updates" },
   support: { title: "Help & Support", description: "Manage your support tickets and find answers quickly." },

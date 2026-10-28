@@ -4,7 +4,7 @@ import { env } from '../config/env.js';
 import { badRequest, conflict, notFound } from './errors.js';
 import { reference } from './format.js';
 import { approvedDiscount, discountAmounts } from './discounts.js';
-import { requireCustomerPlan, partnerSubscription, customerFeatureIncluded } from './subscriptions.js';
+import { requireCustomerPlan, partnerContract, customerFeatureIncluded } from './subscriptions.js';
 import { businessTimeZone } from './time.js';
 import { startCheckout, verifyCheckout, activeProvider } from './payments.js';
 import { fuelAmountKobo, quantityHundredths, integerKobo } from './money-amounts.js';
@@ -37,9 +37,9 @@ export async function startFuelOrder(user,input,payment=providers) {
    return existing;
   }
   const subscription=await requireCustomerPlan(user.id,'Fuel Purchase',t);
-  const station=await t.one("SELECT s.*,o.partner_type,o.type AS org_type FROM stations s JOIN organizations o ON o.id=s.partner_org_id WHERE s.id=$1 AND s.status='active' AND s.is_open=TRUE FOR SHARE OF s,o",[data.stationId]);
+  const station=await t.one("SELECT s.*,o.partner_type,o.type AS org_type,o.verification_status FROM stations s JOIN organizations o ON o.id=s.partner_org_id WHERE s.id=$1 AND s.status='active' AND s.is_open=TRUE FOR SHARE OF s,o",[data.stationId]);
   if(!station)throw notFound('An open station was not found.');
-  if(!(await partnerSubscription(station.partner_org_id,t)).active)throw badRequest('This station subscription is inactive. Choose another station.');
+  if(!(await partnerContract(station.partner_org_id,t)).active)throw badRequest('This station contract is not approved. Choose another station.');
   const account=await t.one("SELECT sa.* FROM settlement_accounts sa JOIN bank_accounts ba ON ba.id=sa.bank_account_id AND ba.organization_id=sa.organization_id AND ba.is_default=TRUE AND ba.verified=TRUE WHERE sa.organization_id=$1 AND sa.status='active' AND sa.provider='flutterwave' AND sa.subaccount_id IS NOT NULL AND sa.subaccount_id<>'' AND sa.currency='NGN' FOR SHARE OF sa",[station.partner_org_id]);
   if(!account)throw badRequest('This station has no verified active settlement account. Choose another station.');
   const price=canonicalStationPrices(await t.query('SELECT * FROM fuel_prices WHERE station_id=$1 FOR SHARE',[station.id])).find(p=>p.fuel_type===data.fuelType);
@@ -102,9 +102,9 @@ export async function confirmFuelOrder(referenceValue,transactionId=null,simulat
   // A delayed provider confirmation may arrive after its reservation expired.
   const card=await t.one('SELECT * FROM cards WHERE id=$1 AND owner_user_id=$2 FOR UPDATE',[locked.card_id,locked.user_id]);
   let reviewReason=null;
-  const station=await t.one('SELECT s.*,o.partner_type,o.type AS org_type FROM stations s JOIN organizations o ON o.id=s.partner_org_id WHERE s.id=$1 FOR SHARE OF s,o',[locked.station_id]);
+  const station=await t.one('SELECT s.*,o.partner_type,o.type AS org_type,o.verification_status FROM stations s JOIN organizations o ON o.id=s.partner_org_id WHERE s.id=$1 FOR SHARE OF s,o',[locked.station_id]);
   try {
-   if(!station||station.status!=='active')throw badRequest('Station approval changed.');
+   if(!station||station.status!=='active'||station.verification_status!=='verified')throw badRequest('Station approval changed.');
    approvedStationUnit(station,locked.fuel_type,locked.selling_unit);
   } catch {reviewReason='Your payment was confirmed, but this station fuel or selling unit is no longer approved. Admin will review fulfillment or an original-payment refund.';}
   if(!card||card.status!=='active')reviewReason='Your payment was confirmed, but the fuel card is inactive. Admin will review a refund before fuel can be collected.';
@@ -143,9 +143,9 @@ export async function fulfillFuelOrder({partnerOrgId,stationId,code}) {
   const order=await t.one(`SELECT fo.* FROM fuel_orders fo JOIN stations s ON s.id=fo.station_id
    WHERE fo.authorization_code=$1 AND fo.station_id=$2 AND s.partner_org_id=$3 AND fo.status='paid' FOR UPDATE OF fo`,[String(code),stationId,partnerOrgId]);
   if(!order)throw notFound('Paid fuel order not found or already fulfilled.');
-  const station=await t.one('SELECT s.*,o.partner_type,o.type AS org_type FROM stations s JOIN organizations o ON o.id=s.partner_org_id WHERE s.id=$1 FOR SHARE OF s,o',[order.station_id]);
+  const station=await t.one('SELECT s.*,o.partner_type,o.type AS org_type,o.verification_status FROM stations s JOIN organizations o ON o.id=s.partner_org_id WHERE s.id=$1 FOR SHARE OF s,o',[order.station_id]);
   try {
-   if(!station||station.status!=='active')throw badRequest('Station approval changed.');
+   if(!station||station.status!=='active'||station.verification_status!=='verified')throw badRequest('Station approval changed.');
    approvedStationUnit(station,order.fuel_type,order.selling_unit);
   } catch {
    const reason='The paid fuel order cannot be dispensed under the current station fuel and selling-unit approval. Admin review or an original-payment refund is required.';

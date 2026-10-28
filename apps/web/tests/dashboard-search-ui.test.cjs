@@ -281,12 +281,13 @@ test('partner search receives only destinations allowed for its current subtype'
   assert.ok(search.props.entries.some(item => item.href === '/auth/sign-in-options'));
 });
 
-test('company search preserves contract approval navigation gates', () => {
+test('company search exposes Billing and operations without a contract approval gate', () => {
   for (const approval of ['pending', 'verified']) {
     const tree = header('../components/company-dashboard/CompanyShell.tsx', 'CompanyTopbar', { role: 'company', organizationType: 'company', organizationVerificationStatus: approval });
     const search = tree.find(node => node.type === 'DashboardSearch');
     assert.equal(search.props.scope, 'company');
-    assert.equal(search.props.entries.some(item => item.href === '/company/vehicles'), approval === 'verified');
+    assert.equal(search.props.entries.some(item => item.href === '/company/vehicles'), true);
+    assert.ok(search.props.entries.some(item => item.href === '/company/billing'));
     assert.ok(search.props.entries.some(item => item.href === '/company/support'));
   }
 });

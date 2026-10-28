@@ -36,6 +36,7 @@ before(async () => {
   };
   pool=(await import('../src/db.js')).getPool();
   config=(await import('../src/config/env.js')).env;
+  for(const table of ['pricing_plans','subscriptions'])await pool.query(`CREATE TABLE ${table}(LIKE public.${table} INCLUDING ALL)`);
   await pool.query(`CREATE TABLE users(id uuid PRIMARY KEY, full_name text,email text, phone text,role text DEFAULT 'company',status text DEFAULT 'active', notification_prefs jsonb DEFAULT '{"email":false,"sms":false,"push":false}'::jsonb);
     CREATE TABLE organizations(id uuid PRIMARY KEY,owner_user_id uuid,name text,type text DEFAULT 'company',rc_number text,address text,city text,website text,description text,credit_limit_kobo bigint DEFAULT 0,plan_code text,fleet_id text,verification_status text DEFAULT 'verified',updated_at timestamptz DEFAULT now());
     CREATE TABLE memberships(id uuid DEFAULT gen_random_uuid(),organization_id uuid,user_id uuid,role text,status text DEFAULT 'active',permissions jsonb DEFAULT '[]');
@@ -62,6 +63,8 @@ before(async () => {
   await pool.query("INSERT INTO users(id,full_name,email,role) VALUES($1,'Test station owner','station@example.invalid','partner')",[stationOwnerId]);
   await pool.query("INSERT INTO organizations(id,owner_user_id,name,type,partner_type,verification_status) VALUES($1,$2,'Verified network partner','partner','fuel_station','verified')",[stationPartnerOrgId,stationOwnerId]);
   await pool.query('INSERT INTO organizations(id,owner_user_id,name) VALUES($1,$2,$3),($4,$2,$5)',[orgId,userId,'Test Fleet',otherOrgId,'Other Fleet']);
+  await pool.query("INSERT INTO pricing_plans(code,name,price_kobo,interval,features)VALUES('active-fixture','Active fixture',150000,'month','[\"Advanced analytics\"]')");
+  await pool.query("INSERT INTO subscriptions(organization_id,plan_code,status,current_period_start,current_period_end)VALUES($1,'active-fixture','active',now()-interval '1 day',now()+interval '1 month')",[orgId]);
   await pool.query('INSERT INTO vehicles(id,organization_id,plate,model) VALUES($1,$2,$3,$4)',[vehicleId,orgId,'LAG-22','Test Truck']);
   await pool.query('INSERT INTO drivers(id,organization_id,name) VALUES($1,$2,$3)',[driverId,orgId,'Ada']);
   await pool.query("INSERT INTO cards(id,organization_id,owner_user_id,vehicle_id,driver_id,label,status,masked_pan,daily_limit_kobo,monthly_limit_kobo,sudo_card_id,sudo_customer_id) VALUES($1,$2,$3,$4,$5,'Existing','active','•••• 1111',10000,100000,'existing-issuer-card','verified-issuer-customer')",[cardId,orgId,userId,vehicleId,driverId]);

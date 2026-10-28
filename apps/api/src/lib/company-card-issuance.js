@@ -1,3 +1,4 @@
+import { requireCompanyPlan } from './subscriptions.js';
 import { createHash } from 'node:crypto';
 import { one, q, tx } from '../db.js';
 import { badRequest, conflict, forbidden, notFound } from './errors.js';
@@ -33,9 +34,9 @@ async function finish(id, actorId, adminRecovery=false) {
     await t.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[`company-card:${context.organization_id}`]);
     const operation = await t.one('SELECT * FROM company_card_issuances WHERE id=$1 FOR UPDATE',[id]);
     if (!operation) throw notFound('Company issuance not found');
-    const organization=await t.one("SELECT owner_user_id FROM organizations WHERE id=$1 AND type='company' AND verification_status='verified' FOR UPDATE",[operation.organization_id]);
+    const organization=await t.one("SELECT owner_user_id FROM organizations WHERE id=$1 AND type='company' FOR UPDATE",[operation.organization_id]);
     const actor=await t.one("SELECT id,role FROM users WHERE id=$1 AND status='active' FOR SHARE",[actorId]);
-    if (!organization || !actor || (adminRecovery && actor.role!=='admin')) throw forbidden('Current company approval and active authorized access are required to complete issuance');
+    if (!organization || !actor || (adminRecovery && actor.role!=='admin')) throw forbidden('Current company and active authorized access are required to complete issuance');
     if (!adminRecovery) {
       if (operation.actor_user_id!==actorId) throw forbidden('This card request belongs to another company actor');
       if (organization.owner_user_id!==actorId) {
@@ -67,9 +68,9 @@ export async function issueCompanyCard({organizationId,actor,payload,idempotency
   const data=requestDetails(payload,actor), requestHash=digest(JSON.stringify(data));
   const operation=await tx(async t=>{
     await t.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[`company-card:${organizationId}`]);
-    const organization=await t.one("SELECT owner_user_id FROM organizations WHERE id=$1 AND type='company' AND verification_status='verified' FOR SHARE",[organizationId]);
+    const organization=await t.one("SELECT owner_user_id FROM organizations WHERE id=$1 AND type='company' FOR SHARE",[organizationId]);
     const user=await t.one("SELECT id,role FROM users WHERE id=$1 AND status='active' FOR SHARE",[actor.id]);
-    if (!organization || !user || user.role !== actor.role) throw forbidden('An approved company and active authorized actor are required');
+    if (!organization || !user || user.role !== actor.role) throw forbidden('An active company and authorized actor are required');
     if (organization.owner_user_id !== actor.id) {
       const member=await t.one("SELECT role,permissions FROM memberships WHERE organization_id=$1 AND user_id=$2 AND status='active' FOR SHARE",[organizationId,actor.id]);
       if (!member || (!['owner','admin'].includes(member.role) && !member.permissions?.includes('cards.manage'))) throw forbidden('Company card management permission is required');
@@ -79,6 +80,11 @@ export async function issueCompanyCard({organizationId,actor,payload,idempotency
       if (existing.request_hash !== requestHash) throw conflict('This request key was already used for a different company card');
       if (!['complete','provider_created'].includes(existing.state)) throw review(existing.id);
       return {...existing,claimed:false};
+    }
+    const subscription=await requireCompanyPlan(organizationId,t);
+    if (subscription.entitlements.cards != null) {
+      const cards=await t.one("SELECT count(*)::int AS count FROM cards WHERE organization_id=$1 AND status NOT IN ('terminated','replaced')",[organizationId]);
+      if (cards.count >= subscription.entitlements.cards) throw forbidden('Your Organization plan card limit has been reached. Upgrade your plan in Billing.');
     }
     const uncertain=await t.one("SELECT id FROM company_card_issuances WHERE organization_id=$1 AND state<>'complete'",[organizationId]);
     if (uncertain) throw review(uncertain.id);

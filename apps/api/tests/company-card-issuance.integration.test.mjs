@@ -18,7 +18,7 @@ const payload=(extras={})=>({label:'Fleet fuel',dailyLimit:'1000',monthlyLimit:'
 before(async()=>{
  if(!database)return;
  setup=new pg.Pool({connectionString:database});await setup.query(`CREATE SCHEMA ${schema}`);
- for(const table of ['users','organizations','memberships','vehicles','drivers','cards','audit_logs','notifications','push_subscriptions','wallets','company_card_issuances'])await setup.query(`CREATE TABLE ${schema}.${table}(LIKE public.${table} INCLUDING ALL)`);
+ for(const table of ['users','organizations','memberships','vehicles','drivers','cards','audit_logs','notifications','push_subscriptions','wallets','company_card_issuances','pricing_plans','subscriptions'])await setup.query(`CREATE TABLE ${schema}.${table}(LIKE public.${table} INCLUDING ALL)`);
  const isolated=new URL(database);isolated.searchParams.set('options',`-c search_path=${schema}`);
  Object.assign(process.env,{DATABASE_URL:isolated.toString(),DATABASE_SSL:'false',NODE_ENV:'test',DOTENV_CONFIG_PATH:'/dev/null',SUDO_BASE_URL:'https://issuer.fixture.invalid',SUDO_SECRET_API_KEY:'test-key',SUDO_DEBIT_ACCOUNT_ID:'test-account',SUDO_FUNDING_SOURCE_ID:''});
  pool=(await import('../src/db.js')).getPool();
@@ -51,10 +51,12 @@ beforeEach(async()=>{
  if(!database)return;
  timeout=false;customerTimeout=false;receiptOverride=null;onIssue=null;createCalls=0;customerCalls=0;
  await pool.query('DROP TRIGGER IF EXISTS reject_issued_card ON cards');
- await pool.query('TRUNCATE company_card_issuances,cards,vehicles,drivers,memberships,organizations,users,audit_logs,notifications,push_subscriptions,wallets');
+ await pool.query('TRUNCATE company_card_issuances,cards,vehicles,drivers,memberships,organizations,users,audit_logs,notifications,push_subscriptions,wallets,pricing_plans,subscriptions');
  await pool.query(`INSERT INTO users(id,email,password_hash,role,full_name,notification_prefs) VALUES($1,'owner@fixture.invalid','unused','company','Fleet Owner','{"email":false,"sms":false,"push":false}'),($2,'other@fixture.invalid','unused','company','Other Owner','{"email":false,"sms":false,"push":false}')`,[owner,other]);
  await pool.query("INSERT INTO users(id,email,password_hash,role) VALUES($1,'admin@fixture.invalid','unused','admin')",[adminId]);
  await pool.query("INSERT INTO organizations(id,owner_user_id,name,type,verification_status) VALUES($1,$2,'Fleet','company','verified'),($3,$4,'Other','company','verified')",[org,owner,foreignOrg,other]);
+ await pool.query("INSERT INTO pricing_plans(code,name,price_kobo,interval,features)VALUES('active-fixture','Active fixture',150000,'month','[\"Advanced analytics\"]')");
+ await pool.query("INSERT INTO subscriptions(organization_id,plan_code,status,current_period_start,current_period_end)VALUES($1,'active-fixture','active',now()-interval '1 day',now()+interval '1 month'),($2,'active-fixture','active',now()-interval '1 day',now()+interval '1 month')",[org,foreignOrg]);
  await pool.query("INSERT INTO cards(owner_user_id,organization_id,label,sudo_customer_id,holder_name) VALUES($1,$2,'Existing','customer-existing','Fleet Owner')",[owner,org]);
 });
 after(async()=>{globalThis.fetch=rawFetch;if(server)await new Promise(resolve=>server.close(resolve));if(pool)await pool.end();if(setup){await setup.query(`DROP SCHEMA ${schema} CASCADE`);await setup.end();}});
@@ -108,23 +110,28 @@ integration('a customer timeout never stores identity or permits blind card crea
  await assert.rejects(()=>helper.reconcileCompanyCardIssuance(op.id,adminId,'recovered'),/customer identifier was not saved/);
 });
 integration('revocation during issuer latency retains its receipt and denies caller completion without reissuing',async()=>{
- for(const change of ["UPDATE users SET status='suspended' WHERE id=$1","UPDATE organizations SET verification_status='pending' WHERE owner_user_id=$1"]){
+ for(const change of ["UPDATE users SET status='suspended' WHERE id=$1"]){
   const body=payload();onIssue=()=>pool.query(change,[owner]);
   assert.equal((await request(body)).status,409);assert.equal((await operation()).state,'provider_created');
   assert.equal((await pool.query('SELECT count(*)::int AS n FROM cards WHERE sudo_card_id IS NOT NULL')).rows[0].n,0);
-  await pool.query("UPDATE users SET status='active'");await pool.query("UPDATE organizations SET verification_status='verified'");onIssue=null;
+  await pool.query("UPDATE users SET status='active'");await pool.query("UPDATE subscriptions SET current_period_end=now()+interval '1 month'");onIssue=null;
   const completed=await request(body);assert.equal(completed.status,200);assert.equal(createCalls,1);
   await pool.query('TRUNCATE company_card_issuances');await pool.query('DELETE FROM cards WHERE sudo_card_id IS NOT NULL');createCalls=0;
  }
 });
-integration('admin recovery refuses a revoked reviewer and an unapproved company',async()=>{
+integration('admin recovery refuses a revoked reviewer and completes a saved receipt after subscription expiry',async()=>{
  timeout=true;await request(payload());const op=await operation();
  await assert.rejects(()=>helper.reconcileCompanyCardIssuance(op.id,owner,'recovered'),/Active admin/);
  await pool.query("UPDATE users SET status='suspended' WHERE id=$1",[adminId]);
  await assert.rejects(()=>helper.reconcileCompanyCardIssuance(op.id,adminId,'recovered'),/Active admin/);
- await pool.query("UPDATE users SET status='active' WHERE id=$1",[adminId]);await pool.query("UPDATE organizations SET verification_status='pending' WHERE id=$1",[org]);
- await assert.rejects(()=>helper.reconcileCompanyCardIssuance(op.id,adminId,'recovered'),/Current company approval/);
- assert.equal(createCalls,1);assert.equal((await operation()).state,'provider_created');
+ await pool.query("UPDATE users SET status='active' WHERE id=$1",[adminId]);await pool.query("UPDATE subscriptions SET current_period_end=now()-interval '1 minute' WHERE organization_id=$1",[org]);
+ await helper.reconcileCompanyCardIssuance(op.id,adminId,'recovered');
+ assert.equal(createCalls,1);assert.equal((await operation()).state,'complete');
+});
+integration('new card issuance requires an active company subscription before any issuer effect',async()=>{
+ await pool.query("UPDATE subscriptions SET current_period_end=now()-interval '1 minute' WHERE organization_id=$1",[org]);
+ assert.equal((await request(payload())).status,403);assert.equal(createCalls,0);assert.equal(customerCalls,0);
+ assert.equal(await operation(),undefined);
 });
 integration('revoked card-manager membership cannot finalize after the issuer responds',async()=>{
  await pool.query("INSERT INTO memberships(organization_id,user_id,email,role,status,permissions) VALUES($1,$2,'other@fixture.invalid','dispatcher','active','[\"cards.manage\"]')",[org,other]);

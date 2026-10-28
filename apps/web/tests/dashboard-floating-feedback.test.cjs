@@ -40,11 +40,11 @@ test('admin bank reads use floating progress and failure while retaining the emp
   assert.equal(empty.type, 'p'); assert.match(empty.props.children.join(''), /No partner bank accounts/);
 });
 
-test('partner subscription check floats feedback and keeps protected content unavailable while pending', () => {
+test('partner contract check floats feedback and keeps protected content unavailable while pending', () => {
   const Gate = load('../components/dashboard/PartnerSubscriptionGate.tsx', 'PartnerSubscriptionGate');
   const tree = Gate({ children: 'Protected operational content' });
   assert.equal(tree.type, 'StatusPopup'); assert.equal(tree.props.tone, 'loading');
-  assert.equal(tree.props.message, 'Checking subscription…');
+  assert.equal(tree.props.message, 'Checking contract approval…');
   assert.equal(nodes(tree).some(node => node.props?.children?.includes('Protected operational content')), false);
 });
 

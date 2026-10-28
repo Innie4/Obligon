@@ -8,7 +8,7 @@ import { q, one, tx } from "../db.js";
 import { asyncHandler, badRequest, notFound, forbidden, conflict } from "../lib/errors.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requireAdminPage, validateAdminGrants, lockAdminStaffManager } from "../middleware/admin-access.js";
-import { TEMPORARY_PARTNER_ACCOUNT } from "../lib/temporaryPartnerAccount.js";
+import { TEMPORARY_PARTNER_ACCOUNT, TEMPORARY_COMPANY_ACCOUNT } from "../lib/temporaryPartnerAccount.js";
 import { naira, fmtDate, fmtDateTime, relativeTime, dayGroup, reference, toCsv, initials as initialsOf } from "../lib/format.js";
 import { notify, audit, securityLog } from "../lib/notify.js";
 import { hashPassword, randomToken } from "../lib/security.js";
@@ -190,19 +190,18 @@ router.post("/companies", asyncHandler(async (req, res) => {
   const { env } = await import("../config/env.js");
   const delivery = await sendEmail({
     to: adminEmail,
-    subject: "Your Obligon fleet workspace is pending approval",
-    text: `Your fleet workspace is pending admin approval after your company contract is agreed. You can sign in to review your profile and contact Support; company operations become available after approval. Sign in at ${env.APP_URL}/auth/login - email: ${adminEmail}, temporary password: ${tempPassword}`
+    subject: "Choose an Organization plan for your Obligon workspace",
+    text: `Your company workspace is ready. Sign in and pay for an Organization plan in Billing to enable company operations. Sign in at ${env.APP_URL}/auth/login - email: ${adminEmail}, temporary password: ${tempPassword}`
   });
   res.json({ ok: true, orgId: result.org.id, fleetId: result.org.fleet_id, verificationStatus: "pending", invitationSent: Boolean(delivery?.delivered),
-    message: delivery?.delivered ? "Fleet created pending contract approval. The owner invitation was delivered."
-      : "Fleet created pending contract approval. The owner invitation could not be delivered; contact Support." });
+    message: delivery?.delivered ? "Company created. Organization subscription required. The owner invitation was delivered."
+      : "Company created. Organization subscription required. The owner invitation could not be delivered; contact Support." });
 }));
 
 router.put("/companies/:orgId", asyncHandler(async (req, res) => {
-  const { creditLimit, settlementLimit, planCode, status, verificationStatus, contractAgreed } = req.body ?? {};
+  const { creditLimit, settlementLimit, planCode, status, verificationStatus } = req.body ?? {};
   if (verificationStatus != null && !["unverified", "pending", "verified", "rejected"].includes(verificationStatus)) throw badRequest("Choose a valid verification status");
   if (status != null && !["trialing", "active", "past_due", "canceled"].includes(status)) throw badRequest("Choose a valid subscription status");
-  if (contractAgreed != null && typeof contractAgreed !== "boolean") throw badRequest("Confirm the agreed company contract with a boolean value");
   // `Number("abc") * 100` is NaN, and NaN into a BIGINT is a 500. Both of these
   // are money ceilings, so a typo must be refused rather than becoming an error.
   const toKobo = (value, label) => {
@@ -214,7 +213,6 @@ router.put("/companies/:orgId", asyncHandler(async (req, res) => {
     const current = await t.one("SELECT * FROM organizations WHERE id=$1 AND type='company' FOR UPDATE", [req.params.orgId]);
     if (!current) throw notFound("Company not found");
     const approving = verificationStatus === "verified" && current.verification_status !== "verified";
-    if (approving && contractAgreed !== true) throw badRequest("Confirm that the company contract is agreed before approving operations");
     const updated = await t.one(
     `UPDATE organizations SET
        credit_limit_kobo = COALESCE($2, credit_limit_kobo),
@@ -233,7 +231,7 @@ router.put("/companies/:orgId", asyncHandler(async (req, res) => {
     [req.user.id, approving ? "company.approved" : "company.updated", updated.id, req.ip,
       JSON.stringify({ creditLimit, settlementLimit, planCode, previousVerificationStatus: current.verification_status,
         verificationStatus: updated.verification_status, previousSubscriptionStatus: current.subscription_status,
-        subscriptionStatus: updated.subscription_status, ...(approving ? { contractAgreed: true } : {}) })]);
+        subscriptionStatus: updated.subscription_status })]);
     return updated;
   });
   res.json({ ok: true, verificationStatus: org.verification_status, subscriptionStatus: org.subscription_status });
@@ -514,6 +512,7 @@ router.post("/applications/:id/review", asyncHandler(async (req, res) => {
   const app = await one("SELECT * FROM partner_applications WHERE id = $1", [req.params.id]);
   if (!app) throw notFound("Application not found");
   if (app.status === "approved") throw badRequest("Application already approved");
+  if (decision === "approve" && req.body?.contractAgreed !== true) throw badRequest("Confirm that the partner contract is agreed before approving access");
   const statusMap = { approve: "approved", reject: "rejected", under_review: "under_review" };
   await tx(async (t) => {
     await t.query(
@@ -527,7 +526,10 @@ router.post("/applications/:id/review", asyncHandler(async (req, res) => {
       );
       await t.query("UPDATE users SET status = 'active' WHERE id = $1", [app.user_id]);
       if (org) {
-        // Station publication is a separate review; operator approval never bypasses location checks.
+        await t.query(`INSERT INTO audit_logs(actor_user_id,actor_role,action,entity_type,entity_id,metadata)
+          VALUES($1,'admin','partner.contract_approved','organization',$2,$3)`,
+        [req.user.id,org.id,JSON.stringify({applicationId:app.id,contractAgreed:true})]);
+        // Station publication remains a separate review of location and fuels.
       }
     }
   });
@@ -725,7 +727,7 @@ router.post("/staff", asyncHandler(async (req, res) => {
     if (!matches.length) throw notFound("No user has that email address. They must register before becoming an administrator.");
     if (matches.length !== 1) throw conflict("More than one account matches that email. Resolve the duplicate accounts before assigning admin access.");
     const existing = matches[0];
-    if (existing.id === TEMPORARY_PARTNER_ACCOUNT.userId || existing.email.toLowerCase() === TEMPORARY_PARTNER_ACCOUNT.email.toLowerCase()) throw badRequest("Temporary testing accounts cannot become administrators. Use a permanent registered account.");
+    if ([TEMPORARY_PARTNER_ACCOUNT, TEMPORARY_COMPANY_ACCOUNT].some(account => existing.id === account.userId || existing.email.toLowerCase() === account.email.toLowerCase())) throw badRequest("Temporary testing accounts cannot become administrators. Use a permanent registered account.");
     if (existing.role === 'admin') throw conflict("This user is already an administrator. Open their review record to change access.");
     if (existing.status !== 'active' || existing.access_expired) throw badRequest("This account must be active and unexpired before becoming an administrator.");
     await t.query(

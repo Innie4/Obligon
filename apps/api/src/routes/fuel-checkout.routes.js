@@ -22,9 +22,7 @@ export function customerFuelCheckoutRouter() {
      ORDER BY d.starts_at DESC,d.reviewed_at DESC,d.id LIMIT 1),0) AS discount_bp
    FROM stations s JOIN organizations o ON o.id=s.partner_org_id JOIN fuel_prices fp ON fp.station_id=s.id
    JOIN settlement_accounts sa ON sa.organization_id=s.partner_org_id AND sa.provider='flutterwave' AND sa.status='active' AND sa.subaccount_id IS NOT NULL AND sa.subaccount_id<>'' AND sa.currency='NGN'
-   WHERE s.status='active' AND s.is_open=TRUE AND EXISTS
-     (SELECT 1 FROM subscriptions sub WHERE sub.organization_id=s.partner_org_id AND sub.status='active'
-      AND sub.current_period_start<=now() AND sub.current_period_end>now()) AND EXISTS
+   WHERE s.status='active' AND s.is_open=TRUE AND o.type IN ('partner','mechanic') AND o.verification_status='verified' AND EXISTS
      (SELECT 1 FROM bank_accounts ba WHERE ba.id=sa.bank_account_id AND ba.organization_id=s.partner_org_id AND ba.is_default=TRUE AND ba.verified=TRUE)
    ORDER BY s.name,fp.fuel_type LIMIT 250`);
   const available=canonicalStationPrices(rows).filter(row=>{try{approvedStationPrice(row,row);return true;}catch{return false;}});

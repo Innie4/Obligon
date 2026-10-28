@@ -201,7 +201,7 @@ test("the old phone step redirects instead of showing a second form", () => {
 });
 
 test("signup goes to one step, not a chain", () => {
-  assert.match(signup, /router\.push\(withAuthReturn\(routes\.verifyEmail, returnPath\)\);/);
+  assert.match(signup, /router\.push\(withAuthReturn\(routes\.verifyEmail, returnPath \?\? \(topRole === "company" \? destination : null\)\)\);/);
   assert.doesNotMatch(signup, /phoneStep/);
   assert.doesNotMatch(signup, /emailStep/);
 });

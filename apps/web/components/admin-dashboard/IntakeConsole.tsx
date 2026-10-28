@@ -12,6 +12,9 @@ type RecordRow = {
   sellingUnits?: Record<string, SellingUnit>;
   approvedSellingUnits?: Record<string, SellingUnit>;
   title?: string;
+  department?: string;
+  location?: string;
+  employment_type?: string;
   contact_name?: string;
   email?: string;
   company_name?: string;
@@ -116,6 +119,8 @@ export function IntakeConsole() {
     [total, setTotal] = React.useState(0),
     [search, setSearch] = React.useState(""),
     [published, setPublished] = React.useState(false);
+  const [removeJob, setRemoveJob] = React.useState(false);
+  React.useEffect(() => { setRemoveJob(false); }, [selected?.id]);
   const loadSequence = React.useRef(0);
   const load = React.useCallback(async () => {
     const sequence = ++loadSequence.current;
@@ -174,7 +179,7 @@ export function IntakeConsole() {
       setNote("");
       setPublished(false);
       await latestLoad.current();
-      setSuccess(path === "/jobs" ? "Job posting published." : path === "/email-delivery/retry" ? "Due email messages processed. Check the updated delivery status." : "Review decision saved.");
+      setSuccess(method === "DELETE" && path.startsWith("/jobs/") ? "Job posting removed from Careers." : path.startsWith("/jobs/") ? "Job posting updated on Careers." : path === "/jobs" ? "Job posting published." : path === "/email-delivery/retry" ? "Due email messages processed. Check the updated delivery status." : "Review decision saved.");
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -382,13 +387,20 @@ export function IntakeConsole() {
                     : queue === "jobs"
                       ? `/jobs/${selected.id}`
                       : `/intake/${queue}/${selected.id}`,
-                  { status: decision, note, identityVerified: verified, ...(queue === "stations" ? { sellingUnits } : {}) },
+                  { ...(queue === "jobs" ? Object.fromEntries(new FormData(e.currentTarget)) : { note, identityVerified: verified }), status: decision, ...(queue === "stations" ? { sellingUnits } : {}) },
                   queue === "stations" ? "POST" : "PATCH",
                 );
               }}
             >
               <div className="mb-4"><span className="rounded-md border border-obligon-border bg-obligon-mist px-2.5 py-1 text-xs font-semibold">{recordSource(queue, selected)}</span></div>
-              {(selected.message ?? selected.cover_note ?? selected.description ?? selected.notes ?? selected.review_note) ? (
+              {queue === "jobs" ? <fieldset className="space-y-4" key={selected.id}>
+                <legend className="font-bold">Job details</legend>
+                {([['title', 'Job title', selected.title], ['department', 'Department', selected.department], ['location', 'Location', selected.location], ['employmentType', 'Employment type', selected.employment_type]] as const).map(([name, label, value]) => <label className="block text-sm font-semibold" key={name}>{label}<input required name={name} defaultValue={value ?? ''} maxLength={200} className="mt-2 block min-h-12 w-full rounded-lg border border-obligon-border p-3" /></label>)}
+                <label className="block text-sm font-semibold">Description<textarea required name="description" defaultValue={selected.description ?? ''} maxLength={10000} className="mt-2 block min-h-40 w-full rounded-lg border border-obligon-border p-3" /></label>
+                <p className="text-sm text-obligon-text">Open roles appear on Careers. Closing a role removes it from the public list and keeps applications.</p>
+              </fieldset> : null}
+
+              {queue !== "jobs" && (selected.message ?? selected.cover_note ?? selected.description ?? selected.notes ?? selected.review_note) ? (
               <p className="mt-4 whitespace-pre-wrap break-words">
                 {selected.message ??
                   selected.cover_note ??
@@ -433,6 +445,9 @@ export function IntakeConsole() {
                   ))}
                 </select>
               </label>
+              {queue === "jobs" ? <div className="mt-6 rounded-xl border border-obligon-border p-4">
+                {removeJob ? <><p className="font-semibold">Remove this job from Careers?</p><p className="mt-2 text-sm text-obligon-text">The posting will be deleted. Submitted applications are kept.</p><div className="mt-4 flex flex-wrap gap-3"><button type="button" disabled={busy} onClick={() => void mutate(`/jobs/${selected.id}`, {}, 'DELETE')} className="min-h-11 rounded-lg bg-red-700 px-4 font-semibold text-white">Remove job</button><button type="button" disabled={busy} onClick={() => setRemoveJob(false)} className="min-h-11 rounded-lg border border-obligon-border px-4 font-semibold">Keep job</button></div></> : <button type="button" disabled={busy} onClick={() => setRemoveJob(true)} className="min-h-11 rounded-lg border border-red-300 px-4 font-semibold text-red-800">Remove job posting</button>}
+              </div> : null}
               {queue !== "jobs" && (
                 <label className="mt-4 block">
                   Review note

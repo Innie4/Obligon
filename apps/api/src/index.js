@@ -3,7 +3,7 @@ import { createApp } from "./app.js";
 import { getPool, q } from "./db.js";
 import { ensureBucket } from "./lib/storage.js";
 import { startScheduler, stopScheduler } from "./lib/scheduler.js";
-import { ensureTemporaryPartnerAccount } from "./lib/temporaryPartnerAccount.js";
+import { ensureTemporaryPartnerAccount, ensureTemporaryCompanyAccount } from "./lib/temporaryPartnerAccount.js";
 import { runMigrations } from "./lib/migrations.js";
 
 function reportConfig() {
@@ -58,6 +58,8 @@ async function main() {
 
   try {
     const account = await ensureTemporaryPartnerAccount();
+    const companyAccount = await ensureTemporaryCompanyAccount();
+    console.log(`Temporary company test account: ${companyAccount.status}`);
     console.log(`Temporary partner test account: ${account.status}`);
   } catch (err) {
     console.warn("Temporary partner test account setup failed:", err.message);

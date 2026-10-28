@@ -135,6 +135,7 @@ integration("temporary partner bootstrap creates only an isolated normal account
 
 integration("temporary credentials use normal login, session and partner dashboard reads", async () => {
   await ensureAccount();
+  await pool.query("UPDATE organizations SET verification_status='verified' WHERE id=$1", [account.orgId]);
   const authenticated = await login();
   assert.equal(authenticated.status, 200);
   assert.equal(authenticated.body.user.role, "partner");
@@ -208,6 +209,7 @@ integration("a refused optional SMS leaves email-qualified account verified with
 
 integration("temporary partner reads remain scoped away from another organization's data", async () => {
   await ensureAccount();
+  await pool.query("UPDATE organizations SET verification_status='verified' WHERE id=$1", [account.orgId]);
   const owner = await seedUser();
   const orgId = randomUUID();
   const stationId = randomUUID();
@@ -262,7 +264,7 @@ integration("startup does not restore a changed password or a suspended account"
   assert.equal((await login({ password: "OwnerChangedPassword!2026" })).status, 401);
 });
 
-integration("expired temporary plans are not renewed on startup and dashboard gates remain enforced", async () => {
+integration("expired temporary plans are not renewed and partner operations follow contract approval", async () => {
   await ensureAccount();
   await pool.query("UPDATE subscriptions SET current_period_start=now()-interval '8 days',current_period_end=now()-interval '1 day' WHERE organization_id=$1", [account.orgId]);
   const previous = await row("SELECT current_period_start,current_period_end FROM subscriptions");
@@ -271,7 +273,11 @@ integration("expired temporary plans are not renewed on startup and dashboard ga
   const authenticated = await login();
   assert.equal(authenticated.status, 200);
   assert.equal((await call("/api/partner/overview", { token: authenticated.body.accessToken })).status, 403);
+  assert.equal((await call("/api/partner/transactions", { token: authenticated.body.accessToken })).status, 403);
   assert.equal((await call("/api/partner/settings", { token: authenticated.body.accessToken })).status, 200);
+  await pool.query("UPDATE organizations SET verification_status='verified' WHERE id=$1", [account.orgId]);
+  assert.equal((await call("/api/partner/overview", { token: authenticated.body.accessToken })).status, 200);
+  assert.equal((await call("/api/partner/transactions", { token: authenticated.body.accessToken })).status, 200);
 });
 
 integration("disabling temporary access revokes credentials and existing sessions without touching another user", async () => {
@@ -385,7 +391,7 @@ integration("temporary local credentials migrate through the normal Supabase Aut
   assert.deepEqual(await row("SELECT supabase_auth_uid,password_hash FROM users WHERE id=$1", [account.userId]), migrated);
   const authenticated = await login();
   assert.equal(authenticated.status, 200);
-  assert.equal((await call("/api/partner/overview", { token: authenticated.body.accessToken })).status, 200);
+  assert.equal((await call("/api/partner/overview", { token: authenticated.body.accessToken })).status, 403);
   assert.equal((await login({ password: "wrong-supabase-password" })).status, 401);
   assert.deepEqual(providerCalls, ["/auth/v1/admin/users", "/auth/v1/token?grant_type=password", "/auth/v1/token?grant_type=password"]);
   assert.equal((await ensureAccount({ enabled: false })).status, "disabled");

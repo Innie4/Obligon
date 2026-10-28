@@ -1,6 +1,6 @@
 import { one } from '../db.js';
 import { forbidden } from './errors.js';
-import { partnerTypeFor } from '../../../../packages/shared/partner-access.mjs';
+import { activeTemporaryDashboardAccess } from './temporaryPartnerAccount.js';
 
 export function subscriptionIsActive(sub, now = new Date()) {
   return Boolean(sub && sub.status === 'active' && new Date(sub.current_period_start) <= now && new Date(sub.current_period_end) > now);
@@ -17,9 +17,23 @@ export async function customerSubscription(userId, t = { one }) {
   const sub = await t.one(`SELECT s.*, p.name, p.features FROM customer_subscriptions s JOIN card_plans p ON p.code=s.plan_code WHERE s.user_id=$1`, [userId]);
   return { subscription: sub, active: subscriptionIsActive(sub), features: sub?.features ?? [] };
 }
-export async function partnerSubscription(orgId, t = { one }) {
+export async function companySubscription(orgId, t = { one }, user = null) {
   const sub = await t.one(`SELECT s.*, p.name, p.features, p.price_kobo FROM subscriptions s JOIN pricing_plans p ON p.code=s.plan_code WHERE s.organization_id=$1`, [orgId]);
-  return { subscription: sub, active: subscriptionIsActive(sub), entitlements: catalogEntitlements(sub?.features ?? []) };
+  const temporaryAccess = Boolean(user && activeTemporaryDashboardAccess(user, orgId) && user.role === 'company');
+  const features = temporaryAccess ? ['Unlimited vehicles', 'Unlimited cards', 'Advanced analytics', 'Roadside assistance', 'Priority support'] : sub?.features ?? [];
+  return { subscription: sub, active: temporaryAccess || subscriptionIsActive(sub), temporaryAccess,
+    expiresAt: temporaryAccess ? user.access_expires_at : null, entitlements: catalogEntitlements(features) };
+}
+export async function partnerContract(orgId, t = { one }) {
+  const org = await t.one("SELECT verification_status FROM organizations WHERE id=$1 AND type IN ('partner','mechanic')", [orgId]);
+  const active = org?.verification_status === 'verified';
+  return { active, contractStatus: org?.verification_status ?? 'pending', renewalMode: 'contract',
+    entitlements: { advancedReports: active, apiAccess: active, prioritySupport: active } };
+}
+export async function requireCompanyPlan(orgId, t = { one }, user = null) {
+  const state = await companySubscription(orgId, t, user);
+  if (!state.active) throw forbidden('An active Organization subscription is required. Choose or renew your plan in Billing.');
+  return state;
 }
 export async function activateCustomerSubscription(t, request) {
   // Claim once from persisted payment proof. Later card approval cannot restart a period.
@@ -75,14 +89,24 @@ export async function enforceCustomerPlan(req, _res, next) {
     next();
   } catch (error) { next(error); }
 }
-export async function enforcePartnerPlan(req, _res, next) {
+export async function enforcePartnerContract(req, _res, next) {
   try {
-    if (req.path==='/workshop'||(req.path.startsWith('/overview')&&['mechanic','other'].includes(partnerTypeFor(req.user)))) return next();
-    if (/^\/(billing|bank-accounts|settlements|settings|notifications|disputes)(\/|$)/.test(req.path)) return next();
-    const state = await partnerSubscription(req.user.orgId);
-    if (!state.active) throw forbidden('Choose and pay for a partner subscription before using the dashboard.');
-    req.subscription = state;
-    if (req.path.startsWith('/reports') && !state.entitlements.advancedReports) throw forbidden('Advanced reports require a plan with advanced analytics.');
+    const state = await partnerContract(req.user.orgId);
+    req.contract = state;
+    const onboarding = /^\/(billing|settings|notifications|staff|workshop)(\/|$)/.test(req.path) ||
+      ['/station','/stations','/station/assets'].includes(req.path);
+    if (!state.active && !onboarding) throw forbidden('Partner operations require admin contract approval. Contact Support after agreeing your contract.');
     next();
-  } catch(err) { next(err); }
+  } catch (error) { next(error); }
+}
+export async function enforceCompanyPlan(req, _res, next) {
+  try {
+    const onboarding = req.method === 'GET' && req.path === '/billing' ||
+      /^\/(subscription|billing|invoices|support|notifications|settings)(\/|$)/.test(req.path) ||
+      req.method === 'POST' && req.path === '/wallet/topup/confirm';
+    if (onboarding) return next();
+    req.subscription = await requireCompanyPlan(req.user.orgId, { one }, req.user);
+    if (req.path.startsWith('/reports/export') && !req.subscription.entitlements.advancedReports) throw forbidden('Advanced reports require an Organization plan with advanced analytics.');
+    next();
+  } catch (error) { next(error); }
 }

@@ -75,9 +75,9 @@ for(const identity of [{role:'partner',partnerType:'mechanic'},{role:'mechanic',
  const calls=[];const api=loader(async path=>{calls.push(path);return {staff:[]};});
  await api.searchDashboardRecords('partner','Needle',{...partner,...identity});assert.deepEqual(calls,['/api/partner/staff']);
 });
-test('role, context and pending-company gates reject before any record request',async()=>{
+test('role and organization context gates reject before any record request',async()=>{
  const calls=[];const api=loader(async path=>{calls.push(path);return empty();});
- for(const [scope,identity] of [['admin',customer],['customer',admin],['partner',company],['company',partner],['unknown',partner],['customer',null],['company',{...company,organizationVerificationStatus:'pending'}],['company',{...company,organizationRole:null}]]){
+ for(const [scope,identity] of [['admin',customer],['customer',admin],['partner',company],['company',partner],['unknown',partner],['customer',null],['company',{...company,organizationRole:null}]]){
   await assert.rejects(api.searchDashboardRecords(scope,'Needle',identity),api.DashboardSearchUnavailableError);
  }
  assert.equal(calls.length,0);

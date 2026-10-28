@@ -46,6 +46,8 @@ beforeEach(async()=>{
   await pool.query("INSERT INTO users(id,email,password_hash,role,email_verified) VALUES($1,'owner@example.invalid','unused','company',true),($2,'invitee@example.invalid','unused','customer',true),($3,'stranger@example.invalid','unused','partner',true)",[owner,member,stranger]);
   await pool.query("INSERT INTO organizations(id,owner_user_id,name,type) VALUES($1,$2,'Test Fleet','company'),($3,$4,'Other Fleet','company'),($5,$4,'Partner organization','partner')",[org,owner,otherOrg,stranger,partnerOrg]);
   await pool.query("UPDATE organizations SET verification_status='verified' WHERE type='company'");
+  await pool.query("INSERT INTO pricing_plans(code,name,price_kobo,interval,features)VALUES('active-fixture','Active fixture',150000,'month','[\"Advanced analytics\"]')");
+  await pool.query("INSERT INTO subscriptions(organization_id,plan_code,status,current_period_start,current_period_end)VALUES($1,'active-fixture','active',now()-interval '1 day',now()+interval '1 month'),($2,'active-fixture','active',now()-interval '1 day',now()+interval '1 month')",[org,otherOrg]);
   await pool.query("INSERT INTO memberships(organization_id,user_id,email,role,status) VALUES($1,$2,'owner@example.invalid','owner','active'),($1,NULL,'invitee@example.invalid','manager','invited')",[org,owner]);
   await pool.query("INSERT INTO invites(organization_id,email,role,token,invited_by,expires_at) VALUES($1,'Invitee@Example.Invalid','manager',$2,$3,now()+interval '1 day')",[org,token,owner]);
   memberSession=await session(member,'customer'); ownerSession=await session(owner,'company',{id:org,type:'company'});
@@ -246,7 +248,7 @@ check('active station mechanics resolve their partner membership while writes an
  await pool.query("UPDATE memberships SET status='suspended' WHERE organization_id=$1 AND user_id=$2",[partnerOrg,member]);assert.equal((await realFetch(base+'/api/partner/notifications',options)).status,403);
 });
 
-check('new company signup is pending, has no free paid period, and exposes contract onboarding without operational access',async()=>{
+check('new company signup is pending, has no free paid period, and exposes subscription onboarding without operational access',async()=>{
  const result=await call('/api/auth/signup',{email:'new-contract@example.invalid',password:'IsolatedContractFixture!2026',fullName:'Contract Owner',role:'company',organizationName:'Synthetic Pending Company',phone:'+2348000000000'},null);
  assert.equal(result.status,201,JSON.stringify(result.body));
  const account=result.body.user, organization=await row('SELECT * FROM organizations WHERE id=$1',[account.organizationId]);
@@ -256,7 +258,7 @@ check('new company signup is pending, has no free paid period, and exposes contr
  const wallet=await row('SELECT balance_kobo,kind FROM wallets WHERE organization_id=$1',[organization.id]);assert.equal(wallet.kind,'company');assert.equal(wallet.balance_kobo,'0');
  const credentials=result.body;
  assert.equal((await call('/api/auth/session',null,credentials,'GET')).body.user.organizationVerificationStatus,'pending');
- for(const path of ['/api/company/overview','/api/company/billing','/api/company/support/tickets','/api/company/settings','/api/company/notifications'])assert.equal((await call(path,null,credentials,'GET')).status,200,path);
- const denied=await call('/api/company/vehicles',null,credentials,'GET');assert.equal(denied.status,403);assert.match(denied.body.message,/admin approval.*contract/i);
+ for(const path of ['/api/company/subscription','/api/company/billing','/api/company/support/tickets','/api/company/settings','/api/company/notifications'])assert.equal((await call(path,null,credentials,'GET')).status,200,path);
+ const denied=await call('/api/company/vehicles',null,credentials,'GET');assert.equal(denied.status,403);assert.match(denied.body.message,/active.*subscription/i);
  assert.equal((await row('SELECT count(*)::int AS count FROM invoices WHERE organization_id=$1',[organization.id])).count,0);
 });

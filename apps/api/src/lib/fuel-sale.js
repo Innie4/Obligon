@@ -1,7 +1,7 @@
 import { badRequest, notFound } from './errors.js';
 import { approvedDiscount, discountAmounts } from './discounts.js';
 import { applyLedgerEntry } from './money.js';
-import { requireCustomerPlan, customerFeatureIncluded } from './subscriptions.js';
+import { requireCompanyPlan, requireCustomerPlan, customerFeatureIncluded } from './subscriptions.js';
 import { businessTimeZone } from './time.js';
 import { fuelAmountKobo } from './money-amounts.js';
 import { approvedStationPrice, canonicalStationPrices } from './station-approval.js';
@@ -14,9 +14,10 @@ export async function authorizeWalletFuelSale(t,{partnerOrgId,stationId,code,lit
  const subscription=!card.organization_id ? await requireCustomerPlan(card.owner_user_id,'Fuel Purchase',t) : null;
  if(card.organization_id) {
   const company=await t.one("SELECT verification_status FROM organizations WHERE id=$1 AND type='company' FOR SHARE",[card.organization_id]);
-  if(company?.verification_status!=='verified') throw badRequest('Company fuel purchases require contract approval by an admin');
+  if(!company) throw badRequest('Company account not found');
+  await requireCompanyPlan(card.organization_id,t);
  }
- const station=await t.one("SELECT s.*,o.partner_type,o.type AS org_type FROM stations s JOIN organizations o ON o.id=s.partner_org_id WHERE s.id=$1 AND s.partner_org_id=$2 AND s.status='active' AND s.is_open=TRUE FOR SHARE OF s,o",[stationId,partnerOrgId]);
+ const station=await t.one("SELECT s.*,o.partner_type,o.type AS org_type FROM stations s JOIN organizations o ON o.id=s.partner_org_id WHERE s.id=$1 AND s.partner_org_id=$2 AND s.status='active' AND s.is_open=TRUE AND o.type IN ('partner','mechanic') AND o.verification_status='verified' FOR SHARE OF s,o",[stationId,partnerOrgId]);
  if(!station) throw notFound('Station not found');
  const bank=await t.one('SELECT id FROM bank_accounts WHERE organization_id=$1 AND verified=TRUE AND is_default=TRUE',[partnerOrgId]);
  if(!bank) throw badRequest('A verified default settlement bank account is required before accepting fuel payments');

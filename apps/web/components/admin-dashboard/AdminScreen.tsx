@@ -89,7 +89,8 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
     [range, setRange] = React.useState("30"),
     [creating, setCreating] = React.useState(false),
     [notice, setNotice] = React.useState(""),
-    [reviewVerification, setReviewVerification] = React.useState("pending");
+    [reviewVerification, setReviewVerification] = React.useState("pending"),
+    [reviewDecision, setReviewDecision] = React.useState("under_review");
   const [busyMessage, setBusyMessage] = React.useState("Saving review…");
   const sequence = React.useRef(0);
   const load = React.useCallback(async () => {
@@ -138,10 +139,10 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
       }
       Object.assign(body, { permissions });
     }
-    if (pageKey === "companies" && !creating) {
+    if (pageKey === "applications") {
       const contractAgreed = body.contractAgreed === "true";
-      if (body.verificationStatus === "verified" && selected?.verificationStatus !== "verified" && !contractAgreed) {
-        setError("Confirm that the company contract is agreed before approving operations.");
+      if (body.decision === "approve" && !contractAgreed) {
+        setError("Confirm that the partner contract is agreed before approving operations.");
         return;
       }
       Object.assign(body, { contractAgreed });
@@ -157,7 +158,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
           method: "POST",
           body: JSON.stringify(body),
         });
-        if (pageKey === "companies") savedMessage = result.message ?? "Fleet created pending contract approval.";
+        if (pageKey === "companies") savedMessage = result.message ?? "Fleet created. An Organization subscription is required for operations.";
         if (pageKey === "staff") savedMessage = "Administrator access assigned. The user must sign in again with their existing sign-in details.";
       } else if (selected?.id) {
         const path =
@@ -193,7 +194,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
           <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-obligon-green">Platform management</p>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{adminPageCopy[pageKey].title}</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-obligon-text">
-            {{ companies: "Manage company access, contracts and credit ceilings.", applications: "Review partner applications and customer card identity checks.", reports: "Compare station sales and revenue across the platform.", disputes: "Review transaction disputes and record a clear outcome.", staff: "Manage administrator accounts and platform access." }[pageKey]}
+            {{ companies: "Manage company access, subscriptions and credit ceilings.", applications: "Review agreed partner contracts and customer card identity checks.", reports: "Compare station sales and revenue across the platform.", disputes: "Review transaction disputes and record a clear outcome.", staff: "Manage administrator accounts and platform access." }[pageKey]}
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -300,6 +301,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
             setSelected(row);
             setCreating(false);
             setReviewVerification(row.verificationStatus ?? "pending");
+            setReviewDecision("under_review");
           }} />
           {data?.total !== undefined && (
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
@@ -342,7 +344,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
               {pageKey === "companies" ? (
                 <>
                   <p className="text-sm">
-                    New fleets remain pending. Company operations require admin approval after the contract is agreed.
+                    New fleets must subscribe to an Organization plan before company operations become available.
                   </p>
                   <label>
                     Company name
@@ -394,12 +396,17 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
             <>
               <label>
                 Decision
-                <select name="decision" required className={field}>
+                <select name="decision" required className={field} value={reviewDecision} onChange={event => setReviewDecision(event.target.value)}>
                   <option value="under_review">Continue review</option>
                   <option value="approve">Approve operator</option>
                   <option value="reject">Reject</option>
                 </select>
               </label>
+              {reviewDecision === "approve" ? <label className="flex min-h-12 items-start gap-3 rounded border p-3">
+                <input type="checkbox" name="contractAgreed" value="true" required aria-describedby="partner-contract-approval-help" className="mt-1 size-5" />
+                <span>I confirm the partner contract is agreed and partner operations may be approved.</span>
+              </label> : null}
+              <p id="partner-contract-approval-help" className="text-sm">Approval unlocks station or workshop operations under the agreed contract. Partners do not need a subscription.</p>
               <p>Station publication requires a separate location review.</p>
             </>
           ) : pageKey === "disputes" ? (
@@ -454,8 +461,8 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
                 Verification decision
                 <select name="verificationStatus" className={field} value={reviewVerification} onChange={event => setReviewVerification(event.target.value)}>
                   <option value="unverified">Unverified</option>
-                  <option value="pending">Pending contract review</option>
-                  <option value="verified">Approve company operations</option>
+                  <option value="pending">Pending verification</option>
+                  <option value="verified">Verified</option>
                   <option value="rejected">Rejected</option>
                 </select>
               </label>
@@ -468,15 +475,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
                   <option value="trialing">Trialing</option>
                 </select>
               </label>
-              {reviewVerification === "verified" && selected?.verificationStatus !== "verified" && (
-                <label className="flex min-h-12 items-start gap-3 rounded border p-3">
-                  <input type="checkbox" name="contractAgreed" value="true" required aria-describedby="company-contract-approval-help" className="mt-1 size-5" />
-                  <span>I confirm the company contract is agreed and company operations may be approved.</span>
-                </label>
-              )}
-              <p id="company-contract-approval-help" className="text-sm">
-                Approval enables company operations. The decision and contract confirmation are recorded under your administrator account.
-              </p>
+              <p className="text-sm">Fleet operations require a paid Organization subscription. Verification records the company review and does not replace payment.</p>
             </>
           ) : null}
           {["applications", "disputes"].includes(pageKey) && (

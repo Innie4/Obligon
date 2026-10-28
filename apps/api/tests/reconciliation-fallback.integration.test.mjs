@@ -30,7 +30,7 @@ before(async()=>{
  CREATE UNIQUE INDEX ON notifications(event_key) WHERE event_key IS NOT NULL;
  CREATE TABLE users(id uuid,email text,notification_prefs jsonb);
  CREATE TABLE audit_logs(actor_user_id uuid,actor_role text,action text,entity_type text,entity_id uuid,ip text,metadata jsonb);
- CREATE TABLE organizations(id uuid PRIMARY KEY,type text DEFAULT 'partner',partner_type text DEFAULT 'fuel_station');
+ CREATE TABLE organizations(id uuid PRIMARY KEY,type text DEFAULT 'partner',partner_type text DEFAULT 'fuel_station',verification_status text DEFAULT 'verified');
  CREATE TABLE stations(id uuid PRIMARY KEY,partner_org_id uuid,status text DEFAULT 'active',fuels jsonb DEFAULT '["PMS"]',approved_selling_units jsonb DEFAULT '{"PMS":"litre"}');
  ALTER TABLE fuel_orders ADD COLUMN selling_unit text DEFAULT 'litre';
  ALTER TABLE transactions ADD COLUMN selling_unit text DEFAULT 'litre';

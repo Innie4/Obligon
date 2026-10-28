@@ -16,7 +16,7 @@ import { createWalletForAccount, isCompanyRole, walletKindForRole } from "../lib
 import { nigeriaLocationLabel } from "../../../../packages/shared/nigeria-locations.mjs";
 import { partnerAllowedFuels, partnerFuelCode } from "../../../../packages/shared/partner-access.mjs";
 import { accountAccessExpired } from "../lib/accountAccess.js";
-import { TEMPORARY_PARTNER_ACCOUNT } from "../lib/temporaryPartnerAccount.js";
+import { isTemporaryDashboardAccount } from "../lib/temporaryPartnerAccount.js";
 import { env } from "../config/env.js";
 import { normalizeDescopeRecipient, startDescopeVerification, verifyDescopeVerification } from "../lib/descope-verification.js";
 import { authMethodIsCurrent } from "../lib/auth-method-proof.js";
@@ -439,7 +439,7 @@ router.post("/login", authLimiter, asyncHandler(async (req, res) => {
   }
   if (user.password_hash.startsWith(pendingPasswordPrefix)) throw passwordRecoveryError();
   let ok;
-  const temporaryLease = user.id === TEMPORARY_PARTNER_ACCOUNT.userId && user.access_expires_at != null;
+  const temporaryLease = isTemporaryDashboardAccount(user);
   if (temporaryLease && user.supabase_auth_uid) throw unauthorized("Temporary testing credentials changed. Contact support.");
   // Keep the explicitly provisioned lease local: creating a permanent provider
   // identity here would leave credentials behind after the testing deadline.

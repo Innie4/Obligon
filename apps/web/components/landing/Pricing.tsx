@@ -38,14 +38,14 @@ const organizationPlans: SourcePlan[] = [
     price: "150k",
     suffix: "/year",
     features: ["Up to 10 Vehicles", "Basic Reporting", "50 Partner Stations"],
-    cta: "Discuss Starter"
+    cta: "Choose Starter"
   },
   {
     name: "Business",
     price: "250k",
     suffix: "/year",
     features: ["Up to 50 Vehicles", "Advanced Analytics", "250 Partner Stations", "Dedicated Account Exec"],
-    cta: "Discuss Business",
+    cta: "Choose Business",
     recommended: true
   },
   {
@@ -53,7 +53,7 @@ const organizationPlans: SourcePlan[] = [
     price: "500k",
     suffix: "/year",
     features: ["Up to 200 Vehicles", "Custom API Integration", "Full Network Access"],
-    cta: "Contact Sales"
+    cta: "Choose Enterprise"
   },
   {
     name: "Organization",
@@ -196,7 +196,7 @@ export function Pricing() {
             Plans and access
           </h2>
           <p className="mt-4 text-base leading-6 text-obligon-text">
-            Compare personal plans and organization options. Company access requires an agreed contract.
+            Compare personal and Organization plans. Company fleet operations require an active Organization subscription.
           </p>
         </div>
 
@@ -231,7 +231,7 @@ export function Pricing() {
 
         {tab === "organization" && (
           <p className="mt-6 text-center text-sm text-obligon-text">
-            Companies and organizations must agree a contract before proceeding.
+            Subscribe to an Organization plan to activate company fleet operations. Partners join under an agreed, administrator-approved contract without a subscription.
           </p>
         )}
 
@@ -330,7 +330,9 @@ export function Pricing() {
                 href={
                   tab === "individual"
                     ? `/auth/signup?role=customer&plan=${plan.name.toLowerCase()}`
-                    : `/support?request=${encodeURIComponent(`${plan.name} organization contract`)}`
+                    : plan.name === "Organization"
+                      ? `/support?request=${encodeURIComponent("Custom Organization plan quote")}`
+                      : `/auth/signup?role=company&plan=organization_${plan.name.toLowerCase()}`
                 }
                 className={`mt-auto inline-flex h-14 items-center justify-center rounded-lg px-6 text-base font-bold ${
                   plan.dark
