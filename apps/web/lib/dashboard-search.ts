@@ -1,6 +1,7 @@
 import { api } from './services/client';
 import type { SessionUser } from './services/types';
 import { partnerAllowedFuels } from '../../../packages/shared/partner-access.mjs';
+import { adminPageForPath, hasAdminPage } from '../../../packages/shared/admin-access.mjs';
 
 export type DashboardSearchScope = 'customer' | 'company' | 'partner' | 'admin';
 export type DashboardSearchResult = { id: string; label: string; description?: string; href: string; kind?: string };
@@ -32,11 +33,14 @@ function sources(scope: DashboardSearchScope, query: string, user: SessionUser):
     { name: 'Cards', path: `/api/company/cards?${params}`, field: 'cards', href: '/company/cards', kind: 'Card', title: row => line(cell(row, 0)), token: row => cell(row, 1) || line(cell(row, 0)) },
     { name: 'Transactions', path: `/api/company/transactions?${params}`, field: 'transactions', href: '/company/transactions', kind: 'Transaction', title: reference, token: reference }
   ];
-  if (scope === 'admin') return [
+  if (scope === 'admin') {
+  const adminSources: Source[] = [
     { name: 'Companies', path: `/api/admin/companies?${params}`, field: 'companies', href: '/admin', kind: 'Company', title: row => text(row.name) || line(cell(row, 0)), token: row => text(row.name) || line(cell(row, 0)) },
     { name: 'Staff', path: `/api/admin/staff?${params}`, field: 'staff', href: '/admin/staff', kind: 'Staff member', title: row => text(row.name) || line(cell(row, 0)), token: row => text(row.name) || line(cell(row, 0)) },
     { name: 'Disputes', path: `/api/admin/disputes?${params}`, field: 'disputes', href: '/admin/disputes', kind: 'Dispute', title: row => text(row.subject) || reference(row), token: reference }
   ];
+  return adminSources.filter(source => { const page = adminPageForPath(source.href); return page && hasAdminPage(user, page); });
+  }
   const staff: Source = { name: 'Staff', path: '/api/partner/staff', field: 'staff', href: '/dashboard/staff', kind: 'Staff member', title: staffName, token: row => cell(row, 0) };
   if (!partnerAllowedFuels(user).length) return [staff];
   return [

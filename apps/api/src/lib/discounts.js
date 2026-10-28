@@ -8,10 +8,10 @@ export function discountAmounts(baseKobo, rateBp=0) {
  return {baseKobo,discountKobo,chargedKobo:baseKobo-discountKobo,platformFeeKobo:discountKobo,partnerNetKobo:baseKobo-2*discountKobo};
 }
 export async function approvedDiscount(stationId,fuelType,t={one}) {
- const discount=await t.one(`SELECT d.* FROM station_discount_requests d JOIN discount_review_states r ON r.id=d.review_state_id
+ return t.one(`SELECT d.* FROM station_discount_requests d JOIN discount_review_states r ON r.id=d.review_state_id
    WHERE d.station_id=$1 AND upper(trim(d.fuel_type))=ANY($2::text[]) AND r.code='approved' AND d.starts_at<=now()
-   ORDER BY d.reviewed_at DESC LIMIT 1`,[stationId,canonicalFuelAliases(fuelType)]);
- return discount && new Date(discount.ends_at)>new Date() ? discount : null;
+     AND COALESCE(d.effective_ends_at,d.ends_at)>now()
+   ORDER BY d.starts_at DESC,d.reviewed_at DESC,d.id LIMIT 1`,[stationId,canonicalFuelAliases(fuelType)]);
 }
 export function validateDiscount(body) {
  const rateBp=quantityHundredths(body?.discountPercent,{min:1,max:4999,label:'Discount percentage'}); const starts=new Date(body?.startsAt), ends=new Date(body?.endsAt);

@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('./helpers/status-popup.cjs').withStatusPopups(require('node:vm'));
 const ts = require('typescript');
+const adminAccess = require('../../../packages/shared/admin-access.mjs');
 const partnerAccess = require('../../../packages/shared/partner-access.mjs');
 const element = (type, props, ...children) => ({ type, props: { ...props, children } });
 const nodes = tree => !tree || typeof tree !== 'object' ? [] : Array.isArray(tree) ? tree.flatMap(nodes) : [tree, ...nodes(tree.props?.children)];
@@ -23,7 +24,7 @@ function hooks() {
 function load(file, dependencies, expose = '', globals = {}) {
   const exports = {}, filename = require.resolve(file);
   const source = ts.transpileModule(fs.readFileSync(filename, 'utf8') + expose, { fileName: filename, compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }).outputText;
-  vm.runInNewContext(source, { exports, URLSearchParams, Error, setTimeout, clearTimeout, window: { location: { search: '' } }, require: name => name.endsWith('/partner-access.mjs') ? partnerAccess : dependencies[name] ?? {}, ...globals });
+  vm.runInNewContext(source, { exports, URLSearchParams, Error, setTimeout, clearTimeout, window: { location: { search: '' } }, require: name => name.endsWith('/admin-access.mjs') ? adminAccess : name.endsWith('/partner-access.mjs') ? partnerAccess : dependencies[name] ?? {}, ...globals });
   return exports;
 }
 const flush = async () => { for (let index = 0; index < 12; index++) await Promise.resolve(); };
@@ -47,7 +48,7 @@ test('URL search sync follows same-page navigation, clearing, back/forward and p
 function fixture(file, name, { result = {}, services = {}, company = {}, session = {}, globals = {}, origin } = {}) {
   const runtime = hooks(), calls = [];
   const defaults = { api: {}, mutationsApi: {}, authenticatedRequest: async path => { calls.push(path); return { metrics: [], companies: [], staff: [], disputes: [], total: 0 }; }, ...services };
-  const dependencies = { react: runtime.React, 'next/dynamic': { __esModule: true, default: () => function Dynamic() {} }, 'next/navigation': { useRouter: () => ({ push() {} }) }, '@/components/shared/DashboardSearchQuery': { DashboardSearchQuery: QueryBridge }, '@/components/shared/useAsync': { useAsync: fn => { Promise.resolve(fn()).catch(() => {}); return { status: 'success', data: typeof result === 'function' ? result() : result, error: null, reload() {}, refresh() {} }; } }, '@/components/shared/usePolling': { usePolling() {} }, '@/components/shared/Toast': { useToast: () => ({ success() {}, error() {} }) }, '@/components/shared/AuthContext': { useSession: () => ({ user: { role: 'partner', partnerType: 'fuel_station', ...session } }) }, '@/lib/services': defaults, '@/lib/services/company': { companyApi: new Proxy(company, { get: (target, key) => target[key] ?? (() => ({})) }) } };
+  const dependencies = { react: runtime.React, 'next/dynamic': { __esModule: true, default: () => function Dynamic() {} }, 'next/navigation': { useRouter: () => ({ push() {} }) }, '@/components/shared/DashboardSearchQuery': { DashboardSearchQuery: QueryBridge }, '@/components/shared/useAsync': { useAsync: fn => { Promise.resolve(fn()).catch(() => {}); return { status: 'success', data: typeof result === 'function' ? result() : result, error: null, reload() {}, refresh() {} }; } }, '@/components/shared/usePolling': { usePolling() {} }, '@/components/shared/Toast': { useToast: () => ({ success() {}, error() {} }) }, '@/components/shared/AuthContext': { useSession: () => ({ user: { ...(name === 'AdminScreen' ? { role: 'admin', staff_role: 'super_admin', staff_permissions: adminAccess.ADMIN_PAGES.map(page => page.key) } : { role: 'partner', partnerType: 'fuel_station' }), ...session } }) }, '@/lib/services': defaults, '@/lib/services/company': { companyApi: new Proxy(company, { get: (target, key) => target[key] ?? (() => ({})) }) } };
   dependencies['@/lib/mock/admin-data'] = { adminPageCopy: Object.fromEntries(['companies', 'applications', 'staff', 'disputes', 'reports'].map(key => [key, { title: key }])) };
   dependencies['@/lib/station-fuels'] = { stationFuelName: value => value };
   dependencies['./StationLocationControl'] = { useStationLocation: () => ({ location: origin, mode: origin ? 'manual' : 'browse', promptOpen: false, busy: false, loading: false, saving: false, error: '' }), StationLocationControl: 'StationLocationControl' };

@@ -22,6 +22,7 @@ function queueFixture(filename, component) {
   if (component === 'ReplacementReconciliation') code += '\nexports.ReplacementReconciliation = ReplacementReconciliation;';
   vm.runInNewContext(code, { exports, React, Error, require(name) {
     if (name === 'react') return React;
+    if (name === './AdminBoard') return { AdminBoard: ({ label, lanes }) => React.createElement('section', { 'aria-label': label }, ...lanes.map(lane => React.createElement('section', { 'aria-label': lane.title }, React.createElement('h3', null, lane.title), lane.count ? lane.children : React.createElement('p', null, lane.emptyMessage)))) };
     if (name === '@/components/shared/States') return { EmptyState: ({ title, message }) => React.createElement('div', { role: 'status' }, title, message) };
     if (name.startsWith('@/lib/services')) return { authenticatedRequest: request, api: { request } };
     return {};
@@ -39,7 +40,7 @@ for (const [filename, component, empty] of [
   ['DiscountApprovals', 'DiscountApprovals', /No discount requests/],
   ['CardApprovalQueue', 'CardApprovalQueue', /No pending applications/],
   ['CardApprovalQueue', 'ReplacementReconciliation', /No uncertain card replacements/],
-  ['OperationsInbox', 'OperationsInbox', /No support requests/],
+  ['OperationsInbox', 'OperationsInbox', /No queued tickets in this view/],
 ]) {
   test(`${component} distinguishes loading and failed reads from an empty queue and supports retry`, async () => {
     const ui = queueFixture(filename, component); ui.render(); ui.render();

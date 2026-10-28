@@ -5,6 +5,7 @@ const vm = require('node:vm');
 const http = require('node:http');
 const ts = require('typescript');
 const access = require('../../../packages/shared/partner-access.mjs');
+const adminAccess = require('../../../packages/shared/admin-access.mjs');
 const plain = value => JSON.parse(JSON.stringify(value));
 
 function loader(request) {
@@ -13,6 +14,7 @@ function loader(request) {
  vm.runInNewContext(code,{exports,Error,URLSearchParams,require:name=>{
   if(name==='./services/client')return{api:{request}};
   if(name==='../../../packages/shared/partner-access.mjs')return access;
+  if(name==='../../../packages/shared/admin-access.mjs')return adminAccess;
   throw new Error('Unexpected dependency '+name);
  }});
  return exports;
@@ -21,7 +23,7 @@ const user = (role, extra={}) => ({id:'viewer-a',name:'Test viewer',email:'viewe
 const customer = user('customer');
 const company = user('customer',{organizationId:'fleet-a',organizationType:'company',organizationRole:'viewer',organizationVerificationStatus:'verified'});
 const partner = user('partner',{organizationId:'station-a',organizationType:'partner',partnerType:'gas_station',organizationRole:'viewer'});
-const admin = user('admin');
+const admin = user('admin',{staff_role:'super_admin',staff_permissions:adminAccess.ADMIN_PAGES.map(page=>page.key)});
 const row = (id, text='Needle record') => ({id,name:text,reference:text,plate:text,subject:text,cells:[text,text],status:'ACTIVE'});
 const empty = () => ({transactions:[],stations:[],vehicles:[],cards:[],companies:[],staff:[],disputes:[]});
 
@@ -46,6 +48,16 @@ test('admin record kinds lead to their actual existing table pages',async()=>{
  assert.equal(results.find(x=>x.kind==='Company').href,'/admin?search=Needle+record');
  assert.equal(results.find(x=>x.kind==='Staff member').href,'/admin/staff?search=Needle+Staff');
  assert.ok(results.every(x=>!x.description.includes('@')&&!x.description.includes('₦')));
+});
+test('restricted admin search never requests or links unassigned record sources',async()=>{
+ const calls=[];const api=loader(async path=>{calls.push(path);return {companies:[row('company')],staff:[row('staff')],disputes:[row('dispute')]};});
+ const results=await api.searchDashboardRecords('admin','Needle',user('admin',{staff_role:'staff',staff_permissions:['disputes']}));
+ assert.equal(calls.length,1);assert.ok(calls[0].startsWith('/api/admin/disputes?'));
+ assert.equal(results.length,1);assert.ok(results[0].href.startsWith('/admin/disputes?'));
+});
+test('admin search does not assume missing page metadata grants full access',async()=>{
+ const calls=[];const api=loader(async path=>{calls.push(path);return empty();});
+ assert.deepEqual(plain(await api.searchDashboardRecords('admin','Needle',user('admin'))),[]);assert.equal(calls.length,0);
 });
 test('fuel partner searches only its existing transaction, staff and dispute APIs',async()=>{
  const calls=[];const api=loader(async path=>{calls.push(path);return {...empty(),transactions:[row('transaction')],staff:[{id:'staff',cells:['ST-ID','NS\nNeedle Staff\n08000000000']}],disputes:[row('dispute')]};});

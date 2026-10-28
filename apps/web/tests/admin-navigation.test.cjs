@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('./helpers/status-popup.cjs').withStatusPopups(require('node:vm'));
 const ts = require('typescript');
+const adminAccess = require('../../../packages/shared/admin-access.mjs');
 
 const walk = node => !node || typeof node !== 'object' ? [] : Array.isArray(node) ? node.flatMap(walk) : [node, ...walk(node.props?.children)];
 const text = node => node == null ? '' : Array.isArray(node) ? node.map(text).join('') : typeof node === 'object' ? text(node.props?.children) : String(node);
@@ -20,10 +21,11 @@ function navigationFixture() {
   vm.runInNewContext(transpile(require.resolve('../components/admin-dashboard/AdminHeader.tsx')), {
     exports,
     require(name) {
+      if (name.endsWith('/admin-access.mjs')) return adminAccess;
       if (name === 'react') return React;
       if (name === 'next/link') return { default: 'a' };
       if (name === 'next/navigation') return { usePathname: () => '/admin/partner-applications' };
-      if (name === '@/components/shared/AuthContext') return { useSession: () => ({ user: { name: 'Fixture Administrator' } }) };
+      if (name === '@/components/shared/AuthContext') return { useSession: () => ({ user: { name: 'Fixture Administrator', role: 'admin', staff_role: 'super_admin', staff_permissions: adminAccess.ADMIN_PAGES.map(page => page.key) } }) };
       if (name === '@/lib/mock/admin-data') return data;
       if (name === '@/components/shared/DashboardSearch') return { DashboardSearch: 'DashboardSearch' };
       return {};

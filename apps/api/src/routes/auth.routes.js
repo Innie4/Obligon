@@ -260,6 +260,7 @@ function sessionPayload(user, org) {
     name: user.full_name || user.email.split("@")[0],
     email: user.email,
     role: user.role,
+    ...(user.role === "admin" ? { staff_role: user.staff_role, staff_permissions: user.staff_permissions } : {}),
     organization: org?.name ?? user.organization_name ?? "",
     initials: initials(user.full_name || user.email),
     accountTier: user.account_tier,

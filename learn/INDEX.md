@@ -1,3 +1,4 @@
+- [2026-10-28] [Admin access and review workflows](2026-10-28-admin-access-and-workflows.md): Enforce selected pages, approved ticket closure and consistent discount windows across review boards.
 - [2026-10-26] [Accurate admin table readouts](2026-10-26-admin-table-readouts.md): Keep company card counts separate from account status and label report data precisely.
 - [2026-10-26] [Focused admin reviews](2026-10-26-focused-admin-reviews.md): Center record reviews and feedback while preserving request ownership and account provenance.
 - [2026-10-24] [Clearer tasks across Obligon](2026-10-24-refine-dashboard-ui.md): Compact responsive tasks, reliable recovery and preserved purchase paths.

@@ -40,6 +40,7 @@ before(async () => {
     await pool.query("INSERT INTO sessions(id,user_id,refresh_token_hash,expires_at) VALUES($1,$2,'unused',now()+interval '1 hour')", [sid, ids[role]]);
     tokens[role] = signAccessToken({ id: ids[role], role }, role === "partner" ? { id: ids.org, type: "partner" } : null, sid);
   }
+  await pool.query("UPDATE users SET staff_role='super_admin',staff_permissions='[\"intake\",\"operations\"]' WHERE id=$1", [ids.admin]);
   await pool.query("INSERT INTO organizations(id,name,type,owner_user_id,verification_status) VALUES($1,'Fixture partner','partner',$2,'verified')", [ids.org, ids.partner]);
   await pool.query("INSERT INTO memberships(organization_id,user_id,email,role,status) VALUES($1,$2,'partner@example.invalid','owner','active')", [ids.org, ids.partner]);
   await pool.query("INSERT INTO pricing_plans(code,name,price_kobo,interval,features) VALUES('upload-fixture','Fixture',10000,'month','[]')");

@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('./helpers/status-popup.cjs').withStatusPopups(require('node:vm'));
 const ts = require('typescript');
+const pendingDiscountDates = { starts_at: new Date(Date.now() + 86_400_000).toISOString(), ends_at: new Date(Date.now() + 172_800_000).toISOString() };
 const flush = () => new Promise(resolve => setImmediate(resolve));
 const walk = node => !node || typeof node !== 'object' ? [] : Array.isArray(node) ? node.flatMap(walk) : [node, ...walk(node.props?.children)];
 const content = node => node == null ? '' : Array.isArray(node) ? node.map(content).join('') : typeof node === 'object' ? content(node.props?.children) : String(node);
@@ -18,9 +19,10 @@ function fixture(filename, component, dependencies = {}, props = {}) {
   const exports = {};
   let code = ts.transpileModule(fs.readFileSync(require.resolve(`../components/admin-dashboard/${filename}.tsx`), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React } }).outputText;
   if (['ReplacementReconciliation', 'IssuanceRecovery'].includes(component)) code += `\nexports.${component} = ${component};`;
-  vm.runInNewContext(code, { exports, React, Error, Object, Date, FormData, URLSearchParams, window: { location: { search: '' } }, require(name) {
+  vm.runInNewContext(code, { exports, React, Error, Object, Date, FormData, URLSearchParams, window: { location: { search: '' }, setInterval: () => 1, clearInterval() {} }, require(name) {
     if (dependencies[name]) return dependencies[name];
     if (name === 'react') return React;
+    if (name === './AdminBoard') return { AdminBoard: ({ label, lanes }) => React.createElement('section', { 'aria-label': label }, ...lanes.map(lane => React.createElement('section', { 'aria-label': lane.title }, React.createElement('h3', null, lane.title), lane.count ? lane.children : React.createElement('p', null, lane.emptyMessage)))) };
     if (name === 'next/link') return { default: 'a' };
     if (name === './AdminDialog') return { AdminDialog: 'AdminDialog' };
     if (name === '@/lib/services' || name === '@/lib/services/client') { const request = (path, options) => new Promise((resolve, reject) => requests.push({ path, options, resolve, reject })); return { authenticatedRequest: request, api: { request } }; }
@@ -126,9 +128,9 @@ test('intake blocks fresh queues during a mutation and clears old success before
   ui.all().find(node => node.type === 'button' && content(node).startsWith('Review record')).props.onClick(); ui.render(); assert.ok(ui.dialog()); assert.equal(ui.all().some(node => node.props?.['data-status-popup'] === 'success'), false);
 });
 for (const outcome of ['success', 'error']) test(`fresh discount reviews do not replay an earlier ${outcome}, and pending reviews block another record`, async () => {
-  const rows = ['one', 'two'].map(id => ({ id, station_name: `Station ${id}`, partner_name: 'Partner', fuel_type: 'PMS', rate_bp: 200, starts_at: '2026-10-25', ends_at: '2026-10-27', status: 'pending' }));
+  const rows = ['one', 'two'].map(id => ({ id, station_name: `Station ${id}`, partner_name: 'Partner', fuel_type: 'PMS', rate_bp: 200, ...pendingDiscountDates, status: 'pending' }));
   const ui = fixture('DiscountApprovals', 'DiscountApprovals'); ui.render(); ui.requests[0].resolve({ requests: rows }); await flush(); ui.render();
-  const review = id => ui.all().find(node => node.type === 'button' && content(node).startsWith('Review record') && content(node).includes(`Station ${id}`));
+  const review = id => ui.all().find(node => node.type === 'button' && node.props.className === 'admin-board-card' && content(node).includes(`Station ${id}`));
   review('one').props.onClick(); ui.render(); ui.button('Approve discount').props.onClick(); ui.render(); ui.dialog().props.onClose(); ui.render();
   assert.equal(review('two').props.disabled, true); review('two').props.onClick(); ui.render(); assert.equal(ui.dialog(), undefined);
   if (outcome === 'error') ui.requests[1].reject(new Error('Earlier review failed'));

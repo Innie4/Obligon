@@ -19,6 +19,16 @@ before(async()=>{
  await pool.query(`CREATE TABLE fuel_orders(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),reference text UNIQUE,user_id uuid,station_id uuid,provider text DEFAULT 'flutterwave',provider_transaction_id text,amount_kobo bigint,transaction_id uuid,status text CHECK(status IN('awaiting_payment','paid','paid_review','fulfilled','refund_pending','refunded')),review_reason text,created_at timestamptz DEFAULT now(),paid_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());`);
  for(const table of ['fuel_price_history','station_discount_requests','discount_review_states','resupply_orders'])await pool.query(`CREATE TABLE ${table}(LIKE public.${table} INCLUDING ALL)`);
  await pool.query(await readFile(new URL('../src/migrations/024_bank_settlement_binding.sql',import.meta.url),'utf8'));
+ const migrationClient=await pool.connect();
+ try {
+  await migrationClient.query('BEGIN');
+  // These cloned tables are empty; rebuild new constraints and trigger functions inside this isolated schema.
+  await migrationClient.query('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_admin_role_allowed,DROP CONSTRAINT IF EXISTS users_admin_pages_allowed');
+  await migrationClient.query('ALTER TABLE support_tickets DROP COLUMN IF EXISTS support_revision,DROP COLUMN IF EXISTS closure_pending_request_id CASCADE');
+  for(const migration of ['046_admin_page_access.sql','047_support_close_approval.sql','048_discount_effective_end.sql'])await migrationClient.query(await readFile(new URL(`../src/migrations/${migration}`,import.meta.url),'utf8'));
+  await migrationClient.query('COMMIT');
+ } catch(error) { await migrationClient.query('ROLLBACK');throw error; }
+ finally { migrationClient.release(); }
  await pool.query('CREATE TRIGGER business_activity AFTER INSERT OR UPDATE OR DELETE ON stations FOR EACH ROW EXECUTE FUNCTION public.record_business_activity()');
  const app=express();app.set('trust proxy',1);app.use(express.json());app.use((req,_res,next)=>{const role=req.headers['x-test-role'];if(role)req.user={...(role==='admin'?fixtures?.admin:role==='partner'?fixtures?.partner:fixtures?.customer),role,orgType:role==='partner'?'partner':undefined,orgId:fixtures?.org?.id};next();});
  app.use((await import('../src/middleware/auth.js')).attachUser);
@@ -32,8 +42,8 @@ before(async()=>{
 });
 beforeEach(async()=>{
  if(!url)return;globalThis.fetch=originalFetch;
- await pool.query('TRUNCATE users,organizations,memberships,support_tickets,ticket_messages,audit_logs,notifications,payment_refunds,bank_accounts,settlement_accounts,transactions,fuel_orders,contact_messages,email_outbox,job_postings,job_applications,stations,fuel_prices,fueling_logs,equipment,pricing_plans,subscriptions,card_plans,customer_subscriptions,leads,data_requests,cards,wallets,wallet_ledger,sessions,security_logs,verification_codes,partner_applications,top_ups,subscription_payments,card_requests,partner_api_keys,payouts,vehicles,invites,disputes CASCADE');
- const {rows:[admin]}=await pool.query("INSERT INTO users(email,password_hash,role,full_name)VALUES('admin@test.invalid','unused','admin','Admin')RETURNING *");
+ await pool.query('TRUNCATE users,organizations,memberships,support_tickets,support_ticket_close_requests,ticket_messages,audit_logs,notifications,payment_refunds,bank_accounts,settlement_accounts,transactions,fuel_orders,contact_messages,email_outbox,job_postings,job_applications,stations,fuel_prices,fueling_logs,equipment,pricing_plans,subscriptions,card_plans,customer_subscriptions,leads,data_requests,cards,wallets,wallet_ledger,sessions,security_logs,verification_codes,partner_applications,top_ups,subscription_payments,card_requests,partner_api_keys,payouts,vehicles,invites,disputes CASCADE');
+ const {rows:[admin]}=await pool.query("INSERT INTO users(email,password_hash,role,full_name,staff_role,staff_permissions)VALUES('admin@test.invalid','unused','admin','Admin','super_admin',$1)RETURNING *",[JSON.stringify(['companies','intake','discounts','applications','benefits','operations','disputes','reports','staff'])]);
  const {rows:[customer]}=await pool.query("INSERT INTO users(email,password_hash,role,full_name,notification_prefs)VALUES('customer@test.invalid','unused','customer','Customer','{\"inApp\":false}')RETURNING *");
  const {rows:[ticket]}=await pool.query("INSERT INTO support_tickets(reference,user_id,subject,message)VALUES('SUP_TEST',$1,'Fuel issue','Original customer question')RETURNING *",[customer.id]);
  await pool.query("INSERT INTO ticket_messages(ticket_id,sender_user_id,sender_role,body)VALUES($1,$2,'customer','Original customer question')",[ticket.id,customer.id]);

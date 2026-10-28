@@ -111,6 +111,38 @@
 }
 @media(prefers-reduced-motion:reduce) { .admin-dialog { animation:none; } }
 .admin-content dl[aria-label='Platform metrics'] dd[data-value-type='text'] { font-size:17px; line-height:1.5; font-weight:600; }
+.admin-board { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); align-items:start; gap:18px; margin-top:24px; }
+.admin-board[data-maximized='true'] { grid-template-columns:minmax(0,1fr); }
+.admin-board-lane { min-width:0; border:1px solid var(--admin-rule); border-radius:14px; background:#edf1e9; }
+.admin-board-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; padding:16px; border-bottom:1px solid var(--admin-rule); }
+.admin-board-heading h2 { display:flex; align-items:center; flex-wrap:wrap; gap:8px; font-size:16px; font-weight:700; line-height:1.5; }
+.admin-board-heading p { margin-top:4px; color:var(--admin-muted); font-size:12px; line-height:1.6; }
+.admin-board-count { display:inline-flex; justify-content:center; min-width:25px; padding:1px 7px; border-radius:6px; background:#dce6d4; font-size:12px; font-weight:700; font-variant-numeric:tabular-nums; }
+.admin-board-lane[data-tone='success'] .admin-board-count { background:#dceaca; color:#355221; }
+.admin-board-lane[data-tone='warning'] .admin-board-count { background:#f2e6c6; color:#705015; }
+.admin-board-lane[data-tone='error'] .admin-board-count { background:#efdcd4; color:#823824; }
+.admin-board-controls { display:flex; flex-shrink:0; gap:2px; }
+.admin-board-controls button { display:inline-flex; align-items:center; justify-content:center; min-width:44px; min-height:44px; border:1px solid transparent; border-radius:8px; color:var(--admin-muted); }
+.admin-board-controls button:hover { background:#fff; border-color:#bdcabc; color:var(--admin-ink); }
+.admin-board-controls button:focus-visible,.admin-board-card:focus-visible { outline:2px solid var(--admin-accent); outline-offset:3px; }
+.admin-board-content { padding:12px; }
+.admin-board-content[hidden] { display:none; }
+.admin-board-list { display:grid; gap:10px; list-style:none; margin:0; padding:0; }
+.admin-board-card { display:block; width:100%; padding:16px; text-align:left; border:1px solid var(--admin-rule); border-radius:10px; background:var(--admin-surface); color:var(--admin-ink); }
+.admin-board-card:hover { border-color:#91a27f; background:#fbfdf8; }
+.admin-board-card-title { display:block; font-size:14px; font-weight:700; line-height:1.6; overflow-wrap:anywhere; }
+.admin-board-card-meta { display:block; margin-top:8px; font-size:12px; line-height:1.7; color:var(--admin-muted); overflow-wrap:anywhere; }
+.admin-board-card-reference { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:0; margin-bottom:8px; }
+.admin-board-card-footer { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; margin-top:14px; font-size:12px; }
+.admin-board-empty { margin:0; padding:16px 4px; font-size:13px; line-height:1.7; color:var(--admin-muted); }
+.admin-page-permissions { display:grid; gap:8px; border:0; padding:0; min-width:0; }
+.admin-page-permissions legend { margin-bottom:10px; font-size:13px; font-weight:700; }
+.admin-page-permission { display:flex; align-items:flex-start; gap:12px; min-height:44px; padding:12px; border:1px solid var(--admin-rule); border-radius:10px; background:#f8faf6; }
+.admin-page-permission:has(input:checked) { border-color:#93aa7b; background:#f1f6eb; }
+.admin-page-permission input { flex-shrink:0; margin-top:3px; width:18px; height:18px; }
+.admin-page-permission span { display:block; min-width:0; }
+.admin-page-permission small { display:block; margin-top:4px; font-size:12px; font-weight:400; color:var(--admin-muted); line-height:1.6; }
+@media(max-width:1199px) { .admin-board { grid-template-columns:minmax(0,1fr); } }
 .admin-metric-rail { gap:0; padding-bottom:24px; border-bottom:1px solid var(--admin-rule); }
 .admin-metric-rail > div { background:transparent; border:0; border-left:1px solid var(--admin-rule); border-radius:0; padding:0 20px; }
 .admin-metric-rail > div:first-child { padding-left:0; border-left:0; }

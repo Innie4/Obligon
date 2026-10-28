@@ -28,6 +28,8 @@ export interface SessionUser {
   name: string;
   email: string;
   role: UserRole;
+  staff_role?: "super_admin" | "supervisor" | "staff" | null;
+  staff_permissions?: string[];
   organization: string;
   organizationId?: string | null;
   organizationType?: "company" | "partner" | "mechanic" | null;

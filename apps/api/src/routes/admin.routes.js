@@ -7,6 +7,7 @@ import { Router } from "express";
 import { q, one, tx } from "../db.js";
 import { asyncHandler, badRequest, notFound, forbidden } from "../lib/errors.js";
 import { requireAuth } from "../middleware/auth.js";
+import { requireAdminPage, validateAdminGrants, lockAdminStaffManager } from "../middleware/admin-access.js";
 import { naira, fmtDate, fmtDateTime, relativeTime, dayGroup, reference, toCsv, initials as initialsOf } from "../lib/format.js";
 import { notify, audit, securityLog } from "../lib/notify.js";
 import { hashPassword, randomToken } from "../lib/security.js";
@@ -30,10 +31,7 @@ for(const name of ['id','orgId','memberId'])router.param(name,(req,_res,next,val
  next();
 });
 
-router.use(requireAuth, (req, _res, next) => {
-  if (req.user.role !== "admin") return next(forbidden("Admin access required"));
-  next();
-});
+router.use(requireAuth, requireAdminPage);
 
 router.use("/discount-requests", discountRouter);
 router.use(supportAdminRouter);
@@ -686,13 +684,13 @@ router.get("/staff", asyncHandler(async (req, res) => {
   let where = `u.role = 'admin'`;
   if (search) { params.push(`%${search}%`); where += ` AND (u.full_name ILIKE $${params.length} OR u.email ILIKE $${params.length})`; }
   const rows = await q(
-    `SELECT u.*, COALESCE(u.staff_role, 'controller') AS member_role
+    `SELECT u.*, u.staff_role AS member_role
      FROM users u
      WHERE ${where} ORDER BY u.created_at DESC LIMIT ${Math.max(1,Math.min(Math.floor(Number(limit)||20),100))} OFFSET ${Math.max(0,Math.floor(Number(offset)||0))}`,
     params
   );
   const total=await one(`SELECT count(*)::int count FROM users u WHERE ${where}`,params);
-  const stats=await one("SELECT count(*)::int total,count(*) FILTER(WHERE status='active')::int active,count(DISTINCT COALESCE(staff_role,'controller'))::int roles FROM users WHERE role='admin'");
+  const stats=await one("SELECT count(*)::int total,count(*) FILTER(WHERE status='active')::int active,count(DISTINCT staff_role)::int roles FROM users WHERE role='admin'");
   const invites = await one(`SELECT COUNT(*)::int AS count FROM invites WHERE status = 'pending'`);
   const lastAudit = await one(`SELECT MAX(created_at) AS last FROM audit_logs WHERE action LIKE 'admin%'`);
   res.json({
@@ -705,25 +703,33 @@ router.get("/staff", asyncHandler(async (req, res) => {
     total:total.count,
     staff: rows.map((r) => ({
       id: r.id,
-      cells: [`${r.full_name ?? r.email.split("@")[0]}\n${r.email}`, (r.member_role ?? "controller").replace("_", " ").toUpperCase(), "Full administrator access"],
+      cells: [`${r.full_name ?? r.email.split("@")[0]}\n${r.email}`, r.member_role.replaceAll("_", " ").toUpperCase(), `${r.staff_permissions.length} selected ${r.staff_permissions.length === 1 ? "page" : "pages"}`],
       status: r.status === "active" ? "Active" : "Locked",
       tone: r.status === "active" ? "green" : "red",
-      staffId: r.id, name: r.full_name, email: r.email, role: r.member_role ?? "controller", statusRaw: r.status
+      staffId: r.id, name: r.full_name, email: r.email, role: r.member_role, permissions: r.staff_permissions, statusRaw: r.status
     }))
   });
 }));
 
 router.post("/staff", asyncHandler(async (req, res) => {
-  const { fullName, email, role = "controller", permissions } = req.valid ?? req.body ?? {};
-  if(typeof fullName!=="string"||!fullName.trim()||fullName.length>200||typeof email!=="string"||email.length>254||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)||typeof role!=="string"||role.length>100)throw badRequest("Enter valid staff details");
-  const existing = await one("SELECT id FROM users WHERE lower(email) = lower($1)", [email]);
-  if (existing) throw badRequest("A user with that email already exists");
+  const { fullName, email, role, permissions } = req.body ?? {};
+  if(typeof fullName!=="string"||!fullName.trim()||fullName.length>200||typeof email!=="string"||email.length>254||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))throw badRequest("Enter valid staff details");
+  validateAdminGrants(role, permissions);
   const tempPassword = randomToken(6);
-  const user = await one(
-    `INSERT INTO users (email, password_hash, full_name, role, organization_name, email_verified, account_tier, staff_role, staff_permissions)
-     VALUES ($1,$2,$3,'admin','Obligon LTD Internal',TRUE,'Platform Admin',$4,$5) RETURNING *`,
-    [email, await hashPassword(tempPassword), fullName, role, JSON.stringify(permissions ?? [])]
-  );
+  const passwordHash = await hashPassword(tempPassword);
+  const user = await tx(async t => {
+    await lockAdminStaffManager(t, req);
+    const existing = await t.one("SELECT id FROM users WHERE lower(email) = lower($1)", [email]);
+    if (existing) throw badRequest("A user with that email already exists");
+    const created = await t.one(
+      `INSERT INTO users (email, password_hash, full_name, role, organization_name, email_verified, account_tier, staff_role, staff_permissions)
+       VALUES ($1,$2,$3,'admin','Obligon LTD Internal',TRUE,'Platform Admin',$4,$5) RETURNING id`,
+      [email.toLowerCase(), passwordHash, fullName.trim(), role, JSON.stringify(permissions)]
+    );
+    await t.query(`INSERT INTO audit_logs(actor_user_id,actor_role,action,entity_type,entity_id,metadata)
+      VALUES($1,'admin','admin.staff_created','user',$2,$3)`, [req.user.id, created.id, JSON.stringify({ email: email.toLowerCase(), role, permissions })]);
+    return created;
+  });
   const { sendEmail } = await import("../lib/notify.js");
   const { env } = await import("../config/env.js");
   void sendEmail({
@@ -732,26 +738,32 @@ router.post("/staff", asyncHandler(async (req, res) => {
     text: `Sign in at ${env.APP_URL}/admin/login - email: ${email}, temporary password: ${tempPassword}`,
     html: `<div style="font-family:sans-serif"><h2>Internal account created</h2><p>Sign in at ${env.APP_URL}/admin/login</p><p>Email: ${email}<br/>Temporary password: <b>${tempPassword}</b></p></div>`
   });
-  audit({ actorUserId: req.user.id, actorRole: "admin", action: "admin.staff_created", metadata: { email, role } });
   res.json({ ok: true, staffId: user.id });
 }));
 
 router.put("/staff/:id", asyncHandler(async (req, res) => {
   const { role, status, permissions } = req.body ?? {};
   if(status!==undefined&&!['active','suspended','pending'].includes(status))throw badRequest('Choose a valid staff status');
-  if(role!==undefined&&(typeof role!=='string'||role.length>100))throw badRequest('Choose a valid role label');
-  if(permissions!==undefined&&(!Array.isArray(permissions)||permissions.length>50||permissions.some(p=>typeof p!=='string'||p.length>100)))throw badRequest('Invalid permissions');
-  if(req.params.id===req.user.id&&status&&status!=='active')throw badRequest('Ask another administrator to suspend your account');
-  const user = await one(
-    `UPDATE users SET
-       status = COALESCE($2, status),
-       staff_role = COALESCE($3, staff_role),
-       staff_permissions = COALESCE($4, staff_permissions)
-     WHERE id = $1 AND role = 'admin' RETURNING *`,
-    [req.params.id, status ?? null, role ?? null, permissions ? JSON.stringify(permissions) : null]
-  );
-  if (!user) throw notFound("Staff member not found");
-  audit({ actorUserId: req.user.id, actorRole: "admin", action: "admin.staff_updated", entityId: user.id, metadata: {role,status,permissions} });
+  if (role === undefined && status === undefined && permissions === undefined) throw badRequest("Choose the staff changes to save");
+  await tx(async t => {
+    await lockAdminStaffManager(t, req);
+    const current = await t.one("SELECT id,status,staff_role,staff_permissions FROM users WHERE id=$1 AND role='admin' FOR UPDATE", [req.params.id]);
+    if (!current) throw notFound("Staff member not found");
+    const nextRole = role === undefined ? current.staff_role : role;
+    const nextPages = permissions === undefined ? current.staff_permissions : permissions;
+    const nextStatus = status === undefined ? current.status : status;
+    validateAdminGrants(nextRole, nextPages);
+    if (req.params.id === req.user.id && (nextStatus !== 'active' || nextRole !== 'super_admin' || !nextPages.includes('staff'))) throw badRequest("Ask another Super Admin to change your own staff access");
+    if (current.status === 'active' && current.staff_role === 'super_admin' && current.staff_permissions.includes('staff') &&
+      (nextStatus !== 'active' || nextRole !== 'super_admin' || !nextPages.includes('staff'))) {
+      const other = await t.one(`SELECT id FROM users WHERE role='admin' AND status='active' AND staff_role='super_admin'
+        AND staff_permissions ? 'staff' AND id<>$1 AND (access_expires_at IS NULL OR access_expires_at>clock_timestamp()) LIMIT 1`, [current.id]);
+      if (!other) throw badRequest("Keep at least one active Super Admin with staff access");
+    }
+    await t.query("UPDATE users SET status=$2,staff_role=$3,staff_permissions=$4,updated_at=now() WHERE id=$1", [current.id, nextStatus, nextRole, JSON.stringify(nextPages)]);
+    await t.query(`INSERT INTO audit_logs(actor_user_id,actor_role,action,entity_type,entity_id,metadata)
+      VALUES($1,'admin','admin.staff_updated','user',$2,$3)`, [req.user.id, current.id, JSON.stringify({ role: nextRole, status: nextStatus, permissions: nextPages })]);
+  });
   res.json({ ok: true });
 }));
 

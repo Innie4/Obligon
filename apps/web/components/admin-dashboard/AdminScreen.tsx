@@ -7,6 +7,7 @@ import { CardApprovalQueue } from "./CardApprovalQueue";
 import { DashboardSearchQuery } from "@/components/shared/DashboardSearchQuery";
 import { AdminRecords } from "./AdminRecords";
 import { AdminDialog } from "./AdminDialog";
+import { AdminStaffFields } from "./AdminStaffFields";
 import {
   adminPageCopy,
   type AdminPageKey,
@@ -17,6 +18,7 @@ type Row = AdminRow & {
   name?: string;
   email?: string;
   role?: string;
+  permissions?: string[];
   statusRaw?: string;
   creditLimit?: number;
   verificationStatus?: string;
@@ -126,7 +128,16 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
   const field = "mt-2 block min-h-11 w-full min-w-0 rounded-xl border border-obligon-border bg-white p-3 text-sm text-obligon-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-obligon-green";
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const body = Object.fromEntries(new FormData(e.currentTarget));
+    const form = new FormData(e.currentTarget);
+    const body = Object.fromEntries(form);
+    if (pageKey === "staff") {
+      const permissions = form.getAll("permissions");
+      if (!body.role || permissions.length === 0) {
+        setError("Select a role and at least one page for this administrator.");
+        return;
+      }
+      Object.assign(body, { permissions });
+    }
     if (pageKey === "companies" && !creating) {
       const contractAgreed = body.contractAgreed === "true";
       if (body.verificationStatus === "verified" && selected?.verificationStatus !== "verified" && !contractAgreed) {
@@ -312,7 +323,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
           )}
         </>
       ) : null}
-      <AdminDialog open={Boolean(selected || creating)} title={creating ? (pageKey === "companies" ? "Provision a company" : "Add an administrator") : `Review ${selected?.name ?? selected?.businessName ?? selected?.cells[0] ?? "record"}`} description="Review the details and record your decision. Changes appear in Requests & Activity." onClose={() => { setSelected(null); setCreating(false); }}>
+      <AdminDialog open={Boolean(selected || creating)} title={creating ? (pageKey === "companies" ? "Provision a company" : "Add an administrator") : `Review ${selected?.name ?? selected?.businessName ?? selected?.cells[0] ?? "record"}`} description={creating && pageKey === "staff" ? "Enter account details, choose a role and assign pages." : "Review the details and record your decision. Changes appear in Requests & Activity."} onClose={() => { setSelected(null); setCreating(false); }}>
       {(selected || creating) ? feedback : null}
       {(selected || creating) && (
         <form
@@ -380,10 +391,7 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
                       className={field}
                     />
                   </label>
-                  <p>
-                    Active administrators receive full platform access. Role
-                    labels are descriptive.
-                  </p>
+                  <AdminStaffFields />
                 </>
               )}
             </>
@@ -420,10 +428,8 @@ export function AdminScreen({ pageKey }: { pageKey: AdminPageKey }) {
             </>
           ) : pageKey === "staff" ? (
             <>
-              <p>
-                Active administrators have full platform access. Suspend an
-                account to revoke access.
-              </p>
+              <AdminStaffFields initialRole={selected?.role} initialPages={selected?.permissions} />
+              <p className="text-sm leading-6 text-obligon-text">Changes apply to the next request, including existing sign-in sessions. Suspend an account to revoke all access.</p>
               <label>
                 Status
                 <select

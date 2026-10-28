@@ -28,7 +28,7 @@ before(async () => {
  CREATE TABLE fuel_prices(station_id uuid, fuel_type text, price_kobo bigint, PRIMARY KEY(station_id,fuel_type));
  CREATE TABLE discount_review_states(id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, code text UNIQUE);
  INSERT INTO discount_review_states(code) VALUES ('pending'),('approved'),('rejected');
- CREATE TABLE station_discount_requests(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),station_id uuid,fuel_type text,rate_bp int,review_state_id bigint,starts_at timestamptz,ends_at timestamptz,reviewed_at timestamptz DEFAULT now());
+ CREATE TABLE station_discount_requests(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),station_id uuid,fuel_type text,rate_bp int,review_state_id bigint,starts_at timestamptz,ends_at timestamptz,effective_ends_at timestamptz,reviewed_at timestamptz DEFAULT now());
  CREATE TABLE card_plans(code text PRIMARY KEY,name text,features jsonb DEFAULT '[]');
  INSERT INTO card_plans(code,name,features) VALUES ('gold','Gold','[{"label": "Digital Fuel Wallet", "state": "included"}, {"label": "Fuel Purchase", "state": "included"}, {"label": "Digital Receipts", "state": "included"}, {"label": "Transaction History", "state": "included"}, {"label": "Fuel Spend Tracking", "state": "included"}, {"label": "Fuel Budget Management", "state": "included"}, {"label": "Spending Limits", "state": "included"}, {"label": "Partner Discounts", "state": "included"}]');
  CREATE TABLE card_requests(id uuid PRIMARY KEY,user_id uuid,plan_code text,payment_reference text,payment_status text,paid_at timestamptz,status text,issuance_state text,subscription_activated_at timestamptz);

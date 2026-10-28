@@ -10,6 +10,10 @@ import { AuthGuard } from "@/components/auth/AuthGuard";
 import { LogoutButton, SignInOptionsLink } from "@/components/auth/LogoutButton";
 import { useDialogFocus } from "@/components/shared/useDialogFocus";
 import { ToastProvider } from "@/components/shared/Toast";
+import { useSession } from "@/components/shared/AuthContext";
+import { StatusPopup } from "@/components/shared/StatusPopup";
+import { usePathname, useRouter } from "next/navigation";
+import { ADMIN_PAGES, adminPageForPath, hasAdminPage } from "../../../../packages/shared/admin-access.mjs";
 import "./admin.css";
 
 type AdminShellProps = {
@@ -17,6 +21,16 @@ type AdminShellProps = {
 };
 
 export function AdminShell({ children }: AdminShellProps) {
+  const { status, user } = useSession();
+  const pathname = usePathname();
+  const router = useRouter();
+  const page = adminPageForPath(pathname);
+  const canOpen = Boolean(page && hasAdminPage(user, page));
+  const firstPage = ADMIN_PAGES.find(item => hasAdminPage(user, item.key));
+  const visibleNav = adminNav.filter(item => {
+    const key = adminPageForPath(item.href);
+    return key && hasAdminPage(user, key);
+  });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const menuRef = useRef<HTMLElement>(null);
   useDialogFocus(menuRef, () => setMobileMenuOpen(false), mobileMenuOpen);
@@ -26,6 +40,9 @@ export function AdminShell({ children }: AdminShellProps) {
     desktop.addEventListener("change", closeOnDesktop);
     return () => desktop.removeEventListener("change", closeOnDesktop);
   }, []);
+  useEffect(() => {
+    if (status === "authenticated" && user?.role === "admin" && !canOpen && firstPage) router.replace(firstPage.href);
+  }, [status, user?.role, canOpen, firstPage, router]);
 
   return (
     <ToastProvider placement="center">
@@ -41,7 +58,7 @@ export function AdminShell({ children }: AdminShellProps) {
               <button type="button" onClick={() => setMobileMenuOpen(false)} className="grid size-11 shrink-0 place-items-center rounded-lg bg-obligon-mist" aria-label="Close admin menu"><X size={20} /></button>
             </div>
             <nav aria-label="Admin sections" className="mt-8 space-y-2">
-              {adminNav.map((item) => <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)} className="admin-mobile-link">{item.label}</Link>)}
+              {visibleNav.map((item) => <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)} className="admin-mobile-link">{item.label}</Link>)}
             </nav>
             <div className="mt-auto border-t border-obligon-border pt-4">
               <SignInOptionsLink className="w-full justify-start" />
@@ -52,7 +69,7 @@ export function AdminShell({ children }: AdminShellProps) {
       ) : null}
       <div className="admin-main min-w-0 lg:pl-[260px]">
         <AdminHeader onOpenMenu={() => setMobileMenuOpen(true)} />
-        <div id="admin-content" className="admin-content" tabIndex={-1}>{children}</div>
+        <div id="admin-content" className="admin-content" tabIndex={-1}>{canOpen ? children : <StatusPopup tone={firstPage ? "loading" : "error"} message={firstPage ? "Opening your assigned workspace…" : "No admin pages are assigned to this account. Ask a Super Admin to update your access, or sign out."} />}</div>
       </div>
       </main>
     </AuthGuard>

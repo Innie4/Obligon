@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
+const adminAccess = require('../../../packages/shared/admin-access.mjs');
 const flush = () => new Promise(resolve => setImmediate(resolve));
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
 const nodes = tree => Array.isArray(tree) ? tree.flatMap(nodes) : !tree || typeof tree !== 'object' ? [] : [tree, ...nodes(tree.props?.children), ...nodes(tree.props?.action)];
@@ -25,7 +26,7 @@ function ui(file, exportName, dependencies, props = {}, globals = {}, expose = '
   };
   const exports = {};
   const code = ts.transpileModule(fs.readFileSync(require.resolve(file), 'utf8') + expose, { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }).outputText;
-  vm.runInNewContext(code, { exports, React, Error, DOMException, Promise, setTimeout, clearTimeout, ...globals, require: name => name === 'react' ? React : name === '@/components/shared/StatusPopup' ? { StatusPopup: 'StatusPopup' } : dependencies[name] ?? {} });
+  vm.runInNewContext(code, { exports, React, Error, DOMException, Promise, setTimeout, clearTimeout, ...globals, require: name => name.endsWith('/admin-access.mjs') ? adminAccess : name === 'react' ? React : name === '@/components/shared/StatusPopup' ? { StatusPopup: 'StatusPopup' } : dependencies[name] ?? {} });
   const fixture = {
     render() { cursor = 0; tree = exports[exportName](props); return tree; },
     effects() { while (effects.length) effects.shift()(); },
@@ -271,7 +272,7 @@ test('the auth grid and login form allow a provider widget to shrink within a ph
 test('the desktop admin sidebar includes the shared sign-in management link', () => {
   const fixture = ui('../components/admin-dashboard/AdminSidebar.tsx', 'AdminSidebar', {
     'next/link': { default: 'Link', __esModule: true }, 'next/navigation': { usePathname: () => '/admin' },
-    '@/lib/mock/admin-data': { adminNav: [] }, '@/components/shared/AuthContext': { useSession: () => ({ user: { role: 'admin' } }) },
+    '@/lib/mock/admin-data': { adminNav: [] }, '@/components/shared/AuthContext': { useSession: () => ({ user: { role: 'admin', staff_role: 'super_admin', staff_permissions: adminAccess.ADMIN_PAGES.map(page => page.key) } }) },
     '@/components/auth/LogoutButton': { SignInOptionsLink: 'SignInOptionsLink', LogoutButton: 'LogoutButton' }
   });
   assert.equal(fixture.nodes().filter(node => node.type === 'SignInOptionsLink').length, 1);

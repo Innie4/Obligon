@@ -9,10 +9,18 @@ import { DateTimeField } from "@/components/shared/Calendar/DateField";
 interface Pricing {
   stations: Array<{ id: string; name: string }>;
   prices: Array<{ stationId: string; fuelType: string; price: number; sellingUnit?: "litre" | "kg" | "scm" }>;
-  discounts: Array<{ id: string; station_id: string; fuel_type: string; rate_bp: number; starts_at: string; ends_at: string; status: string; review_reason: string | null }>;
+  discounts: Array<{ id: string; station_id: string; fuel_type: string; rate_bp: number; starts_at: string; ends_at: string; effective_ends_at?: string | null; status: string; review_reason: string | null }>;
 }
 
 const fieldClass = "mt-2 block min-h-12 w-full min-w-0 rounded-xl border border-obligon-border bg-white px-3 py-3 text-sm font-normal text-obligon-navy disabled:opacity-60";
+
+function discountStatus(discount: Pricing["discounts"][number], now: number) {
+  if (discount.status === "rejected") return "Rejected";
+  if (discount.status === "superseded") return "Superseded";
+  if (new Date(discount.effective_ends_at ?? discount.ends_at).getTime() <= now || discount.status === "expired") return "Expired";
+  if (discount.status === "approved") return new Date(discount.starts_at).getTime() > now ? "Scheduled" : "Active";
+  return discount.status === "pending" ? "Awaiting review" : discount.status.replaceAll("_", " ");
+}
 
 export function StationDiscounts({ canManage = false }: { canManage?: boolean }) {
   const [starts, setStarts] = React.useState("");
@@ -25,12 +33,14 @@ export function StationDiscounts({ canManage = false }: { canManage?: boolean })
   const [notice, setNotice] = React.useState("");
   const [loading, setLoading] = React.useState(true);
   const [busy, setBusy] = React.useState(false);
+  const [now, setNow] = React.useState(Date.now());
 
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
       const result = await authenticatedRequest<Pricing>("/api/partner/pricing");
       setData(result);
+      setNow(Date.now());
       setStation(current => current || result.stations[0]?.id || "");
       setLoadError("");
     } catch (cause) {
@@ -41,6 +51,11 @@ export function StationDiscounts({ canManage = false }: { canManage?: boolean })
   }, []);
 
   React.useEffect(() => { void load(); }, [load]);
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const prices = data?.prices.filter(price => price.stationId === station) ?? [];
   const selectedPrice = prices.find(price => price.fuelType === (fuel || prices[0]?.fuelType));
   const sellingUnit = selectedPrice ? priceSellingUnit(selectedPrice.fuelType, selectedPrice.sellingUnit) : undefined;
@@ -107,8 +122,8 @@ export function StationDiscounts({ canManage = false }: { canManage?: boolean })
             <tbody className="divide-y divide-obligon-border">{data.discounts.map(discount => <tr key={discount.id}>
               <td className="px-4 py-4 font-medium text-obligon-navy">{data.stations.find(item => item.id === discount.station_id)?.name || "Recorded station"} / {discount.fuel_type}</td>
               <td className="px-4 py-4 tabular-nums">{discount.rate_bp / 100}%</td>
-              <td className="px-4 py-4 text-obligon-text">{new Date(discount.starts_at).toLocaleString()} – {new Date(discount.ends_at).toLocaleString()}</td>
-              <td className="px-4 py-4"><span className="font-semibold text-obligon-navy">{discount.status}</span>{discount.review_reason ? <p className="mt-1 max-w-xs text-xs leading-5 text-obligon-text">{discount.review_reason}</p> : null}</td>
+              <td className="px-4 py-4 text-obligon-text"><span className="block">{new Date(discount.starts_at).toLocaleString()} to {new Date(discount.effective_ends_at ?? discount.ends_at).toLocaleString()}</span>{discount.effective_ends_at ? <span className="mt-1 block text-xs leading-5">Requested end: {new Date(discount.ends_at).toLocaleString()}. Shortened by an approved replacement.</span> : null}</td>
+              <td className="px-4 py-4"><span className="font-semibold text-obligon-navy">{discountStatus(discount, now)}</span>{discount.review_reason ? <p className="mt-1 max-w-xs text-xs leading-5 text-obligon-text">{discount.review_reason}</p> : null}</td>
             </tr>)}</tbody>
           </table>
         </div> : !loading && !loadError ? <p className="mt-3 rounded-xl bg-obligon-mist/60 p-4 text-sm text-obligon-text">No discount requests yet. Submitted requests and admin decisions will appear here.</p> : null}

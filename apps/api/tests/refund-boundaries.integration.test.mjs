@@ -48,6 +48,7 @@ beforeEach(async () => {
   await pool.query(`INSERT INTO users(id,email,password_hash,role,notification_prefs) VALUES
     ($1,'customer-refund@example.invalid','unused','customer','{"email":false,"sms":false,"push":false}'),
     ($2,'admin-refund@example.invalid','unused','admin','{"email":false,"sms":false,"push":false}')`, [owner, actor]);
+  await pool.query("UPDATE users SET staff_role='super_admin',staff_permissions='[\"operations\"]' WHERE id=$1", [actor]);
   await pool.query("INSERT INTO card_plans(code,name,amount_kobo,interval) VALUES('gold','Synthetic Gold',900000,'one-time')");
   await pool.query(`INSERT INTO card_requests(id,user_id,plan_code,payment_reference,payment_provider,payment_status,charged_kobo,provider_transaction_id,status)
     VALUES($1,$2,'gold','CARD-BOUNDARY','flutterwave','paid',100000,'99','pending_verification')`, [requestId, owner]);

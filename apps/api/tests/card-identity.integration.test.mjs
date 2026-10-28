@@ -43,6 +43,7 @@ beforeEach(async () => {
     ($1,'owner@example.invalid','unused','Ada Okafor','customer','{"email":false,"sms":false,"push":false}'),
     ($2,'other@example.invalid','unused','Other Customer','customer','{"email":false,"sms":false,"push":false}'),
     ($3,'admin@example.invalid','unused','Review Admin','admin','{"email":false,"sms":false,"push":false}')`, [userId, otherId, adminId]);
+  await pool.query("UPDATE users SET staff_role='super_admin',staff_permissions='[\"applications\"]' WHERE id=$1", [adminId]);
   const access = async (id, role) => {
     const session = (await pool.query("INSERT INTO sessions(user_id,refresh_token_hash,expires_at) VALUES($1,'unused',now()+interval '1 hour') RETURNING id", [id])).rows[0];
     return security.signAccessToken({ id, role }, null, session.id);

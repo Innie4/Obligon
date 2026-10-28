@@ -142,7 +142,7 @@ test("the editor pre-fills the stored figure and can move it either way", () => 
 });
 
 test("the prompt opens only in My Card once per month, and never over an open modal", () => {
-  assert.match(screen, /if \(pageKey !== "card" \|\| !canEditProjection \|\| !projection\?\.needsProjection\) return;/);
+  assert.match(screen, /if \(pageKey !== "card" \|\| cardStatus === null \|\| !canEditProjection \|\| !projection\?\.needsProjection\) return;/);
   // "Not now" must not be answered by the same dialog on the next navigation.
   assert.match(screen, /if \(promptedForMonth === projection\.month\) return;/);
   // Displacing a modal the customer opened deliberately is worse than waiting.

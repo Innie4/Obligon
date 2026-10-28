@@ -3,13 +3,17 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('./helpers/status-popup.cjs').withStatusPopups(require('node:vm'));
 const ts = require('typescript');
+const pendingDiscountDates = { starts_at: new Date(Date.now() + 86_400_000).toISOString(), ends_at: new Date(Date.now() + 172_800_000).toISOString() };
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
-const nodes = tree => !tree || typeof tree !== 'object' ? [] : Array.isArray(tree) ? tree.flatMap(nodes) : [tree, ...nodes(tree.props?.children)];
+function AdminBoardFixture({ label, lanes }) {
+  return React.createElement('section', { 'aria-label': label }, ...lanes.map(lane => React.createElement('section', { 'aria-label': lane.title }, React.createElement('h3', null, lane.title), lane.count ? lane.children : React.createElement('p', null, lane.emptyMessage))));
+}
+const nodes = tree => !tree || typeof tree !== 'object' ? [] : Array.isArray(tree) ? tree.flatMap(nodes) : tree.type === AdminBoardFixture ? nodes(AdminBoardFixture(tree.props)) : [tree, ...nodes(tree.props?.children)];
 function load(file, expose = '', dependencies = {}) {
   const exports = {}, filename = require.resolve(file);
   const source = ts.transpileModule(fs.readFileSync(filename, 'utf8') + expose, { fileName: filename, compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }).outputText;
-  vm.runInNewContext(source, { exports, URLSearchParams, require: name => dependencies[name] ?? (name === 'react' ? React : name === 'next/link' ? { __esModule: true, default: 'a' } : name === 'lucide-react' ? require('lucide-react') : name === './AdminDialog' ? { AdminDialog: ({ open, title, children }) => open ? React.createElement('section', { role: 'dialog', 'aria-label': title }, children) : null } : name === '@/components/shared/States' ? { EmptyState: ({ title, message, action }) => React.createElement('div', { role: 'status' }, title, message, action) } : {}) });
+  vm.runInNewContext(source, { exports, URLSearchParams, require: name => dependencies[name] ?? (name === 'react' ? React : name === 'next/link' ? { __esModule: true, default: 'a' } : name === 'lucide-react' ? require('lucide-react') : name === './AdminBoard' ? { AdminBoard: AdminBoardFixture } : name === './AdminDialog' ? { AdminDialog: ({ open, title, children }) => open ? React.createElement('section', { role: 'dialog', 'aria-label': title }, children) : null } : name === '@/components/shared/States' ? { EmptyState: ({ title, message, action }) => React.createElement('div', { role: 'status' }, title, message, action) } : {}) });
   return exports;
 }
 const { Table, Metrics, CompanyPagination } = load('../components/company-dashboard/CompanyScreen.tsx', '\nexport { Table, Metrics, CompanyPagination };');
@@ -118,8 +122,8 @@ test('the compact intake queue control keeps all eight queues connected to their
 
 test('support ticket selection is announced and follows the conversation being opened', async () => {
   const tickets = [
-    { id: 'ticket-one', reference: 'UI-TICKET-ONE', subject: 'First support request', status: 'open', message: 'First message' },
-    { id: 'ticket-two', reference: 'UI-TICKET-TWO', subject: 'Second support request', status: 'open', message: 'Second message' },
+    { id: 'ticket-one', reference: 'UI-TICKET-ONE', subject: 'First support request', status: 'queued', message: 'First message' },
+    { id: 'ticket-two', reference: 'UI-TICKET-TWO', subject: 'Second support request', status: 'queued', message: 'Second message' },
   ];
   const ui = stateFixture('../components/admin-dashboard/OperationsInbox.tsx', 'OperationsInbox', async path => {
     if (path === '/api/admin/support') return { tickets };
@@ -150,7 +154,7 @@ test('discount review fields open for the selected pending request and remain di
     const ui = stateFixture('../components/admin-dashboard/DiscountApprovals.tsx', 'DiscountApprovals', async () => ({ requests }));
     assert.doesNotMatch(ui.render(), /<textarea/); await flush(); assert.doesNotMatch(ui.render(), /<textarea/);
   }
-  const pending = { id: 'pending', station_name: 'Test station', partner_name: 'Test partner', fuel_type: 'PMS', status: 'pending', starts_at: '2026-10-23', ends_at: '2026-10-24', rate_bp: 100 };
+  const pending = { id: 'pending', station_name: 'Test station', partner_name: 'Test partner', fuel_type: 'PMS', status: 'pending', ...pendingDiscountDates, rate_bp: 100 };
   const ui = stateFixture('../components/admin-dashboard/DiscountApprovals.tsx', 'DiscountApprovals', async (path, init) => init ? new Promise(() => {}) : ({ requests: [pending] }));
   assert.doesNotMatch(ui.render(), /<textarea/); await flush(); assert.doesNotMatch(ui.render(), /<textarea/);
   ui.nodes().find(node => node.type === 'button' && nodes(node).some(child => child.type === 'span' && child.props.className === 'sr-only')).props.onClick();
@@ -163,7 +167,7 @@ test('discount review fields open for the selected pending request and remain di
 });
 
 test('discount dialog submits the selected request and reason, then closes after confirmed success', async () => {
-  const requests = ['one', 'two'].map(id => ({ id, station_name: `Station ${id}`, partner_name: 'Partner', fuel_type: 'PMS', status: 'pending', starts_at: '2026-10-23', ends_at: '2026-10-24', rate_bp: 125 }));
+  const requests = ['one', 'two'].map(id => ({ id, station_name: `Station ${id}`, partner_name: 'Partner', fuel_type: 'PMS', status: 'pending', ...pendingDiscountDates, rate_bp: 125 }));
   const writes = [];
   const ui = stateFixture('../components/admin-dashboard/DiscountApprovals.tsx', 'DiscountApprovals', async (path, init) => { if (init) { writes.push({ path, body: JSON.parse(init.body) }); return {}; } return { requests }; });
   ui.render(); await flush(); ui.render();

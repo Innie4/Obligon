@@ -196,6 +196,35 @@ const discountDependencies = {
 };
 const stationPricing = { stations: [{ id: 'station-one', name: 'Approved gas station' }], prices: [{ stationId: 'station-one', fuelType: 'LPG', price: 100, sellingUnit: 'kg' }], discounts: [] };
 
+test('partner discount history keeps requested expiry and follows the approved effective window', async () => {
+  const clock = { now: Date.parse('2026-10-28T12:00:00Z') }, timers = [];
+  const start = '2026-10-27T12:00:00Z', replacementStart = '2026-10-29T12:00:00Z', replacementEnd = '2026-10-30T12:00:00Z', requestedEnd = '2026-10-31T12:00:00Z';
+  const base = { station_id: 'station-one', fuel_type: 'LPG', rate_bp: 500, starts_at: start, ends_at: requestedEnd, status: 'approved', review_reason: null };
+  const discounts = [
+    { ...base, id: 'current', effective_ends_at: replacementStart },
+    { ...base, id: 'scheduled', starts_at: replacementStart, ends_at: replacementEnd },
+    { ...base, id: 'rejected', status: 'rejected', ends_at: start },
+  ];
+  const ui = fixture('StationDiscounts', async () => ({ ...stationPricing, discounts }), discountDependencies, {
+    Date: class extends Date { constructor(value) { super(arguments.length ? value : clock.now); } static now() { return clock.now; } },
+    window: { setInterval(callback) { timers.push(callback); return timers.length; }, clearInterval() {} },
+  });
+  await ui.settle();
+  const row = id => ui.nodes().find(node => node.type === 'tr' && node.props.key === id);
+  assert.match(text(row('current')), /Active/);
+  assert.match(text(row('current')), /Requested end:/);
+  assert.ok(text(row('current')).includes(new Date(replacementStart).toLocaleString()));
+  assert.ok(text(row('current')).includes(new Date(requestedEnd).toLocaleString()));
+  assert.match(text(row('scheduled')), /Scheduled/);
+  assert.match(text(row('rejected')), /Rejected/);
+  clock.now = Date.parse(replacementStart); timers.forEach(tick => tick()); ui.render();
+  assert.match(text(row('current')), /Expired/);
+  assert.match(text(row('scheduled')), /Active/);
+  clock.now = Date.parse(replacementEnd); timers.forEach(tick => tick()); ui.render();
+  assert.match(text(row('scheduled')), /Expired/);
+  assert.match(text(row('rejected')), /Rejected/);
+});
+
 test('station discount load failure offers retry and never invents an empty request list', async () => {
   let count = 0; const pending = deferred();
   const ui = fixture('StationDiscounts', async () => ++count === 1 ? pending.promise : stationPricing, discountDependencies);

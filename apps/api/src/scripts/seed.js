@@ -18,6 +18,7 @@ import { supabaseAuthEnabled, supabaseSignUp, LOCAL_AUTH_PLACEHOLDER } from "../
  * why every one of them must exist, be active, and have MFA off: a demo that stops
  * at a second-factor prompt has stopped being a demo.
  */
+import { ADMIN_PAGES } from "../../../../packages/shared/admin-access.mjs";
 const PASSWORD = {
   admin: "Admin#1234",
   customer: "Customer#123",
@@ -46,9 +47,9 @@ async function upsertUser({ email, password, name, role, org, tier = "Standard A
     hash = LOCAL_AUTH_PLACEHOLDER;
   }
   const row = await one(
-    `INSERT INTO users (email, password_hash, full_name, role, organization_name, account_tier, phone, email_verified, phone_verified, supabase_auth_uid)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8,$9) RETURNING id`,
-    [email, hash, name, role, org, tier, phone, Boolean(phone), supabaseUid]
+    `INSERT INTO users (email, password_hash, full_name, role, organization_name, account_tier, phone, email_verified, phone_verified, supabase_auth_uid, staff_role, staff_permissions)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8,$9,$10,$11) RETURNING id`,
+    [email, hash, name, role, org, tier, phone, Boolean(phone), supabaseUid, role === "admin" ? "super_admin" : null, JSON.stringify(role === "admin" ? ADMIN_PAGES.map(page => page.key) : [])]
   );
   return row.id;
 }

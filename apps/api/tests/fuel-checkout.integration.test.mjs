@@ -26,7 +26,7 @@ before(async()=>{
  CREATE TABLE cards(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),owner_user_id uuid,organization_id uuid,status text DEFAULT 'active',daily_limit_kobo bigint DEFAULT 100000,monthly_limit_kobo bigint DEFAULT 1000000,created_at timestamptz DEFAULT now());
  CREATE TABLE fuel_prices(station_id uuid,fuel_type text,price_kobo bigint);
  CREATE TABLE discount_review_states(id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,code text);
- CREATE TABLE station_discount_requests(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),station_id uuid,fuel_type text,rate_bp integer,starts_at timestamptz,ends_at timestamptz,reviewed_at timestamptz DEFAULT now(),review_state_id bigint);
+ CREATE TABLE station_discount_requests(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),station_id uuid,fuel_type text,rate_bp integer,starts_at timestamptz,ends_at timestamptz,effective_ends_at timestamptz,reviewed_at timestamptz DEFAULT now(),review_state_id bigint);
  CREATE TABLE settlement_accounts(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),organization_id uuid,bank_account_id uuid,provider text DEFAULT 'flutterwave',status text DEFAULT 'active',subaccount_id text DEFAULT 'RS_TEST',currency text DEFAULT 'NGN');
  CREATE UNIQUE INDEX ON settlement_accounts(organization_id) WHERE status='active';
  CREATE TABLE bank_accounts(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),organization_id uuid,is_default boolean DEFAULT true,verified boolean DEFAULT true);

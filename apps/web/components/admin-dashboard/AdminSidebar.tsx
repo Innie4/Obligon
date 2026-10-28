@@ -7,6 +7,7 @@ import { AlertTriangle, BarChart3, Building2, Grid2X2, Handshake, Settings, Wall
 import { adminNav } from "@/lib/mock/admin-data";
 import { useSession } from "@/components/shared/AuthContext";
 import { LogoutButton, SignInOptionsLink } from "@/components/auth/LogoutButton";
+import { ADMIN_PAGES, ADMIN_ROLES, adminPageForPath, hasAdminPage } from "../../../../packages/shared/admin-access.mjs";
 
 const icons = { dashboard: Grid2X2, transactions: WalletCards, fuelStations: Building2, analytics: BarChart3, partners: Handshake, settings: Settings, disputes: AlertTriangle };
 const groups = [
@@ -18,15 +19,17 @@ const groups = [
 export function AdminSidebar() {
   const pathname = usePathname();
   const { user } = useSession();
+  const visibleNav = adminNav.filter(item => { const page = adminPageForPath(item.href); return page && hasAdminPage(user, page); });
+  const home = ADMIN_PAGES.find(page => hasAdminPage(user, page.key))?.href;
   return <aside className="admin-sidebar">
     <div className="admin-sidebar-brand">
-      <Link href="/admin" aria-label="Obligon LTD home"><DashboardLogo priority width={155} /></Link>
+      {home ? <Link href={home} aria-label="Obligon LTD home"><DashboardLogo priority width={155} /></Link> : <DashboardLogo priority width={155} />}
       <p>Administration</p>
     </div>
     <nav aria-label="Admin sections">
-      {groups.map(group => <div key={group.label} className="admin-nav-group">
+      {groups.filter(group => visibleNav.some(item => group.paths.includes(item.href))).map(group => <div key={group.label} className="admin-nav-group">
         <p className="admin-nav-label">{group.label}</p>
-        {adminNav.filter(item => group.paths.includes(item.href)).map(item => {
+        {visibleNav.filter(item => group.paths.includes(item.href)).map(item => {
           const path = item.href;
           const Icon = icons[item.icon];
           const active = pathname === path || (path === "/admin" && pathname === "/admin/companies");
@@ -37,7 +40,7 @@ export function AdminSidebar() {
     <div className="admin-sidebar-footer">
       <div className="flex items-center gap-3 pb-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#e5efdc] text-xs font-bold text-[#243f19]">{user?.initials ?? "OA"}</span>
-        <div className="min-w-0"><p className="truncate text-xs font-semibold">{user?.name ?? "Administrator"}</p><p className="mt-1 text-xs opacity-75">Platform administrator</p></div>
+        <div className="min-w-0"><p className="truncate text-xs font-semibold">{user?.name ?? "Administrator"}</p><p className="mt-1 text-xs opacity-75">{ADMIN_ROLES.find(role => role.value === user?.staff_role)?.label ?? "Administrator"}</p></div>
       </div>
       <SignInOptionsLink className="min-h-11 w-full justify-start rounded-lg px-2 text-xs" />
       <LogoutButton className="min-h-11 w-full justify-start rounded-lg px-2 text-xs" />

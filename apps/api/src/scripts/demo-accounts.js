@@ -11,6 +11,7 @@
  */
 import bcrypt from "bcryptjs";
 import { q, one } from "../db.js";
+import { ADMIN_PAGES } from "../../../../packages/shared/admin-access.mjs";
 import { supabaseAuthEnabled, supabaseSignUp, LOCAL_AUTH_PLACEHOLDER } from "../lib/supabaseAuth.js";
 
 const ACCOUNTS = [
@@ -63,9 +64,9 @@ async function ensureUser(account) {
     hash = LOCAL_AUTH_PLACEHOLDER;
   }
   const row = await one(
-    `INSERT INTO users (email, password_hash, full_name, role, organization_name, account_tier, phone, email_verified, phone_verified, status, supabase_auth_uid)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,TRUE,'active',$8) RETURNING id`,
-    [account.email, hash, account.name, account.role, account.org, account.tier, account.phone ?? null, supabaseUid]
+    `INSERT INTO users (email, password_hash, full_name, role, organization_name, account_tier, phone, email_verified, phone_verified, status, supabase_auth_uid, staff_role, staff_permissions)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,TRUE,'active',$8,$9,$10) RETURNING id`,
+    [account.email, hash, account.name, account.role, account.org, account.tier, account.phone ?? null, supabaseUid, account.role === "admin" ? "super_admin" : null, JSON.stringify(account.role === "admin" ? ADMIN_PAGES.map(page => page.key) : [])]
   );
   console.log(`  created ${account.email} (${account.role})`);
   return { id: row.id, created: true };

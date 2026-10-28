@@ -9,7 +9,7 @@ const database = process.env.OBLIGON_TEST_DATABASE_URL;
 if (database) assert.ok(['localhost','127.0.0.1','[::1]'].includes(new URL(database).hostname));
 const integration = (name, run) => test(name, {skip: !database}, run);
 const schema = `customer_access_${randomUUID().replaceAll('-','')}`;
-const userId = randomUUID(), otherId = randomUUID();
+const userId = randomUUID(), otherId = randomUUID(), adminId = randomUUID();
 const realFetch = globalThis.fetch;
 const features = ['Digital Fuel Wallet','Fuel Purchase','Digital Receipts','Transaction History','Fuel Spend Tracking','Fuel Budget Management','Spending Limits','Partner Discounts'].map(label => ({label,state:'included'}));
 let admin, pool, server, base, tables, tx, activate, revoke, env, providerCalls;
@@ -31,7 +31,7 @@ before(async () => {
  const app = express(); app.use(express.json());
  app.use(async (req,_res,next) => { try { req.user = (await pool.query('SELECT * FROM users WHERE id=$1',[userId])).rows[0]; next(); } catch(error) { next(error); } });
  app.use('/api/customer',(await import('../src/routes/customer.routes.js')).default);
- app.use('/api/admin',(req,_res,next) => { req.user = {...req.user,role:'admin'}; next(); },(await import('../src/routes/admin.routes.js')).default);
+ app.use('/api/admin',async(req,_res,next) => { try { req.user = (await pool.query('SELECT * FROM users WHERE id=$1',[adminId])).rows[0]; next(); } catch(error) { next(error); } },(await import('../src/routes/admin.routes.js')).default);
  app.use((error,_req,res,_next) => res.status(error.status ?? 500).json({message:error.message}));
  server = await new Promise(resolve => { const listening = app.listen(0,'127.0.0.1',() => resolve(listening)); });
  base = `http://127.0.0.1:${server.address().port}/api/customer`;
@@ -41,7 +41,8 @@ beforeEach(async () => {
  providerCalls = 0; globalThis.fetch = realFetch;
  await pool.query(`TRUNCATE ${tables.join(',')}`);
  await pool.query("INSERT INTO users(id,email,password_hash,full_name,role,notification_prefs)VALUES($1,'customer@example.invalid','unused','Test Customer','customer','{\"email\":false,\"sms\":false,\"push\":false}'),($2,'other@example.invalid','unused','Other Customer','customer','{\"email\":false}')",[userId,otherId]);
- await pool.query("INSERT INTO card_plans(code,name,amount_kobo,features)VALUES('gold','Gold',350000,$1)",[JSON.stringify(features)]);
+  await pool.query("INSERT INTO card_plans(code,name,amount_kobo,features)VALUES('gold','Gold',350000,$1)",[JSON.stringify(features)]);
+  await pool.query("INSERT INTO users(id,email,password_hash,full_name,role,staff_role,staff_permissions,notification_prefs)VALUES($1,'admin@example.invalid','unused','Review Admin','admin','super_admin','[\"operations\"]','{\"email\":false,\"sms\":false,\"push\":false}')",[adminId]);
  await pool.query("INSERT INTO wallets(user_id,kind)VALUES($1,'individual')",[userId]);
  Object.assign(env,{FLW_SECRET_KEY:'fixture-key',FLW_PUBLIC_KEY:'fixture-public',PAYMENT_PROVIDER:'flutterwave',ALLOW_PAYMENT_SIMULATION:false});
 });
