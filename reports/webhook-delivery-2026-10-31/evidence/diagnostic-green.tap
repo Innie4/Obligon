@@ -1,0 +1,139 @@
+TAP version 13
+# Subtest: Flutterwave authentication diagnostics log only safe flags and keep rejection responses unchanged
+ok 1 - Flutterwave authentication diagnostics log only safe flags and keep rejection responses unchanged
+  ---
+  duration_ms: 527.970217
+  type: 'test'
+  ...
+# Subtest: Flutterwave mismatch shape diagnostics never authorize normalized or duplicate secrets
+ok 2 - Flutterwave mismatch shape diagnostics never authorize normalized or duplicate secrets
+  ---
+  duration_ms: 22.936808
+  type: 'test'
+  ...
+# [webhook:flutterwave:authentication-rejected] {
+#   hasV3VerificationHeader: true,
+#   hasV4SignatureHeader: false,
+#   headerIsPlaceholder: false,
+#   configuredHashPresent: true,
+#   hasMultipleV3VerificationHeaders: false,
+#   verificationHeaderByteLengthMatchesConfiguredHash: false,
+#   verificationHeaderHasOuterWhitespace: false,
+#   configuredHashHasOuterWhitespace: false,
+#   verificationHeaderHasSurroundingQuotes: false,
+#   configuredHashHasSurroundingQuotes: false,
+#   matchesAfterTrimming: false,
+#   matchesAfterRemovingSurroundingQuotes: false,
+#   matchesAfterTrimmingAndRemovingSurroundingQuotes: false
+# }
+# [webhook:flutterwave:authentication-rejected] {
+#   hasV3VerificationHeader: false,
+#   hasV4SignatureHeader: false,
+#   headerIsPlaceholder: false,
+#   configuredHashPresent: true,
+#   hasMultipleV3VerificationHeaders: false,
+#   verificationHeaderByteLengthMatchesConfiguredHash: false,
+#   verificationHeaderHasOuterWhitespace: false,
+#   configuredHashHasOuterWhitespace: false,
+#   verificationHeaderHasSurroundingQuotes: false,
+#   configuredHashHasSurroundingQuotes: false,
+#   matchesAfterTrimming: false,
+#   matchesAfterRemovingSurroundingQuotes: false,
+#   matchesAfterTrimmingAndRemovingSurroundingQuotes: false
+# }
+# Subtest: real application middleware accepts a verified Company top-up once and rejects unauthenticated delivery before provider lookup
+ok 3 - real application middleware accepts a verified Company top-up once and rejects unauthenticated delivery before provider lookup
+  ---
+  duration_ms: 41.586382
+  type: 'test'
+  ...
+# Subtest: provider-confirmed first card payment activates one period and withdrawn callbacks cannot revive it
+ok 4 - provider-confirmed first card payment activates one period and withdrawn callbacks cannot revive it
+  ---
+  duration_ms: 41.214826
+  type: 'test'
+  ...
+# [webhook:flutterwave:authentication-rejected] {
+#   hasV3VerificationHeader: true,
+#   hasV4SignatureHeader: false,
+#   headerIsPlaceholder: false,
+#   configuredHashPresent: true,
+#   hasMultipleV3VerificationHeaders: false,
+#   verificationHeaderByteLengthMatchesConfiguredHash: false,
+#   verificationHeaderHasOuterWhitespace: false,
+#   configuredHashHasOuterWhitespace: false,
+#   verificationHeaderHasSurroundingQuotes: false,
+#   configuredHashHasSurroundingQuotes: false,
+#   matchesAfterTrimming: false,
+#   matchesAfterRemovingSurroundingQuotes: false,
+#   matchesAfterTrimmingAndRemovingSurroundingQuotes: false
+# }
+# Subtest: forged provider webhooks cannot look up payments or claim events
+ok 5 - forged provider webhooks cannot look up payments or claim events
+  ---
+  duration_ms: 12.808766
+  type: 'test'
+  ...
+# Paystack webhook processing error: Payment currency did not match the recorded charge
+# Paystack webhook processing error: Payment reference did not match the recorded charge
+# Paystack webhook processing error: Payment amount was less than the amount due
+# Paystack webhook processing error: Payment amount is missing
+# Paystack webhook processing error: Payment currency did not match the recorded charge
+# Subtest: signed legacy callbacks require current matching currency, reference and amount
+ok 6 - signed legacy callbacks require current matching currency, reference and amount
+  ---
+  duration_ms: 22.027221
+  type: 'test'
+  ...
+# Subtest: a signed callback from another provider cannot complete an unrelated provider intent
+ok 7 - a signed callback from another provider cannot complete an unrelated provider intent
+  ---
+  duration_ms: 9.990808
+  type: 'test'
+  ...
+# Subtest: twenty simultaneous valid callbacks post one principal credit
+ok 8 - twenty simultaneous valid callbacks post one principal credit
+  ---
+  duration_ms: 93.746749
+  type: 'test'
+  ...
+# Paystack webhook processing error: Isolated ledger failure
+# Subtest: database failure after event receipt rolls back receipt and credit and permits retry
+ok 9 - database failure after event receipt rolls back receipt and credit and permits retry
+  ---
+  duration_ms: 15.321232
+  type: 'test'
+  ...
+# Subtest: late successful evidence revives a failed intent and old receipt-only claims
+ok 10 - late successful evidence revives a failed intent and old receipt-only claims
+  ---
+  duration_ms: 11.982387
+  type: 'test'
+  ...
+# Subtest: verified overpayment queues one exact excess in the same credit transaction
+ok 11 - verified overpayment queues one exact excess in the same credit transaction
+  ---
+  duration_ms: 24.91975
+  type: 'test'
+  ...
+# Subtest: issuer callbacks remain durable review records without inventing wallet postings or counters
+ok 12 - issuer callbacks remain durable review records without inventing wallet postings or counters
+  ---
+  duration_ms: 19.790925
+  type: 'test'
+  ...
+# Subtest: issuer inactive status freezes locally while terminal cards resist delayed activation
+ok 13 - issuer inactive status freezes locally while terminal cards resist delayed activation
+  ---
+  duration_ms: 12.253428
+  type: 'test'
+  ...
+1..13
+# tests 13
+# suites 0
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 985.092418

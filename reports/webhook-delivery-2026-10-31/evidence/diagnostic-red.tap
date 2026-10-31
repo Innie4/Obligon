@@ -1,0 +1,224 @@
+TAP version 13
+# Subtest: Flutterwave authentication diagnostics log only safe flags and keep rejection responses unchanged
+not ok 1 - Flutterwave authentication diagnostics log only safe flags and keep rejection responses unchanged
+  ---
+  duration_ms: 509.318233
+  type: 'test'
+  location: '/home/inimfon-udoh/Obligon/checkout/apps/api/tests/payment-webhook-recovery.integration.test.mjs:8:24'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+
+      [
+        '[webhook:flutterwave:authentication-rejected]',
+        {
+    -     configuredHashHasOuterWhitespace: false,
+    -     configuredHashHasSurroundingQuotes: false,
+          configuredHashPresent: true,
+    -     hasMultipleV3VerificationHeaders: false,
+          hasV3VerificationHeader: false,
+          hasV4SignatureHeader: false,
+          headerIsPlaceholder: false,
+    -     matchesAfterRemovingSurroundingQuotes: false,
+    -     matchesAfterTrimming: false,
+    -     matchesAfterTrimmingAndRemovingSurroundingQuotes: false,
+    -     verificationHeaderByteLengthMatchesConfiguredHash: false,
+    -     verificationHeaderHasOuterWhitespace: false,
+    -     verificationHeaderHasSurroundingQuotes: false
+        }
+      ]
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0: '[webhook:flutterwave:authentication-rejected]'
+    1:
+      hasV3VerificationHeader: false
+      hasV4SignatureHeader: false
+      headerIsPlaceholder: false
+      configuredHashPresent: true
+      hasMultipleV3VerificationHeaders: false
+      verificationHeaderByteLengthMatchesConfiguredHash: false
+      verificationHeaderHasOuterWhitespace: false
+      configuredHashHasOuterWhitespace: false
+      verificationHeaderHasSurroundingQuotes: false
+      configuredHashHasSurroundingQuotes: false
+      matchesAfterTrimming: false
+      matchesAfterRemovingSurroundingQuotes: false
+      matchesAfterTrimmingAndRemovingSurroundingQuotes: false
+  actual:
+    0: '[webhook:flutterwave:authentication-rejected]'
+    1:
+      hasV3VerificationHeader: false
+      hasV4SignatureHeader: false
+      headerIsPlaceholder: false
+      configuredHashPresent: true
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/inimfon-udoh/Obligon/checkout/apps/api/tests/payment-webhook-recovery.integration.test.mjs:66:11)
+    process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)
+  ...
+# Subtest: Flutterwave mismatch shape diagnostics never authorize normalized or duplicate secrets
+not ok 2 - Flutterwave mismatch shape diagnostics never authorize normalized or duplicate secrets
+  ---
+  duration_ms: 12.786567
+  type: 'test'
+  location: '/home/inimfon-udoh/Obligon/checkout/apps/api/tests/payment-webhook-recovery.integration.test.mjs:8:24'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+
+      [
+        '[webhook:flutterwave:authentication-rejected]',
+        {
+    -     configuredHashHasOuterWhitespace: true,
+    -     configuredHashHasSurroundingQuotes: false,
+          configuredHashPresent: true,
+    -     hasMultipleV3VerificationHeaders: false,
+          hasV3VerificationHeader: true,
+          hasV4SignatureHeader: false,
+          headerIsPlaceholder: false,
+    -     matchesAfterRemovingSurroundingQuotes: false,
+    -     matchesAfterTrimming: true,
+    -     matchesAfterTrimmingAndRemovingSurroundingQuotes: true,
+    -     verificationHeaderByteLengthMatchesConfiguredHash: false,
+    -     verificationHeaderHasOuterWhitespace: false,
+    -     verificationHeaderHasSurroundingQuotes: false
+        }
+      ]
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0: '[webhook:flutterwave:authentication-rejected]'
+    1:
+      hasV3VerificationHeader: true
+      hasV4SignatureHeader: false
+      headerIsPlaceholder: false
+      configuredHashPresent: true
+      hasMultipleV3VerificationHeaders: false
+      verificationHeaderByteLengthMatchesConfiguredHash: false
+      verificationHeaderHasOuterWhitespace: false
+      configuredHashHasOuterWhitespace: true
+      verificationHeaderHasSurroundingQuotes: false
+      configuredHashHasSurroundingQuotes: false
+      matchesAfterTrimming: true
+      matchesAfterRemovingSurroundingQuotes: false
+      matchesAfterTrimmingAndRemovingSurroundingQuotes: true
+  actual:
+    0: '[webhook:flutterwave:authentication-rejected]'
+    1:
+      hasV3VerificationHeader: true
+      hasV4SignatureHeader: false
+      headerIsPlaceholder: false
+      configuredHashPresent: true
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/inimfon-udoh/Obligon/checkout/apps/api/tests/payment-webhook-recovery.integration.test.mjs:107:11)
+    process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# [webhook:flutterwave:authentication-rejected] {
+#   hasV3VerificationHeader: true,
+#   hasV4SignatureHeader: false,
+#   headerIsPlaceholder: false,
+#   configuredHashPresent: true
+# }
+# [webhook:flutterwave:authentication-rejected] {
+#   hasV3VerificationHeader: false,
+#   hasV4SignatureHeader: false,
+#   headerIsPlaceholder: false,
+#   configuredHashPresent: true
+# }
+# Subtest: real application middleware accepts a verified Company top-up once and rejects unauthenticated delivery before provider lookup
+ok 3 - real application middleware accepts a verified Company top-up once and rejects unauthenticated delivery before provider lookup
+  ---
+  duration_ms: 39.864168
+  type: 'test'
+  ...
+# Subtest: provider-confirmed first card payment activates one period and withdrawn callbacks cannot revive it
+ok 4 - provider-confirmed first card payment activates one period and withdrawn callbacks cannot revive it
+  ---
+  duration_ms: 43.050502
+  type: 'test'
+  ...
+# [webhook:flutterwave:authentication-rejected] {
+#   hasV3VerificationHeader: true,
+#   hasV4SignatureHeader: false,
+#   headerIsPlaceholder: false,
+#   configuredHashPresent: true
+# }
+# Subtest: forged provider webhooks cannot look up payments or claim events
+ok 5 - forged provider webhooks cannot look up payments or claim events
+  ---
+  duration_ms: 11.130747
+  type: 'test'
+  ...
+# Paystack webhook processing error: Payment currency did not match the recorded charge
+# Paystack webhook processing error: Payment reference did not match the recorded charge
+# Paystack webhook processing error: Payment amount was less than the amount due
+# Paystack webhook processing error: Payment amount is missing
+# Paystack webhook processing error: Payment currency did not match the recorded charge
+# Subtest: signed legacy callbacks require current matching currency, reference and amount
+ok 6 - signed legacy callbacks require current matching currency, reference and amount
+  ---
+  duration_ms: 21.364773
+  type: 'test'
+  ...
+# Subtest: a signed callback from another provider cannot complete an unrelated provider intent
+ok 7 - a signed callback from another provider cannot complete an unrelated provider intent
+  ---
+  duration_ms: 9.243331
+  type: 'test'
+  ...
+# Subtest: twenty simultaneous valid callbacks post one principal credit
+ok 8 - twenty simultaneous valid callbacks post one principal credit
+  ---
+  duration_ms: 98.854753
+  type: 'test'
+  ...
+# Paystack webhook processing error: Isolated ledger failure
+# Subtest: database failure after event receipt rolls back receipt and credit and permits retry
+ok 9 - database failure after event receipt rolls back receipt and credit and permits retry
+  ---
+  duration_ms: 16.003051
+  type: 'test'
+  ...
+# Subtest: late successful evidence revives a failed intent and old receipt-only claims
+ok 10 - late successful evidence revives a failed intent and old receipt-only claims
+  ---
+  duration_ms: 11.560504
+  type: 'test'
+  ...
+# Subtest: verified overpayment queues one exact excess in the same credit transaction
+ok 11 - verified overpayment queues one exact excess in the same credit transaction
+  ---
+  duration_ms: 24.0961
+  type: 'test'
+  ...
+# Subtest: issuer callbacks remain durable review records without inventing wallet postings or counters
+ok 12 - issuer callbacks remain durable review records without inventing wallet postings or counters
+  ---
+  duration_ms: 19.169447
+  type: 'test'
+  ...
+# Subtest: issuer inactive status freezes locally while terminal cards resist delayed activation
+ok 13 - issuer inactive status freezes locally while terminal cards resist delayed activation
+  ---
+  duration_ms: 9.871383
+  type: 'test'
+  ...
+1..13
+# tests 13
+# suites 0
+# pass 11
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 967.518017

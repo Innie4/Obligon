@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { before, after, beforeEach, test } from 'node:test';
 import { randomUUID, createHmac } from 'node:crypto';
+import { request } from 'node:http';
 import pg from 'pg';
 const database=process.env.OBLIGON_TEST_DATABASE_URL;
 if(database)assert.ok(['localhost','127.0.0.1','[::1]'].includes(new URL(database).hostname));
@@ -62,7 +63,11 @@ check('Flutterwave authentication diagnostics log only safe flags and keep rejec
    env.FLW_SECRET_HASH=configuredHashPresent?originalHash:'';
    const response=await actualFetch(`${base}/flutterwave`,{method:'POST',headers:{'Content-Type':'application/json',...headers},body});
    assert.equal(response.status,401);assert.deepEqual(await response.json(),{error:'Invalid signature'});
-   assert.deepEqual(warnings.at(-1),['[webhook:flutterwave:authentication-rejected]',{hasV3VerificationHeader,hasV4SignatureHeader,headerIsPlaceholder,configuredHashPresent}]);
+   assert.deepEqual(warnings.at(-1),['[webhook:flutterwave:authentication-rejected]',{hasV3VerificationHeader,hasV4SignatureHeader,headerIsPlaceholder,configuredHashPresent,
+    hasMultipleV3VerificationHeaders:false,verificationHeaderByteLengthMatchesConfiguredHash:false,
+    verificationHeaderHasOuterWhitespace:false,configuredHashHasOuterWhitespace:false,
+    verificationHeaderHasSurroundingQuotes:false,configuredHashHasSurroundingQuotes:false,
+    matchesAfterTrimming:false,matchesAfterRemovingSurroundingQuotes:false,matchesAfterTrimmingAndRemovingSurroundingQuotes:false}]);
   }
   assert.equal(warnings.length,cases.length);
   for(const [,flags] of warnings)assert.ok(Object.values(flags).every(value=>typeof value==='boolean'));
@@ -70,6 +75,48 @@ check('Flutterwave authentication diagnostics log only safe flags and keep rejec
   env.FLW_SECRET_HASH=originalHash;warnings.length=0;
   const valid=await actualFetch(`${base}/flutterwave`,{method:'POST',headers:{'Content-Type':'application/json','verif-hash':originalHash},body});
   assert.equal(valid.status,200);assert.deepEqual(await valid.json(),{received:true,ignored:'local.diagnostic'});assert.deepEqual(warnings,[]);
+  assert.equal(providerCalls,0);assert.equal(await balance(),0);
+  assert.equal((await pool.query('SELECT count(*)::int AS n FROM wallet_ledger')).rows[0].n,0);
+ }finally{env.FLW_SECRET_HASH=originalHash;}
+});
+check('Flutterwave mismatch shape diagnostics never authorize normalized or duplicate secrets',async t=>{
+ const warnings=[];t.mock.method(console,'warn',(...args)=>warnings.push(args));
+ const originalHash=env.FLW_SECRET_HASH;
+ const body=JSON.stringify({event:'local.diagnostic',data:{email:'never-log-shape@example.invalid'}});
+ const defaultFlags={hasV3VerificationHeader:true,hasV4SignatureHeader:false,headerIsPlaceholder:false,configuredHashPresent:true,
+  hasMultipleV3VerificationHeaders:false,verificationHeaderByteLengthMatchesConfiguredHash:false,
+  verificationHeaderHasOuterWhitespace:false,configuredHashHasOuterWhitespace:false,
+  verificationHeaderHasSurroundingQuotes:false,configuredHashHasSurroundingQuotes:false,
+  matchesAfterTrimming:false,matchesAfterRemovingSurroundingQuotes:false,matchesAfterTrimmingAndRemovingSurroundingQuotes:false};
+ const cases=[
+  [originalHash,` ${originalHash} `,{configuredHashHasOuterWhitespace:true,matchesAfterTrimming:true,matchesAfterTrimmingAndRemovingSurroundingQuotes:true}],
+  [originalHash,`"${originalHash}"`,{configuredHashHasSurroundingQuotes:true,matchesAfterRemovingSurroundingQuotes:true,matchesAfterTrimmingAndRemovingSurroundingQuotes:true}],
+  [`"${originalHash}"`,originalHash,{verificationHeaderHasSurroundingQuotes:true,matchesAfterRemovingSurroundingQuotes:true,matchesAfterTrimmingAndRemovingSurroundingQuotes:true}],
+  [`'${originalHash}'`,originalHash,{verificationHeaderHasSurroundingQuotes:true,matchesAfterRemovingSurroundingQuotes:true,matchesAfterTrimmingAndRemovingSurroundingQuotes:true}],
+  [`" ${originalHash} "`,originalHash,{verificationHeaderHasSurroundingQuotes:true,matchesAfterTrimmingAndRemovingSurroundingQuotes:true}],
+  ['fixture-HOOK',originalHash,{verificationHeaderByteLengthMatchesConfiguredHash:true}],
+  ['ab','é',{verificationHeaderByteLengthMatchesConfiguredHash:true}],
+  [`"${originalHash}`,originalHash,{}],
+  [`${originalHash}, ${originalHash}`,originalHash,{}],
+ ];
+ try{
+  for(const [header,configuredHash,flags] of cases){
+   env.FLW_SECRET_HASH=configuredHash;
+   const response=await actualFetch(`${base}/flutterwave`,{method:'POST',headers:{'Content-Type':'application/json','verif-hash':header},body});
+   assert.equal(response.status,401);assert.deepEqual(await response.json(),{error:'Invalid signature'});
+   assert.deepEqual(warnings.at(-1),['[webhook:flutterwave:authentication-rejected]',{...defaultFlags,...flags}]);
+  }
+  env.FLW_SECRET_HASH=originalHash;
+  const duplicate=await new Promise((resolve,reject)=>{
+   const req=request(`${base}/flutterwave`,{method:'POST',headers:['Host',new URL(base).host,'Content-Type','application/json','Content-Length',String(Buffer.byteLength(body)),'VeRiF-HaSh',originalHash,'verif-hash',originalHash]},res=>{
+    let data='';res.setEncoding('utf8');res.on('data',chunk=>{data+=chunk;});res.on('end',()=>{try{resolve({status:res.statusCode,data:JSON.parse(data)});}catch(error){reject(error);}});
+   });req.on('error',reject);req.end(body);
+  });
+  assert.deepEqual(duplicate,{status:401,data:{error:'Invalid signature'}});
+  assert.deepEqual(warnings.at(-1),['[webhook:flutterwave:authentication-rejected]',{...defaultFlags,hasMultipleV3VerificationHeaders:true}]);
+  assert.equal(warnings.length,cases.length+1);
+  for(const [,flags] of warnings)assert.ok(Object.values(flags).every(value=>typeof value==='boolean'));
+  for(const sensitive of [originalHash,'fixture-HOOK','never-log-shape@example.invalid'])assert.ok(!JSON.stringify(warnings).includes(sensitive));
   assert.equal(providerCalls,0);assert.equal(await balance(),0);
   assert.equal((await pool.query('SELECT count(*)::int AS n FROM wallet_ledger')).rows[0].n,0);
  }finally{env.FLW_SECRET_HASH=originalHash;}

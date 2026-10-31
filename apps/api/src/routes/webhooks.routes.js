@@ -140,11 +140,28 @@ router.post("/sudo", webhookLimiter, async (req, res) => {
  */
 router.post("/flutterwave", webhookLimiter, async (req,res)=>{
   if(!verifyWebhook('flutterwave',{verifHash:req.headers['verif-hash']})){
+    const header=typeof req.headers['verif-hash']==='string'?req.headers['verif-hash']:'';
+    const configured=env.FLW_SECRET_HASH;
+    const unquote=value=>value.replace(/^(["'])(.*)\1$/s,'$2');
+    const same=(left,right)=>{
+      const a=Buffer.from(left),b=Buffer.from(right);
+      return a.length===b.length&&crypto.timingSafeEqual(a,b);
+    };
+    const bothPresent=Boolean(header&&configured);
     console.warn('[webhook:flutterwave:authentication-rejected]',{
       hasV3VerificationHeader:req.headers['verif-hash']!==undefined,
       hasV4SignatureHeader:req.headers['flutterwave-signature']!==undefined,
       headerIsPlaceholder:[req.headers['verif-hash'],req.headers['flutterwave-signature']].some(value=>typeof value==='string'&&/^(?:<redacted>|\*+|[•●]+)$/.test(value.trim())),
       configuredHashPresent:Boolean(env.FLW_SECRET_HASH),
+      hasMultipleV3VerificationHeaders:req.rawHeaders.filter((value,index)=>index%2===0&&value.toLowerCase()==='verif-hash').length>1,
+      verificationHeaderByteLengthMatchesConfiguredHash:bothPresent&&Buffer.byteLength(header)===Buffer.byteLength(configured),
+      verificationHeaderHasOuterWhitespace:header!==header.trim(),
+      configuredHashHasOuterWhitespace:configured!==configured.trim(),
+      verificationHeaderHasSurroundingQuotes:unquote(header)!==header,
+      configuredHashHasSurroundingQuotes:unquote(configured)!==configured,
+      matchesAfterTrimming:bothPresent&&same(header.trim(),configured.trim()),
+      matchesAfterRemovingSurroundingQuotes:bothPresent&&same(unquote(header),unquote(configured)),
+      matchesAfterTrimmingAndRemovingSurroundingQuotes:bothPresent&&same(unquote(header.trim()).trim(),unquote(configured.trim()).trim()),
     });
     return res.status(401).json({error:'Invalid signature'});
   }
