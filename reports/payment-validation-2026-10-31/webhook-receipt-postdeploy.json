@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-10-31T20:34:33.347Z",
+  "topUpStatus": "success",
+  "chargedKobo": "10500",
+  "receipt": null,
+  "audits": [],
+  "ledger": [
+    {
+      "direction": "credit",
+      "amount_kobo": "10000",
+      "balance_after_kobo": "10000"
+    }
+  ],
+  "walletBalanceKobo": "10000",
+  "deliveryProven": false,
+  "singleCredit": true
+}

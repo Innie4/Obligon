@@ -1,0 +1,14 @@
+{
+  "recordedAt": "2026-10-31T20:40:52.230328+00:00",
+  "source": "Flutterwave native transaction delivery-log panel after user-authorized dashboard resend",
+  "status": "Failed",
+  "event": "charge.completed",
+  "responseCode": 401,
+  "attempts": 7,
+  "initiatedBy": "Manual",
+  "receiptFound": false,
+  "walletBalanceKobo": "10000",
+  "singleCredit": true,
+  "headerValuesCaptured": false,
+  "newChargeCreated": false
+}

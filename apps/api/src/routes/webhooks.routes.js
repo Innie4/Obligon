@@ -139,7 +139,15 @@ router.post("/sudo", webhookLimiter, async (req, res) => {
  * handler is idempotent and answers quickly.
  */
 router.post("/flutterwave", webhookLimiter, async (req,res)=>{
-  if(!verifyWebhook('flutterwave',{verifHash:req.headers['verif-hash']}))return res.status(401).json({error:'Invalid signature'});
+  if(!verifyWebhook('flutterwave',{verifHash:req.headers['verif-hash']})){
+    console.warn('[webhook:flutterwave:authentication-rejected]',{
+      hasV3VerificationHeader:req.headers['verif-hash']!==undefined,
+      hasV4SignatureHeader:req.headers['flutterwave-signature']!==undefined,
+      headerIsPlaceholder:[req.headers['verif-hash'],req.headers['flutterwave-signature']].some(value=>typeof value==='string'&&/^(?:<redacted>|\*+|[•●]+)$/.test(value.trim())),
+      configuredHashPresent:Boolean(env.FLW_SECRET_HASH),
+    });
+    return res.status(401).json({error:'Invalid signature'});
+  }
   const raw=req.rawBody??Buffer.from(JSON.stringify(req.body??{}));
   const parsed=parseWebhook('flutterwave',req.body);
   if(!parsed.isChargeEvent)return res.json({received:true,ignored:parsed.event||'unknown'});

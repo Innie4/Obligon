@@ -45,6 +45,35 @@ async function deliver(provider,body,valid=true){
 }
 const event=(ref,provider='paystack')=>provider==='paystack'?{id:'fixture-event',event:'charge.success',data:{reference:ref,amount:10000,currency:'NGN'}}:{event:'charge.completed',data:{id:123,tx_ref:ref,amount:100,currency:'NGN',status:'successful'}};
 async function balance(){return Number((await pool.query('SELECT balance_kobo FROM wallets WHERE id=$1',[wallet])).rows[0].balance_kobo);}
+check('Flutterwave authentication diagnostics log only safe flags and keep rejection responses unchanged',async t=>{
+ const warnings=[];t.mock.method(console,'warn',(...args)=>warnings.push(args));
+ const originalHash=env.FLW_SECRET_HASH;
+ const body=JSON.stringify({event:'local.diagnostic',data:{email:'never-log@example.invalid',authorization:'never-log-payload'}});
+ const cases=[
+  [{},false,false,false,true],
+  [{'verif-hash':'never-log-forged-secret','flutterwave-signature':'never-log-hmac'},true,true,false,true],
+  [{'flutterwave-signature':'never-log-v4-signature'},false,true,false,true],
+  [{'verif-hash':'<redacted>'},true,false,true,true],
+  [{'verif-hash':'********'},true,false,true,true],
+  [{'verif-hash':'never-log-unconfigured'},true,false,false,false],
+ ];
+ try{
+  for(const [headers,hasV3VerificationHeader,hasV4SignatureHeader,headerIsPlaceholder,configuredHashPresent] of cases){
+   env.FLW_SECRET_HASH=configuredHashPresent?originalHash:'';
+   const response=await actualFetch(`${base}/flutterwave`,{method:'POST',headers:{'Content-Type':'application/json',...headers},body});
+   assert.equal(response.status,401);assert.deepEqual(await response.json(),{error:'Invalid signature'});
+   assert.deepEqual(warnings.at(-1),['[webhook:flutterwave:authentication-rejected]',{hasV3VerificationHeader,hasV4SignatureHeader,headerIsPlaceholder,configuredHashPresent}]);
+  }
+  assert.equal(warnings.length,cases.length);
+  for(const [,flags] of warnings)assert.ok(Object.values(flags).every(value=>typeof value==='boolean'));
+  for(const sensitive of [originalHash,'never-log-forged-secret','never-log-hmac','never-log-v4-signature','never-log-unconfigured','never-log@example.invalid','never-log-payload'])assert.ok(!JSON.stringify(warnings).includes(sensitive));
+  env.FLW_SECRET_HASH=originalHash;warnings.length=0;
+  const valid=await actualFetch(`${base}/flutterwave`,{method:'POST',headers:{'Content-Type':'application/json','verif-hash':originalHash},body});
+  assert.equal(valid.status,200);assert.deepEqual(await valid.json(),{received:true,ignored:'local.diagnostic'});assert.deepEqual(warnings,[]);
+  assert.equal(providerCalls,0);assert.equal(await balance(),0);
+  assert.equal((await pool.query('SELECT count(*)::int AS n FROM wallet_ledger')).rows[0].n,0);
+ }finally{env.FLW_SECRET_HASH=originalHash;}
+});
 check('real application middleware accepts a verified Company top-up once and rejects unauthenticated delivery before provider lookup',async()=>{
  const organizationId=randomUUID(),companyWalletId=randomUUID(),ref=`TOPUP-${randomUUID()}`;
  await pool.query("UPDATE users SET role='company' WHERE id=$1",[user]);

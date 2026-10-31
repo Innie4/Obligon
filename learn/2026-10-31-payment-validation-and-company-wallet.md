@@ -4,7 +4,7 @@
 
 ## In short
 
-Local calculation fixes align the fuel quote with the API and calculate cashback from the actual debit. Company Billing separates Subscription and Wallet, and an integration test checks webhook accounting through the real application. The exact patch is approved; live delivery remains unproven.
+Fuel calculations now match the API and cashback uses the actual debit. Company Billing separates Subscription and Wallet. The approved release is deployed; boolean diagnostics will investigate provider webhook authentication without relaxing it.
 
 ## What changed
 
@@ -17,17 +17,18 @@ Local calculation fixes align the fuel quote with the API and calculate cashback
 - `apps/web/tests/company-billing-payment-flow.test.cjs`: checks callback routing, tabs, keyboard navigation and confirmation refresh.
 - `apps/web/tests/dashboard-access-policy.test.cjs`: confirms the explanation does not unlock protected content or duplicate subscription checks.
 - `apps/api/tests/payment-webhook-recovery.integration.test.mjs`: uses `createApp()` and checks an authenticated Company callback, replay and rejected authentication.
+- `apps/api/src/routes/webhooks.routes.js`: logs only boolean flags when authentication fails; credentials and payloads stay out of logs.
 
 ## How it works
 
 1. The preview converts quantities and percentages into integers before multiplication. A half-kobo boundary rounds the same way as the server.
 2. Cashback snapshots the final fuel debit. Station commission remains a separate accounting allocation. Existing awards retain their stored snapshots.
 3. A Company funding return opens Wallet; a marked subscription return opens Subscription. An inactive subscription shows an explanation instead of an empty panel.
-4. The isolated webhook test verifies a fixture payment, credits only its Company wallet once, and checks that replay creates no second credit. Unexpected external requests are blocked.
+4. The isolated webhook test credits its Company wallet once and checks replay. Authentication diagnostics expose only header-presence and placeholder flags, preserving the exact rejection response.
 
 ## Why it's built this way
 
-Integer arithmetic prevents decimal errors changing the checkout price. The existing gate still decides access; its explanation only changes what a locked user sees. Testing real middleware catches wiring problems a separate test router could miss.
+Integer arithmetic prevents decimal errors changing the price. The gate still decides access; its explanation changes only the locked view. Real middleware tests catch wiring problems.
 
 ## The concept worth knowing: idempotency
 
@@ -37,9 +38,9 @@ Integer arithmetic prevents decimal errors changing the checkout price. The exis
 
 ## Watch out for
 
-- The combined local run passed 332 API checks and 16 focused Wallet/access checks. Fixture providers do not prove external settlement.
+- The combined run passed 332 API and 16 Wallet/access checks; the later diagnostic suite passed 12. Fixtures do not prove external settlement.
 - One real Company payment was manually confirmed. A nonfinancial probe authenticated, but provider replay still fails. Browser redaction leaves secret equality unknown.
-- The qualified reviewer approved the exact financial patch. Existing underpaid awards still need reviewed compensating corrections; deployment verification remains separate.
+- The approved release reached Vercel Ready and Render Live. Existing underpaid awards still need reviewed compensating corrections; follow-up diagnostics await deployment.
 - Scheduler recovery remains disabled with an unverified historical backlog. Enabling it can execute queued financial work.
 
 ## Check yourself

@@ -8,7 +8,7 @@ Two confirmed calculation bugs are fixed locally and independently reviewed. Com
 
 The concrete four-file financial patch is [changes.diff](changes.diff), SHA-256 `4c6be4be722e68f4be189b61dcf6e05111231babbc7e09ae125ed3badf009300`. The user explicitly confirmed qualified review and approval of this exact patch. The release agent rechecked its hash and confirmed it matches. The combined nine source/test files are approved for release; no further review confirmation is required for that unchanged change set.
 
-The four Company UI/test files and the additional webhook test also passed independent review. The release agent is preparing the approved combined release. The recorded build below tested the nine-file working tree before commit; it is build evidence, not a claim that hosting deployment has completed.
+The approved nine-file release was committed and pushed as `c6f58e1b4b19e73fed68473bd0402d51c2ef02ad`. The release agent verified Vercel **Ready** and Render **Live** for that release. The recorded build below tested the matching nine-file working tree before commit. A subsequent two-file webhook logging/test patch is independently reviewed and awaiting its own commit/deployment; its authentication behavior is unchanged.
 
 ## What changed
 
@@ -31,14 +31,23 @@ Only new cashback awards use the corrected eligible-spend calculation. Existing 
 - Web typecheck passed. The latest sanitized production Next build of the combined dirty working tree passed and generated 80 static pages. 75 existing warning lines remain, including unused code/hook warnings and workspace-root inference from multiple lockfiles. Build success is not a warning-free result, a UI-only artifact or proof of deployment.
 - Independent review found no blockers in the financial calculation patch, the final Wallet UI/access patch or the webhook test addition. `git diff --check` passed. The user subsequently approved the exact financial patch as a qualified reviewer.
 - Fixture-provider tests cover internal verification, concurrency/idempotency, recovery, ledger effects and tenant boundaries. They are not genuine external sandbox settlement tests.
+- The subsequent webhook diagnostic test failed before the logger was added and passed afterward. Its full focused suite passed 12 of 12 checks, with no skips. It verifies unchanged rejection responses, boolean-only logs, absent credential/payload values and no logging or financial effects for a valid ignored probe. Evidence: [failing reproduction](evidence/webhook-auth-diagnostics-red.tap) and [passing suite](evidence/webhook-auth-diagnostics-green.tap).
 
-Exact commands, test outputs and file hashes are preserved in [the evidence report](evidence/isolated-payment-validation.md). The nine-file combined source identity is recorded in [the manifest](evidence/wallet-webhook-source-manifest.json); it includes the unreleased financial edits.
+Exact commands, test outputs and file hashes are preserved in [the evidence report](evidence/isolated-payment-validation.md). The first release's nine-file source identity was recorded before commit in [the manifest](evidence/wallet-webhook-source-manifest.json).
+
+## Release scan evidence
+
+Trivy found zero secret findings in the nine release source/test files and their diff. A fresh production npm advisory audit covered 305 dependencies and returned zero High/Critical findings and **one Moderate advisory**, `qs` 6.16.0, GHSA-6pq8-jhm2-2vcw; its listed fix is 6.16.1. The lockfile is unchanged and dependency remediation was not included in the approved change set. A bounded caller check found no direct `qs` or affected comma-array-format usage in the checked application sources; this is an exposure assessment, not proof the transitive dependency is safe. The audit is not clean and these scans do not establish overall security. Evidence: [scan report](evidence/release-scans-2026-10-31.md) and [counts/advisory details](evidence/release-scans-2026-10-31.json).
+
+The two follow-up diagnostic files also had zero secret findings in the fresh targeted Trivy scan: [diagnostic scan](evidence/webhook-diagnostics-secret-scan.json). Checking source/docs found no whitespace issues. Raw `changes.diff` contains blank diff-context lines that produce staged whitespace warnings when Git treats the raw patch as a text document; those warnings are not source-code whitespace findings.
 
 ## Company Wallet browser verification
 
 The exact Wallet preview passed desktop and 390-pixel mobile checks. The mobile document's `scrollWidth` was 390 pixels, with no horizontal overflow at that width. Home/End keys switched tabs and moved focus, and reloading a direct `?tab=wallet` URL preserved Wallet selection. The active account displayed its verified ₦100 balance and ledger entry. An inactive subscription displayed the locked explanation, and View subscription selected the Subscription tab without exposing wallet operations.
 
 Screenshots: [active desktop](../company-wallet-tab-2026-10-31/active-desktop.png), [active mobile](../company-wallet-tab-2026-10-31/active-mobile.png), and [inactive mobile](../company-wallet-tab-2026-10-31/inactive-mobile.png). These are preview checks, not proof of the final hosted release. Design reference decisions are recorded in [the direction note](../company-wallet-tab-2026-10-31/DIRECTION.md).
+
+After `c6f58e1` deployed, the live Company Wallet displayed ₦100. Reconfirming the existing payment showed the success popup and left exactly one ₦100 ledger credit. This is a manual-confirmation check; it does not establish provider webhook acceptance. Evidence: [post-deploy receipt/ledger check](webhook-receipt-postdeploy.json).
 
 ## Live payment evidence
 
@@ -60,7 +69,9 @@ The user reported saving the matching secret. The subsequent same-payment replay
 
 A separate, deliberately nonfinancial configuration probe sent with the current Render-stored hash returned HTTP 200, `received:true`, and `ignored:obligon.configuration_probe`. This demonstrates that the active receiver accepts that stored credential. It does not prove that Flutterwave sent an accepted payment webhook, reveal the merchant secret, or change any financial record. Evidence: [active-secret probe](webhook-active-secret-probe.json).
 
-No successful receiver receipt or webhook audit was present in the inspected replay results. The existing ₦100 wallet credit came from manual payment confirmation, not a proven accepted live webhook. The isolated Company test proves first-callback accounting through the actual application; a live replay after manual confirmation can prove delivery and duplicate protection, not first-webhook-only credit.
+No successful provider-event receipt or webhook audit was present in the inspected replay results. Native Flutterwave delivery attempt 7 still showed HTTP 401. The existing ₦100 wallet credit came from manual payment confirmation, not a proven accepted live webhook. The isolated Company test proves first-callback accounting through the actual application; a live replay after manual confirmation can prove delivery and duplicate protection, not first-webhook-only credit. Evidence: [native delivery log](webhook-native-delivery-log.png).
+
+The follow-up receiver change adds only four boolean warning fields after failed authentication: presence of a V3 verification header, presence of a V4 signature header, whether a header resembles a redaction placeholder, and whether a server hash is configured. It keeps the original verification condition, rate limiter, exact 401 response and success path. It logs no header contents, hashes/digests, payloads, account details or credentials. Independent review found no blockers. Deploying this logging-only change can identify the actual header condition without changing payment authorization or relaxing verification.
 
 Evidence: [initial routing error](webhook-replay-diagnostic.json), [replay after URL correction](webhook-replay-corrected-url.json), [replay after the user's secret update](webhook-replay-matched-secret.json), [configuration check with inconclusive secret comparison](webhook-configuration-check.json), and [saved URL browser capture](webhook-settings-corrected-url.png).
 
@@ -92,10 +103,10 @@ Activation and nonsecret route results are in [the account evidence directory](.
 
 ## Approved release and rollback plan
 
-The release agent will commit the approved nine-file source/test change set, push `master`, and verify the corresponding Render and Vercel deployments. No schema migration is part of this release. Post-deploy checks must include API health, login, Company Billing/Wallet selection and the existing payment's unchanged single-credit ledger result.
+The approved nine-file release `c6f58e1` is on `master` with Vercel Ready and Render Live. The release agent will separately commit, push and verify the follow-up webhook diagnostics. No schema migration is part of either release. Post-deploy checks include API health, login, Company Billing/Wallet selection and the existing payment's unchanged single-credit ledger result.
 
 Abort the rollout or roll back if login, Billing or API health breaks, or if duplicate wallet credit is observed. Rollback consists of a targeted `git revert` of the new release commit on `master`, followed by pushing that revert and verifying both hosting Git deployments and the same checks. Preserve financial records; a code revert cannot undo a payment or reward already posted. Any money correction requires attributable compensating records and investigation. Rollback timing, automatic rollback and recovery during an actual incident have not been tested or promised.
 
 ## Remaining release evidence
 
-Diagnose the remaining webhook signature failure without treating browser redaction as a secret value, then prove successful same-payment delivery and duplicate protection. Obtain valid customer-role access before testing customer checkout. Separately authorize and verify refunds and partner payout destinations/amounts. Review the existing financial backlog before restoring unattended recovery. Configure and verify required issuing/BVN providers before claiming new card workflows work. Historical cashback corrections need their own reviewed reconciliation. The approved release still needs its final commit and verified hosting deployments. These remaining checks are not a new approval barrier for the unchanged approved patch and cannot be replaced by the passing fixture test suite.
+Deploy the reviewed boolean diagnostics, diagnose the remaining webhook signature failure without treating browser redaction as a secret value, then prove successful same-payment delivery and duplicate protection. Obtain valid customer-role access before testing customer checkout. Separately authorize and verify refunds and partner payout destinations/amounts. Review the existing financial backlog before restoring unattended recovery. Configure and verify required issuing/BVN providers before claiming new card workflows work. Historical cashback corrections need their own reviewed reconciliation. The first approved release is deployed; follow-up diagnostic deployment and accepted provider delivery remain unverified here. These remaining checks are not a new approval barrier and cannot be replaced by the passing fixture test suite.

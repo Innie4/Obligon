@@ -1,0 +1,44 @@
+✔ Flutterwave authentication diagnostics log only safe flags and keep rejection responses unchanged (1032.248035ms)
+[webhook:flutterwave:authentication-rejected] {
+  hasV3VerificationHeader: true,
+  hasV4SignatureHeader: false,
+  headerIsPlaceholder: false,
+  configuredHashPresent: true
+}
+[webhook:flutterwave:authentication-rejected] {
+  hasV3VerificationHeader: false,
+  hasV4SignatureHeader: false,
+  headerIsPlaceholder: false,
+  configuredHashPresent: true
+}
+✔ real application middleware accepts a verified Company top-up once and rejects unauthenticated delivery before provider lookup (122.258718ms)
+✔ provider-confirmed first card payment activates one period and withdrawn callbacks cannot revive it (173.389139ms)
+[webhook:flutterwave:authentication-rejected] {
+  hasV3VerificationHeader: true,
+  hasV4SignatureHeader: false,
+  headerIsPlaceholder: false,
+  configuredHashPresent: true
+}
+✔ forged provider webhooks cannot look up payments or claim events (28.965807ms)
+Paystack webhook processing error: Payment currency did not match the recorded charge
+Paystack webhook processing error: Payment reference did not match the recorded charge
+Paystack webhook processing error: Payment amount was less than the amount due
+Paystack webhook processing error: Payment amount is missing
+Paystack webhook processing error: Payment currency did not match the recorded charge
+✔ signed legacy callbacks require current matching currency, reference and amount (59.947872ms)
+✔ a signed callback from another provider cannot complete an unrelated provider intent (26.28662ms)
+✔ twenty simultaneous valid callbacks post one principal credit (196.795612ms)
+Paystack webhook processing error: Isolated ledger failure
+✔ database failure after event receipt rolls back receipt and credit and permits retry (59.520728ms)
+✔ late successful evidence revives a failed intent and old receipt-only claims (40.552024ms)
+✔ verified overpayment queues one exact excess in the same credit transaction (83.300784ms)
+✔ issuer callbacks remain durable review records without inventing wallet postings or counters (50.437652ms)
+✔ issuer inactive status freezes locally while terminal cards resist delayed activation (26.278824ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2138.152236
