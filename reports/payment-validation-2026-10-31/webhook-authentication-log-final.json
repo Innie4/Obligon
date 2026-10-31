@@ -1,0 +1,22 @@
+{
+  "recordedAt": "2026-10-31T20:53:12.215Z",
+  "source": "Latest visible Render application log lines after final API and dashboard resends",
+  "lines": [
+    "[webhook:flutterwave:authentication-rejected] {",
+    "  hasV3VerificationHeader: true,",
+    "  hasV4SignatureHeader: false,",
+    "  headerIsPlaceholder: false,",
+    "  configuredHashPresent: true",
+    "[webhook:flutterwave:authentication-rejected] {",
+    "  hasV3VerificationHeader: true,",
+    "  hasV4SignatureHeader: false,",
+    "  headerIsPlaceholder: false,",
+    "  configuredHashPresent: true",
+    "[webhook:flutterwave:authentication-rejected] {",
+    "  hasV3VerificationHeader: true,",
+    "  hasV4SignatureHeader: false,",
+    "  headerIsPlaceholder: false,",
+    "  configuredHashPresent: true"
+  ],
+  "secretsIncluded": false
+}

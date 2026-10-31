@@ -1,0 +1,102 @@
+{
+  "checkedAt": "2026-10-31T20:46:42.902Z",
+  "checks": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/admin/companies",
+      "status": 200
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/admin/staff",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/company/subscription",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/company/wallet",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/company/billing",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/partner/overview",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/partner/billing",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "status": 200
+    }
+  ],
+  "accounts": [
+    {
+      "role": "admin"
+    },
+    {
+      "role": "company",
+      "activeSubscription": true,
+      "walletBalanceKobo": "10000",
+      "walletBalanceLabel": "₦100"
+    },
+    {
+      "role": "partner",
+      "partnerAccess": true
+    }
+  ],
+  "health": {
+    "scheduler": {
+      "enabled": false,
+      "running": false,
+      "lastRunAt": null,
+      "lastReconciliationAt": null,
+      "overdue": false,
+      "msSinceLastReconciliation": null,
+      "lastReconciliationError": null
+    }
+  },
+  "status": "passed"
+}

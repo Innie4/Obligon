@@ -1,0 +1,7 @@
+{
+  "recordedAt": "2026-10-31T20:52:21.638Z",
+  "source": "Native Flutterwave delivery log after user reports copying exact Render secret and saving it",
+  "visibleDeliveryLog": "Webhook delivery logs\nStatus\nFailed\nEvent type\ncharge.completed\nResponse code\n401\nAttempts\n10\nInitiated by\nManual\nLast attempted\na few seconds ago\nDone",
+  "secretsIncluded": false,
+  "newChargeCreated": false
+}

@@ -1,5 +1,17 @@
 # Payment validation and four-day dashboard access
 
+## Final verified status
+
+The Wallet UI and reviewed calculation fixes are deployed. Application commits `c6f58e1` and `a05a103` were pushed to `master`; Vercel reports Ready and Render reports Live for `a05a103`. The latter adds rejection diagnostics without changing webhook authentication or accounting. This section supersedes the earlier release-progress notes below.
+
+The final live smoke check passed all 14 requests, covering API health, Admin access, Company access, Partner access and session logout. The Company has an active Enterprise subscription and a real wallet balance of **₦100**. Live Billing has separate Subscription and Wallet tabs; confirming the already-paid reference displays a success popup and preserves one ledger credit. See [live checks](live-release-smoke.json) and [live Wallet screenshot](../company-wallet-tab-2026-10-31/live-wallet-confirmed.png).
+
+**Webhook delivery remains unresolved.** After the owner reported copying Render's actual secret into Flutterwave and saving it, both API resend and native dashboard resend still returned `401 Invalid signature`. The native delivery log reached attempt 10. Render's deployed diagnostics confirm that the V3 verification header is present, the V4 signature header is absent, the incoming header is not a known placeholder, and the server hash is configured. Together with the unchanged exact comparison, this proves that the delivered V3 value differs from the running server configuration. It does not reveal which value Flutterwave currently stores or whether resend preserves an earlier value. A signed nonfinancial probe using Render's configured value was accepted.
+
+No accepted provider-event receipt or matching webhook audit exists for this payment. Its original **₦105 charge, ₦5 application fee and single ₦100 wallet credit** remain unchanged. No new charge, payout or refund was made during diagnosis. See [final receipt/ledger check](webhook-receipt-postdeploy.json), [native delivery result](webhook-native-final.json), [safe runtime flags](webhook-authentication-log-final.json) and the prepared [Flutterwave investigation brief](flutterwave-investigation.md). No message has been sent to Flutterwave.
+
+The three account credentials are supplied in chat, excluded from repository evidence, and expire **4 November 2026 at 20:38:43.560 WAT**. The Company plan is complimentary; it is not a fabricated processor subscription payment. The Partner test station remains pending and unpublished. Real-money proof covers Company wallet funding only. Customer checkout, actual subscription purchases, external issuing, refunds, payouts, bank settlement and unattended recovery remain unverified. The scheduler and dependency advisory limitations below remain open; this is not a complete launch-readiness pass.
+
 Prepared on 31 October 2026 against source revision `ccdff3dbf6fec17e5cb70bc5ae9c54cfbce95054`.
 
 ## Result and release decision

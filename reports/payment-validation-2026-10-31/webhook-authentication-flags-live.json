@@ -1,0 +1,14 @@
+{
+  "recordedAt": "2026-10-31T20:47:18.985Z",
+  "source": "Render runtime logs after exact paid transaction replay on a05a103",
+  "flags": {
+    "hasV3VerificationHeader": true,
+    "hasV4SignatureHeader": false,
+    "headerIsPlaceholder": false,
+    "configuredHashPresent": true
+  },
+  "receiverResponse": 401,
+  "conclusion": "The delivered V3 verification header differs from the running receiver configuration; saved merchant secret equality remains uninspectable due browser redaction.",
+  "secretsLogged": false,
+  "newChargeCreated": false
+}
