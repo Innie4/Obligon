@@ -1,0 +1,65 @@
+{
+  "checkedAt": "2026-10-31T21:19:40.580Z",
+  "action": "User-approved provider-originated resend of the existing paid Company top-up",
+  "referenceHash": "dca929b4bd082b4a354bcec5b3ef38942ac35c432afd12f8d68098e72a0afa71",
+  "before": {
+    "ledger": [
+      {
+        "direction": "credit",
+        "amount_kobo": "10000",
+        "balance_after_kobo": "10000"
+      }
+    ],
+    "walletBalanceKobo": "10000",
+    "receipt": {
+      "response": {
+        "completed": true
+      },
+      "created_at": "2026-10-31T21:19:08.543Z"
+    },
+    "audits": [
+      {
+        "created_at": "2026-10-31T21:19:09.448Z",
+        "duplicate": "false"
+      }
+    ]
+  },
+  "providerReplay": {
+    "httpStatus": 200,
+    "status": "success",
+    "message": "hook sent successfully",
+    "elapsedMs": 2728,
+    "dataKeys": [
+      "received",
+      "duplicate"
+    ]
+  },
+  "after": {
+    "ledger": [
+      {
+        "direction": "credit",
+        "amount_kobo": "10000",
+        "balance_after_kobo": "10000"
+      }
+    ],
+    "walletBalanceKobo": "10000",
+    "receipt": {
+      "response": {
+        "completed": true
+      },
+      "created_at": "2026-10-31T21:19:08.543Z"
+    },
+    "audits": [
+      {
+        "created_at": "2026-10-31T21:19:09.448Z",
+        "duplicate": "false"
+      },
+      {
+        "created_at": "2026-10-31T21:19:45.376Z",
+        "duplicate": "true"
+      }
+    ]
+  },
+  "delivered": true,
+  "status": "delivery-proven"
+}

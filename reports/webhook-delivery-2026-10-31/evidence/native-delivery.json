@@ -1,0 +1,10 @@
+{
+  "recordedAt": "2026-10-31T21:22:15.544961+00:00",
+  "source": "Flutterwave merchant native Webhook delivery logs for the same paid transaction",
+  "status": "Delivered",
+  "eventType": "charge.completed",
+  "responseCode": 200,
+  "attempts": 12,
+  "initiatedBy": "Manual",
+  "screenshot": "Stored privately in /tmp/obligon-flutterwave-delivery-proof-20261031.jpg; surrounding transaction details excluded from Git"
+}

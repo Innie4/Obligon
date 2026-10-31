@@ -1,0 +1,14 @@
+{
+  "sourceCommit": "3aed5d5a983eb8af299b3bf2c8f0f05d21b20a40",
+  "render": {
+    "status": "Deploy succeeded|Live",
+    "url": "https://dashboard.render.com/web/srv-daj4mrtg1s2s739dicr0/deploys/dep-dbj5lcvb9u1s73bco77g",
+    "serviceLiveLog": true
+  },
+  "vercel": {
+    "status": "Ready",
+    "environment": "Production Current",
+    "url": "https://vercel.com/inimfon-udohs-projects-ded7da96/obligon/8s9mfTvS6ctxV3p4LTMUTrtPLG94",
+    "domain": "https://obligon.vercel.app"
+  }
+}

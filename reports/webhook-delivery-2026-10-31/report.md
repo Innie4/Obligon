@@ -9,7 +9,7 @@ Base release: `b580d15e1cecfd4a5aa0668d8ba56026809e52b9`.
 3. A second delivery leaves the original single NGN 100.00 wallet credit and balance unchanged.
 4. Any source changes pass focused tests and independent review; the exact pushed revision is live on Render and Vercel.
 
-Delivery remains unresolved at preparation of this report. A successful resend API envelope alone is not proof of receiver acceptance.
+Delivery is now proven for the existing paid Company transaction. A successful resend API envelope alone was not treated as proof of receiver acceptance.
 
 ## Evidence and scope
 
@@ -33,4 +33,20 @@ This increment changes private rejection diagnostics only. It adds no dependency
 
 Rollback: select previous successful Render deployment `dep-dbj5cabncjis73d8m11g` at `b580d15`, and the prior Vercel Ready deployment `8CN8dzKJn2UzunuCQ3eSDMEB9DHw`, using their hosting dashboards. No schema rollback is needed. Stop the release if health fails or rejection logs reveal any credential/payload data. Free hosting offers no configured canary rollout; no five-minute recovery-time or load-test claim is made.
 
-Live diagnostic result, any necessary configuration action, duplicate proof, and hosting receipts will be recorded after deployment. No new charge, payout, refund, scheduler activation, ledger correction, or unsigned webhook acceptance is authorized by this investigation.
+## Live result
+
+The source patch was pushed as `3aed5d5a983eb8af299b3bf2c8f0f05d21b20a40`. Vercel reported Ready and Current for this revision; Render reported Deploy succeeded and Live.
+
+- First provider-originated resend: requested at `2026-10-31T21:19:04.880Z`; completed durable receipt at `21:19:08.543Z`; authenticated audit at `21:19:09.448Z` with `duplicate=false`.
+- Second provider-originated resend: requested at `21:19:40.580Z`; authenticated audit at `21:19:45.376Z` with `duplicate=true`. The same completed receipt and creation timestamp remain.
+- Both provider responses contain the receiver's `received` and `duplicate` result fields and no delivery error. Independent native merchant delivery logs show **Delivered**, event `charge.completed`, receiver response code **200**, attempts **12**.
+- Before and after both resends, the wallet has exactly one principal credit of `10000` kobo and a `10000` kobo balance. No second credit was inserted.
+- API health and Company Billing returned HTTP 200 at `21:20:22Z`.
+
+An independent evidence reviewer passed 20 deterministic assertions across the two saved replay snapshots, including reference identity, the unchanged ledger/balance, receipt identity, and first/duplicate audit progression. Response keys are retained, while their raw boolean values are not; durable database effects and the native receiver HTTP 200 are the acceptance evidence. The isolated test PostgreSQL was then stopped cleanly, with files and logs preserved.
+
+The successful delivery followed the user's final secret synchronization and a fresh API deployment. The browser masks credential values, so this investigation cannot prove the exact prior secret discrepancy. No authentication normalization or bypass was introduced: the provider now passes the original exact comparison. The new diagnostics were not needed on the accepted path.
+
+Evidence is saved under `evidence/`: `first-accepted-replay.json`, `duplicate-replay.json`, `native-delivery.json`, `hosting-release.json`, `live-health.json`, and focused red/green TAP results. The saved red TAP removes trailing spaces only; its raw original remains in `/tmp`. The full native screenshot is retained privately outside Git because its surrounding page contains transaction details.
+
+No new charge, payout, refund, scheduler activation, ledger correction, or unsigned webhook acceptance occurred. This task proves delivery and duplicate handling for the existing paid Company top-up. It does not claim full financial readiness, bank settlement, every event type, continuous monitoring, a load test, or automatic recovery from every hosting outage.

@@ -37,7 +37,7 @@ Precisely, observability means exposing enough information to explain a system's
 - Passing local tests does not establish that the provider and deployment use the same secret.
 - Password-field redaction cannot prove saved-secret equality.
 - A provider resend can return HTTP 200 while embedding the receiver's failure. Check the durable receipt, audit, and unchanged wallet ledger.
-- The focused suite passed 13 tests. Live delivery must be established separately and recorded in the report.
+- The focused suite passed 13 tests. Live delivery was then separately confirmed twice, including one duplicate, with a completed receipt and a single unchanged wallet credit. Flutterwave's native log reports HTTP 200.
 
 ## Check yourself
 
