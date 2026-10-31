@@ -1,0 +1,13 @@
+{
+  "environment": "isolated synthetic Company accounts, local API and PostgreSQL; no external payment requests",
+  "desktopWalletBalanceAndLedger": true,
+  "mobileWidth": 390,
+  "mobileContentWidth": 390,
+  "mobileWalletBalanceAndLedger": true,
+  "keyboardHomeEndSelectionAndFocus": true,
+  "walletDeepLinkPersistsAfterReload": true,
+  "inactiveWalletRestricted": true,
+  "inactiveViewSubscriptionAction": true,
+  "productionVerification": "pending deployment",
+  "recordedAt": "2026-10-31T20:26:59.099273+00:00"
+}

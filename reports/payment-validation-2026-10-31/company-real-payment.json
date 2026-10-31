@@ -1,0 +1,41 @@
+{
+  "checkedAt": "2026-10-31T19:53:43.340Z",
+  "flow": "company-wallet-topup",
+  "referenceHash": "dca929b4bd082b4a354bcec5b3ef38942ac35c432afd12f8d68098e72a0afa71",
+  "initialStatus": "pending",
+  "provider": {
+    "paid": true,
+    "status": "successful",
+    "amountKobo": 10500,
+    "currency": "NGN",
+    "transactionIdHash": "fc80ff548bdd027f80bf32583a9de3342046e6c8392bd0716d54be5398f17992",
+    "settledAmountKobo": 10274
+  },
+  "confirmations": [
+    {
+      "httpStatus": 200,
+      "alreadyPaid": false,
+      "balanceKobo": 10000
+    },
+    {
+      "httpStatus": 200,
+      "alreadyPaid": true,
+      "balanceKobo": 10000
+    }
+  ],
+  "database": {
+    "status": "success",
+    "amountKobo": "10000",
+    "feeKobo": "500",
+    "chargedKobo": "10500",
+    "ledgerEntries": [
+      {
+        "direction": "credit",
+        "amount_kobo": "10000",
+        "balance_after_kobo": "10000"
+      }
+    ]
+  },
+  "webhookObservedBeforeManualConfirm": false,
+  "status": "passed"
+}

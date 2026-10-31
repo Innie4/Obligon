@@ -1,0 +1,64 @@
+{
+  "source_base": "ccdff3dbf6fec17e5cb70bc5ae9c54cfbce95054",
+  "build_tree": "dirty checkout; includes unreleased financial edits; not a Wallet-only release artifact",
+  "combined_sha256": "793e36b304acbb5b98dda1b6727674895181cf252949ad7f7483bca759b45ff3",
+  "hash_method": "concatenate each ordered UTF-8 filename, NUL, exact file bytes, NUL",
+  "files": [
+    {
+      "file": "apps/api/src/lib/customer-rewards.js",
+      "sha256": "3e0c358d42a0d23b28f5a2fe9795667d03d9dfcce0afbdd2ee473e221eb20c57"
+    },
+    {
+      "file": "apps/api/tests/customer-rewards.integration.test.mjs",
+      "sha256": "229609a597bd6a2f2196fc27bb53b2b3f389cc9c8d63c2c04bcf1b51fc1dd9de"
+    },
+    {
+      "file": "apps/api/tests/payment-webhook-recovery.integration.test.mjs",
+      "sha256": "823ddf320ac87aa436b2c98d5a76ed5e693674d7201d0e3d6440ebf0a51220b9"
+    },
+    {
+      "file": "apps/web/components/company-dashboard/CompanyScreen.tsx",
+      "sha256": "0a60e4ceb1930fa67ceeb6327204d593b9d3421faef08a1b7122a8a398097930"
+    },
+    {
+      "file": "apps/web/components/company-dashboard/CompanySubscriptionGate.tsx",
+      "sha256": "fa47234f9ff1a92489d32c31cf77861bfb2e381a40c3030920504c38bafff0c6"
+    },
+    {
+      "file": "apps/web/components/customer-dashboard/CustomerFuelCheckout.tsx",
+      "sha256": "69aa4a7baac1eeaa8d56a1b04e5fa9c2a17ad92268085d21e096c9d0a5008c8f"
+    },
+    {
+      "file": "apps/web/tests/company-billing-payment-flow.test.cjs",
+      "sha256": "5c6e3e30b8e7dfec601bb389c989e5c44bfccef11a1a361cdb59f0d8e411adc7"
+    },
+    {
+      "file": "apps/web/tests/dashboard-access-policy.test.cjs",
+      "sha256": "60a113c3417cc8418eab3e7b8d8e6acd30c76de42b3e03175390fdcb59ed00be"
+    },
+    {
+      "file": "apps/web/tests/production-customer-controls.test.cjs",
+      "sha256": "5f4c21cd1727077c79c4f6c71b05e29adc502b0def2a4d0d9702f6ed313d4e0d"
+    }
+  ],
+  "api_tests": {
+    "files": 24,
+    "tests": 332,
+    "passed": 332,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0
+  },
+  "focused_web_tests": {
+    "files": 2,
+    "tests": 16,
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "runner": "unsandboxed Node --test --test-reporter=tap"
+  },
+  "web_production_build_exit": 0,
+  "static_pages": 80,
+  "build_warning_lines": 75
+}

@@ -1,0 +1,76 @@
+{
+  "checkedAt": "2026-10-31T19:40:16.000Z",
+  "mode": "read-only-aggregate",
+  "summaries": {
+    "payment_refunds": [],
+    "payouts": [
+      {
+        "state": "pending",
+        "count": 1,
+        "amount_kobo": "30000000"
+      },
+      {
+        "state": "success",
+        "count": 1,
+        "amount_kobo": "45000000"
+      }
+    ],
+    "settlements": [
+      {
+        "state": "paid",
+        "count": 3,
+        "amount_kobo": "3752850000"
+      },
+      {
+        "state": "pending",
+        "count": 2,
+        "amount_kobo": "251741655"
+      }
+    ],
+    "top_ups": [
+      {
+        "state": "failed",
+        "count": 87,
+        "amount_kobo": "25200000"
+      },
+      {
+        "state": "pending",
+        "count": 4,
+        "amount_kobo": "10700000"
+      },
+      {
+        "state": "success",
+        "count": 6,
+        "amount_kobo": "2587500"
+      }
+    ],
+    "subscription_payments": [
+      {
+        "state": "pending",
+        "count": 3,
+        "amount_kobo": "7500000"
+      }
+    ],
+    "fuel_orders": [],
+    "card_requests": [
+      {
+        "state": "failed",
+        "count": 26,
+        "amount_kobo": null
+      },
+      {
+        "state": "paid",
+        "count": 7,
+        "amount_kobo": null
+      },
+      {
+        "state": "unpaid",
+        "count": 43,
+        "amount_kobo": null
+      }
+    ]
+  },
+  "automaticSettlement": {
+    "organizations": 8
+  }
+}

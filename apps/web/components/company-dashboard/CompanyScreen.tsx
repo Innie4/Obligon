@@ -509,23 +509,48 @@ function CompanyWalletPanel({ onModal }: PageProps) {
     <h2 className="text-xl font-extrabold">Company fuel wallet</h2>
     <p className="mt-3 text-sm text-obligon-text">Fleet cards spend directly from the company wallet. Member allocations transfer funds to personal wallets.</p>
     <DataBoundary result={result}>
-      <p className="mt-4 text-3xl font-extrabold">{result.data?.company?.balanceLabel ?? "Balance unavailable"}</p>
+      <p aria-label="Company wallet balance" aria-live="polite" className="mt-4 text-3xl font-extrabold text-obligon-navy">{result.data?.company?.balanceLabel ?? "Balance unavailable"}</p>
       <div className="mt-4 flex flex-wrap gap-3"><button type="button" className={buttonClass} onClick={() => onModal("walletFund")}>Fund company wallet</button><button type="button" className={controlClass} onClick={() => onModal("walletAllocate")}>Allocate to member</button></div>
       {result.data?.recent?.length ? <ul className="mt-5 divide-y divide-[#dfe5ec]">{result.data.recent.map(entry => <li key={entry.id} className="py-3 text-sm"><p className="font-bold">{entry.direction === "credit" ? "+" : "−"}{entry.amountLabel} · {entry.description}</p><p className="mt-1 break-all text-xs text-obligon-text">{entry.reference} · {entry.date}</p></li>)}</ul> : <p className="mt-4 text-sm text-obligon-text">No recorded company wallet movements.</p>}
     </DataBoundary>
     <div className="mt-5 border-t border-[#dfe5ec] pt-4"><label className="block text-sm font-bold">Check a pending funding reference<input value={reference} disabled={busy} onChange={event => { setReference(event.target.value); setConfirmed(null); }} className={`${controlClass} mt-1 w-full`} /></label><button type="button" className={`${controlClass} mt-3 disabled:opacity-50`} disabled={busy || !reference.trim()} onClick={confirm}>{busy ? "Checking payment…" : "Check payment"}</button></div>
-    {error ? <StatusPopup tone="error" message={error} /> : null}{confirmed ? <p role="status" className="mt-3 text-sm">{confirmed}</p> : null}
+    {error ? <StatusPopup tone="error" message={error} /> : null}{confirmed ? <StatusPopup tone="success" message={confirmed} /> : null}
   </section>;
 }
 function Billing({ onModal }: PageProps) {
   const result = useAsync(companyApi.billing);
   const { user } = useSession();
   const [walletRevision, setWalletRevision] = React.useState(0);
+  const [tab, setTab] = React.useState<"subscription" | "wallet">("subscription");
+  React.useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    if (query.get("paymentFlow") !== "subscription" && (query.get("tab") === "wallet" || query.get("topup") || query.get("tx_ref") || query.get("reference"))) setTab("wallet");
+  }, []);
+  function selectTab(next: "subscription" | "wallet") {
+    setTab(next);
+    const query = new URLSearchParams(window.location.search);
+    query.set("tab", next);
+    window.history.replaceState({}, "", `${window.location.pathname}?${query}${window.location.hash ?? ""}`);
+  }
+  function navigateTabs(event: React.KeyboardEvent<HTMLButtonElement>) {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const next = event.key === "Home" ? "subscription" : event.key === "End" ? "wallet" : tab === "subscription" ? "wallet" : "subscription";
+    selectTab(next);
+    event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next === "subscription" ? 0 : 1]?.focus();
+  }
   return <Canvas>
 
     <Header pageKey="billing" action={{ label: "Export Invoices", modal: "export", context: { scope: "invoices" } }} onModal={onModal} />
+    <div role="tablist" aria-label="Company billing" className="mt-6 grid w-full grid-cols-2 gap-1 rounded-xl border border-obligon-border bg-white p-1 sm:max-w-sm">
+      {(["subscription", "wallet"] as const).map(value => <button key={value} id={`company-billing-tab-${value}`} type="button" role="tab" aria-selected={tab === value} aria-controls={`company-billing-panel-${value}`} tabIndex={tab === value ? 0 : -1} onClick={() => selectTab(value)} onKeyDown={navigateTabs} className={`min-h-12 rounded-lg px-4 text-sm font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-obligon-green ${tab === value ? "bg-obligon-green text-white" : "text-obligon-text hover:bg-obligon-mist"}`}>{value === "subscription" ? "Subscription" : "Wallet"}</button>)}
+    </div>
+    <div id="company-billing-panel-wallet" role="tabpanel" aria-labelledby="company-billing-tab-wallet" hidden={tab !== "wallet"} tabIndex={0} className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-obligon-green">
+      {tab === "wallet" ? <CompanySubscriptionGate key={walletRevision} protectedSection fallback={<section className="mt-6 rounded-xl border border-obligon-border bg-white p-5"><h2 className="text-xl font-extrabold text-obligon-navy">Activate your company wallet</h2><p className="mt-3 max-w-2xl text-sm leading-6 text-obligon-text">An active Organization subscription is required to view your wallet, fund your fleet and allocate money to members. Your subscription payment is separate from your fuel balance.</p><button type="button" className={`${buttonClass} mt-5`} onClick={() => selectTab("subscription")}>View subscription</button></section>}><CompanyWalletPanel onModal={onModal} /></CompanySubscriptionGate> : null}
+    </div>
+    <div id="company-billing-panel-subscription" role="tabpanel" aria-labelledby="company-billing-tab-subscription" hidden={tab !== "subscription"} tabIndex={0} className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-obligon-green">
+      {tab === "subscription" ? <>
     <SubscriptionPanel kind="company" embedded onSubscriptionChange={() => setWalletRevision(value => value + 1)} />
-    <CompanySubscriptionGate key={walletRevision} protectedSection><CompanyWalletPanel onModal={onModal} /></CompanySubscriptionGate>
 
     <DataBoundary result={result}>
 
@@ -565,7 +590,8 @@ function Billing({ onModal }: PageProps) {
       <Table title="Invoice history" columns={["Date", "Invoice", "Amount"]} rows={result.data?.invoices ?? []} empty="No invoices have been issued." />
 
     </DataBoundary>
-
+    </> : null}
+    </div>
   </Canvas>;
 }
 function Team({ onModal }: PageProps) {

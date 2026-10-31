@@ -1,0 +1,106 @@
+TAP version 13
+# Subtest: company subscription confirms only its marked processor return
+ok 1 - company subscription confirms only its marked processor return
+  ---
+  duration_ms: 189.092832
+  type: 'test'
+  ...
+# Subtest: company wallet ignores a subscription return while retaining wallet return references
+ok 2 - company wallet ignores a subscription return while retaining wallet return references
+  ---
+  duration_ms: 218.941385
+  type: 'test'
+  ...
+# Subtest: Billing separates subscription and protected wallet content into accessible tabs
+ok 3 - Billing separates subscription and protected wallet content into accessible tabs
+  ---
+  duration_ms: 90.85486
+  type: 'test'
+  ...
+# Subtest: Billing opens Wallet for funding returns and keeps subscription callbacks on Subscription
+ok 4 - Billing opens Wallet for funding returns and keeps subscription callbacks on Subscription
+  ---
+  duration_ms: 297.18666
+  type: 'test'
+  ...
+# Subtest: Billing gives a locked Wallet an explanation and a working subscription destination
+ok 5 - Billing gives a locked Wallet an explanation and a working subscription destination
+  ---
+  duration_ms: 57.361931
+  type: 'test'
+  ...
+# Subtest: Billing tabs support arrow, Home and End keys with one focusable tab
+ok 6 - Billing tabs support arrow, Home and End keys with one focusable tab
+  ---
+  duration_ms: 49.715217
+  type: 'test'
+  ...
+# Subtest: Wallet displays its live balance and confirms funding with a success popup and refresh
+ok 7 - Wallet displays its live balance and confirms funding with a success popup and refresh
+  ---
+  duration_ms: 51.598663
+  type: 'test'
+  ...
+# Subtest: inactive company operations show Organization checkout and an active plan unlocks them
+ok 8 - inactive company operations show Organization checkout and an active plan unlocks them
+  ---
+  duration_ms: 101.601573
+  type: 'test'
+  ...
+# Subtest: company billing, settings, support and notifications remain available without a plan
+ok 9 - company billing, settings, support and notifications remain available without a plan
+  ---
+  duration_ms: 57.759349
+  type: 'test'
+  ...
+# Subtest: a protected wallet section on Billing stays hidden without duplicating plan cards
+ok 10 - a protected wallet section on Billing stays hidden without duplicating plan cards
+  ---
+  duration_ms: 24.070085
+  type: 'test'
+  ...
+# Subtest: a protected company section can explain locked access using the existing subscription check
+ok 11 - a protected company section can explain locked access using the existing subscription check
+  ---
+  duration_ms: 24.495285
+  type: 'test'
+  ...
+# Subtest: expiry hides company operations and rechecks the server without manufacturing a renewal
+ok 12 - expiry hides company operations and rechecks the server without manufacturing a renewal
+  ---
+  duration_ms: 9.563744
+  type: 'test'
+  ...
+# Subtest: failed company checks keep operational content hidden and allow a fresh retry
+ok 13 - failed company checks keep operational content hidden and allow a fresh retry
+  ---
+  duration_ms: 8.539496
+  type: 'test'
+  ...
+# Subtest: pending partner contracts replace station and workshop operations with contract information
+ok 14 - pending partner contracts replace station and workshop operations with contract information
+  ---
+  duration_ms: 42.463116
+  type: 'test'
+  ...
+# Subtest: partner profile, team, verification and Support setup remain available pending contract approval
+ok 15 - partner profile, team, verification and Support setup remain available pending contract approval
+  ---
+  duration_ms: 44.346685
+  type: 'test'
+  ...
+# Subtest: a partner temporary lease locks operations at expiry and rechecks contract access
+ok 16 - a partner temporary lease locks operations at expiry and rechecks contract access
+  ---
+  duration_ms: 10.438004
+  type: 'test'
+  ...
+1..16
+# tests 16
+# suites 0
+# pass 16
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1263.551067

@@ -1,0 +1,20 @@
+{
+  "checkedAt": "2026-10-31T20:17:32.981Z",
+  "receiver": "https://obligon.onrender.com/api/webhooks/flutterwave",
+  "urlSavedAndReloaded": true,
+  "merchantAccountId": "100850075",
+  "merchantMode": "live",
+  "merchantWebhookVersion": "v3",
+  "liveV3WebhooksEnabled": true,
+  "merchantAndDeployedSecretsMatch": null,
+  "secretsMatch": null,
+  "comparisonStatus": "inconclusive",
+  "comparisonReason": "The browser returns a redaction placeholder for the merchant secret even when revealed; it is not the actual credential and cannot establish equality or mismatch.",
+  "previousMismatchConclusionWithdrawn": true,
+  "secretsIncluded": false,
+  "userReportedMatchingSecretSaved": true,
+  "latestReceiverError": "Invalid signature",
+  "activeServerSecretProbeAccepted": true,
+  "activeServerSecretProbeEvidence": "webhook-active-secret-probe.json",
+  "deliveryVerificationPending": true
+}

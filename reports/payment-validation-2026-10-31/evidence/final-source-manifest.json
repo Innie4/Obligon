@@ -1,0 +1,33 @@
+{
+  "source_base": "ccdff3dbf6fec17e5cb70bc5ae9c54cfbce95054",
+  "combined_sha256": "1b1bdf0fb2578c8f882b389234c6cff57311cf15f78711aa2f565b153c984099",
+  "hash_method": "concatenate each ordered UTF-8 filename, NUL, exact file bytes, NUL",
+  "files": [
+    {
+      "file": "apps/web/components/customer-dashboard/CustomerFuelCheckout.tsx",
+      "sha256": "69aa4a7baac1eeaa8d56a1b04e5fa9c2a17ad92268085d21e096c9d0a5008c8f"
+    },
+    {
+      "file": "apps/web/tests/production-customer-controls.test.cjs",
+      "sha256": "5f4c21cd1727077c79c4f6c71b05e29adc502b0def2a4d0d9702f6ed313d4e0d"
+    },
+    {
+      "file": "apps/api/src/lib/customer-rewards.js",
+      "sha256": "3e0c358d42a0d23b28f5a2fe9795667d03d9dfcce0afbdd2ee473e221eb20c57"
+    },
+    {
+      "file": "apps/api/tests/customer-rewards.integration.test.mjs",
+      "sha256": "229609a597bd6a2f2196fc27bb53b2b3f389cc9c8d63c2c04bcf1b51fc1dd9de"
+    }
+  ],
+  "api_tests": {
+    "files": 24,
+    "tests": 331,
+    "passed": 331,
+    "failed": 0,
+    "skipped": 0,
+    "cancelled": 0
+  },
+  "web_typecheck_exit": 0,
+  "web_production_build_exit": 0
+}

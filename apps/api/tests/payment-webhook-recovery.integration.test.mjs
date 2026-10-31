@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { before, after, beforeEach, test } from 'node:test';
 import { randomUUID, createHmac } from 'node:crypto';
 import pg from 'pg';
-import express from 'express';
 const database=process.env.OBLIGON_TEST_DATABASE_URL;
 if(database)assert.ok(['localhost','127.0.0.1','[::1]'].includes(new URL(database).hostname));
 const check=(name,fn)=>test(name,{skip:!database},fn);
@@ -14,22 +13,22 @@ before(async()=>{
  if(!database)return;admin=new pg.Pool({connectionString:database});await admin.query(`CREATE SCHEMA ${schema}`);
  for(const {tablename} of (await admin.query("SELECT tablename FROM pg_tables WHERE schemaname='public'")).rows){assert.match(tablename,/^[a-z0-9_]+$/);await admin.query(`CREATE TABLE ${schema}.${tablename}(LIKE public.${tablename} INCLUDING ALL)`);}
  const isolated=new URL(database);isolated.searchParams.set('options',`-c search_path=${schema}`);
- Object.assign(process.env,{DATABASE_URL:isolated.toString(),DATABASE_SSL:'false',DOTENV_CONFIG_PATH:'/dev/null',NODE_ENV:'test',PAYMENT_PROVIDER:'flutterwave',FLW_PUBLIC_KEY:'fixture-public',FLW_SECRET_KEY:'fixture-secret',FLW_SECRET_HASH:'fixture-hook',PAYSTACK_SECRET_KEY:'fixture-legacy',SUDO_WEBHOOK_SECRET:'fixture-issuer',PROVIDER_RETRY_COUNT:'0'});
+ Object.assign(process.env,{DATABASE_URL:isolated.toString(),DATABASE_SSL:'false',DOTENV_CONFIG_PATH:'/dev/null',NODE_ENV:'test',PAYMENT_PROVIDER:'flutterwave',FLW_PUBLIC_KEY:'fixture-public',FLW_SECRET_KEY:'fixture-secret',FLW_SECRET_HASH:'fixture-hook',PAYSTACK_SECRET_KEY:'fixture-legacy',SUDO_WEBHOOK_SECRET:'fixture-issuer',PROVIDER_RETRY_COUNT:'0',ALLOW_PAYMENT_SIMULATION:'false',ENABLE_SCHEDULER:'false',SUPABASE_AUTH_ENABLED:'false',EMAIL_PROVIDER:'local',SMS_PROVIDER:'local',RESEND_API_KEY:'',TERMII_API_KEY:'',WEB_PUSH_VAPID_PRIVATE_KEY:'',LOCAL_OUTBOX_PATH:`/tmp/obligon-${schema}.jsonl`});
  pool=(await import('../src/db.js')).getPool();env=(await import('../src/config/env.js')).env;
  globalThis.fetch=async(input,init)=>{
-  const url=String(input);if(!url.startsWith('https://api.paystack.co/')&&!url.startsWith('https://api.flutterwave.com/v3/'))return actualFetch(input,init);
+  const url=String(input);if(!url.startsWith('https://api.paystack.co/')&&!url.startsWith('https://api.flutterwave.com/v3/')){assert.ok(url.startsWith('http://127.0.0.1:'),'Unexpected external request in isolated webhook test');return actualFetch(input,init);}
   providerCalls++;if(evidence.throw)throw Error('Provider response lost');
   const row=(await pool.query('SELECT * FROM top_ups LIMIT 1')).rows[0];
   if(url.includes('/refund'))return Response.json({status:'success',data:{id:456,status:'completed'}});
   const data={id:123,reference:row?.reference,tx_ref:row?.reference,currency:'NGN',amount:Number(row?.charged_kobo??10000)/(url.includes('flutterwave')?100:1),status:url.includes('flutterwave')?'successful':'success',...evidence};
   return Response.json({status:url.includes('flutterwave')?'success':true,data});
  };
- const app=express();app.use(express.json({verify:(req,res,buffer)=>{req.rawBody=buffer;}}));app.use('/api/webhooks',(await import('../src/routes/webhooks.routes.js')).default);
+ const app=(await import('../src/app.js')).createApp();
  await new Promise(resolve=>{server=app.listen(0,'127.0.0.1',resolve);});base=`http://127.0.0.1:${server.address().port}/api/webhooks`;
 });
 beforeEach(async()=>{
  if(!database)return;evidence={};providerCalls=0;
- await pool.query('TRUNCATE users,wallets,wallet_ledger,top_ups,payment_refunds,notifications,audit_logs,idempotency_keys,cards,card_actions,card_requests,subscription_payments,fuel_orders,card_plans,customer_subscriptions');
+ await pool.query('TRUNCATE users,organizations,wallets,wallet_ledger,top_ups,payment_refunds,notifications,audit_logs,idempotency_keys,cards,card_actions,card_requests,subscription_payments,fuel_orders,card_plans,customer_subscriptions');
  await pool.query(`INSERT INTO users(id,email,password_hash,full_name,role,status,notification_prefs) VALUES($1,'fixture@example.invalid','unused','Fixture','customer','active','{"email":false,"sms":false,"push":false}')`,[user]);
  await pool.query("INSERT INTO wallets(id,user_id,kind,balance_kobo) VALUES($1,$2,'individual',0)",[wallet,user]);
  await pool.query("INSERT INTO cards(id,owner_user_id,label,status,masked_pan,sudo_card_id) VALUES($1,$2,'Fixture','active','•••• 1234','issuer-card')",[card,user]);
@@ -46,6 +45,34 @@ async function deliver(provider,body,valid=true){
 }
 const event=(ref,provider='paystack')=>provider==='paystack'?{id:'fixture-event',event:'charge.success',data:{reference:ref,amount:10000,currency:'NGN'}}:{event:'charge.completed',data:{id:123,tx_ref:ref,amount:100,currency:'NGN',status:'successful'}};
 async function balance(){return Number((await pool.query('SELECT balance_kobo FROM wallets WHERE id=$1',[wallet])).rows[0].balance_kobo);}
+check('real application middleware accepts a verified Company top-up once and rejects unauthenticated delivery before provider lookup',async()=>{
+ const organizationId=randomUUID(),companyWalletId=randomUUID(),ref=`TOPUP-${randomUUID()}`;
+ await pool.query("UPDATE users SET role='company' WHERE id=$1",[user]);
+ await pool.query("INSERT INTO organizations(id,owner_user_id,name,type,verification_status)VALUES($1,$2,'Company webhook fixture','company','verified')",[organizationId,user]);
+ await pool.query("INSERT INTO wallets(id,user_id,organization_id,kind,currency,balance_kobo)VALUES($1,$2,$3,'company','NGN',0)",[companyWalletId,user,organizationId]);
+ const topup=(await pool.query("INSERT INTO top_ups(user_id,wallet_id,reference,amount_kobo,fee_kobo,charged_kobo,method,provider,status)VALUES($1,$2,$3,10000,500,10500,'card','flutterwave','pending')RETURNING id",[user,companyWalletId,ref])).rows[0];
+ const body={event:'charge.completed',data:{id:123,tx_ref:ref,amount:105,currency:'NGN',status:'successful'}};
+ assert.equal((await deliver('flutterwave',body,false)).status,401);
+ const missing=await actualFetch(`${base}/flutterwave`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ assert.equal(missing.status,401);assert.equal(providerCalls,0);assert.equal(await balance(),0);
+ assert.equal((await pool.query('SELECT count(*)::int AS n FROM wallet_ledger')).rows[0].n,0);
+ assert.equal((await pool.query('SELECT count(*)::int AS n FROM idempotency_keys')).rows[0].n,0);
+ assert.equal((await pool.query('SELECT status FROM top_ups WHERE id=$1',[topup.id])).rows[0].status,'pending');
+ const first=await deliver('flutterwave',body);assert.equal(first.status,200);assert.deepEqual(first.data,{received:true,duplicate:false});
+ const replay=await deliver('flutterwave',body);assert.equal(replay.status,200);assert.deepEqual(replay.data,{received:true,duplicate:true});
+ assert.equal(providerCalls,2);assert.equal(await balance(),0);
+ assert.equal((await pool.query('SELECT balance_kobo FROM wallets WHERE id=$1',[companyWalletId])).rows[0].balance_kobo,'10000');
+ const saved=(await pool.query('SELECT status,provider_transaction_id FROM top_ups WHERE id=$1',[topup.id])).rows[0];
+ assert.equal(saved.status,'success');assert.equal(saved.provider_transaction_id,'123');
+ const ledger=(await pool.query('SELECT wallet_id,direction,amount_kobo,idempotency_key FROM wallet_ledger WHERE reference=$1',[ref])).rows;
+ assert.equal(ledger.length,1);assert.deepEqual(ledger[0],{wallet_id:companyWalletId,direction:'credit',amount_kobo:'10000',idempotency_key:`topup:${topup.id}`});
+ assert.equal((await pool.query("SELECT response FROM idempotency_keys WHERE key='webhook:flutterwave:123'")).rows[0].response.completed,true);
+ const notices=(await pool.query('SELECT link FROM notifications WHERE event_key=$1',[`topup:${topup.id}:credited`])).rows;
+ assert.deepEqual(notices,[{link:'/company/billing'}]);
+ const audit=(await pool.query("SELECT metadata FROM audit_logs WHERE action='webhook.flutterwave.charge_completed' ORDER BY created_at,id")).rows;
+ assert.equal(audit.length,2);assert.ok(audit.every(row=>row.metadata.reference===ref&&row.metadata.transactionId==='123'&&row.metadata.amountKobo===10500));
+ assert.deepEqual(audit.map(row=>row.metadata.duplicate).sort(),[false,true]);
+});
 check('provider-confirmed first card payment activates one period and withdrawn callbacks cannot revive it',async()=>{
  const ref=`PLAN-${randomUUID()}`;
  await pool.query("INSERT INTO card_plans(code,name,amount_kobo)VALUES('gold','Gold',350000)");

@@ -9,7 +9,7 @@ import { SubscriptionPanel } from "@/components/shared/SubscriptionPanel";
 
 type Access = { active: boolean; expiresAt?: string | null; subscription?: { current_period_end?: string } | null };
 
-export function CompanySubscriptionGate({ children, protectedSection = false }: { children: React.ReactNode; protectedSection?: boolean }) {
+export function CompanySubscriptionGate({ children, protectedSection = false, fallback = null }: { children: React.ReactNode; protectedSection?: boolean; fallback?: React.ReactNode }) {
   const { user } = useSession();
   const pathname = usePathname();
   const exempt = !protectedSection && /^\/company\/(billing|settings|support|notifications)(\/|$)/.test(pathname);
@@ -38,5 +38,5 @@ export function CompanySubscriptionGate({ children, protectedSection = false }: 
   if (exempt) return <>{children}</>;
   if (error) return <StatusPopup tone="error" title="Your Organization subscription could not be checked." message={error} onRetry={() => setRevision(value => value + 1)} />;
   if (!data) return <StatusPopup tone="loading" message="Checking Organization subscription…" />;
-  return data.active ? <>{children}</> : protectedSection ? null : <SubscriptionPanel kind="company" onSubscriptionChange={() => setRevision(value => value + 1)} />;
+  return data.active ? <>{children}</> : protectedSection ? fallback : <SubscriptionPanel kind="company" onSubscriptionChange={() => setRevision(value => value + 1)} />;
 }

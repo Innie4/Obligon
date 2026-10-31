@@ -1,0 +1,334 @@
+{
+  "checkedAt": "2026-10-31T19:44:33.107Z",
+  "startsAt": "2026-10-31T19:38:43.560Z",
+  "expiresAt": "2026-11-04T19:38:43.560Z",
+  "hours": 96,
+  "results": [
+    {
+      "role": "admin",
+      "checks": [
+        {
+          "method": "POST",
+          "path": "/auth/login",
+          "status": 200
+        },
+        {
+          "method": "HEAD",
+          "path": "/admin/companies",
+          "status": 200
+        },
+        {
+          "method": "HEAD",
+          "path": "/admin/activity",
+          "status": 200
+        },
+        {
+          "method": "HEAD",
+          "path": "/admin/intake/leads",
+          "status": 200
+        },
+        {
+          "method": "HEAD",
+          "path": "/admin/jobs",
+          "status": 200
+        },
+        {
+          "method": "HEAD",
+          "path": "/admin/stations/review",
+          "status": 200
+        },
+        {
+          "method": "HEAD",
+          "path": "/admin/support",
+          "status": 200
+        },
+        {
+          "method": "HEAD",
+          "path": "/admin/discount-requests",
+          "status": 200
+        },
+        {
+          "method": "HEAD",
+          "path": "/admin/applications",
+          "status": 200
+        },
+        {
+          "method": "HEAD",
+          "path": "/admin/benefits/budget",
+          "status": 200
+        },
+        {
+          "method": "HEAD",
+          "path": "/admin/generator-repairs",
+          "status": 200
+        },
+        {
+          "method": "HEAD",
+          "path": "/admin/disputes",
+          "status": 200
+        },
+        {
+          "method": "HEAD",
+          "path": "/admin/reports",
+          "status": 200
+        },
+        {
+          "method": "HEAD",
+          "path": "/admin/staff",
+          "status": 200
+        },
+        {
+          "method": "HEAD",
+          "path": "/admin/refunds",
+          "status": 200
+        },
+        {
+          "method": "HEAD",
+          "path": "/admin/payout-accounts",
+          "status": 200
+        },
+        {
+          "method": "HEAD",
+          "path": "/admin/settlement-accounts",
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "path": "/auth/refresh",
+          "status": 200
+        }
+      ],
+      "database": {
+        "role": "admin",
+        "status": "active",
+        "access_expires_at": "2026-11-04T19:38:43.560Z",
+        "email_verified": false,
+        "phone_verified": false,
+        "staff_role": "super_admin",
+        "provider_linked": true,
+        "sessions_beyond_deadline": 0,
+        "funded_wallets": 0
+      },
+      "status": "passed"
+    },
+    {
+      "role": "company",
+      "checks": [
+        {
+          "method": "POST",
+          "path": "/auth/login",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/company/overview",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/company/vehicles",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/company/drivers",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/company/assignments",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/company/cards",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/company/transactions",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/company/reports",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/company/stations",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/company/roadside",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/company/maintenance",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/company/team",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/company/notifications",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/company/support/tickets",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/company/wallet",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/company/settings",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/company/billing",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/company/subscription",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/company/settings",
+          "status": 200
+        },
+        {
+          "method": "PUT",
+          "path": "/company/settings",
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "path": "/auth/refresh",
+          "status": 200
+        }
+      ],
+      "database": {
+        "role": "company",
+        "status": "active",
+        "access_expires_at": "2026-11-04T19:38:43.560Z",
+        "email_verified": false,
+        "phone_verified": false,
+        "staff_role": null,
+        "provider_linked": true,
+        "sessions_beyond_deadline": 0,
+        "funded_wallets": 0
+      },
+      "status": "passed"
+    },
+    {
+      "role": "partner",
+      "checks": [
+        {
+          "method": "POST",
+          "path": "/auth/login",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/partner/overview",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/partner/transactions",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/partner/settlements",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/partner/stations",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/partner/station",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/partner/pricing",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/partner/reports",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/partner/staff",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/partner/disputes",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/partner/notifications",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/partner/settings",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/partner/billing",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/partner/settings/service-requests",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/partner/settings/api-keys",
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "path": "/auth/refresh",
+          "status": 200
+        }
+      ],
+      "database": {
+        "role": "partner",
+        "status": "active",
+        "access_expires_at": "2026-11-04T19:38:43.560Z",
+        "email_verified": false,
+        "phone_verified": false,
+        "staff_role": null,
+        "provider_linked": true,
+        "sessions_beyond_deadline": 0,
+        "funded_wallets": 0
+      },
+      "status": "passed"
+    }
+  ]
+}

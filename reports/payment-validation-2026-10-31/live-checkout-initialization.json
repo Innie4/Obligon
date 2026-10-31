@@ -1,0 +1,30 @@
+{
+  "checkedAt": "2026-10-31T19:47:28.037Z",
+  "actualChargedKobo": 0,
+  "reportType": "Checkout initialization only, no payment completed",
+  "results": [
+    {
+      "role": "customer",
+      "mode": "unpaid-live-checkout",
+      "loginStatus": 401,
+      "status": "blocked",
+      "error": "Test account login returned 401\n\n401 !== 200\n"
+    },
+    {
+      "role": "company",
+      "mode": "unpaid-live-checkout",
+      "loginStatus": 200,
+      "checkoutStatus": 200,
+      "status": "initialized-unpaid",
+      "provider": "flutterwave",
+      "simulated": false,
+      "amountKobo": 10000,
+      "feeKobo": 500,
+      "totalKobo": 10500,
+      "paymentHost": "checkout.flutterwave.com",
+      "referenceHash": "dca929b4bd082b4a354bcec5b3ef38942ac35c432afd12f8d68098e72a0afa71",
+      "databaseStatus": "pending",
+      "ledgerMovements": 0
+    }
+  ]
+}

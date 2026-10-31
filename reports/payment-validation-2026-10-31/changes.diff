@@ -1,0 +1,167 @@
+diff --git a/apps/api/src/lib/customer-rewards.js b/apps/api/src/lib/customer-rewards.js
+index 7896598..0fc4670 100644
+--- a/apps/api/src/lib/customer-rewards.js
++++ b/apps/api/src/lib/customer-rewards.js
+@@ -5,15 +5,14 @@ import { applyLedgerEntry } from './money.js';
+ import { customerSubscription, customerFeatureIncluded, requireCustomerPlan } from './subscriptions.js';
+ import { benefitInteger, benefitRequestKey, lockBenefitBudget, recordBenefitMovement } from './benefit-budget.js';
+ 
+-export const cashbackTerms = 'Gold and Platinum earn 5% of completed personal fuel spend after discounts and excluding platform fees, rounded down to whole kobo. Cashback has no expiry. It becomes redeemable only when funded by Obligon. A paid plan is required to redeem to your fuel wallet. Refunded purchases reverse their cashback; any amount already redeemed is offset against future cashback without a forced wallet debit.';
++export const cashbackTerms = 'Gold and Platinum earn 5% of completed personal fuel spend after discounts, rounded down to whole kobo. Wallet funding fees do not earn cashback. Station revenue shares do not reduce your eligible fuel spend. Cashback has no expiry. It becomes redeemable only when funded by Obligon. A paid plan is required to redeem to your fuel wallet. Refunded purchases reverse their cashback; any amount already redeemed is offset against future cashback without a forced wallet debit.';
+ export function customerCashbackRate(subscription) {
+  return subscription?.active && ['gold','platinum'].includes(subscription.subscription?.plan_code) && customerFeatureIncluded(subscription.features,'Loyalty Rewards') ? 500 : 0;
+ }
+-export function earnedCashback(amountKobo,feeKobo,rateBp=500) {
++export function earnedCashback(amountKobo,rateBp=500) {
+  const amount=BigInt(benefitInteger(amountKobo));
+- const fee=BigInt(feeKobo==null ? 0 : benefitInteger(feeKobo,0));
+- if(rateBp!==500||fee>=amount)return 0;
+- return Number(((amount-fee)*500n)/10000n);
++ if(rateBp!==500)return 0;
++ return Number((amount*500n)/10000n);
+ }
+ async function accountFor(t,userId) {
+  await t.query('INSERT INTO cashback_balances(user_id)VALUES($1) ON CONFLICT(user_id) DO NOTHING',[userId]);
+@@ -22,10 +21,10 @@ async function accountFor(t,userId) {
+ async function applyAward(t,source) {
+  let award=await t.one('SELECT * FROM cashback_awards WHERE transaction_id=$1 FOR UPDATE',[source.id]);
+  if(!award){
+-  const earned=earnedCashback(source.amount_kobo,source.platform_fee_kobo,source.cashback_rate_bp);
++  const earned=earnedCashback(source.amount_kobo,source.cashback_rate_bp);
+   if(earned===0)return;
+   award=await t.one(`INSERT INTO cashback_awards(transaction_id,user_id,plan_code,rate_bp,eligible_spend_kobo,earned_kobo)
+-   VALUES($1,$2,$3,500,$4,$5) RETURNING *`,[source.id,source.customer_user_id,source.cashback_plan_code,BigInt(source.amount_kobo)-BigInt(source.platform_fee_kobo??0),earned]);
++   VALUES($1,$2,$3,500,$4,$5) RETURNING *`,[source.id,source.customer_user_id,source.cashback_plan_code,source.amount_kobo,earned]);
+  }
+  const account=await accountFor(t,source.customer_user_id);
+  const refunds=await t.one(`SELECT COALESCE(sum(r.amount_kobo),0)::text AS total FROM payment_refunds r
+@@ -73,7 +72,7 @@ export async function syncCustomerCashback(userId=null,limit=100) {
+   const sources=await t.query(`SELECT tr.* FROM transactions tr LEFT JOIN cashback_awards a ON a.transaction_id=tr.id
+    WHERE tr.organization_id IS NULL AND ($1::uuid IS NULL OR tr.customer_user_id=$1)
+    AND (a.id IS NOT NULL OR (tr.cashback_rate_bp=500 AND tr.cashback_plan_code IN('gold','platinum') AND tr.status='success'
+-     AND tr.amount_kobo-COALESCE(tr.platform_fee_kobo,0)>=20
++     AND tr.amount_kobo>=20
+      AND (tr.settlement_method<>'processor_split' OR EXISTS(SELECT 1 FROM fuel_orders f WHERE f.transaction_id=tr.id AND f.status='fulfilled'))))
+    ORDER BY a.last_checked_at ASC NULLS FIRST,tr.created_at,tr.id LIMIT $2`,[userId,limit]);
+   for(const source of sources){
+diff --git a/apps/api/tests/customer-rewards.integration.test.mjs b/apps/api/tests/customer-rewards.integration.test.mjs
+index efc1685..22566b2 100644
+--- a/apps/api/tests/customer-rewards.integration.test.mjs
++++ b/apps/api/tests/customer-rewards.integration.test.mjs
+@@ -75,13 +75,29 @@ async function call(path,body,user='owner',method='POST'){
+  return {status:response.status,body:await response.json()};
+ }
+ 
+-integration('cashback eligibility uses the paid purchase snapshot and floors exact final spend excluding fees',async()=>{
+- assert.equal(rewards.earnedCashback(1099,99),50);assert.equal(rewards.earnedCashback(19,0),0);
++integration('cashback eligibility uses the paid purchase snapshot and floors exact final fuel spend',async()=>{
++ assert.equal(rewards.earnedCashback(1099),54);assert.equal(rewards.earnedCashback(19),0);
+  assert.equal(rewards.customerCashbackRate({active:true,subscription:{plan_code:'gold'},features:[{label:'Loyalty Rewards',state:'Premium'}]}),500);
+  assert.equal(rewards.customerCashbackRate({active:true,subscription:{plan_code:'bronze'},features:[{label:'Loyalty Rewards',state:'included'}]}),0);
+  await fund();await purchase({amount:1099,fee:99});await purchase({rate:0,plan:'bronze'});
+  await pool.query("UPDATE customer_subscriptions SET plan_code='gold'");
+- const shown=await rewards.customerRewards(owner);assert.equal(shown.availableKobo,50);assert.equal(shown.awards.length,1);await conservation();
++ const shown=await rewards.customerRewards(owner);assert.equal(shown.availableKobo,54);assert.equal(shown.awards.length,1);await conservation();
++});
++integration('discounted fuel earns five percent of the actual customer debit without deducting the station revenue share twice',async()=>{
++ const {discountAmounts}=await import('../src/lib/discounts.js');
++ const quote=discountAmounts(10000,1000);
++ assert.equal(quote.chargedKobo,9000);assert.equal(quote.platformFeeKobo,1000);assert.equal(quote.partnerNetKobo,8000);
++ await fund();const source=await purchase({amount:quote.chargedKobo,fee:quote.platformFeeKobo});
++ let shown=await rewards.customerRewards(owner);assert.equal(shown.availableKobo,450);
++ const award=(await pool.query('SELECT * FROM cashback_awards WHERE transaction_id=$1',[source.id])).rows[0];
++ assert.equal(award.eligible_spend_kobo,'9000');assert.equal(award.earned_kobo,'450');
++ await partialRefund(source,900);shown=await rewards.customerRewards(owner);assert.equal(shown.availableKobo,405);
++ await pool.query("UPDATE transactions SET status='refunded' WHERE id=$1",[source.id]);
++ shown=await rewards.customerRewards(owner);assert.equal(shown.availableKobo,0);await conservation();
++});
++integration('a small final fuel debit remains eligible when the station retains a platform share',async()=>{
++ await fund();await purchase({amount:20,fee:1});
++ const shown=await rewards.customerRewards(owner);assert.equal(shown.availableKobo,1);assert.equal(shown.awards.length,1);await conservation();
+ });
+ integration('empty programme funds create durable pending awards and never spendable wallet credits',async()=>{
+  await purchase();const shown=await rewards.customerRewards(owner);assert.equal(shown.pendingKobo,'500');assert.equal(shown.availableKobo,0);
+diff --git a/apps/web/components/customer-dashboard/CustomerFuelCheckout.tsx b/apps/web/components/customer-dashboard/CustomerFuelCheckout.tsx
+index f0aed4f..20ce324 100644
+--- a/apps/web/components/customer-dashboard/CustomerFuelCheckout.tsx
++++ b/apps/web/components/customer-dashboard/CustomerFuelCheckout.tsx
+@@ -11,6 +11,18 @@ interface StationFuel {stationId:string;name:string;city:string;fuelType:string;
+ interface FuelOrder {reference:string;stationId:string;stationName?:string;fuelType:string;litres:number;quantity?:number|string;sellingUnit?:"litre"|"kg"|"scm";amountKobo:number;baseAmountKobo:number;discountKobo:number;status:string;authorizationCode:string|null;createdAt:string;checkoutUrl:string|null;reviewReason:string|null}
+ const endpoint='/api/customer/fuel-checkout';
+ const money=(value:number)=>new Intl.NumberFormat('en-NG',{style:'currency',currency:'NGN'}).format(value/100);
++function fuelCheckoutQuote(unitPriceKobo:number,quantity:string,discountPercent:number){
++ const units=/^(\d+)(?:\.(\d{1,2}))?$/.exec(quantity.trim());
++ const rate=/^(\d+)(?:\.(\d{1,2}))?$/.exec(String(discountPercent));
++ if(!Number.isSafeInteger(unitPriceKobo)||unitPriceKobo<=0||!units||!rate)return null;
++ const hundredths=BigInt(units[1])*BigInt(100)+BigInt((units[2]??'').padEnd(2,'0'));
++ const basisPoints=BigInt(rate[1])*BigInt(100)+BigInt((rate[2]??'').padEnd(2,'0'));
++ if(hundredths<BigInt(1)||hundredths>BigInt(1_000_000)||basisPoints>=BigInt(5000))return null;
++ const base=(BigInt(unitPriceKobo)*hundredths+BigInt(50))/BigInt(100);
++ if(base<BigInt(1)||base>BigInt(Number.MAX_SAFE_INTEGER))return null;
++ const discount=(base*basisPoints+BigInt(5000))/BigInt(10000);
++ return {baseKobo:Number(base),discountKobo:Number(discount),chargedKobo:Number(base-discount)};
++}
+ export function CustomerFuelCheckout({subscriptionActive, embedded = false, refreshKey = 0}: {subscriptionActive: boolean; embedded?: boolean; refreshKey?: number}){
+  const [stations,setStations]=React.useState<StationFuel[]>([]),[orders,setOrders]=React.useState<FuelOrder[]>([]);
+  const [selected,setSelected]=React.useState(''),[litres,setLitres]=React.useState('10'),[error,setError]=React.useState(''),[busy,setBusy]=React.useState(false),[loading,setLoading]=React.useState(true);
+@@ -20,8 +32,7 @@ export function CustomerFuelCheckout({subscriptionActive, embedded = false, refr
+  const refreshGeneration=React.useRef(0);
+  const choice=stations.find(s=>`${s.stationId}:${s.fuelType}`===selected);
+  const sellingUnit=choice?priceSellingUnit(choice.fuelType,choice.sellingUnit):undefined;
+- const base=choice?Math.round(choice.unitPriceKobo*Number(litres)):0;
+- const discount=choice?Math.round(base*choice.discountPercent/100):0;
++ const quote=choice?fuelCheckoutQuote(choice.unitPriceKobo,litres,choice.discountPercent):null;
+  const refresh=React.useCallback(async()=>{
+   const generation=++refreshGeneration.current;
+   setLoading(true);
+@@ -61,7 +72,7 @@ export function CustomerFuelCheckout({subscriptionActive, embedded = false, refr
+  }
+  async function confirm(reference:string){setBusy(true);setError('');try{await authenticatedRequest(endpoint+'/confirm',{method:'POST',body:JSON.stringify({reference})});await refresh();}catch(e){setError(e instanceof Error?e.message:'Payment is not confirmed yet');}finally{setBusy(false);}}
+  async function pay(event:React.FormEvent){
+-  event.preventDefault();if(!choice||!sellingUnit||card?.status!=='active'||!subscriptionActive||busy||loading||loadError)return;setBusy(true);setError('');requestKey.current??=crypto.randomUUID();
++  event.preventDefault();if(!choice||!quote||!sellingUnit||card?.status!=='active'||!subscriptionActive||busy||loading||loadError)return;setBusy(true);setError('');requestKey.current??=crypto.randomUUID();
+   try{
+    const result=await authenticatedRequest<{authorization_url:string;simulated:boolean;reference:string}>(endpoint+'/checkout',{method:'POST',body:JSON.stringify({stationId:choice.stationId,fuelType:choice.fuelType,litres:Number(litres),sellingUnit,idempotencyKey:requestKey.current})});
+    if(result.simulated){await authenticatedRequest(endpoint+'/confirm',{method:'POST',body:JSON.stringify({reference:result.reference,simulated:true})});requestKey.current=null;await refresh();}
+@@ -78,10 +89,10 @@ export function CustomerFuelCheckout({subscriptionActive, embedded = false, refr
+    <select id="fuel-station" value={selected} onChange={event=>{setSelected(event.target.value);requestKey.current=null;}} disabled={busy||!stations.length} className="mt-2 w-full rounded-lg border p-3">{stations.map(s=><option key={`${s.stationId}:${s.fuelType}`} value={`${s.stationId}:${s.fuelType}`}>{s.name} · {s.city} · {s.fuelType} ({money(s.unitPriceKobo)}/{sellingUnitLabel(priceSellingUnit(s.fuelType,s.sellingUnit))})</option>)}</select>
+    {!stations.length&&!loadError&&<p className="mt-3 text-slate-600">No stations are available for direct fuel payment yet.</p>}
+    <label htmlFor="fuel-litres" className="mt-5 block font-semibold">Quantity {sellingUnit ? `(${sellingUnitLabel(sellingUnit)})` : "(approved unit unavailable)"}</label><input id="fuel-litres" type="number" min="0.01" max="10000" step="0.01" required value={litres} onChange={event=>{setLitres(event.target.value);requestKey.current=null;}} disabled={busy} className="mt-2 w-full rounded-lg border p-3"/>
+-   {choice&&Number(litres)>0&&<dl className="my-5 space-y-2"><div className="flex justify-between"><dt>Station price</dt><dd>{money(base)}</dd></div><div className="flex justify-between text-obligon-green"><dt>Approved discount ({choice.discountPercent}%)</dt><dd>−{money(discount)}</dd></div><div className="flex justify-between border-t pt-3 text-lg font-bold"><dt>You pay</dt><dd>{money(base-discount)}</dd></div></dl>}
++   {choice&&quote&&<dl className="my-5 space-y-2"><div className="flex justify-between"><dt>Station price</dt><dd>{money(quote.baseKobo)}</dd></div><div className="flex justify-between text-obligon-green"><dt>Approved discount ({choice.discountPercent}%)</dt><dd>−{money(quote.discountKobo)}</dd></div><div className="flex justify-between border-t pt-3 text-lg font-bold"><dt>You pay</dt><dd>{money(quote.chargedKobo)}</dd></div></dl>}
+    <p className="mb-4 text-sm text-slate-500">The final price is confirmed when checkout starts. Your subscription fee and fuel wallet balance are separate.</p>
+    {card?.status!=='active'&&<p className="mb-4 text-sm text-slate-600">An active customer fuel card is required before checkout.</p>}
+-   <button disabled={busy||Boolean(loadError)||!choice||!sellingUnit||Number(litres)<=0||card?.status!=='active'||!subscriptionActive} className="rounded-lg bg-obligon-green px-6 py-3 font-bold text-white disabled:opacity-50">{busy?'Processing…':'Continue to payment'}</button>
++   <button disabled={busy||Boolean(loadError)||!choice||!quote||!sellingUnit||card?.status!=='active'||!subscriptionActive} className="rounded-lg bg-obligon-green px-6 py-3 font-bold text-white disabled:opacity-50">{busy?'Processing…':'Continue to payment'}</button>
+   </form>}
+   <section className="rounded-xl border bg-white p-6"><h2 className="text-xl font-bold">Use your fuel wallet</h2><p className="mt-2 text-slate-600">At the station, enter your card PIN here to generate a single-use authorization code. The station charges your wallet when it dispenses fuel.</p>{card?.status==='active'&&subscriptionActive?<form onSubmit={event=>void authorizeWallet(event)} className="mt-4"><label htmlFor="wallet-card-pin" className="block font-semibold">Four-digit card PIN</label><input id="wallet-card-pin" type="password" inputMode="numeric" autoComplete="off" pattern="[0-9]{4}" maxLength={4} required value={pin} onChange={event=>setPin(event.target.value)} disabled={busy} className="mt-2 w-full max-w-xs rounded-lg border p-3"/><button disabled={busy||loading||Boolean(loadError)||pin.length!==4} className="ml-0 mt-3 block rounded-lg border px-5 py-3 font-semibold disabled:opacity-50">Generate wallet fuel code</button>{walletCode&&<div className="mt-4 rounded-lg bg-green-50 p-4" role="status"><p className="font-mono text-3xl font-bold tracking-widest">{walletCode.code}</p><p className="mt-2 text-sm">Valid until {new Date(walletCode.expiresAt).toLocaleTimeString()}. Show only to your station operator.</p></div>}</form>:<p className="mt-4">{!subscriptionActive?'An active subscription is required to authorize your card.':'An active fuel card is required.'} <Link href="/customer/card#subscription" className="font-semibold text-obligon-green underline">Manage your card and subscription</Link></p>}</section>
+   <div id="fuel-orders" className="scroll-mt-24"><h2 className="text-xl font-bold">Your fuel orders</h2><p className="mt-1 text-sm text-slate-600">Paid codes stay here until the station fulfills your order.</p><div className="mt-4 space-y-4">{orders.map(order=><article key={order.reference} className="rounded-xl border bg-white p-5"><div className="flex flex-wrap justify-between gap-2"><h3 className="font-bold">{order.stationName??'Selected station'} · {order.quantity ?? order.litres} {sellingUnitLabel(priceSellingUnit(order.fuelType,order.sellingUnit))} {order.fuelType}</h3><span className="font-semibold">{money(order.amountKobo)}</span></div><p className="mt-2 text-sm text-slate-500">{order.reference} · {new Date(order.createdAt).toLocaleDateString()}</p>{order.status==='paid'?<div className="mt-4 rounded-lg bg-green-50 p-4"><p className="text-sm font-semibold">Show this code at your selected station</p><p className="mt-1 font-mono text-3xl font-bold tracking-widest">{order.authorizationCode}</p></div>:order.status==='paid_review'?<p className="mt-3 rounded-lg bg-amber-50 p-3 text-amber-900">{order.reviewReason??'Payment confirmed. Admin is reviewing your fuel order; do not pay again.'}</p>:order.status==='refund_pending'?<p className="mt-3 text-amber-800">Refund requested. Your confirmed payment is being returned.</p>:order.status==='refunded'?<p className="mt-3 font-semibold">Payment refunded</p>:order.status==='fulfilled'?<p className="mt-3 font-semibold text-obligon-green">Fuel collected</p>:<div className="mt-3 flex items-center gap-4"><span>Payment awaiting confirmation</span>{order.checkoutUrl&&<a href={order.checkoutUrl} className="font-semibold text-obligon-green underline">Resume payment</a>}<button disabled={busy} onClick={()=>void confirm(order.reference)} className="rounded-lg border px-4 py-2 font-semibold disabled:opacity-50">Check payment</button></div>}</article>)}{!orders.length&&!loading&&!loadError&&<p className="text-slate-600">Your fuel orders will appear here.</p>}</div></div>
+diff --git a/apps/web/tests/production-customer-controls.test.cjs b/apps/web/tests/production-customer-controls.test.cjs
+index 1bf1a59..4b796fd 100644
+--- a/apps/web/tests/production-customer-controls.test.cjs
++++ b/apps/web/tests/production-customer-controls.test.cjs
+@@ -225,6 +225,24 @@ test('fuel retry clears only resolved load error and preserves payment error thr
+  runtime.render(CustomerFuelCheckout, { ...props, refreshKey: 1 }); await flush(); tree = runtime.render(CustomerFuelCheckout, { ...props, refreshKey: 1 }); assert.match(text(tree), /Payment not confirmed yet/);
+ });
+ 
++test('fuel checkout shows the exact half-up kobo quote and discount before payment', async () => {
++ const runtime = hooks();
++ const { CustomerFuelCheckout } = load('../components/customer-dashboard/CustomerFuelCheckout.tsx', { dependencies: { react: runtime.React, '@/lib/customer-card-routes': { customerPaymentReference: () => null }, '@/lib/services': { authenticatedRequest: async path => path.endsWith('/stations') ? { stations: [{ stationId: 'station', name: 'Approved station', city: 'Uyo', fuelType: 'PMS', sellingUnit: 'litre', unitPriceKobo: 105050, discountPercent: 12.55 }] } : path.endsWith('/card') ? { card: { id: 'card', status: 'active', label: 'Personal' } } : { orders: [] } } }, globals: { window: browser() } });
++ const props = { subscriptionActive: true }; runtime.render(CustomerFuelCheckout, props); await flush();
++ let tree = runtime.render(CustomerFuelCheckout, props);
++ nodes(tree).find(node => node.type === 'input' && node.props.id === 'fuel-litres').props.onChange({ target: { value: '0.57' } });
++ tree = runtime.render(CustomerFuelCheckout, props);
++ const amounts = nodes(tree).filter(node => node.type === 'dd').map(node => text(node));
++ assert.deepEqual(amounts, ['₦598.79', '− ₦75.15', '₦523.64']);
++});
++test('fuel quote rejects malformed amounts instead of showing a rounded payable value', () => {
++ const { fuelCheckoutQuote } = load('../components/customer-dashboard/CustomerFuelCheckout.tsx', { expose: '\nexport { fuelCheckoutQuote };' });
++ for (const value of ['0', '-1', 'NaN', '1e2', '0.001', '10000.01', '']) assert.equal(fuelCheckoutQuote(105050, value, 10), null, value);
++ for (const rate of [-1, 50, 0.001, NaN]) assert.equal(fuelCheckoutQuote(105050, '1', rate), null, String(rate));
++ assert.equal(fuelCheckoutQuote(Number.MAX_SAFE_INTEGER, '2', 0), null);
++ const quote = fuelCheckoutQuote(105050, '0.57', 0);
++ assert.equal(quote.baseKobo, 59879); assert.equal(quote.discountKobo, 0); assert.equal(quote.chargedKobo, 59879);
++});
+ test('push permission rejection keeps preference unchanged and shows recovery text', async () => {
+  const Toggle = () => null; const saves = [];
+  const prefs = { inApp: true, email: true, sms: false, push: false, categories: { transactions: true } };

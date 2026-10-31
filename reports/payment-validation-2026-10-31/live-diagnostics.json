@@ -1,0 +1,82 @@
+{
+  "checkedAt": "2026-10-31T19:35:22.332Z",
+  "localConfig": {
+    "providers": {
+      "supabase": true,
+      "supabaseAuth": true,
+      "storage": true,
+      "sudo": false,
+      "paystack": false,
+      "flutterwave": true,
+      "flutterwaveWebhooks": true,
+      "email": true,
+      "sms": true,
+      "emailVerification": true,
+      "phoneVerification": true,
+      "push": true,
+      "maps": false
+    },
+    "issues": [
+      "JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be replaced with unique production secrets"
+    ],
+    "warnings": [
+      "SUDO_SECRET_API_KEY is unset - card issuing and limits are unavailable"
+    ],
+    "flutterwaveSecretMode": "live",
+    "bvnEnabled": false,
+    "simulation": false
+  },
+  "health": {
+    "httpStatus": 200,
+    "ok": true,
+    "service": "obligon-api",
+    "time": "2026-10-31T19:35:23.062Z",
+    "businessTimeZone": "UTC",
+    "providers": {
+      "supabase": true,
+      "supabaseAuth": true,
+      "storage": true,
+      "sudo": false,
+      "paystack": false,
+      "flutterwave": true,
+      "flutterwaveWebhooks": true,
+      "email": true,
+      "sms": true,
+      "emailVerification": true,
+      "phoneVerification": true,
+      "push": true,
+      "maps": false
+    },
+    "scheduler": {
+      "enabled": false,
+      "running": false,
+      "lastRunAt": null,
+      "lastReconciliationAt": null,
+      "overdue": false,
+      "msSinceLastReconciliation": null,
+      "lastReconciliationError": null
+    }
+  },
+  "payments": {
+    "httpStatus": 200,
+    "provider": "flutterwave",
+    "simulated": false,
+    "misconfigured": false,
+    "missing": [],
+    "minimumTopupKobo": 10000,
+    "fee": {
+      "bearer": "customer",
+      "basisPoints": 500,
+      "percent": 5,
+      "suspicious": false,
+      "plausibleMaxBasisPoints": 500
+    },
+    "publicKeyPresent": true,
+    "publicKeyMode": "live-or-unclassified"
+  },
+  "providerAuthentication": {
+    "httpStatus": 200,
+    "status": "success",
+    "banksCount": 703
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "checkedAt": "2026-10-31T19:49:24.136Z",
+  "accountPresent": true,
+  "account": {
+    "role": "admin",
+    "status": "active",
+    "access_expires_at": null,
+    "locked_until": null,
+    "failed_login_attempts": 0,
+    "provider_linked": true
+  },
+  "changed": false
+}

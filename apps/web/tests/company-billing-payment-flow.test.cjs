@@ -7,7 +7,7 @@ const element = (type, props) => ({ type, props: props ?? {} });
 const nodes = tree => Array.isArray(tree) ? tree.flatMap(nodes) : tree && typeof tree === 'object' ? [tree, ...nodes(tree.props?.children)] : [];
 const flush = () => new Promise(setImmediate);
 
-function fixture(component, search) {
+function fixture(component, search, options = {}) {
   const states = [], effects = [], calls = [];
   let cursor = 0;
   const React = {
@@ -28,10 +28,10 @@ function fixture(component, search) {
       if (name === 'react/jsx-runtime') return { jsx: element, jsxs: element };
       if (name === 'next/link') return { default: 'a' };
       if (name === '@/components/shared/AuthContext') return { useSession: () => ({ user: { id: 'member-a' } }) };
-      if (name === '@/components/shared/useAsync') return { useAsync: () => ({ status: 'success', data: { company: { balanceLabel: '₦0' }, recent: [], paymentMethods: [], invoices: [] }, reload() {} }) };
+      if (name === '@/components/shared/useAsync') return { useAsync: () => ({ status: 'success', data: { company: { balanceLabel: options.balance ?? '₦0' }, recent: [], paymentMethods: [], invoices: [] }, reload() { calls.push({ reload: true }); } }) };
       if (name === '@/lib/services/company') return { companyApi: { wallet() {} } };
       if (name === './CompanyModals') return { companyTopupStorageKey: id => `company-topup:${id}` };
-      if (name === '@/lib/services') return { authenticatedRequest: async (endpoint, init) => { calls.push({ endpoint, init }); return { active: false, subscription: null, plans: [] }; } };
+      if (name === '@/lib/services') return { authenticatedRequest: async (endpoint, init) => { calls.push({ endpoint, init }); return { active: false, subscription: null, plans: [] }; }, mutationsApi: { async companyConfirmTopUp(reference) { calls.push({ confirm: reference }); return { ok: true, balanceLabel: options.balance ?? '₦0' }; } } };
       return {};
     },
   });
@@ -60,12 +60,64 @@ test('company wallet ignores a subscription return while retaining wallet return
   assert.equal(nodes(walletTree).find(node => node.type === 'input').props.value, 'WALLET-a');
 });
 
-test('Billing keeps subscription checkout and gates only the existing wallet section', () => {
+test('Billing separates subscription and protected wallet content into accessible tabs', () => {
   const ui = fixture('Billing', '');
-  const tree = ui.render();
-  const components = nodes(tree);
+  let tree = ui.render();
+  let components = nodes(tree);
+  const tabs = components.filter(node => node.props.role === 'tab');
+  assert.equal(tabs.length, 2);
+  assert.equal(tabs[0].props['aria-selected'], true);
+  assert.equal(tabs[1].props['aria-selected'], false);
+  assert.ok(components.some(node => node.props.kind === 'company' && node.props.embedded));
+  assert.equal(components.some(node => node.props.protectedSection === true), false);
+  tabs[1].props.onClick();
+  tree = ui.render(); components = nodes(tree);
   const protectedSection = components.find(node => node.props.protectedSection === true);
   assert.ok(protectedSection);
   assert.equal(protectedSection.props.children.type.name, 'CompanyWalletPanel');
-  assert.ok(components.some(node => node.props.kind === 'company' && node.props.embedded));
+  assert.equal(components.find(node => node.props.id === 'company-billing-panel-wallet').props.hidden, false);
+  assert.equal(components.find(node => node.props.id === 'company-billing-panel-subscription').props.hidden, true);
+});
+test('Billing opens Wallet for funding returns and keeps subscription callbacks on Subscription', async () => {
+  for (const search of ['?topup=WALLET-a&reference=WALLET-a', '?tx_ref=WALLET-a', '?reference=WALLET-a', '?tab=wallet']) {
+    const ui = fixture('Billing', search); const tree = await ui.mount();
+    assert.equal(nodes(tree).find(node => node.props.id === 'company-billing-tab-wallet').props['aria-selected'], true, search);
+  }
+  const subscription = fixture('Billing', '?paymentFlow=subscription&reference=SUB-a');
+  assert.equal(nodes(await subscription.mount()).find(node => node.props.id === 'company-billing-tab-subscription').props['aria-selected'], true);
+});
+test('Billing gives a locked Wallet an explanation and a working subscription destination', async () => {
+  const ui = fixture('Billing', '?tab=wallet');
+  const tree = await ui.mount();
+  const gate = nodes(tree).find(node => node.props.protectedSection === true);
+  assert.ok(gate.props.fallback);
+  const button = nodes(gate.props.fallback).find(node => node.type === 'button');
+  assert.equal(button.props.children, 'View subscription');
+  button.props.onClick();
+  assert.equal(nodes(ui.render()).find(node => node.props.id === 'company-billing-tab-subscription').props['aria-selected'], true);
+});
+test('Billing tabs support arrow, Home and End keys with one focusable tab', () => {
+  const ui = fixture('Billing', ''); let tree = ui.render();
+  const focused = [];
+  const buttons = [0, 1].map(index => ({ focus() { focused.push(index); } }));
+  for (const [key, expected] of [['ArrowRight', 1], ['ArrowRight', 0], ['End', 1], ['Home', 0], ['ArrowLeft', 1]]) {
+    const tab = nodes(tree).find(node => node.props.role === 'tab' && node.props['aria-selected']);
+    let prevented = false;
+    tab.props.onKeyDown({ key, preventDefault() { prevented = true; }, currentTarget: { parentElement: { querySelectorAll: () => buttons } } });
+    tree = ui.render();
+    const tabs = nodes(tree).filter(node => node.props.role === 'tab');
+    assert.equal(tabs[expected].props['aria-selected'], true);
+    assert.equal(tabs.filter(node => node.props.tabIndex === 0).length, 1);
+    assert.equal(prevented, true); assert.equal(focused.at(-1), expected);
+  }
+});
+test('Wallet displays its live balance and confirms funding with a success popup and refresh', async () => {
+  const ui = fixture('CompanyWalletPanel', '?topup=WALLET-a', { balance: '₦100' });
+  let tree = await ui.mount();
+  assert.equal(nodes(tree).find(node => node.props['aria-label'] === 'Company wallet balance').props.children, '₦100');
+  await nodes(tree).find(node => node.type === 'button' && node.props.children === 'Check payment').props.onClick();
+  tree = ui.render();
+  assert.ok(ui.calls.some(call => call.confirm === 'WALLET-a'));
+  assert.ok(ui.calls.some(call => call.reload));
+  assert.ok(nodes(tree).some(node => node.props.tone === 'success' && /funding confirmed/.test(node.props.message)));
 });

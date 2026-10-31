@@ -1,0 +1,22 @@
+TAP version 13
+# Subtest: tests/company-billing-payment-flow.test.cjs
+ok 1 - tests/company-billing-payment-flow.test.cjs
+  ---
+  duration_ms: 1292.419144
+  type: 'test'
+  ...
+# Subtest: tests/dashboard-access-policy.test.cjs
+ok 2 - tests/dashboard-access-policy.test.cjs
+  ---
+  duration_ms: 665.907766
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1305.075238

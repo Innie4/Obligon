@@ -5,15 +5,14 @@ import { applyLedgerEntry } from './money.js';
 import { customerSubscription, customerFeatureIncluded, requireCustomerPlan } from './subscriptions.js';
 import { benefitInteger, benefitRequestKey, lockBenefitBudget, recordBenefitMovement } from './benefit-budget.js';
 
-export const cashbackTerms = 'Gold and Platinum earn 5% of completed personal fuel spend after discounts and excluding platform fees, rounded down to whole kobo. Cashback has no expiry. It becomes redeemable only when funded by Obligon. A paid plan is required to redeem to your fuel wallet. Refunded purchases reverse their cashback; any amount already redeemed is offset against future cashback without a forced wallet debit.';
+export const cashbackTerms = 'Gold and Platinum earn 5% of completed personal fuel spend after discounts, rounded down to whole kobo. Wallet funding fees do not earn cashback. Station revenue shares do not reduce your eligible fuel spend. Cashback has no expiry. It becomes redeemable only when funded by Obligon. A paid plan is required to redeem to your fuel wallet. Refunded purchases reverse their cashback; any amount already redeemed is offset against future cashback without a forced wallet debit.';
 export function customerCashbackRate(subscription) {
  return subscription?.active && ['gold','platinum'].includes(subscription.subscription?.plan_code) && customerFeatureIncluded(subscription.features,'Loyalty Rewards') ? 500 : 0;
 }
-export function earnedCashback(amountKobo,feeKobo,rateBp=500) {
+export function earnedCashback(amountKobo,rateBp=500) {
  const amount=BigInt(benefitInteger(amountKobo));
- const fee=BigInt(feeKobo==null ? 0 : benefitInteger(feeKobo,0));
- if(rateBp!==500||fee>=amount)return 0;
- return Number(((amount-fee)*500n)/10000n);
+ if(rateBp!==500)return 0;
+ return Number((amount*500n)/10000n);
 }
 async function accountFor(t,userId) {
  await t.query('INSERT INTO cashback_balances(user_id)VALUES($1) ON CONFLICT(user_id) DO NOTHING',[userId]);
@@ -22,10 +21,10 @@ async function accountFor(t,userId) {
 async function applyAward(t,source) {
  let award=await t.one('SELECT * FROM cashback_awards WHERE transaction_id=$1 FOR UPDATE',[source.id]);
  if(!award){
-  const earned=earnedCashback(source.amount_kobo,source.platform_fee_kobo,source.cashback_rate_bp);
+  const earned=earnedCashback(source.amount_kobo,source.cashback_rate_bp);
   if(earned===0)return;
   award=await t.one(`INSERT INTO cashback_awards(transaction_id,user_id,plan_code,rate_bp,eligible_spend_kobo,earned_kobo)
-   VALUES($1,$2,$3,500,$4,$5) RETURNING *`,[source.id,source.customer_user_id,source.cashback_plan_code,BigInt(source.amount_kobo)-BigInt(source.platform_fee_kobo??0),earned]);
+   VALUES($1,$2,$3,500,$4,$5) RETURNING *`,[source.id,source.customer_user_id,source.cashback_plan_code,source.amount_kobo,earned]);
  }
  const account=await accountFor(t,source.customer_user_id);
  const refunds=await t.one(`SELECT COALESCE(sum(r.amount_kobo),0)::text AS total FROM payment_refunds r
@@ -73,7 +72,7 @@ export async function syncCustomerCashback(userId=null,limit=100) {
   const sources=await t.query(`SELECT tr.* FROM transactions tr LEFT JOIN cashback_awards a ON a.transaction_id=tr.id
    WHERE tr.organization_id IS NULL AND ($1::uuid IS NULL OR tr.customer_user_id=$1)
    AND (a.id IS NOT NULL OR (tr.cashback_rate_bp=500 AND tr.cashback_plan_code IN('gold','platinum') AND tr.status='success'
-     AND tr.amount_kobo-COALESCE(tr.platform_fee_kobo,0)>=20
+     AND tr.amount_kobo>=20
      AND (tr.settlement_method<>'processor_split' OR EXISTS(SELECT 1 FROM fuel_orders f WHERE f.transaction_id=tr.id AND f.status='fulfilled'))))
    ORDER BY a.last_checked_at ASC NULLS FIRST,tr.created_at,tr.id LIMIT $2`,[userId,limit]);
   for(const source of sources){

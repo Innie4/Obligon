@@ -1,0 +1,106 @@
+{
+  "checkedAtUtc": "2026-10-31T20:29:59.272684+00:00",
+  "scope": "Selected nine approved release source/test files, their HEAD-to-worktree diff, and unchanged production lock/manifests",
+  "manifest": {
+    "baseCommit": "ccdff3dbf6fec17e5cb70bc5ae9c54cfbce95054",
+    "selectedFiles": {
+      "apps/api/src/lib/customer-rewards.js": "3e0c358d42a0d23b28f5a2fe9795667d03d9dfcce0afbdd2ee473e221eb20c57",
+      "apps/api/tests/customer-rewards.integration.test.mjs": "229609a597bd6a2f2196fc27bb53b2b3f389cc9c8d63c2c04bcf1b51fc1dd9de",
+      "apps/web/components/customer-dashboard/CustomerFuelCheckout.tsx": "69aa4a7baac1eeaa8d56a1b04e5fa9c2a17ad92268085d21e096c9d0a5008c8f",
+      "apps/web/tests/production-customer-controls.test.cjs": "5f4c21cd1727077c79c4f6c71b05e29adc502b0def2a4d0d9702f6ed313d4e0d",
+      "apps/web/components/company-dashboard/CompanyScreen.tsx": "0a60e4ceb1930fa67ceeb6327204d593b9d3421faef08a1b7122a8a398097930",
+      "apps/web/components/company-dashboard/CompanySubscriptionGate.tsx": "fa47234f9ff1a92489d32c31cf77861bfb2e381a40c3030920504c38bafff0c6",
+      "apps/web/tests/company-billing-payment-flow.test.cjs": "5c6e3e30b8e7dfec601bb389c989e5c44bfccef11a1a361cdb59f0d8e411adc7",
+      "apps/web/tests/dashboard-access-policy.test.cjs": "60a113c3417cc8418eab3e7b8d8e6acd30c76de42b3e03175390fdcb59ed00be",
+      "apps/api/tests/payment-webhook-recovery.integration.test.mjs": "823ddf320ac87aa436b2c98d5a76ed5e693674d7201d0e3d6440ebf0a51220b9"
+    },
+    "patchSha256": "68aeee7e968b07ff974f662270c9c1fc8782992863b2090cad2c3be420086990",
+    "lockfileSha256": "db37facc1fc066ac1f83ae83040af25bfbdfb4124bc5cbcb5daeee46b78415a7",
+    "lockfileUnchangedFromHead": true,
+    "noEnvironmentOrNpmConfigCopied": true,
+    "snapshot": "/tmp/obligon-release-scans-20261031-gd9u47u4",
+    "timeoutSecondsPerTool": 120,
+    "observedHead": "ccdff3dbf6fec17e5cb70bc5ae9c54cfbce95054",
+    "diffIncludesStagedChanges": true
+  },
+  "secretScan": {
+    "tool": "trivy",
+    "version": "0.71.2",
+    "scanner": "secret",
+    "exitCode": 0,
+    "seconds": 0.11,
+    "findingCount": 0,
+    "findings": [],
+    "selectedFileCount": 9,
+    "patchSha256": "68aeee7e968b07ff974f662270c9c1fc8782992863b2090cad2c3be420086990"
+  },
+  "productionDependencyAudit": {
+    "tool": "pnpm audit",
+    "version": "11.25.0",
+    "productionOnly": true,
+    "registry": "https://registry.npmjs.org/",
+    "exitCode": 1,
+    "seconds": 1.92,
+    "metadata": {
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 1,
+        "high": 0,
+        "critical": 0
+      },
+      "dependencies": 262,
+      "devDependencies": 0,
+      "optionalDependencies": 43,
+      "totalDependencies": 305
+    },
+    "topLevelKeys": [
+      "advisories",
+      "metadata"
+    ],
+    "advisories": [
+      {
+        "id": 1243687,
+        "github_advisory_id": "GHSA-6pq8-jhm2-2vcw",
+        "module_name": "qs",
+        "severity": "moderate",
+        "title": "qs : qs.stringify with arrayFormat 'comma' throws an uncaught TypeError on array elements carrying a non-callable own toString (DoS)",
+        "url": "https://github.com/advisories/GHSA-6pq8-jhm2-2vcw",
+        "vulnerable_versions": ">=6.7.0 <=6.16.0",
+        "patched_versions": ">=6.16.1",
+        "recommendation": null,
+        "installedVersions": [
+          "6.16.0"
+        ],
+        "dependencyPaths": [
+          "apps__api>express-rate-limit>express>body-parser>qs",
+          "apps__api>express-rate-limit>express>qs",
+          "apps__api>express>body-parser>qs",
+          "apps__api>express>qs"
+        ]
+      }
+    ]
+  },
+  "sourceUsageCheck": {
+    "command": [
+      "rg",
+      "-n",
+      "from [\"']qs|require\\([\"']qs|arrayFormat.*comma",
+      "apps/api/src",
+      "apps/web/lib",
+      "apps/web/components",
+      "packages/shared"
+    ],
+    "exitCode": 1,
+    "matchCount": 0,
+    "matches": [],
+    "scope": "Application source only; no node_modules or generated output searched",
+    "interpretation": "No direct qs imports or comma array-format call sites were found in these application directories. This does not establish that the transitive dependency is safe or unreachable."
+  },
+  "limits": [
+    "Secret scan covers only the selected nine files and diff, not repository history or hosting environment.",
+    "Production dependency audit reports one existing Moderate qs advisory. The unchanged lock was not remediated in this task.",
+    "Tests and scans do not prove live provider delivery or overall launch readiness."
+  ],
+  "temporaryRawEvidence": "/tmp/obligon-release-scans-20261031-gd9u47u4"
+}

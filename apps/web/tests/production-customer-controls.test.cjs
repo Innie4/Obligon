@@ -225,6 +225,24 @@ test('fuel retry clears only resolved load error and preserves payment error thr
  runtime.render(CustomerFuelCheckout, { ...props, refreshKey: 1 }); await flush(); tree = runtime.render(CustomerFuelCheckout, { ...props, refreshKey: 1 }); assert.match(text(tree), /Payment not confirmed yet/);
 });
 
+test('fuel checkout shows the exact half-up kobo quote and discount before payment', async () => {
+ const runtime = hooks();
+ const { CustomerFuelCheckout } = load('../components/customer-dashboard/CustomerFuelCheckout.tsx', { dependencies: { react: runtime.React, '@/lib/customer-card-routes': { customerPaymentReference: () => null }, '@/lib/services': { authenticatedRequest: async path => path.endsWith('/stations') ? { stations: [{ stationId: 'station', name: 'Approved station', city: 'Uyo', fuelType: 'PMS', sellingUnit: 'litre', unitPriceKobo: 105050, discountPercent: 12.55 }] } : path.endsWith('/card') ? { card: { id: 'card', status: 'active', label: 'Personal' } } : { orders: [] } } }, globals: { window: browser() } });
+ const props = { subscriptionActive: true }; runtime.render(CustomerFuelCheckout, props); await flush();
+ let tree = runtime.render(CustomerFuelCheckout, props);
+ nodes(tree).find(node => node.type === 'input' && node.props.id === 'fuel-litres').props.onChange({ target: { value: '0.57' } });
+ tree = runtime.render(CustomerFuelCheckout, props);
+ const amounts = nodes(tree).filter(node => node.type === 'dd').map(node => text(node));
+ assert.deepEqual(amounts, ['₦598.79', '− ₦75.15', '₦523.64']);
+});
+test('fuel quote rejects malformed amounts instead of showing a rounded payable value', () => {
+ const { fuelCheckoutQuote } = load('../components/customer-dashboard/CustomerFuelCheckout.tsx', { expose: '\nexport { fuelCheckoutQuote };' });
+ for (const value of ['0', '-1', 'NaN', '1e2', '0.001', '10000.01', '']) assert.equal(fuelCheckoutQuote(105050, value, 10), null, value);
+ for (const rate of [-1, 50, 0.001, NaN]) assert.equal(fuelCheckoutQuote(105050, '1', rate), null, String(rate));
+ assert.equal(fuelCheckoutQuote(Number.MAX_SAFE_INTEGER, '2', 0), null);
+ const quote = fuelCheckoutQuote(105050, '0.57', 0);
+ assert.equal(quote.baseKobo, 59879); assert.equal(quote.discountKobo, 0); assert.equal(quote.chargedKobo, 59879);
+});
 test('push permission rejection keeps preference unchanged and shows recovery text', async () => {
  const Toggle = () => null; const saves = [];
  const prefs = { inApp: true, email: true, sms: false, push: false, categories: { transactions: true } };

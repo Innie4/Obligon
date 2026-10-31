@@ -75,13 +75,29 @@ async function call(path,body,user='owner',method='POST'){
  return {status:response.status,body:await response.json()};
 }
 
-integration('cashback eligibility uses the paid purchase snapshot and floors exact final spend excluding fees',async()=>{
- assert.equal(rewards.earnedCashback(1099,99),50);assert.equal(rewards.earnedCashback(19,0),0);
+integration('cashback eligibility uses the paid purchase snapshot and floors exact final fuel spend',async()=>{
+ assert.equal(rewards.earnedCashback(1099),54);assert.equal(rewards.earnedCashback(19),0);
  assert.equal(rewards.customerCashbackRate({active:true,subscription:{plan_code:'gold'},features:[{label:'Loyalty Rewards',state:'Premium'}]}),500);
  assert.equal(rewards.customerCashbackRate({active:true,subscription:{plan_code:'bronze'},features:[{label:'Loyalty Rewards',state:'included'}]}),0);
  await fund();await purchase({amount:1099,fee:99});await purchase({rate:0,plan:'bronze'});
  await pool.query("UPDATE customer_subscriptions SET plan_code='gold'");
- const shown=await rewards.customerRewards(owner);assert.equal(shown.availableKobo,50);assert.equal(shown.awards.length,1);await conservation();
+ const shown=await rewards.customerRewards(owner);assert.equal(shown.availableKobo,54);assert.equal(shown.awards.length,1);await conservation();
+});
+integration('discounted fuel earns five percent of the actual customer debit without deducting the station revenue share twice',async()=>{
+ const {discountAmounts}=await import('../src/lib/discounts.js');
+ const quote=discountAmounts(10000,1000);
+ assert.equal(quote.chargedKobo,9000);assert.equal(quote.platformFeeKobo,1000);assert.equal(quote.partnerNetKobo,8000);
+ await fund();const source=await purchase({amount:quote.chargedKobo,fee:quote.platformFeeKobo});
+ let shown=await rewards.customerRewards(owner);assert.equal(shown.availableKobo,450);
+ const award=(await pool.query('SELECT * FROM cashback_awards WHERE transaction_id=$1',[source.id])).rows[0];
+ assert.equal(award.eligible_spend_kobo,'9000');assert.equal(award.earned_kobo,'450');
+ await partialRefund(source,900);shown=await rewards.customerRewards(owner);assert.equal(shown.availableKobo,405);
+ await pool.query("UPDATE transactions SET status='refunded' WHERE id=$1",[source.id]);
+ shown=await rewards.customerRewards(owner);assert.equal(shown.availableKobo,0);await conservation();
+});
+integration('a small final fuel debit remains eligible when the station retains a platform share',async()=>{
+ await fund();await purchase({amount:20,fee:1});
+ const shown=await rewards.customerRewards(owner);assert.equal(shown.availableKobo,1);assert.equal(shown.awards.length,1);await conservation();
 });
 integration('empty programme funds create durable pending awards and never spendable wallet credits',async()=>{
  await purchase();const shown=await rewards.customerRewards(owner);assert.equal(shown.pendingKobo,'500');assert.equal(shown.availableKobo,0);

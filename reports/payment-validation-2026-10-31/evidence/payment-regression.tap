@@ -1,0 +1,403 @@
+✔ twenty concurrent company card retries cause one issuer creation and one local card (484.738108ms)
+✔ company issuance rejects a changed payload or mismatched keys without another issuer effect (22.204354ms)
+✔ an uncertain card response blocks replay and new request keys without another POST (24.01845ms)
+✔ a saved provider receipt survives local insert failure and retries complete without reissuing (30.4066ms)
+✔ issuer creation intent rolls back before contacting the provider if its audit cannot commit (11.733716ms)
+✔ admin recovery requires the exact unused active zero-balance NGN issuer card and stored customer (17.155074ms)
+✔ a customer timeout never stores identity or permits blind card creation (15.071118ms)
+✔ revocation during issuer latency retains its receipt and denies caller completion without reissuing (20.351274ms)
+✔ admin recovery refuses a revoked reviewer and completes a saved receipt after subscription expiry (19.918679ms)
+✔ new card issuance requires an active company subscription before any issuer effect (10.351012ms)
+✔ revoked card-manager membership cannot finalize after the issuer responds (17.720354ms)
+✔ another company cannot consume a caller key or recover its card through issuance (18.443134ms)
+✔ company top-up notifications use company billing and personal credits retain wallet navigation (35.173657ms)
+✔ expired company subscription prevents direct allocation without any money effect (281.241809ms)
+✔ company top-up persists principal, quoted fee, charged total and chosen method against the real schema (59.109193ms)
+✔ an authorized manager starts a top-up for the immutable company wallet owner (13.545773ms)
+✔ company wallet funding never distributes cash to the company collection subaccount (12.218344ms)
+✔ company deposits enforce configured minimum, maximum, whole naira and supported methods before creating intents (34.528535ms)
+✔ provider checkout failure and missing checkout links never return a successful company top-up (25.417165ms)
+✔ company confirmation credits only principal once using the stored quoted charge (97.167636ms)
+✔ company confirmation never accepts a cross-organization payment reference (14.080624ms)
+✔ confirmation rechecks wallet ownership and quoted principal after provider verification (40.048563ms)
+✔ pending, missing and uncertain company payment outcomes stay recoverable (20.293822ms)
+✔ a frontend simulation claim cannot confirm an unpaid company top-up (17.275836ms)
+✔ a top-up cannot be redirected to a wallet whose principal owner or currency changed (19.995376ms)
+✔ foreign reference, currency and underpayment cannot credit or fail the company intent (16.557112ms)
+✔ processor-confirmed failure can be revived only by a later verified company payment (16.560672ms)
+✔ allocation requires an idempotency key and rejects imprecise or ambiguous amounts (21.84732ms)
+✔ ten concurrent retries of one allocation create one balanced effect and replay the original result (25.106409ms)
+✔ allocation key binds target, exact amount and note, including after normal key cleanup (34.301775ms)
+✔ idempotency header is accepted and conflicts with a different body key (12.95863ms)
+✔ twenty concurrent allocations never overspend and preserve ledger agreement (83.36595ms)
+✔ allocation verifies actor permission and active target membership inside the money helper (15.226654ms)
+✔ allocation accepts exact decimal naira and scopes reused request keys to the current actor (20.032444ms)
+✔ company money refuses to mix wallet currencies (17.294845ms)
+✔ an allocation cannot create a wallet balance above safe integer precision (14.494857ms)
+✔ a database failure on the credit leg rolls back both balances, audit and the retry claim (15.640248ms)
+[company-allocation] notification failed after committed transfer XFER-MVWSV2GLQ5M isolated notice failure
+✔ notification failure after commit cannot turn a retry into another allocation (16.94919ms)
+✔ invited wallet managers preserve their customer or partner role while allocating once (29.795955ms)
+✔ allocation helper rejects non-company organizations and falsely attributed caller roles (12.613896ms)
+✔ cashback eligibility uses the paid purchase snapshot and floors exact final spend excluding fees (454.377127ms)
+✔ empty programme funds create durable pending awards and never spendable wallet credits (44.981018ms)
+✔ provider net settlement funds the budget once across twenty simultaneous confirmations (61.671302ms)
+✔ an overlapping missing-net lookup returns the already paid funding result (46.507001ms)
+✔ a database failure after funding movement insertion rolls back budget credit and remains recoverable (42.599848ms)
+✔ missing net settlement and forged currency amount reference cannot fund redeemable cash (40.262858ms)
+✔ uncertain checkout is durably retained and same-key retries never create another external checkout (31.41867ms)
+✔ disabled benefit funding cannot create a checkout while existing verified funding remains recoverable (38.274102ms)
+✔ case variants of one UUID funding key share one durable intent and checkout (37.973234ms)
+✔ twenty concurrent redemptions cannot spend cashback twice or overspend the programme (124.20371ms)
+✔ ten retries of the same redemption bind owner and amount and create one credit (69.485554ms)
+✔ durably declined redemption keys never later redeem after funding and only proven no-effect receives terminal details (70.853365ms)
+✔ HTTP declined redemption responses preserve the application error details array contract (61.308329ms)
+✔ wallet failure rolls back redemption balance record and both ledger effects (52.604867ms)
+✔ refunded available cashback returns actual reserved cash while redeemed cashback becomes recovery only (173.137785ms)
+✔ refunding an award that previously offset recovery restores that recovery without invented treasury cash (101.249987ms)
+✔ successive partial refunds before funding and after redemption preserve cumulative rounded cashback (106.233875ms)
+✔ a partial refund of an offset award restores only the refunded cashback recovery (129.503471ms)
+✔ old funded cashback has no expiry and remains redeemable after downgrade with a paid period (87.965856ms)
+✔ HTTP access ignores another customer identity and forbids customer programme funding (107.044117ms)
+✔ signed funding callbacks recover missed redirects while forged callbacks do not create funds (162.241983ms)
+✔ repair reservations share only verified funds and release/consume are durable and immutable (90.344934ms)
+✔ projection stores bounded exact decimal kobo and supports changing the same month (80.155012ms)
+✔ projection refuses sub-kobo amounts without writing a rounded plan (1.329384ms)
+✔ projection refuses coercible arrays scientific notation and excessive amounts (0.97751ms)
+✔ split settlement uses exact integer half-up arithmetic for a large safe principal (20.306766ms)
+✔ split settlement rejects invalid basis-point ratio 5000.5 before sending (0.448805ms)
+✔ split settlement rejects invalid basis-point ratio -1 before sending (0.16561ms)
+✔ split settlement rejects invalid basis-point ratio NaN before sending (0.152157ms)
+✔ split settlement rejects invalid basis-point ratio 10001 before sending (0.17743ms)
+✔ a platform split fee greater than the charge is rejected (0.253292ms)
+✔ transfer recovery does not round a provider sub-kobo amount into the expected payment (0.802689ms)
+✔ transfer recovery accepts an exact decimal major amount at the kobo boundary (0.715462ms)
+✔ transfer recovery preserves uncertainty for missing malformed or oversized provider money (4.125788ms)
+✔ a bounded requested refund returns the same integer kobo without rounding (0.796235ms)
+✔ gas checkout keeps immutable quantity and approved unit through confirmation and fulfillment (401.990108ms)
+✔ gas checkout rejects an absent or stale unit without creating a provider checkout (25.007072ms)
+✔ withdrawn gas-unit approval preserves paid debt for review instead of dispensing another unit (46.484988ms)
+✔ station checkout charges 9000 and splits 1000 platform fee and 8000 station earnings (23.327161ms)
+✔ fuel checkout returns to My Card with its own payment flow and reference (22.847774ms)
+✔ direct checkout preserves its paid plan snapshot through a later plan change (28.203171ms)
+✔ the same checkout idempotency key opens one provider payment (29.999463ms)
+✔ inactive customer subscriptions cannot buy fuel (21.17193ms)
+✔ a missing active station settlement account blocks checkout before taking payment (31.479397ms)
+✔ pending checkout reservations enforce card limits across concurrent purchases (31.750433ms)
+✔ exact confirmed payment creates one processor-split transaction and a recoverable fulfillment code (35.062816ms)
+✔ direct fuel confirmation persists its original unit price after station prices change (35.358805ms)
+✔ direct checkout computes the original decimal litres quote with exact half-up rounding (32.581454ms)
+✔ direct checkout refuses disguised excess quantity precision before provider charge (17.31678ms)
+✔ underpayment cannot create fuel authorization or a transaction (36.6454ms)
+✔ a paid order can only be fulfilled once at its own station and partner (33.583469ms)
+✔ a station without an approved partner contract cannot accept a direct customer charge (30.918163ms)
+✔ checkout station listing includes approved contracts without subscriptions and excludes unapproved paid partners (70.666865ms)
+✔ contract revocation before payment confirmation records paid debt for review without dispensing (37.520421ms)
+✔ contract revocation after confirmation prevents fulfillment and preserves the paid order (49.023771ms)
+✔ an unapproved discount never changes the charged station price (24.402916ms)
+✔ negative and nonfinite litres are rejected before creating any provider charge (13.68166ms)
+✔ a checkout request key cannot be reused for a different purchase (38.775555ms)
+✔ a payment for another reference cannot authorize this order (24.050237ms)
+✔ a payment in another currency cannot authorize this order (25.974756ms)
+✔ a missing or failed payment cannot authorize fuel (26.043271ms)
+✔ concurrent customer checkout requests cannot bypass a daily card limit (32.87691ms)
+✔ a late confirmed payment remains recoverable after its pending reservation expires (28.335389ms)
+✔ a station cannot fulfill a paid fuel code belonging to another station (29.369981ms)
+✔ terminating the customer card cannot bypass its direct purchase limits by omitting cardId (20.529623ms)
+✔ late confirmed money enters paid review when spending after reservation expiry exhausts the card limit (27.493064ms)
+✔ a verified default bank cannot authorize a settlement account linked to a different bank (24.995725ms)
+✔ changing the default bank never rewrites an existing paid fuel order destination (46.948258ms)
+✔ overpaid fuel authorizes only the immutable quote and atomically queues the exact excess once (58.510265ms)
+✔ failure to persist a fuel overpayment refund rolls back authorization and sale (30.906827ms)
+✔ direct POS authorization refuses a revoked partner contract without any ledger effect (196.571ms)
+✔ gas POS preserves the approved unit and exact quantity in transaction and dispensing log (45.538439ms)
+✔ gas POS rejects missing units, stale unit forms, unapproved fuels and old-unit prices without spending (33.964384ms)
+✔ POS debits wallet and records exactly the selected station price (29.041998ms)
+✔ insufficient wallet rolls back sale, counters, code and ledger (16.598303ms)
+✔ daily spend limit includes completed purchases (12.15778ms)
+✔ monthly limit includes purchases from earlier business days (14.425941ms)
+✔ expired customer subscription cannot buy fuel (16.834588ms)
+✔ missing customer subscription cannot buy fuel (14.887588ms)
+✔ invalid code is rejected without falling back to a driver PIN (13.944886ms)
+✔ station belonging to another partner cannot be charged (14.644714ms)
+✔ pending station cannot consume a wallet code or move money (16.055478ms)
+✔ suspended station cannot consume a wallet code or move money (20.566673ms)
+✔ closed active station cannot consume a wallet code or move money (17.235487ms)
+✔ wallet sale records the quoted unit price and keeps it after published price changes (23.609875ms)
+✔ wallet quote rounds an exact decimal litre half-kobo upward (28.429743ms)
+✔ wallet POS refuses sub-centilitre precision before consuming code or ledger (24.963298ms)
+✔ one authorization code permits one atomic sale across concurrent requests (20.378639ms)
+✔ approved active discount charges customer 9000, partner 8000, platform 1000 (22.94494ms)
+✔ pending discount leaves published price unchanged (20.900194ms)
+✔ expired approved discount leaves published price unchanged (18.430288ms)
+✔ future approved discount does not apply before its scheduled start (21.738924ms)
+✔ replaying approval never extends an already activated paid subscription (15.737197ms)
+✔ fuel purchases snapshot eligible cashback before a later plan feature change (27.954857ms)
+✔ monthly wallet budget includes previous fuel debits and rolls back excess purchases (18.171883ms)
+✔ active direct checkout reservations block wallet POS purchases above card limits (23.111505ms)
+✔ expired direct checkout reservations do not block wallet POS purchases (17.371532ms)
+✔ fuel codes cannot debit non-NGN personal or company wallets as naira (41.884312ms)
+✔ an existing company fuel code cannot spend after its paid subscription expires (25.628901ms)
+✔ legacy successful payout callbacks apply settlement accounting once instead of releasing unpaid earnings (1009.430918ms)
+✔ forged legacy payout callbacks cannot look up or release any reservation (18.017659ms)
+Paystack webhook processing error: Transfer is awaiting exact provider confirmation
+Paystack webhook processing error: Transfer is awaiting exact provider confirmation
+Paystack webhook processing error: Transfer is awaiting exact provider confirmation
+✔ twenty concurrent legacy callbacks preserve one exact settlement effect (143.248736ms)
+[scheduler:payouts] Could not read transfer TRF_fixture: Transfer identity did not match the recorded payout
+Paystack webhook processing error: Transfer is awaiting exact provider confirmation
+[scheduler:payouts] Could not read transfer TRF_fixture: Transfer evidence does not match the reserved identity, NGN currency, reference and amount; reconciliation required
+Paystack webhook processing error: Transfer is awaiting exact provider confirmation
+[scheduler:payouts] Could not read transfer TRF_fixture: Transfer evidence does not match the reserved identity, NGN currency, reference and amount; reconciliation required
+Paystack webhook processing error: Transfer is awaiting exact provider confirmation
+[scheduler:payouts] Could not read transfer TRF_fixture: Transfer evidence does not match the reserved identity, NGN currency, reference and amount; reconciliation required
+Paystack webhook processing error: Transfer is awaiting exact provider confirmation
+✔ unmatched provider identity reference currency or amount never releases legacy funds (44.924608ms)
+✔ an old failed callback cannot undo a currently successful provider transfer (34.56596ms)
+✔ legacy pending payouts with lost identifiers recover from their exact merchant reference (20.587652ms)
+[scheduler:payouts] Could not read transfer TRF_fixture: Fixture payout failure
+Paystack webhook processing error: Transfer is awaiting exact provider confirmation
+✔ a database failure between settlement and payout state rolls both effects back for retry (32.700684ms)
+✔ naira input preserves exact kobo without binary rounding (2.047005ms)
+✔ whole-naira checkout refuses fractional deposits rather than silently surcharging (1.11737ms)
+✔ money inputs reject excess precision, negatives, malformed values and configured bounds (2.131434ms)
+✔ minor units reject decimal or unsafe input instead of rounding it (1.234661ms)
+✔ quantities retain exact hundredths and reject excess precision or coercion (0.58008ms)
+✔ integer ratios round half-up at and around the threshold without unsafe products (1.39719ms)
+✔ invalid integer ratios and unsafe rounded totals are refused (4.019086ms)
+✔ fuel quote applies exact decimal quantity and supported monetary bounds (0.483521ms)
+✔ creditWalletOnce credits exactly once for the same idempotency key (259.075276ms)
+✔ debitWalletOnce refuses to overdraw and never goes negative (5.147083ms)
+✔ debitWalletOnce is idempotent (4.022566ms)
+✔ transferFromCompanyWallet moves funds atomically and writes both legs (64.156782ms)
+✔ transferFromCompanyWallet refuses to overdraw the company wallet (11.233489ms)
+✔ transferFromCompanyWallet refuses non-positive amounts (7.823018ms)
+✔ a company cannot credit a user who is not its member (15.318435ms)
+✔ concurrent transfers cannot overdraw the company wallet (32.477135ms)
+✔ paying for a plan does NOT fund the fuel wallet (6.540333ms)
+✔ the provider's business-level reason is preserved (1.467191ms)
+✔ anything key-shaped is redacted before it can reach a browser (0.425008ms)
+✔ the redacted text still identifies the problem (0.426005ms)
+✔ messages are bounded and whitespace-collapsed (0.245014ms)
+✔ a provider error is flagged exposable, not masked (0.372907ms)
+✔ a 2xx with no checkout link is also reported rather than swallowed (0.291843ms)
+✔ the error envelope tells the client the message is trustworthy (0.264335ms)
+✔ the client preserves an exposed reason instead of overwriting it (3.600796ms)
+✔ the top-up modal surfaces the server message rather than its own (3.611141ms)
+✔ an NGN charge offers card and bank transfer (1.511856ms)
+✔ PayPal is never offered (0.2129ms)
+✔ only methods Flutterwave supports for the currency are requested (0.12781ms)
+✔ card is offered for every currency we support (0.130926ms)
+✔ an unknown currency falls back to card and transfer, not the account default (0.135597ms)
+✔ an explicit override wins, so a merchant can change the mix (0.142456ms)
+✔ the currency match is case-insensitive (0.099273ms)
+✔ the bank transfer virtual account outlives a realistic transfer (0.233365ms)
+✔ official v3 envelope retrieves both pages and exposes cancelled-plan drift (130.966232ms)
+✔ empty official catalogue is accepted and cached (2.065777ms)
+✔ malformed plan envelope cannot report a successful empty catalogue (2.617973ms)
+✔ invalid pagination metadata reports that the catalogue could not be checked (1.99988ms)
+✔ catalogue beyond the bounded page limit is stale instead of silently truncated (1.634227ms)
+✔ processor throttling retains the last complete catalogue as stale (2.101178ms)
+✔ malformed provider plan amounts require review instead of being rounded into a plan price (10.665804ms)
+✔ verified v3 amounts always use major units, including 100-fold overpayment (36.531475ms)
+✔ overpayment remains explicit evidence for the refund owner (1.372827ms)
+✔ a missing merchant reference cannot be replaced by our expected reference (1.780228ms)
+✔ a foreign merchant reference cannot authorize another purchase (0.689654ms)
+✔ missing currency cannot be replaced by the expected currency (1.519848ms)
+✔ foreign currency cannot give NGN value (0.785006ms)
+✔ a missing amount cannot fall back to charged_amount including provider fees (0.825422ms)
+✔ malformed and sub-kobo amounts are rejected (5.113591ms)
+✔ an underpayment cannot give the expected value (0.829075ms)
+✔ an unresolved verification does not claim payment success (0.686804ms)
+✔ a failed foreign transaction cannot retire our payment intent (0.464889ms)
+✔ provider-confirmed first card payment activates one period and withdrawn callbacks cannot revive it (767.939322ms)
+✔ forged provider webhooks cannot look up payments or claim events (20.833654ms)
+Paystack webhook processing error: Payment currency did not match the recorded charge
+Paystack webhook processing error: Payment reference did not match the recorded charge
+Paystack webhook processing error: Payment amount was less than the amount due
+Paystack webhook processing error: Payment amount is missing
+Paystack webhook processing error: Payment currency did not match the recorded charge
+✔ signed legacy callbacks require current matching currency, reference and amount (42.980728ms)
+✔ a signed callback from another provider cannot complete an unrelated provider intent (14.754723ms)
+✔ twenty simultaneous valid callbacks post one principal credit (102.972414ms)
+Paystack webhook processing error: Isolated ledger failure
+✔ database failure after event receipt rolls back receipt and credit and permits retry (23.747346ms)
+✔ late successful evidence revives a failed intent and old receipt-only claims (19.527891ms)
+✔ verified overpayment queues one exact excess in the same credit transaction (40.960176ms)
+✔ issuer callbacks remain durable review records without inventing wallet postings or counters (32.558382ms)
+✔ issuer inactive status freezes locally while terminal cards resist delayed activation (13.472444ms)
+✔ no code path credits a wallet from a plan purchase (2.894413ms)
+✔ the credit function itself is gone, not merely uncalled (0.464371ms)
+✔ no plan_wallet_credits rows survive, so no wallet is funded by a plan (0.482504ms)
+✔ the wallet page keeps the add-funds action reachable with no history (3.619942ms)
+✔ the wallet page makes no claim about auto-recharging (0.749284ms)
+✔ periodic reconciliation activates a paid subscription without redirect or webhook (361.248516ms)
+✔ a provider timeout preserves pending subscription money for the next pass (325.413474ms)
+✔ an unconfirmed subscription remains pending instead of being retired by retry count (64.076168ms)
+✔ periodic card payment confirmation stores the provider transaction identifier (15.465238ms)
+✔ pending fuel orders are retried and remain pending on unknown provider errors (314.045568ms)
+✔ periodic reconciliation recovers a paid fuel authorization once without redirect or webhook (30.449419ms)
+✔ late confirmation records paid review without authorizing fuel when limits are exhausted (13.647311ms)
+✔ a delayed bank payment stays recoverable after its initial provider lookup is missing (228.143939ms)
+✔ a still-pending payment remains recoverable after the former eight-attempt threshold (55.622104ms)
+✔ a processor-confirmed failed payment is retired without wallet credit (16.154664ms)
+✔ recovery rotates unresolved intents so an old pending batch cannot starve a later paid checkout (21.03668ms)
+✔ twenty concurrent confirmations cannot credit the same top-up twice (18.983414ms)
+✔ periodic card overpayment records one exact excess debt without crediting fuel (67.767105ms)
+✔ card refund-intent database failure rolls payment recognition back for a safe retry (24.377489ms)
+✔ card payment never substitutes a changed catalog price for a missing original quote (11.097909ms)
+✔ a delayed paid topup recovers after an earlier confirmed failure (18.540377ms)
+✔ missing payment configuration cannot make an optional balance sweep reject a read (6.290081ms)
+✔ ambiguous outbound refund retains claim and replay never sends a second refund (219.99007ms)
+✔ admin partial refund cannot exceed the immutable original charge (929.822864ms)
+✔ aggregate partial refunds cannot exceed the original charge (92.620829ms)
+✔ partial disbursements mark the card refunded only when their exact aggregate settles (76.42147ms)
+✔ explicit verified excess debt is separate from the original-price refund cap (44.332383ms)
+✔ a full refund following a partial cannot pay the original charge twice (56.71823ms)
+✔ twenty distinct concurrent partials reserve at most the recorded charge (137.599128ms)
+✔ manual-review full refund preserves paid state and does not promise disbursement (44.05452ms)
+✔ customer withdrawal becomes refunded only after exact provider disbursement evidence (43.977473ms)
+✔ customer withdrawal refuses an unknown original charge instead of current catalogue price (33.820733ms)
+✔ an ambiguous withdrawal returns durable review debt and never resends on retries (64.474445ms)
+✔ concurrent admin and customer full refunds create one reserved intent and one provider effect (37.077491ms)
+[api:error] error: new row for relation "payment_refunds" violates check constraint "reject_intent"
+    at /home/inimfon-udoh/Obligon/checkout/node_modules/.pnpm/pg@8.23.0/node_modules/pg/lib/client.js:694:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async Object.one (file:///home/inimfon-udoh/Obligon/checkout/apps/api/src/db.js:97:10)
+    at async queueRefund (file:///home/inimfon-udoh/Obligon/checkout/apps/api/src/lib/money.js:286:18)
+    at async file:///home/inimfon-udoh/Obligon/checkout/apps/api/src/routes/customer.routes.js:1213:20
+    at async tx (file:///home/inimfon-udoh/Obligon/checkout/apps/api/src/db.js:94:20)
+    at async file:///home/inimfon-udoh/Obligon/checkout/apps/api/src/routes/customer.routes.js:1190:18 {
+  length: 622,
+  severity: 'ERROR',
+  code: '23514',
+  detail: 'Failing row contains (637c7c13-bd69-4a03-a2f2-e2661508a671, 0043cd56-24c8-4c64-a13f-604d130eccc6, flutterwave, CARD-BOUNDARY, null, full, 100000, NGN, Customer withdrew the plan before verification completed, pending, flutterwave:CARD-BOUNDARY:full, {"simulated": false, "clawbackKobo": 0, "cardRequestId": "e6c325..., 2026-10-31 20:34:23.495035+01, 2026-10-31 20:34:23.495035+01, null).',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'refund_boundaries_49178_ff3bfe79c5824a7786149990149a3036',
+  table: 'payment_refunds',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'reject_intent',
+  file: 'execMain.c',
+  line: '2076',
+  routine: 'ExecConstraints'
+}
+✔ failed refund intent insertion rolls back withdrawal reservation before any provider effect (35.666552ms)
+[api:error] error: new row for relation "payment_refunds" violates check constraint "reject_intent"
+    at /home/inimfon-udoh/Obligon/checkout/node_modules/.pnpm/pg@8.23.0/node_modules/pg/lib/client.js:694:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async Object.one (file:///home/inimfon-udoh/Obligon/checkout/apps/api/src/db.js:97:10)
+    at async queueRefund (file:///home/inimfon-udoh/Obligon/checkout/apps/api/src/lib/money.js:286:18)
+    at async file:///home/inimfon-udoh/Obligon/checkout/apps/api/src/routes/customer.routes.js:1213:20
+    at async tx (file:///home/inimfon-udoh/Obligon/checkout/apps/api/src/db.js:94:20)
+    at async file:///home/inimfon-udoh/Obligon/checkout/apps/api/src/routes/customer.routes.js:1190:18 {
+  length: 622,
+  severity: 'ERROR',
+  code: '23514',
+  detail: 'Failing row contains (09a1395a-90bd-4121-a70b-1decf4851941, 0043cd56-24c8-4c64-a13f-604d130eccc6, flutterwave, CARD-BOUNDARY, null, full, 100000, NGN, Customer withdrew the plan before verification completed, pending, flutterwave:CARD-BOUNDARY:full, {"simulated": false, "clawbackKobo": 10000, "cardRequestId": "e6..., 2026-10-31 20:34:23.531918+01, 2026-10-31 20:34:23.531918+01, null).',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'refund_boundaries_49178_ff3bfe79c5824a7786149990149a3036',
+  table: 'payment_refunds',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'reject_intent',
+  file: 'execMain.c',
+  line: '2076',
+  routine: 'ExecConstraints'
+}
+✔ legacy wallet clawback and refund intent roll back together on database failure (36.784822ms)
+✔ legacy wallet credit is reclaimed once across concurrent withdrawal replays (51.86292ms)
+✔ old manual debt cannot starve later queued refunds in bounded sweeps (46.255418ms)
+✔ manual refund debt appears in reconciliation attention even outside the bounded batch (33.156262ms)
+✔ recorded refund failure appears in reconciliation attention without an automatic retry (39.495799ms)
+✔ refund intent rolls back with its purchase and never contacts provider (215.325609ms)
+✔ a crash after committing intent is recovered with one POST across 20 concurrent dispatches (47.47444ms)
+✔ timeout after provider acceptance stays claimed and replay or reconciliation never resends (12.150214ms)
+✔ queued intent can be recovered by the reconciliation worker (5.819789ms)
+✔ refund replay bound to a different owner or transaction is rejected before provider effect (3.838292ms)
+✔ unknown full refund amount is rejected before creating an untrackable claim (2.203976ms)
+✔ Flutterwave fractional and subminimum amounts remain queued for review without rounding or POST (4.803206ms)
+✔ known Paystack refund settles only exact matching processed evidence using Paystack lookup (4.717819ms)
+✔ known Flutterwave completed is pending and final disbursement status settles with exact charge evidence (7.367546ms)
+✔ reconciliation refuses wrong charge evidence and marks review without resending (5.710288ms)
+✔ reconciliation refuses wrong amount evidence and marks review without resending (5.665697ms)
+✔ reconciliation refuses wrong currency evidence and marks review without resending (4.703259ms)
+✔ reconciliation refuses wrong refund evidence and marks review without resending (3.094336ms)
+✔ reconciliation refuses missing currency evidence and marks review without resending (3.078838ms)
+✔ reconciliation refuses wrong reference evidence and marks review without resending (3.256808ms)
+✔ overpaid subscription activates the quote once and records exact excess in the same transaction (9.576086ms)
+✔ a failed subscription refund insert rolls back paid status and subscription entitlement (4.709289ms)
+✔ SIGKILL after a provider accepts a refund retains the durable claim across worker restart (188.595604ms)
+✔ a changed excess amount cannot create a second refund for the same verified charge (5.1026ms)
+✔ unequal-volume purchases sum actual recorded discounts rather than averaging unit prices (73.274833ms)
+✔ recorded historical savings do not change when current network prices change (5.062545ms)
+✔ discount evidence remains reportable without a rounded per-litre price or network benchmark (3.514207ms)
+✔ legacy missing price evidence is excluded without inventing an old base price (2.768045ms)
+✔ paying more than the recorded base cannot cancel a genuine discount (1.999851ms)
+✔ customer, successful status and date window bound the recorded savings (2.485942ms)
+✔ integer kobo totals remain exact for fractional litres and multiple fuel types (1.624032ms)
+✔ reporting rejects totals outside exact JavaScript integer bounds (1.927836ms)
+✔ accrual excludes the unfinished business month and stops its watermark at its start (132.770924ms)
+✔ a Lagos month-boundary sale belongs to the previous month even with the DB session in UTC (7.867256ms)
+[settlements] accrual failed for 0d0d9148-ba2b-4226-b0cc-248dbe783b27: Settlement aggregate is outside the allowed range
+✔ oversized settlement accrual rolls back without advancing its watermark (7.281738ms)
+[scheduler:settlement] Error processing partner 6f3bafb4-e20b-4b1b-99af-b2cb93bd6945: HttpError: Unpaid settlements is outside the allowed range
+    at badRequest (file:///home/inimfon-udoh/Obligon/checkout/apps/api/src/lib/errors.js:9:45)
+    at integerKobo (file:///home/inimfon-udoh/Obligon/checkout/apps/api/src/lib/money-amounts.js:19:55)
+    at file:///home/inimfon-udoh/Obligon/checkout/apps/api/src/lib/scheduler.js:58:27
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async tx (file:///home/inimfon-udoh/Obligon/checkout/apps/api/src/db.js:94:20)
+    at async runAutoSettlements (file:///home/inimfon-udoh/Obligon/checkout/apps/api/src/lib/scheduler.js:50:22)
+    at async TestContext.<anonymous> (file:///home/inimfon-udoh/Obligon/checkout/apps/api/tests/settlement-accounting.integration.test.mjs:125:18)
+    at async Test.run (node:internal/test_runner/test:1409:7)
+    at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+  status: 400,
+  details: undefined
+}
+✔ automatic settlement rejects an aggregate above the exact integer range before submitting (10.233776ms)
+✔ a partner created after migration enrollment accrues its first completed earning month (11.443913ms)
+✔ paid history excludes its earning period but does not skip earnings before a delayed payment (12.213657ms)
+✔ unresolved payouts rotate so a newer successful payout is not starved (213.151196ms)
+✔ a partial payout preserves the unsettled claim and original period gross, fees and net (8.05369ms)
+✔ a fully paid period keeps its historical monetary values (8.44569ms)
+✔ automatic payouts wait for the same partner advisory lock used by manual payouts (38.248379ms)
+✔ direct processor split earnings never create an additional transfer claim (16.122245ms)
+✔ wallet-funded discounts accrue the charged customer amount less the stored platform fee (13.909ms)
+✔ repeated accrual does not duplicate completed earning periods (12.227071ms)
+✔ concurrent reconciliation applies a confirmed partial payment once (14.776823ms)
+✔ an active payout claim prevents another worker from duplicating provider lookup (13.861488ms)
+[scheduler:settlement] Transfer queued but notification failed for b08cb766-fac1-4e75-8f3b-68c3c13d52c9: new row for relation "notifications" violates check constraint "reject_test_notification"
+✔ notification failure after a submitted transfer never releases the payout reservation (26.392439ms)
+✔ a premature legacy settlement for an unfinished month is not automatically disbursed (10.180505ms)
+✔ migration quarantines legacy pending duplicates of a paid period without erasing historical money (11.450645ms)
+[scheduler:payouts] Could not read transfer 101: Transfer evidence does not match the reserved identity, NGN currency, reference and amount; reconciliation required
+✔ a confirmed transfer for a different amount never rewrites the settlement claim (13.799433ms)
+✔ a submission timeout after bank acceptance retains its reservation and never sends the same earnings again (14.187152ms)
+✔ an old transfer without a saved provider identifier retains its claim for review instead of assuming no money moved (22.008506ms)
+✔ a lost transfer response is recovered by its exact stable reference without initiating a new bank transfer (16.220576ms)
+✔ a delayed failed lookup cannot overwrite a concurrently settled payout (15.150961ms)
+[scheduler:payouts] Could not read transfer 101: Transfer evidence does not match the reserved identity, NGN currency, reference and amount; reconciliation required
+[scheduler:payouts] Could not read transfer 101: Transfer evidence does not match the reserved identity, NGN currency, reference and amount; reconciliation required
+[scheduler:payouts] Could not read transfer 101: Transfer identity did not match the recorded payout
+[scheduler:payouts] Could not read transfer 101: Transfer evidence does not match the reserved identity, NGN currency, reference and amount; reconciliation required
+[scheduler:payouts] Could not read transfer 101: Transfer evidence does not match the reserved identity, NGN currency, reference and amount; reconciliation required
+✔ contradictory transfer identity, currency, amount or reference never releases a payout reservation (44.633517ms)
+✔ an exact provider-confirmed failed transfer retires only its processing reservation (9.872389ms)
+✔ a delayed old failure cannot retire a newer retry while its provider response is pending (12.338692ms)
+✔ delayed provider id recovery cannot replace the receipt for a newer retry reference (13.584851ms)
+ℹ tests 302
+ℹ suites 0
+ℹ pass 302
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6156.165117

@@ -73,6 +73,16 @@ test('a protected wallet section on Billing stays hidden without duplicating pla
   paid.render(); await paid.settle();
   assert.equal(paid.tree().props.children, 'Operational dashboard');
 });
+test('a protected company section can explain locked access using the existing subscription check', async () => {
+  const fallback = element('section', { children: 'Subscribe to use the company wallet.' });
+  const unpaid = fixture('company', { active: false }, '/company/billing', { protectedSection: true, fallback });
+  unpaid.render(); await unpaid.settle();
+  assert.equal(unpaid.tree(), fallback);
+  assert.deepEqual(unpaid.calls, ['/api/company/subscription']);
+  const paid = fixture('company', { active: true }, '/company/billing', { protectedSection: true, fallback });
+  paid.render(); await paid.settle();
+  assert.equal(paid.tree().props.children, 'Operational dashboard');
+});
 
 test('expiry hides company operations and rechecks the server without manufacturing a renewal', async () => {
   let active = true;

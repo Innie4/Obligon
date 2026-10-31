@@ -1,3 +1,4 @@
+- [2026-10-31] [Payment checks and a separate Company wallet](2026-10-31-payment-validation-and-company-wallet.md): Use exact fuel calculations, preserve single wallet credits and explain subscription access while separating local tests from live payment evidence.
 - [2026-10-28] [Make an existing user an administrator](2026-10-28-convert-existing-users-to-admin.md): Preserve the registered identity and history while replacing its role, revoking former access and recording the conversion atomically.
 - [2026-10-28] [Partner contracts and Company subscriptions](2026-10-28-partner-contract-company-plans.md): Separate dashboard access policies, annual payment periods, bounded inspection logins and Careers editing.
 - [2026-10-28] [Admin access and review workflows](2026-10-28-admin-access-and-workflows.md): Enforce selected pages, approved ticket closure and consistent discount windows across review boards.

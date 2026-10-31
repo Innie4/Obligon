@@ -1,0 +1,101 @@
+# Payment validation and four-day dashboard access
+
+Prepared on 31 October 2026 against source revision `ccdff3dbf6fec17e5cb70bc5ae9c54cfbce95054`.
+
+## Result and release decision
+
+Two confirmed calculation bugs are fixed locally and independently reviewed. Company Billing now separates Subscription and Wallet, including an explanation when wallet access is locked. The combined working tree passes 332 isolated API checks, 16 focused Wallet/access UI checks and a production build. **One user-completed real Company payment passed provider verification and manual application confirmation. Live webhook acceptance remains blocked by signature authentication failure; its exact cause is unconfirmed. The project is not proven ready for unrestricted real-money launch.**
+
+The concrete four-file financial patch is [changes.diff](changes.diff), SHA-256 `4c6be4be722e68f4be189b61dcf6e05111231babbc7e09ae125ed3badf009300`. The user explicitly confirmed qualified review and approval of this exact patch. The release agent rechecked its hash and confirmed it matches. The combined nine source/test files are approved for release; no further review confirmation is required for that unchanged change set.
+
+The four Company UI/test files and the additional webhook test also passed independent review. The release agent is preparing the approved combined release. The recorded build below tested the nine-file working tree before commit; it is build evidence, not a claim that hosting deployment has completed.
+
+## What changed
+
+| Dashboard/page | Change | Reproduced defect |
+|---|---|---|
+| Customer, fuel checkout | Uses exact integer quote calculations matching API rounding; malformed quantities cannot proceed | At a unit price of ₦1,050.50 and quantity 0.57, preview showed ₦598.78 while the API charged ₦598.79 |
+| Customer, cashback | Awards 5% of the actual final fuel debit after discounts; station revenue share is not subtracted twice | A ₦90 debit with a ₦10 station revenue share earned ₦4 instead of the agreed ₦4.50 |
+| Corresponding existing API/web tests | Added precision, malformed-quote, small-award and refund regressions | Both defects reproduced before implementation |
+| Company, Billing | Separate Subscription and Wallet tabs, payment-return selection, keyboard navigation and success popup after funding confirmation | Wallet funding and subscription controls previously shared one page section |
+| Company, protected Wallet access | Uses the existing subscription check to show a locked-state explanation and a working View subscription action | A first tab implementation left an inactive company's Wallet panel empty; this was corrected before release |
+| Existing webhook integration test | Exercises `createApp()` middleware and a Company wallet's first verified callback, forged/missing authentication and duplicate delivery | Previous fixtures mounted a separate parser/router and did not demonstrate Company wallet delivery through the real app wiring |
+
+Only new cashback awards use the corrected eligible-spend calculation. Existing award snapshots were preserved. Any historical correction needs an explicitly reviewed compensating reconciliation, not direct edits to financial history. Funding, refund reversals, concurrent access and wallet redemption protections remain in place. The corrected award can reserve more of Obligon's benefit budget than the previous underpayment.
+
+## Fresh verification
+
+- 332 of 332 API checks passed across 24 existing files on a disposable loopback PostgreSQL 18 database with all 49 migrations. No failed, skipped or cancelled checks. The new Company webhook regression is included.
+- 16 of 16 final Company Billing/access-policy UI tests passed, with no failures or skips. An independent reviewer reran the same 16 checks successfully after the inactive Wallet fallback was added.
+- 57 customer control/My Card web tests passed and 88 focused cashback/fuel-sale/fuel-checkout API tests passed during reproduction and correction.
+- Web typecheck passed. The latest sanitized production Next build of the combined dirty working tree passed and generated 80 static pages. 75 existing warning lines remain, including unused code/hook warnings and workspace-root inference from multiple lockfiles. Build success is not a warning-free result, a UI-only artifact or proof of deployment.
+- Independent review found no blockers in the financial calculation patch, the final Wallet UI/access patch or the webhook test addition. `git diff --check` passed. The user subsequently approved the exact financial patch as a qualified reviewer.
+- Fixture-provider tests cover internal verification, concurrency/idempotency, recovery, ledger effects and tenant boundaries. They are not genuine external sandbox settlement tests.
+
+Exact commands, test outputs and file hashes are preserved in [the evidence report](evidence/isolated-payment-validation.md). The nine-file combined source identity is recorded in [the manifest](evidence/wallet-webhook-source-manifest.json); it includes the unreleased financial edits.
+
+## Company Wallet browser verification
+
+The exact Wallet preview passed desktop and 390-pixel mobile checks. The mobile document's `scrollWidth` was 390 pixels, with no horizontal overflow at that width. Home/End keys switched tabs and moved focus, and reloading a direct `?tab=wallet` URL preserved Wallet selection. The active account displayed its verified ₦100 balance and ledger entry. An inactive subscription displayed the locked explanation, and View subscription selected the Subscription tab without exposing wallet operations.
+
+Screenshots: [active desktop](../company-wallet-tab-2026-10-31/active-desktop.png), [active mobile](../company-wallet-tab-2026-10-31/active-mobile.png), and [inactive mobile](../company-wallet-tab-2026-10-31/inactive-mobile.png). These are preview checks, not proof of the final hosted release. Design reference decisions are recorded in [the direction note](../company-wallet-tab-2026-10-31/DIRECTION.md).
+
+## Live payment evidence
+
+- Live API health returned 200. Published payment configuration returned 200, with Flutterwave selected and simulation off.
+- A read-only authenticated Flutterwave Nigerian bank-directory request returned 200, proving the available live API credential authenticates. It does not prove charges or payouts settle.
+- The current customer-borne wallet funding fee is 5%; the published minimum wallet deposit is ₦100. The user completed the authorized Company checkout for **₦105**, consisting of **₦100 wallet principal and ₦5 quoted fee**.
+- Flutterwave verification returned `successful`, NGN and the expected ₦105. Manual Company confirmation returned 200 and credited the wallet ₦100. Repeating confirmation returned `alreadyPaid=true`, the same balance and exactly one ₦100 ledger credit. The provider separately reported ₦102.74 net settlement; that field is not the wallet principal or proof of receipt into a bank account. Evidence: [payment result](company-real-payment.json) and [browser capture](company-real-payment.png).
+- The supplied customer test credential currently belongs to an active Admin account. It cannot test customer-only payment routes. The account's role was not changed and **no customer charge was made**. Evidence: [role/access check](customer-access.json).
+- No sandbox credentials are available in the current configuration. Sudo card issuing is missing. BVN remains disabled in the inspected configuration.
+- No additional charge was created for webhook replay. No real partner payout, refund or card issuance was performed. No production financial entries were fabricated or reset to manufacture a test result.
+
+## Live webhook configuration and delivery
+
+The exact receiver URL, `https://obligon.onrender.com/api/webhooks/flutterwave`, was saved in the merchant dashboard and checked again after reload. The inspected merchant context was account `100850075`, with V3 Live webhooks enabled. This integration expects Flutterwave v3 `charge.completed` events with a `verif-hash` header matching the deployed `FLW_SECRET_HASH`. The receiver already follows that protocol; no production receiver code was changed. Official references: [v3 webhooks](https://developer.flutterwave.com/docs/webhooks) and [same-transaction webhook replay](https://developer.flutterwave.com/v3.0.0/reference/resend-transaction-webhook).
+
+The user authorized dashboard configuration and replay of the existing paid Company transaction. Initial replay reported `Endpoint not found`. After correcting the merchant URL, replay reached the expected authentication path and reported `Invalid signature`. The browser returns a redaction placeholder for the merchant secret even when the field is revealed, so its equality with deployed Render `FLW_SECRET_HASH` cannot be determined through that read. The earlier conclusion that the values differ was invalid and has been withdrawn. Neither value is included in this report or its evidence.
+
+The user reported saving the matching secret. The subsequent same-payment replay still returned `Invalid signature`, with no event receipt or audit and the same single ₦100 wallet credit. **Delivery verification remains pending:** determine the actual failed authentication condition, then confirm a successful receiver response, completed event receipt, matching audit entry and unchanged single ledger credit. The provider's resend API returning HTTP 200 with “hook sent successfully” is not proof of receiver acceptance when its delivery result contains an error.
+
+A separate, deliberately nonfinancial configuration probe sent with the current Render-stored hash returned HTTP 200, `received:true`, and `ignored:obligon.configuration_probe`. This demonstrates that the active receiver accepts that stored credential. It does not prove that Flutterwave sent an accepted payment webhook, reveal the merchant secret, or change any financial record. Evidence: [active-secret probe](webhook-active-secret-probe.json).
+
+No successful receiver receipt or webhook audit was present in the inspected replay results. The existing ₦100 wallet credit came from manual payment confirmation, not a proven accepted live webhook. The isolated Company test proves first-callback accounting through the actual application; a live replay after manual confirmation can prove delivery and duplicate protection, not first-webhook-only credit.
+
+Evidence: [initial routing error](webhook-replay-diagnostic.json), [replay after URL correction](webhook-replay-corrected-url.json), [replay after the user's secret update](webhook-replay-matched-secret.json), [configuration check with inconclusive secret comparison](webhook-configuration-check.json), and [saved URL browser capture](webhook-settings-corrected-url.png).
+
+## Unresolved operational blocker
+
+The live `/health` reports scheduler `enabled=false`, `running=false`, with no reconciliation timestamp. This conflicts with the expected `ENABLE_SCHEDULER=true` setting in `render.yaml`. The repository declares no external cron deployment that proves equivalent recovery is running.
+
+Without unattended recovery, webhooks and limited read-path recovery do not establish that every pending top-up, subscription, direct fuel purchase, refund, settlement or outbox task will eventually finish. Enabling recovery can execute queued financial work and must follow backlog review.
+
+Read-only aggregate snapshot at 2026-10-31 19:40 UTC:
+
+- One pending payout row recording ₦300,000.
+- Two pending settlement rows recording ₦2,517,416.55. This is a separate category and must not be added to the payout amount as though they were necessarily different liabilities.
+- Four pending top-ups recording ₦107,000 and three pending subscription quotes recording ₦75,000, all awaiting real processor confirmation.
+- Eight organizations have automatic settlement enabled.
+- No refund rows or direct fuel orders were present.
+
+The origin and real-provider agreement of those historical rows were not established. No queued job was run, those historical ledger records were not changed and scheduler configuration was not enabled. The later authorized Company payment adds its own verified ₦100 wallet credit; it does not validate the historical backlog. Evidence: [live diagnostics](live-diagnostics.json) and [aggregate backlog](backlog.json). Local ignored environment JWT warnings are local configuration findings, not evidence of the deployed server's JWT secrets.
+
+## Four-day accounts
+
+Created three new ordinary accounts: full Super Admin, Company owner with a complimentary active `organization_enterprise` plan, and a fuel-station Partner owner with temporary test access. All three have the same server deadline: **4 November 2026 at 20:38:43.560 WAT**, exactly 96 hours after activation. No existing identity was reset or extended.
+
+All 55 live API checks passed: Admin 18, Company 21, Partner 16. These cover dashboard routes, active Company subscription, the Partner gate, a Company settings save, session refresh, matching expiry and initially zero funds. The later Company test payment changed that account's wallet to ₦100. Admin global queues were checked using HEAD so their response bodies were not copied into evidence. Contact-ownership flags remain false. Sessions do not exceed the account deadline.
+
+The test station is pending, closed, lacks confirmed coordinates and is not published to customers. It is a dashboard/profile workspace, not an approved operating station. Actual station trading needs legitimate station approval and configuration. Full Admin credentials have real authority over production records. Records or further principals created through these ordinary accounts may persist after their own access deadline.
+
+Activation and nonsecret route results are in [the account evidence directory](../four-day-accounts-2026-10-31/). Passwords are excluded from repository artifacts.
+
+## Approved release and rollback plan
+
+The release agent will commit the approved nine-file source/test change set, push `master`, and verify the corresponding Render and Vercel deployments. No schema migration is part of this release. Post-deploy checks must include API health, login, Company Billing/Wallet selection and the existing payment's unchanged single-credit ledger result.
+
+Abort the rollout or roll back if login, Billing or API health breaks, or if duplicate wallet credit is observed. Rollback consists of a targeted `git revert` of the new release commit on `master`, followed by pushing that revert and verifying both hosting Git deployments and the same checks. Preserve financial records; a code revert cannot undo a payment or reward already posted. Any money correction requires attributable compensating records and investigation. Rollback timing, automatic rollback and recovery during an actual incident have not been tested or promised.
+
+## Remaining release evidence
+
+Diagnose the remaining webhook signature failure without treating browser redaction as a secret value, then prove successful same-payment delivery and duplicate protection. Obtain valid customer-role access before testing customer checkout. Separately authorize and verify refunds and partner payout destinations/amounts. Review the existing financial backlog before restoring unattended recovery. Configure and verify required issuing/BVN providers before claiming new card workflows work. Historical cashback corrections need their own reviewed reconciliation. The approved release still needs its final commit and verified hosting deployments. These remaining checks are not a new approval barrier for the unchanged approved patch and cannot be replaced by the passing fixture test suite.
