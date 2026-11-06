@@ -790,6 +790,7 @@ function CardPage({
   projectionLabel: string;
   onEditProjection: () => void;
 }) {
+  const canPurchaseFuel = customerFeatureAvailable(subscription, "Fuel Purchase");
   const { success: toastSuccess, error: toastError } = useToast();
   const { user } = useSession();
   function requestClosed(request: CardRequest | null) {
@@ -1461,7 +1462,12 @@ function CardPage({
         {!canEditProjection ? <p className="mt-3 text-sm text-obligon-text">Choose or renew a plan that includes Fuel Budget Management to use this feature.</p> : null}
       </Card>
 
-      <CustomerFuelCheckout subscriptionActive={true} refreshKey={refreshKey} embedded />
+      {canPurchaseFuel ? <CustomerFuelCheckout subscriptionActive refreshKey={refreshKey} embedded /> : (
+        <Card className="mt-8 p-6">
+          <div id="fuel" className="scroll-mt-24"><SectionTitle title="Fuel purchases" /></div>
+          <p className="mt-2 text-sm text-obligon-text">Upgrade to a paid plan with a fuel card to purchase fuel through Obligon.</p>
+        </Card>
+      )}
       </> : null}
     </Canvas>
   );

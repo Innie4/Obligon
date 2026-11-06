@@ -63,8 +63,8 @@ export function subscriptionRouter(kind) {
     if (!company) {
       if (!await canRenew(req)) throw forbidden('Complete your first plan payment before renewing your subscription.');
     }
-    const plan = company ? await one('SELECT * FROM pricing_plans WHERE code=$1 AND active',[req.body?.planCode]) : await one('SELECT * FROM card_plans WHERE code=$1 AND active',[req.body?.planCode]);
-    if (!plan) throw badRequest('Choose an available plan.');
+    const plan = company ? await one('SELECT * FROM pricing_plans WHERE code=$1 AND active',[req.body?.planCode]) : await one('SELECT * FROM card_plans WHERE code=$1 AND active AND amount_kobo>0',[req.body?.planCode]);
+    if (!plan) throw badRequest(company ? 'Choose an available plan.' : 'Choose an available paid plan.');
     const amount=integerKobo(plan.price_kobo ?? plan.amount_kobo,{label:'Subscription price'});
     const billingInterval=company && plan.interval==='year'?'year':'month'; const ref=reference('SUB'); const provider=activeProvider();
     await q(`INSERT INTO subscription_payments(reference,user_id,organization_id,plan_code,amount_kobo,provider,billing_interval) VALUES($1,$2,$3,$4,$5,$6,$7)`,[ref,req.user.id,company?req.user.orgId:null,plan.code,amount,provider,billingInterval]);

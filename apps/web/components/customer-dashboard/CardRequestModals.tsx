@@ -31,8 +31,8 @@ function PlanBadge({ state }: { state: string }) {
 }
 
 /**
- * Step 1 — choose an individual subscription plan. The customer cannot skip
- * this: a fuel card is only issued against a paid plan.
+ * Step 1 — choose a paid individual plan. Free accounts retain wallet access,
+ * but a fuel card is only issued against a paid plan.
  */
 export function CardPlanModal({
   plans,

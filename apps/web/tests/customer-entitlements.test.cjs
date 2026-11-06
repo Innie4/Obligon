@@ -29,8 +29,8 @@ test('offline Bronze and Gold catalogues preserve premium feature exclusions',as
 });
 
 test('customer account label uses current subscription instead of stale session tier',()=>{
- assert.equal(customerAccountLabel(null),'Free account');
- assert.equal(customerAccountLabel({active:false,subscription:{name:'Premium',plan_code:'premium'}}),'Free account');
+ assert.equal(customerAccountLabel(null),'Free plan');
+ assert.equal(customerAccountLabel({active:false,subscription:{name:'Premium',plan_code:'premium'}}),'Free plan');
  assert.equal(customerAccountLabel({active:true,subscription:{name:'Gold',plan_code:'gold'}}),'Gold plan');
  assert.equal(customerAccountLabel({active:true,subscription:{plan_code:'bronze'}}),'bronze plan');
 });

@@ -796,11 +796,11 @@ function serializeCardRequest(row, currentUser) {
   };
 }
 
-/** Individual subscription plans a customer can buy with a fuel card. */
+/** Paid plans a customer can buy with a fuel card. Free is granted automatically. */
 router.get("/card-plans", asyncHandler(async (_req, res) => {
   const plans = await q(
     `SELECT code, name, amount_kobo, interval, blurb, features
-     FROM card_plans WHERE active = TRUE ORDER BY sort_order, amount_kobo`
+     FROM card_plans WHERE active = TRUE AND amount_kobo > 0 ORDER BY sort_order, amount_kobo`
   );
   res.json({
     plans: plans.map((p) => ({
@@ -845,7 +845,7 @@ router.post("/card-request/checkout", asyncHandler(async (req, res) => {
   const planCode = String(req.body?.planCode ?? "").trim().toLowerCase();
   if (!planCode) throw badRequest("Choose a subscription plan");
 
-  const plan = await one("SELECT code, name, amount_kobo FROM card_plans WHERE code = $1 AND active = TRUE", [planCode]);
+  const plan = await one("SELECT code, name, amount_kobo FROM card_plans WHERE code = $1 AND active = TRUE AND amount_kobo > 0", [planCode]);
   if (!plan) throw badRequest("That plan is not available");
 
   const open = await one(

@@ -129,6 +129,7 @@ function cardFixture(search, hasCard = true) {
       '@/components/shared/SubscriptionPanel': { SubscriptionPanel },
       './CustomerFuelCheckout': { CustomerFuelCheckout },
       './CardRequestModals': { CardPlanModal },
+      '@/lib/customer-entitlements': load('../lib/customer-entitlements.ts'),
       '@/components/shared/Toast': { useToast: () => ({ success() {}, error() {} }) },
       '@/components/shared/AuthContext': { useSession: () => ({ user: { name: 'Driver' } }) },
       '@/components/shared/useAsync': { useAsync: () => ({ status: 'success', data: [] }) },
@@ -142,7 +143,7 @@ function cardFixture(search, hasCard = true) {
       },
     },
   });
-  const props = { onModal() {}, refreshKey: 0, subscription: { active: true }, onSubscriptionChange() {}, canEditProjection: true, projectionLabel: '₦50,000', onEditProjection() {} };
+  const props = { onModal() {}, refreshKey: 0, subscription: { active: true, features: [{ label: 'Fuel Purchase', state: 'included' }] }, onSubscriptionChange() {}, canEditProjection: true, projectionLabel: '₦50,000', onEditProjection() {} };
   return { ...runtime, CardPage, props, calls, SubscriptionPanel, CardPlanModal, CustomerFuelCheckout };
 }
 
@@ -211,6 +212,16 @@ test('new customers still open their selected first-card plan', async () => {
   const nodes = allNodes(fixture.render(fixture.CardPage, fixture.props));
   assert.ok(nodes.some(node => node.type === fixture.CardPlanModal));
   assert.ok(!nodes.some(node => node.type === fixture.SubscriptionPanel));
+});
+
+test('Free customers see the upgrade prompt instead of a fuel purchase form', async () => {
+  const fixture = cardFixture('', false);
+  fixture.props.subscription = { active: true, subscription: { plan_code: 'free', is_free: true }, features: [{ label: 'Fuel Purchase', state: 'unavailable' }] };
+  fixture.render(fixture.CardPage, fixture.props);
+  await flush();
+  const nodes = allNodes(fixture.render(fixture.CardPage, fixture.props));
+  assert.ok(!nodes.some(node => node.type === fixture.CustomerFuelCheckout));
+  assert.match(JSON.stringify(nodes), /Upgrade to a paid plan with a fuel card/);
 });
 
 test('Flutterwave subscription and fuel returns never invoke first-card verification', async () => {

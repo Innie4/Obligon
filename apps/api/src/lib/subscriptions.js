@@ -14,8 +14,19 @@ export function catalogEntitlements(features = []) {
     apiAccess: /API access/i.test(text), prioritySupport: /Priority support|Dedicated account manager|SLA support/i.test(text) };
 }
 export async function customerSubscription(userId, t = { one }) {
-  const sub = await t.one(`SELECT s.*, p.name, p.features FROM customer_subscriptions s JOIN card_plans p ON p.code=s.plan_code WHERE s.user_id=$1`, [userId]);
-  return { subscription: sub, active: subscriptionIsActive(sub), features: sub?.features ?? [] };
+  const paid = await t.one(`SELECT s.*, p.name, p.features FROM customer_subscriptions s JOIN card_plans p ON p.code=s.plan_code WHERE s.user_id=$1`, [userId]);
+  if (subscriptionIsActive(paid)) {
+    return { subscription: paid, active: true, features: paid.features ?? [] };
+  }
+
+  // Free is an account default, not a zero-value charge. A customer therefore
+  // always falls back to its real, catalogue-defined restrictions when they
+  // first sign up, a paid period expires, or a refunded period is revoked.
+  const free = await t.one(`SELECT code AS plan_code, name, features FROM card_plans WHERE code='free' AND active=TRUE`);
+  if (free) {
+    return { subscription: { ...free, status: 'active', current_period_start: null, current_period_end: null, is_free: true }, active: true, features: free.features ?? [] };
+  }
+  return { subscription: paid, active: false, features: paid?.features ?? [] };
 }
 export async function companySubscription(orgId, t = { one }, user = null) {
   const sub = await t.one(`SELECT s.*, p.name, p.features, p.price_kobo FROM subscriptions s JOIN pricing_plans p ON p.code=s.plan_code WHERE s.organization_id=$1`, [orgId]);
@@ -56,7 +67,7 @@ export async function revokeCustomerSubscription(t, request) {
 }
 export async function requireCustomerPlan(userId, feature = null, t = { one }) {
   const state = await customerSubscription(userId, t);
-  if (!state.active) throw forbidden('An active paid subscription is required. Renew your plan to continue.');
+  if (!state.active) throw forbidden('No customer plan is available for this account. Contact Support.');
   if (feature && !customerFeatureIncluded(state.features, feature)) throw forbidden('Your subscription does not include this feature.');
   return state;
 }

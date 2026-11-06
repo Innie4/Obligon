@@ -11,7 +11,7 @@ interface State {
   temporaryAccess?: boolean;
   expiresAt?: string | null;
   needsFirstCard?: boolean;
-  subscription: { name: string; plan_code?: string; current_period_end: string } | null;
+  subscription: { name: string; plan_code?: string; current_period_end?: string | null; is_free?: boolean } | null;
   plans: Array<{
     code: string;
     name: string;
@@ -116,27 +116,29 @@ export function SubscriptionPanel({ kind, embedded = false, preferredPlan: selec
   const PlanHeading = embedded ? "h3" : "h2";
   return (
     <section className={embedded ? "rounded-2xl border border-obligon-border bg-white p-5 sm:p-6" : "p-5 sm:p-10"}>
-      {embedded ? <h2 className="font-display text-2xl font-extrabold text-obligon-navy">{kind === "company" ? "Organization subscription" : "Subscription"}</h2> : <h1 className="text-3xl font-extrabold">{kind === "company" ? "Organization" : "Customer"} Subscription</h1>}
+      {embedded ? <h2 className="font-display text-2xl font-extrabold text-obligon-navy">{kind === "company" ? "Organization subscription" : "Your plan"}</h2> : <h1 className="text-3xl font-extrabold">{kind === "company" ? "Organization" : "Customer"} Subscription</h1>}
       <p className="mt-3">
         {data?.temporaryAccess
           ? `Temporary test access${data.expiresAt ? ` until ${new Date(data.expiresAt).toLocaleString("en-GB")}` : " is active"}. This is not a paid subscription.`
+          : data?.subscription?.is_free
+          ? "You are on the Free plan. Upgrade whenever you want a card or premium services."
           : data?.active
           ? `${data.subscription?.name ?? "Your plan"}${data.subscription?.current_period_end ? ` active until ${new Date(data.subscription.current_period_end).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}` : " is active"}`
           : "Choose and pay for a plan to activate dashboard features."}
       </p>
       <p className="mt-2 text-sm text-slate-600">
-        {kind === "company" ? "An active Organization plan unlocks fleet operations. Renew before expiry. " : "Each payment covers one month. Renew here before expiry. "}Subscription fees are separate from fuel funds.
+        {kind === "company" ? "An active Organization plan unlocks fleet operations. Renew before expiry. " : "Free access includes your wallet, history and receipts. Paid plans add a fuel card, purchases and premium services. "}Subscription fees are separate from fuel funds.
       </p>
       {error ? <StatusPopup tone="error" title="Could not load or update your plan" message={error} onRetry={() => void refresh()} /> : null}
       {busy ? <StatusPopup tone="pending" message="Preparing your plan payment…" /> : null}
       {data && !plans.length ? <EmptyState title="No plans available" message="We could not find a plan to offer right now." action={<button type="button" onClick={() => void refresh()} className="min-h-11 rounded-lg border border-obligon-border px-4 text-sm font-semibold">Reload plans</button>} /> : null}
       {plans.length > 1 ? <div className="mt-6 md:hidden" role="group" aria-label="Compare subscription plans">
         <p className="mb-3 text-sm font-semibold text-obligon-navy">Compare plans</p>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           {plans.map(plan => <button key={plan.code} type="button" aria-pressed={previewCode === plan.code} aria-controls={`subscription-${kind}-${plan.code}`} onClick={() => setPreferredPlan(plan.code)} className={`min-h-12 min-w-0 rounded-xl px-2 py-3 text-sm font-semibold transition-colors ${previewCode === plan.code ? "bg-obligon-green text-white" : "bg-obligon-mist text-obligon-text hover:bg-obligon-panel"}`}>{plan.name}</button>)}
         </div>
       </div> : null}
-      <div className="my-6 grid gap-5 md:grid-cols-3">
+      <div className="my-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         {plans.map((p) => (
             <article key={p.code} id={`subscription-${kind}-${p.code}`} className={`${p.code === previewCode ? "flex" : "hidden md:flex"} min-w-0 flex-col rounded-xl bg-obligon-mist p-5`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -144,7 +146,7 @@ export function SubscriptionPanel({ kind, embedded = false, preferredPlan: selec
                 {p.code === currentPlanCode ? <span className="text-xs font-bold text-obligon-green">Current plan</span> : null}
               </div>
               <p className="my-3 text-lg font-bold tabular-nums">
-                ₦{(p.price_kobo / 100).toLocaleString()} / {p.interval === "year" ? "year" : "month"}
+                {p.price_kobo === 0 ? "₦0 / forever" : `₦${(p.price_kobo / 100).toLocaleString()} / ${p.interval === "year" ? "year" : "month"}`}
               </p>
               <ul className="space-y-3 text-sm leading-5">
                 {previewFeatures(p).map((f, i) => <li key={i}>{typeof f === "string" ? f : `${f.label}: ${f.state}`}</li>)}
@@ -159,7 +161,11 @@ export function SubscriptionPanel({ kind, embedded = false, preferredPlan: selec
                 ))}
                 </ul>
               </details>
-              {data?.needsFirstCard ? (
+              {p.price_kobo === 0 ? (
+                <span className="mt-auto block rounded-lg border border-obligon-border bg-white p-3 text-center text-sm font-bold text-obligon-text">
+                  {p.code === currentPlanCode ? "Included with your account" : "Included by default"}
+                </span>
+              ) : data?.needsFirstCard ? (
                 <Link
                   href={`/customer/card?chosenPlan=${p.code}`}
                   className="mt-auto block rounded-lg bg-obligon-green p-3 text-center font-bold text-white"
