@@ -808,6 +808,13 @@ function SettlementsPage({
                     <p className="text-xs font-extrabold text-obligon-navy">{destinationReady ? "Automatic direct settlement" : "Complete your settlement setup"}</p>
                     <p className="mt-1 text-xs leading-5 text-obligon-text">{destinationReady ? "Flutterwave sends eligible fuel revenue to your bank account and deducts approved discounts for Obligon. No manual payout request is required." : "Add an account and wait for admin verification. Once your destination is eligible, Flutterwave can settle fuel revenue and deduct approved discounts for Obligon."}</p>
                   </div>
+
+                  <div className="mt-4 border-t border-obligon-border pt-4">
+                    <p className="text-xs font-extrabold text-obligon-navy">Station Discount Wallet</p>
+                    <p className="mt-1 text-xs leading-5 text-obligon-text">
+                      Promotional customer discounts are funded from your <a href="/dashboard/billing?tab=wallet" className="font-semibold text-obligon-green underline">Discount Wallet</a>, while your gross fuel sales revenue is automatically settled to your bank account.
+                    </p>
+                  </div>
                 </div>
 
                 <p className="mt-2 text-xs leading-5 text-obligon-text">{destinationReady ? "Manual payouts are inactive. Eligible revenue is settled automatically by the provider." : "Manual payouts are inactive. A verified settlement destination is required before provider settlement."}</p>

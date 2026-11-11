@@ -7,25 +7,34 @@ import { useToast } from "@/components/shared/Toast";
 import type { CardPlan, CardRequest, CardRequestProgress, ProgressStepState } from "@/lib/services";
 import { ModalFrame } from "./CustomerModals";
 
-function PlanBadge({ state }: { state: string }) {
+function PlanBadge({ state, label }: { state: string; label?: string }) {
   if (state === "unavailable") {
     return (
-      <span className="shrink-0 rounded-full bg-[#f0f4f0] px-2 py-0.5 text-xs font-semibold uppercase text-obligon-text/60">
+      <span className="shrink-0 rounded-full bg-[#f0f4f0] px-2.5 py-0.5 text-xs font-semibold uppercase text-obligon-text/60">
         Not included
       </span>
     );
   }
   if (state === "included") {
     return (
-      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#e8fbd7] px-2 py-0.5 text-xs font-semibold uppercase text-obligon-green">
+      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#e8fbd7] px-2.5 py-0.5 text-xs font-semibold uppercase text-obligon-green">
         <Check size={10} /> Included
       </span>
     );
   }
-  // "Advanced", "Premium" and percentage benefits stay distinct from Included.
+  // Format badges cleanly so they never overlap the feature label:
+  let displayText = state;
+  const lowerState = (state || "").toLowerCase();
+  const lowerLabel = (label || "").toLowerCase();
+  if (lowerLabel === "loyalty rewards" || lowerState === "premium") {
+    displayText = "5% Cashback";
+  } else if (lowerLabel === "partner discounts" || lowerState.includes("station discount") || lowerState.includes("approved station")) {
+    displayText = "Full Discount";
+  }
+
   return (
-    <span className="shrink-0 rounded-full bg-obligon-blue/10 px-2 py-0.5 text-xs font-semibold uppercase text-obligon-blue">
-      {state}
+    <span className="shrink-0 max-w-[50%] text-right rounded-full bg-obligon-blue/10 px-2.5 py-0.5 text-xs font-semibold uppercase text-obligon-blue">
+      {displayText}
     </span>
   );
 }
@@ -93,8 +102,8 @@ export function CardPlanModal({
                     {plan.features.map((feature) => {
                       const unavailable = feature.state === "unavailable";
                       return (
-                        <li key={feature.label} className="flex items-start justify-between gap-2">
-                          <span className="flex min-w-0 items-start gap-2">
+                        <li key={feature.label} className="flex items-start justify-between gap-3">
+                          <span className="flex min-w-0 flex-1 items-start gap-2">
                             {unavailable ? (
                               <X size={12} aria-hidden="true" className="mt-0.5 shrink-0 text-obligon-text/50" />
                             ) : (
@@ -108,7 +117,7 @@ export function CardPlanModal({
                               {feature.label}
                             </span>
                           </span>
-                          <PlanBadge state={feature.state} />
+                          <PlanBadge state={feature.state} label={feature.label} />
                         </li>
                       );
                     })}

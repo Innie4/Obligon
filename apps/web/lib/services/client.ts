@@ -154,7 +154,7 @@ const PLAN_FEATURE_CATALOGUE = [
 /** Per-plan state for each catalogue entry, keyed by feature label. */
 const PLAN_FEATURE_STATES: Record<string, Record<string, string>> = {
   bronze: {
-    "Partner Discounts": "Full approved station discount",
+    "Partner Discounts": "Full Discount",
     "Generator Repairer": "30%",
     "Fuel Consumption Analytics": "unavailable",
     "Loyalty Rewards": "unavailable",
@@ -168,8 +168,8 @@ const PLAN_FEATURE_STATES: Record<string, Record<string, string>> = {
   gold: {
     "Fuel Spend Tracking": "Advanced",
     "Fuel Consumption Analytics": "Advanced",
-    "Loyalty Rewards": "Premium",
-    "Partner Discounts": "Full approved station discount",
+    "Loyalty Rewards": "5% Cashback",
+    "Partner Discounts": "Full Discount",
     "Priority Support": "included",
     "Generator Repairer": "60%",
     "Access to Car Wash": "included",
@@ -181,8 +181,8 @@ const PLAN_FEATURE_STATES: Record<string, Record<string, string>> = {
   platinum: {
     "Fuel Spend Tracking": "Advanced",
     "Fuel Consumption Analytics": "Advanced",
-    "Loyalty Rewards": "Premium",
-    "Partner Discounts": "Full approved station discount",
+    "Loyalty Rewards": "5% Cashback",
+    "Partner Discounts": "Full Discount",
     "Partner Mechanics": "included",
     "Priority Support": "included",
     "Generator Repairer": "100%",

@@ -119,7 +119,59 @@ router.use((req, _res, next) => {
   }
   next();
 });
-router.get('/billing',asyncHandler(async(req,res)=>res.json({...await partnerContract(req.user.orgId),temporaryAccess:activeTemporaryDashboardAccess(req.user,req.user.orgId),expiresAt:req.user.access_expires_at??null,plans:[],needsFirstCard:false,manualPayoutsAvailable:false})));
+router.get('/billing',asyncHandler(async(req,res)=>{
+  const orgId = req.user.orgId;
+  const contract = await partnerContract(orgId);
+  const wallet = await one("SELECT id, balance_kobo, currency FROM wallets WHERE organization_id = $1 LIMIT 1", [orgId]);
+  res.json({
+    ...contract,
+    temporaryAccess: activeTemporaryDashboardAccess(req.user, orgId),
+    expiresAt: req.user.access_expires_at ?? null,
+    plans: [],
+    needsFirstCard: false,
+    manualPayoutsAvailable: false,
+    wallet: {
+      id: wallet?.id,
+      balanceKobo: Number(wallet?.balance_kobo ?? 0),
+      balanceLabel: naira(Number(wallet?.balance_kobo ?? 0)),
+      currency: wallet?.currency ?? "NGN"
+    }
+  });
+}));
+router.get('/wallet',asyncHandler(async(req,res)=>{
+  const orgId = req.user.orgId;
+  const wallet = await one("SELECT id, balance_kobo, currency FROM wallets WHERE organization_id = $1 LIMIT 1", [orgId]);
+  const stations = await q("SELECT id, name FROM stations WHERE partner_org_id = $1", [orgId]);
+  const stationIds = stations.map(s => s.id);
+  const recent = stationIds.length ? await q(
+    `SELECT t.id, t.reference, t.amount_kobo, t.base_amount_kobo, t.platform_fee_kobo, t.partner_net_kobo,
+            t.fuel_type, t.litres, t.status, t.created_at, s.name AS station_name,
+            COALESCE(t.base_amount_kobo - t.amount_kobo, 0) AS discount_kobo
+     FROM transactions t
+     JOIN stations s ON s.id = t.station_id
+     WHERE t.station_id = ANY($1) AND t.discount_request_id IS NOT NULL
+     ORDER BY t.created_at DESC LIMIT 20`,
+    [stationIds]
+  ) : [];
+  res.json({
+    wallet: {
+      id: wallet?.id,
+      balanceKobo: Number(wallet?.balance_kobo ?? 0),
+      balanceLabel: naira(Number(wallet?.balance_kobo ?? 0)),
+      currency: wallet?.currency ?? "NGN"
+    },
+    discounts: recent.map(r => ({
+      id: r.id,
+      reference: r.reference,
+      stationName: r.station_name,
+      fuelType: r.fuel_type,
+      discountKobo: Number(r.discount_kobo),
+      discountLabel: naira(Number(r.discount_kobo)),
+      createdAt: r.created_at,
+      status: r.status
+    }))
+  });
+}));
 // Reconcile a checkout started before the contract policy changed without granting a contract.
 router.post('/billing/confirm',requireOrgRole('admin'),asyncHandler(async(req,res)=>{
   const payment=await one('SELECT * FROM subscription_payments WHERE reference=$1 AND organization_id=$2',[req.body?.reference,req.user.orgId]);

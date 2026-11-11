@@ -90,6 +90,23 @@ export function StationDiscounts({ canManage = false }: { canManage?: boolean })
 
   return <section className="mt-8 min-w-0 rounded-2xl border border-obligon-border bg-white p-5 sm:p-6">
       {(busy) ? <StatusPopup tone="pending" message="Submitting discount request…" /> : null}
+    <div className="mb-6 rounded-2xl border border-obligon-green/40 bg-[#f4faf4] p-4 sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="max-w-2xl">
+          <p className="text-xs font-bold uppercase tracking-wider text-obligon-green">Discount Funding & Accounting</p>
+          <h3 className="mt-1 font-display text-base font-bold text-obligon-navy">Funded from your Partner Discount Wallet</h3>
+          <p className="mt-1.5 text-xs leading-5 text-obligon-text">
+            Promotional discounts are funded from your station wallet. When customers purchase discounted fuel at your station, the discount difference is debited from your wallet. Unused funds remain in your balance.
+          </p>
+        </div>
+        <a
+          href="/dashboard/billing?tab=wallet"
+          className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-obligon-green px-4 text-xs font-bold text-white transition hover:bg-obligon-green/90"
+        >
+          View Discount Wallet &rarr;
+        </a>
+      </div>
+    </div>
     <h2 className="font-display text-xl font-bold tracking-tight text-obligon-navy">Scheduled station discounts</h2>
     <p className="mt-2 max-w-3xl text-sm leading-6 text-obligon-text">Admin approval is required before a discount applies. Adjust or extend a discount by submitting a new date range. Customers receive a price reduction; the same discount amount is paid to Obligon from your revenue.</p>
     {error ? <StatusPopup tone="error" message={error} /> : null}
