@@ -13,7 +13,7 @@ export function AdminHeader({ onOpenMenu }: { onOpenMenu: () => void }) {
   const pathname = usePathname();
   const { user } = useSession();
   const page = adminNav.find(item => item.href === pathname)?.label ?? "Company oversight";
-  const searchEntries = [...adminNav.filter(item => { const key = adminPageForPath(item.href); return key && hasAdminPage(user, key); }), { label: "Sign-in options", href: "/auth/sign-in-options", keywords: "Google passkey password security" }];
+  const searchEntries = [...adminNav.filter(item => { const key = adminPageForPath(item.href); return key && hasAdminPage(user, key); }), { label: "Sign-in options", href: "/auth/sign-in-options", keywords: "Google biometrics passkey password security" }];
   return <header className="admin-topbar sticky top-0 z-30">
     <div className="flex min-h-[72px] min-w-0 items-center gap-3 px-4 sm:gap-5 sm:px-6 lg:px-10">
       <button type="button" onClick={onOpenMenu} className="admin-icon-button admin-mobile-trigger shrink-0" aria-label="Open admin menu"><Menu size={19} /></button>

@@ -1091,7 +1091,7 @@ export const authApi = {
     return acceptAdditionalLogin(result, revision, saved.rememberMe);
   },
   async loginWithPasskey(rememberMe: boolean, authenticate: (options: PasskeyAuthenticationOptions) => Promise<PasskeyAuthenticationCredential>): Promise<LoginResponse> {
-    if (!LIVE_MODE) throw new ApiError(0, "Passkey sign-in requires the live backend.");
+    if (!LIVE_MODE) throw new ApiError(0, "Biometric sign-in requires the live backend.");
     const revision = beginAdditionalLogin();
     const challenge = await http<{ challengeId: string; options: PasskeyAuthenticationOptions }>("/api/auth/methods/passkeys/login/start", { method: "POST", body: JSON.stringify({ rememberMe }) }, false, false);
     assertCurrentAuth(revision, null);

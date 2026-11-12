@@ -107,7 +107,7 @@ function CompanySidebar() {
 function CompanyTopbar({ onOpenMenu, menuButtonRef }: { onOpenMenu: () => void; menuButtonRef?: React.RefObject<HTMLButtonElement | null> }) {
   const { user } = useSession();
   const visibleNav = companyNav;
-  const searchEntries = [...visibleNav, { label: "Sign-in options", href: "/auth/sign-in-options", keywords: "Google passkey password security" }];
+  const searchEntries = [...visibleNav, { label: "Sign-in options", href: "/auth/sign-in-options", keywords: "Google biometrics passkey password security" }];
 
   return (
     <header className="sticky top-0 z-30 border-b border-[#dfe5ec] bg-[#f8fafc]/95 backdrop-blur">

@@ -148,7 +148,7 @@ export function CustomerPreferencesPanel() {
     </fieldset>
     <div className="mt-7 border-t border-obligon-border pt-6">
       <h2 id="sign-in-options" tabIndex={-1} className="scroll-mt-28 font-display text-xl font-bold tracking-tight text-obligon-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-obligon-green">Sign-in options</h2>
-      <p className="mt-2 text-sm leading-6 text-obligon-text">Manage Google sign-in and passkeys. Your device may use fingerprint, Face ID or its PIN. Transaction approvals still use your password, card PIN and two-factor authentication.</p>
+      <p className="mt-2 text-sm leading-6 text-obligon-text">Manage Google sign-in and biometrics. Your device may use fingerprint, Face ID or its PIN. Transaction approvals still use your password, card PIN and two-factor authentication.</p>
       <Link href="/auth/sign-in-options" className="mt-4 inline-flex min-h-12 items-center gap-2 rounded-xl border border-obligon-border px-4 py-3 text-sm font-bold text-obligon-green focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-obligon-green">
         <KeyRound size={18} aria-hidden="true" />Manage sign-in options<ArrowUpRight size={17} aria-hidden="true" />
       </Link>

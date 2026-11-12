@@ -22,7 +22,7 @@ function initials(name: string) {
 export function DashboardHeader() {
   const { user } = useSession();
   const displayName = user?.name ?? "Partner";
-  const searchEntries = [...dashboardNav.filter(item => partnerPageAllowed(user, item.key)), { label: "Sign-in options", href: "/auth/sign-in-options", keywords: "Google passkey password security" }];
+  const searchEntries = [...dashboardNav.filter(item => partnerPageAllowed(user, item.key)), { label: "Sign-in options", href: "/auth/sign-in-options", keywords: "Google biometrics passkey password security" }];
 
 // The unread dot is driven by the real count rather than rendered
   // unconditionally. It was a permanent green badge on every page, including the

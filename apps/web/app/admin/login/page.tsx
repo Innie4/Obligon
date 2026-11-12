@@ -164,7 +164,7 @@ function AdminLoginForm() {
 
           <div className="mt-6 border-t border-obligon-border pt-4 text-center">
             <Link href={routes.login} className="text-xs font-bold text-obligon-text hover:text-obligon-green transition">
-              Use Google or a passkey
+              Use Google or biometrics
             </Link>
           </div>
         </div>

@@ -43,7 +43,7 @@ function loginFixture({ methods = config, unsupported = null, signIn } = {}) {
   const calls = [], completed = [], busy = [];
   const fixture = ui('../components/auth/AdditionalSignInMethods.tsx', 'AdditionalSignInMethods', {
     '@/lib/services': { authApi: { methodsConfig: async () => methods, googleStart: async rememberMe => { calls.push(['google-start', rememberMe]); return challenge; } } },
-    '@/lib/auth-methods': { passkeySupportError: () => unsupported, authMethodError: error => error.name === 'NotAllowedError' ? 'The passkey request was cancelled or timed out. Try again or use your password.' : error.message },
+    '@/lib/auth-methods': { passkeySupportError: () => unsupported, authMethodError: error => error.name === 'NotAllowedError' ? 'The biometric request was cancelled or timed out. Try again or use your password.' : error.message },
     '@/components/shared/AuthContext': { useSession: () => ({ loginWithGoogle: async (...args) => { calls.push(['google', ...args]); return { mfaRequired: true }; }, loginWithPasskey: async rememberMe => { calls.push(['passkey', rememberMe]); return signIn ? signIn() : { mfaRequired: false }; } }) },
     './GoogleIdentityButton': { GoogleIdentityButton: 'GoogleIdentityButton' }
   }, { rememberMe: true, disabled: false, onComplete: value => completed.push(value), onBusyChange: value => busy.push(value) });
@@ -54,23 +54,23 @@ test('disabled provider config shows honest copy without a fake Google action', 
   const fixture = loginFixture({ methods: { google: { enabled: false }, passkeys: { enabled: false } } });
   fixture.effects(); await flush(); fixture.render();
   assert.match(fixture.text(), /Google sign-in is unavailable/);
-  assert.match(fixture.text(), /Passkey sign-in is unavailable/);
+  assert.match(fixture.text(), /Biometric sign-in is unavailable/);
   assert.equal(fixture.nodes().some(node => node.type === 'GoogleIdentityButton'), false);
-  assert.equal(fixture.button('Sign in with a passkey'), undefined);
+  assert.equal(fixture.button('Sign in with biometrics'), undefined);
   assert.equal(fixture.calls.length, 0);
 });
 
 test('unsupported passkey browser gives a reason and keeps the method disabled', async () => {
-  const fixture = loginFixture({ unsupported: 'This browser does not support passkeys.' });
+  const fixture = loginFixture({ unsupported: 'This browser does not support biometrics.' });
   fixture.effects(); await flush(); fixture.render();
-  assert.equal(fixture.button('Sign in with a passkey').props.disabled, true);
-  assert.match(fixture.text(), /does not support passkeys/);
+  assert.equal(fixture.button('Sign in with biometrics').props.disabled, true);
+  assert.match(fixture.text(), /does not support biometrics/);
 });
 
 test('passkey sign-in blocks duplicate prompts and completes only once', async () => {
   const pending = deferred(), fixture = loginFixture({ signIn: () => pending.promise });
   fixture.effects(); await flush(); fixture.render();
-  const click = fixture.button('Sign in with a passkey').props.onClick;
+  const click = fixture.button('Sign in with biometrics').props.onClick;
   click(); click();
   assert.equal(fixture.calls.filter(call => call[0] === 'passkey').length, 1);
   pending.resolve({ mfaRequired: false }); await flush(); fixture.render();
@@ -80,7 +80,7 @@ test('passkey sign-in blocks duplicate prompts and completes only once', async (
 
 test('cancelled passkey sign-in announces an error without reporting success', async () => {
   const fixture = loginFixture({ signIn: async () => { throw new DOMException('Cancelled', 'NotAllowedError'); } });
-  fixture.effects(); await flush(); fixture.render(); fixture.button('Sign in with a passkey').props.onClick(); await flush(); fixture.render();
+  fixture.effects(); await flush(); fixture.render(); fixture.button('Sign in with biometrics').props.onClick(); await flush(); fixture.render();
   assert.match(text(fixture.nodes().find(node => node.type === 'StatusPopup' && node.props?.tone === 'error')), /cancelled or timed out/);
   assert.equal(fixture.completed.length, 0);
   assert.equal(fixture.busy.at(-1), false);
@@ -169,14 +169,14 @@ function managementFixture({ methods = { google: { enabled: true, linked: false 
 test('management requires a fresh password and clears it before an enrollment prompt', async () => {
   const pending = deferred(), fixture = managementFixture({ action: () => pending.promise });
   fixture.effects(); await flush(); fixture.render();
-  assert.equal(fixture.button('Add a passkey').props.disabled, true);
+  assert.equal(fixture.button('Add biometrics').props.disabled, true);
   fixture.change('method-current-password', 'Synthetic-fresh-password');
-  const click = fixture.button('Add a passkey').props.onClick;
+  const click = fixture.button('Add biometrics').props.onClick;
   click(); click(); fixture.render();
   assert.equal(fixture.calls.length, 1);
   assert.equal(fixture.nodes().find(node => node.props?.id === 'method-current-password').props.value, '');
   pending.resolve({ ok: true }); await flush(); fixture.render();
-  assert.match(fixture.text(), /Passkey added/);
+  assert.match(fixture.text(), /Biometrics added/);
 });
 
 test('passkey removal names the credential, requires password and reports other-session signout', async () => {
@@ -184,9 +184,9 @@ test('passkey removal names the credential, requires password and reports other-
   fixture.effects(); await flush(); fixture.render();
   fixture.button('Remove').props.onClick(); fixture.render();
   assert.match(fixture.text(), /Remove “\s*My phone\s*”/);
-  assert.equal(fixture.button('Remove this passkey').props.disabled, true);
+  assert.equal(fixture.button('Remove biometrics').props.disabled, true);
   fixture.change('method-current-password', 'Synthetic-fresh-password');
-  fixture.button('Remove this passkey').props.onClick(); await flush(); fixture.render();
+  fixture.button('Remove biometrics').props.onClick(); await flush(); fixture.render();
   assert.equal(fixture.calls[0][1], 'credential-a');
   assert.match(fixture.text(), /other sessions have been signed out/);
 });
@@ -205,7 +205,7 @@ test('Google linking first verifies password, then displays only the official re
 test('disabled providers still allow password-authorized removal of existing methods', async () => {
   const fixture = managementFixture({ methodsConfig: { google: { enabled: false }, passkeys: { enabled: false } }, methods: { google: { enabled: false, linked: true }, passkeys: [{ id: 'existing-key', label: 'Old phone', createdAt: '2026-10-23T00:00:00Z', lastUsedAt: null }] } });
   fixture.effects(); await flush(); fixture.render();
-  assert.equal(fixture.button('Add a passkey'), undefined);
+  assert.equal(fixture.button('Add biometrics'), undefined);
   assert.equal(fixture.button('Unlink Google').props.disabled, true);
   assert.equal(fixture.button('Remove').props.disabled, false);
   fixture.change('method-current-password', 'Synthetic-fresh-password');
@@ -214,7 +214,7 @@ test('disabled providers still allow password-authorized removal of existing met
   assert.match(fixture.text(), /other sessions have been signed out/);
   fixture.button('Remove').props.onClick(); fixture.render();
   fixture.change('method-current-password', 'Synthetic-fresh-password');
-  fixture.button('Remove this passkey').props.onClick(); await flush(); fixture.render();
+  fixture.button('Remove biometrics').props.onClick(); await flush(); fixture.render();
   assert.equal(fixture.calls[1][0], 'remove');
 });
 
@@ -223,18 +223,18 @@ test('changing accounts clears the old busy form and a late action cannot unlock
   const fixture = managementFixture({ action: () => operations.shift().promise });
   fixture.effects(); await flush(); fixture.render();
   fixture.change('method-current-password', 'Synthetic-first-password');
-  fixture.button('Add a passkey').props.onClick(); fixture.render();
+  fixture.button('Add biometrics').props.onClick(); fixture.render();
   assert.equal(fixture.nodes().find(node => node.props?.id === 'method-current-password').props.disabled, true);
   fixture.changeUser({ id: 'synthetic-next-account', role: 'admin' }); await flush(); fixture.render();
   assert.equal(fixture.nodes().find(node => node.props?.id === 'method-current-password').props.disabled, false);
   fixture.change('method-current-password', 'Synthetic-second-password');
-  fixture.button('Add a passkey').props.onClick(); fixture.render();
+  fixture.button('Add biometrics').props.onClick(); fixture.render();
   first.resolve({ ok: true }); await flush(); fixture.render();
   assert.equal(fixture.nodes().find(node => node.props?.id === 'method-current-password').props.disabled, true);
-  assert.doesNotMatch(fixture.text(), /Passkey added/);
+  assert.doesNotMatch(fixture.text(), /Biometrics added/);
   second.resolve({ ok: true }); await flush(); fixture.render();
   assert.equal(fixture.nodes().find(node => node.props?.id === 'method-current-password').props.disabled, false);
-  assert.match(fixture.text(), /Passkey added/);
+  assert.match(fixture.text(), /Biometrics added/);
 });
 
 test('the shared account link uses the common sign-in management route', () => {
@@ -296,7 +296,7 @@ test('customer profile links to real Google and passkey management and preserves
   }, {}, {}, '\nObject.assign(CustomerThemeContext, {value: {preferences: {theme: "light", stationLocation: {prompted: true, enabled: false}}, loading: false, saving: false, error: "", saved: false}});');
   const link = preferences.nodes().find(node => node.type === 'Link' && node.props.href === '/auth/sign-in-options');
   assert.ok(link);
-  assert.match(preferences.text(), /Google sign-in and passkeys/);
+  assert.match(preferences.text(), /Google sign-in and biometrics/);
   assert.match(preferences.text(), /device may use fingerprint, Face ID or its PIN/);
   assert.match(preferences.text(), /Transaction approvals still use your password, card PIN and two-factor authentication/);
   assert.doesNotMatch(fixture.text(), /Biometric Sign-In \(not available yet\)/);
@@ -315,10 +315,10 @@ test('passkey prompt exposes pending popup only while the existing login request
   const task = deferred();
   const fixture = loginFixture({ signIn: () => task.promise });
   fixture.effects(); await flush(); fixture.render();
-  const running = fixture.button('Sign in with a passkey').props.onClick();
+  const running = fixture.button('Sign in with biometrics').props.onClick();
   fixture.render();
   assert.equal(fixture.nodes().find(node => node.type === 'StatusPopup').props.tone, 'pending');
-  assert.equal(fixture.button('Sign in with a passkey').props.disabled, true);
+  assert.equal(fixture.button('Sign in with biometrics').props.disabled, true);
   task.resolve({ mfaRequired: false }); await running; await flush(); fixture.render();
   assert.equal(fixture.nodes().some(node => node.type === 'StatusPopup' && node.props.tone === 'pending'), false);
   assert.equal(fixture.completed.length, 1);

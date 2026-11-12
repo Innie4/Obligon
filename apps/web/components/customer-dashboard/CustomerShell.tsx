@@ -27,7 +27,7 @@ import "./customer-theme.css";
 
 const customerSearchEntries = [
   ...[...customerNav, ...secondaryCustomerNav].map(item => ({ ...item, keywords: item.key === "card" ? "buy fuel authorize subscription renew plan" : item.key === "transactions" ? "transactions receipts reference" : "" })),
-  { label: "Sign-in options", href: "/customer/profile#sign-in-options", keywords: "Google passkey password security" },
+  { label: "Sign-in options", href: "/customer/profile#sign-in-options", keywords: "Google biometrics passkey password security" },
   { label: "Appearance", href: "/customer/profile#customer-appearance-title", keywords: "theme light dark" }
 ];
 

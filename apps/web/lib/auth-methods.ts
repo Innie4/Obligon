@@ -16,8 +16,8 @@ export interface SignInMethods {
 }
 
 export function passkeySupportError(): string | null {
-  if (typeof window === "undefined" || !window.isSecureContext) return "Passkeys need a secure connection. Open this site with HTTPS.";
-  if (typeof window.PublicKeyCredential === "undefined") return "This browser does not support passkeys. Try a current browser or sign in with your password.";
+  if (typeof window === "undefined" || !window.isSecureContext) return "Biometrics need a secure connection. Open this site with HTTPS.";
+  if (typeof window.PublicKeyCredential === "undefined") return "This browser does not support biometrics. Try a current browser or sign in with your password.";
   return null;
 }
 
@@ -38,9 +38,9 @@ export async function registerDevicePasskey(optionsJSON: PasskeyRegistrationOpti
 export function authMethodError(error: unknown): string {
   const detail = error as { name?: string; code?: string; cause?: { name?: string } } | null;
   const name = detail?.cause?.name ?? detail?.name ?? "";
-  if (name === "NotAllowedError" || name === "AbortError" || detail?.code === "ERROR_CEREMONY_ABORTED") return "The passkey request was cancelled or timed out. Try again or use your password.";
-  if (name === "InvalidStateError") return "This passkey is already registered. Choose another passkey or use one you have already added.";
-  if (name === "SecurityError") return "The passkey could not be used on this site. Check that you opened the correct HTTPS address.";
+  if (name === "NotAllowedError" || name === "AbortError" || detail?.code === "ERROR_CEREMONY_ABORTED") return "The biometric request was cancelled or timed out. Try again or use your password.";
+  if (name === "InvalidStateError") return "This biometric device is already registered. Choose another device or use one you have already added.";
+  if (name === "SecurityError") return "Biometrics could not be used on this site. Check that you opened the correct HTTPS address.";
   return error instanceof Error ? error.message : "We could not complete that request. Please try again.";
 }
 
