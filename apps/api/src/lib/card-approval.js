@@ -3,7 +3,7 @@ import { env } from '../config/env.js';
 import { one, q, tx } from '../db.js';
 import { conflict, notFound, badRequest, misconfigured } from './errors.js';
 import { createSudoCustomer, issueSudoCard, sudoEnabled } from './sudo.js';
-import { normalizedIdentityName } from './bvn-verification.js';
+import { normalizedIdentityName, identityNamesMatch } from './bvn-verification.js';
 
 export function validateApproval(request) {
   if (request.payment_status !== 'paid') throw conflict('A paid plan is required before approval');
@@ -41,7 +41,7 @@ export async function approveCardRequest(id, actorId, reconciledCard = null, iss
     if (request.issued_card_id) return request;
     validateApproval(request);
     const account = await t.one('SELECT email,full_name FROM users WHERE id=$1 FOR UPDATE', [request.user_id]);
-    if (!account || account.email !== request.identity_email || normalizedIdentityName(account.full_name) !== normalizedIdentityName(request.identity_account_name)) throw conflict('Account details changed. Fresh identity confirmation and BVN verification are required');
+    if (!account || account.email !== request.identity_email || !identityNamesMatch(account.full_name, request.identity_account_name)) throw conflict('Account details changed. Fresh identity confirmation and BVN verification are required');
     if (!request.postal_code) throw conflict('The card issuer requires an accurate postal code before issuance. Ask the customer to update and reconfirm their details.');
     if (request.issuance_state === 'refund_pending') throw conflict('This application is being withdrawn for a refund');
     if (!reconciledCard && ['creating', 'review_required'].includes(request.issuance_state)) throw conflict('Issuer reconciliation is required before continuing');

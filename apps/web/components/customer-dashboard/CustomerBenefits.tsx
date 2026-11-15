@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { ArrowRight, BellRing, ChartNoAxesCombined, Gift, Wrench } from "lucide-react";
 import { api } from "@/lib/services";
 import { customerFeatureAvailable } from "@/lib/customer-entitlements";
@@ -20,7 +19,32 @@ export type Repair = {
   receipt: null | { reference: string; customerPaidKobo: number; subsidyKobo: number; totalKobo: number; paymentState: string; paidAt: string; completionNote?: string };
 };
 type Analytics = { range: string; timeZone: string; spendKobo: string; purchaseCount: number; quantities: Record<string, string>; byFuel: Array<{ fuelType: string; sellingUnit: string; quantity: string; spendKobo: string; purchaseCount: number }>; days: Array<{ date: string; spendKobo: string; purchaseCount: number }> };
-type Rewards = { ratePercent: number; availableKobo: number; pendingKobo: number | string; recoveryKobo: number; programmeFunded: boolean; terms: string | string[]; redemptions: Array<{ id: string; amountKobo: number; reference: string; idempotencyKey: string; createdAt: string }> };
+type Rewards = {
+  ratePercent: number;
+  availableKobo: number;
+  pendingKobo: number | string;
+  recoveryKobo: number;
+  programmeFunded: boolean;
+  terms: string | string[];
+  totalEarnedKobo?: number;
+  awards?: Array<{
+    id: string;
+    transactionReference: string;
+    earnedKobo: number;
+    fundedKobo?: number;
+    reversedKobo?: number;
+    recoveryOffsetKobo?: number;
+    status: string;
+    createdAt: string;
+  }>;
+  redemptions: Array<{
+    id: string;
+    amountKobo: number;
+    reference: string;
+    idempotencyKey: string;
+    createdAt: string;
+  }>;
+};
 type AlertSettings = { enabled: boolean; thresholds: number[]; budgetKobo: string | null; spendKobo: string; delivery: Record<string, string> };
 const sectionClass = "mt-8 min-w-0 rounded-2xl border border-obligon-border bg-white p-5 sm:p-7";
 const buttonClass = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-obligon-border px-4 py-2 text-sm font-bold text-obligon-green disabled:opacity-50";
@@ -96,16 +120,20 @@ export function CustomerRewards() {
     }
     finally { inFlight.current = false; setBusy(false); }
   }
-  return <section id="cashback" className={sectionClass} aria-label="Cashback rewards">
+    const awards = data?.awards || [];
+    const totalEarnedKobo = data?.totalEarnedKobo ?? awards.reduce((sum, a) => sum + (Number(a.earnedKobo) || 0), Number(data?.availableKobo || 0));
+
+    return <section id="cashback" className={sectionClass} aria-label="Cashback rewards">
     {status === "loading" ? <StatusPopup tone="loading" message="Loading cashback rewards…" /> : null}
     {busy ? <StatusPopup tone="pending" message="Confirming your cashback redemption…" /> : null}
     {failure || error ? <StatusPopup tone="error" message={failure || error?.message} onRetry={error ? reload : undefined} /> : null}
     {success ? <StatusPopup tone="success" message={success} /> : null}
-    <BenefitHeading icon={Gift} title="Cashback rewards">Gold and Platinum earn 5% on eligible completed personal fuel purchases, after discounts and excluding fees. Earned rewards have no expiry.</BenefitHeading>
-    {data ? <><div className="mt-6 grid gap-5 border-y border-obligon-border py-5 sm:grid-cols-3">{[["Available", data.availableKobo], ["Awaiting programme funding", data.pendingKobo], ["Refund recovery", data.recoveryKobo]].map(([label, value]) => <div key={label}><p className="text-xs font-semibold text-obligon-text">{label}</p><p className="mt-2 text-2xl font-bold text-obligon-navy">{benefitMoney(value)}</p></div>)}</div>
+    <BenefitHeading icon={Gift} title="Cashback rewards">Gold and Platinum earn 5% cashback on eligible completed personal fuel purchases, after discounts and excluding fees (e.g. earn ₦2,500 back on ₦50,000 spend, or ₦5,000 back on ₦100,000 spend). Earned rewards have no expiry and can be redeemed in exact amounts to your fuel wallet.</BenefitHeading>
+    {data ? <><div className="mt-6 grid gap-5 border-y border-obligon-border py-5 sm:grid-cols-2 lg:grid-cols-4">{[["Total earned cashback", totalEarnedKobo], ["Available to redeem", data.availableKobo], ["Awaiting funding", data.pendingKobo], ["Refund recovery", data.recoveryKobo]].map(([label, value]) => <div key={label}><p className="text-xs font-semibold text-obligon-text">{label}</p><p className="mt-2 text-2xl font-bold text-obligon-navy">{benefitMoney(value)}</p></div>)}</div>
       {!data.ratePercent ? <p className="mt-4 text-sm leading-6 text-obligon-text">Your current plan does not earn new cashback. Previously earned rewards remain available.</p> : null}
       <form onSubmit={redeem} className="mt-5 flex flex-wrap items-end gap-3"><label className="min-w-0 flex-1 text-sm font-semibold text-obligon-navy">Redeem to fuel wallet (₦)<input type="text" inputMode="decimal" value={amount} onChange={event => setAmount(event.target.value)} required disabled={busy || status !== "success" || Boolean(error) || Boolean(intent) || !intentReady || !data.availableKobo} className={inputClass} /></label><button type="submit" disabled={busy || status !== "success" || Boolean(error) || !intentReady || (!intent && !data.availableKobo)} className={`${buttonClass} min-h-12`}>{intent ? `Check saved redemption (${benefitMoney(intent.amountKobo)})` : "Redeem cashback"} <ArrowRight size={17} aria-hidden="true" /></button></form>
       <p className="mt-4 text-xs leading-5 text-obligon-text">Obligon funds these rewards. Pending rewards become available when funding is reserved. Refunds reverse the related cashback; any cashback already used is recovered from future rewards.</p>
+      {awards.length ? <div className="mt-6 border-t border-obligon-border pt-4"><h3 className="text-sm font-bold text-obligon-navy">Cashback earned per purchase</h3><ul className="mt-3 divide-y divide-obligon-border" aria-label="Earned cashback awards">{awards.slice(0, 5).map(item => <li key={item.id} className="flex flex-wrap justify-between gap-3 py-3 text-sm"><div><span className="font-semibold text-obligon-navy">{item.transactionReference}</span><p className="text-xs text-obligon-text">{new Date(item.createdAt).toLocaleDateString()}</p></div><div className="text-right"><strong className="text-obligon-green">+{benefitMoney(item.earnedKobo)}</strong><p className="text-xs capitalize text-obligon-text">{item.status === "funded" ? "Funded" : "Awaiting funding"}</p></div></li>)}</ul></div> : null}
       {data.redemptions.length ? <ul className="mt-5 divide-y divide-obligon-border" aria-label="Cashback redemptions">{data.redemptions.slice(0, 5).map(item => <li key={item.id} className="flex flex-wrap justify-between gap-3 py-3 text-sm"><span className="break-all text-obligon-text">{item.reference}</span><strong className="text-obligon-navy">{benefitMoney(item.amountKobo)}</strong></li>)}</ul> : <p className="mt-5 text-sm text-obligon-text">Your cashback redemptions will appear here.</p>}
     </> : null}
   </section>;

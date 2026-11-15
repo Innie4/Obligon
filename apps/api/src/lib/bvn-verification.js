@@ -1,17 +1,20 @@
 import { env } from '../config/env.js';
 import { providerFetch } from './http.js';
 import { misconfigured, serviceUnavailable } from './errors.js';
+import { youverifyNameMatch, youverifyEnabled, verifyBvnWithYouverify, normalizeNameTokens } from './youverify.js';
 
 const BASE = 'https://api.flutterwave.com/v3/bvn/verifications';
 const CONSENT_HOST = 'nibss-bvn-consent-management.myflutterwave.com';
-export const bvnVerificationEnabled = () => env.FLW_BVN_ENABLED === true && Boolean(env.FLW_SECRET_KEY);
+export const bvnVerificationEnabled = () => {
+  if (env.BVN_PROVIDER === 'youverify') return youverifyEnabled();
+  return (env.FLW_BVN_ENABLED === true && Boolean(env.FLW_SECRET_KEY)) || youverifyEnabled();
+};
 export function normalizedIdentityName(name) {
   return String(name ?? '').normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase()
     .replace(/[’']/g, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim().split(/\s+/).filter(Boolean).sort().join(' ');
 }
-export function identityNamesMatch(expected, actual) {
-  const value = normalizedIdentityName(expected);
-  return value.split(' ').length >= 2 && value === normalizedIdentityName(actual);
+export function identityNamesMatch(expected, actual, options) {
+  return youverifyNameMatch(expected, actual, options);
 }
 export function safeBvnConsentUrl(value, returnUrl) {
   if (value == null || value === returnUrl) return null;

@@ -60,3 +60,49 @@ export function canEditCardIdentity(request: { paymentStatus: string; status: st
     !["approved", "rejected", "cancelled", "withdrawn", "refunded"].includes(request.status) &&
     !["starting", "pending_consent", "pending", "review_required"].includes(request.bvnStatus ?? "not_started");
 }
+
+/**
+ * Normalizes name tokens for comparison: strips diacritics, punctuation, titles,
+ * and splits into lowercase tokens.
+ */
+export function normalizeNameTokens(name?: string | null): string[] {
+  if (!name || typeof name !== "string") return [];
+  const titles = new Set(["mr", "mrs", "ms", "miss", "dr", "prof", "chief", "engr", "barr", "pst", "rev", "alhaji", "hajia"]);
+  return name
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/[’']/g, "")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(token => Boolean(token) && !titles.has(token));
+}
+
+/**
+ * Matches names with tolerance for first/last name swaps and middle names (YouVerify standard).
+ */
+export function youverifyNameMatch(nameA?: string | null, nameB?: string | null, { allowMiddleName = true, minMatchingTokens = 2 } = {}): boolean {
+  if (!nameA || !nameB) return false;
+  const tokensA = normalizeNameTokens(nameA);
+  const tokensB = normalizeNameTokens(nameB);
+  if (!tokensA.length || !tokensB.length) return false;
+  if (tokensA.length < minMatchingTokens || tokensB.length < minMatchingTokens) return false;
+  if ([...tokensA].sort().join(" ") === [...tokensB].sort().join(" ")) return true;
+  if (allowMiddleName) {
+    const setA = new Set(tokensA);
+    const setB = new Set(tokensB);
+    let matchCount = 0;
+    for (const token of tokensA) {
+      if (setB.has(token)) matchCount++;
+    }
+    const [shorter, longerSet] = tokensA.length <= tokensB.length ? [tokensA, setB] : [tokensB, setA];
+    const allShorterInLonger = shorter.every(token => longerSet.has(token));
+    if (allShorterInLonger && matchCount >= Math.min(minMatchingTokens, shorter.length)) return true;
+  }
+  return false;
+}
+
+export function identityNamesMatch(expected?: string | null, actual?: string | null): boolean {
+  return youverifyNameMatch(expected, actual, { allowMiddleName: true, minMatchingTokens: 2 });
+}

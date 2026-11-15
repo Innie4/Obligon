@@ -6,7 +6,7 @@ import { encryptIdentity, decryptIdentity } from './card-approval.js';
 import { normalizeNigeriaCardAddress } from './nigeria-address.js';
 import { notify, audit } from './notify.js';
 import { sendCardIdentityEmail, confirmCardIdentityEmail } from './card-identity-email.js';
-import { bvnVerificationEnabled, startBvnVerification, checkBvnVerification, normalizedIdentityName } from './bvn-verification.js';
+import { bvnVerificationEnabled, startBvnVerification, checkBvnVerification, normalizedIdentityName, identityNamesMatch } from './bvn-verification.js';
 
 const ACTIVE_EXCLUSIONS = ['approved', 'rejected', 'withdrawn', 'cancelled'];
 const MESSAGES = {
@@ -27,7 +27,7 @@ function dateOnly(value) {
 }
 export function identityRequestFields(row, { admin = false } = {}) {
   const current = (row.current_email === undefined || row.current_email === row.identity_email) &&
-    (row.current_account_name === undefined || normalizedIdentityName(row.current_account_name) === normalizedIdentityName(row.identity_account_name));
+    (row.current_account_name === undefined || (Boolean(row.current_account_name) && Boolean(row.identity_account_name) && identityNamesMatch(row.current_account_name, row.identity_account_name)));
   const emailVerified = Boolean(row.identity_email_verified_at && current);
   const bvnCurrent = current && row.bvn_checked_revision && row.bvn_checked_revision === row.identity_revision;
   const status = row.bvn_status ?? 'not_started';
@@ -81,7 +81,7 @@ function assertActive(request) {
 }
 function assertRevision(request, revision, user) {
   if (typeof revision !== 'string' || !request.identity_revision || revision !== request.identity_revision) throw conflict('Your verification details changed. Reload the card page.');
-  if (request.identity_email !== user.email || normalizedIdentityName(request.identity_account_name) !== normalizedIdentityName(user.full_name)) throw conflict('Your account details changed. Submit your current identity details again.');
+  if (request.identity_email !== user.email || !identityNamesMatch(request.identity_account_name, user.full_name)) throw conflict('Your account details changed. Submit your current identity details again.');
 }
 export async function submitCardIdentity(userId, body, verificationEta) {
   const values = validateIdentityDetails(body);

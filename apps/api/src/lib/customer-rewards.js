@@ -90,7 +90,8 @@ export async function customerRewards(userId) {
  const budget=await one("SELECT available_kobo FROM benefit_budget WHERE programme='obligon'");
  const awards=await q(`SELECT a.*,t.reference AS transaction_reference FROM cashback_awards a JOIN transactions t ON t.id=a.transaction_id WHERE a.user_id=$1 ORDER BY a.created_at DESC,a.id LIMIT 50`,[userId]);
  const redemptions=await q("SELECT id,reference,idempotency_key,amount_kobo,created_at FROM cashback_redemptions WHERE user_id=$1 AND status='completed' ORDER BY created_at DESC,id LIMIT 50",[userId]);
- return {ratePercent:customerCashbackRate(await customerSubscription(userId))/100,availableKobo:Number(account?.available_kobo??0),pendingKobo:String(pending.total),recoveryKobo:Number(account?.recovery_kobo??0),programmeFunded:BigInt(budget?.available_kobo??0)>0n,
+ const totalEarnedKobo = awards.reduce((sum, a) => sum + Number(a.earned_kobo || 0), 0);
+ return {ratePercent:customerCashbackRate(await customerSubscription(userId))/100,availableKobo:Number(account?.available_kobo??0),pendingKobo:String(pending.total),recoveryKobo:Number(account?.recovery_kobo??0),totalEarnedKobo,programmeFunded:BigInt(budget?.available_kobo??0)>0n,
   awards:awards.map(a=>({id:a.id,transactionReference:a.transaction_reference,earnedKobo:Number(a.earned_kobo),fundedKobo:Number(a.funded_kobo),reversedKobo:Number(a.reversed_kobo),recoveryOffsetKobo:Number(a.recovery_offset_kobo),status:a.status,createdAt:a.created_at})),
   redemptions:redemptions.map(r=>({id:r.id,reference:r.reference,idempotencyKey:r.idempotency_key,amountKobo:Number(r.amount_kobo),createdAt:r.created_at})),terms:cashbackTerms};
 }

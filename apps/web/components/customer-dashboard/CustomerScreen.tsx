@@ -261,6 +261,9 @@ function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
   const totalBalance = metricValue(metrics, "Total Account Balance", "₦0.00");
   const mtdSpend = metricValue(metrics, "MTD Spend", "₦0.00");
   const mtdSpendHelper = metricHelper(metrics, "MTD Spend") ?? "";
+  const mtdSavings = metricValue(metrics, "MTD Savings", "₦0.00");
+  const lifetimeSavings = metricValue(metrics, "Lifetime Savings", "₦0.00");
+  const lifetimeSavingsHelper = metricHelper(metrics, "Lifetime Savings") ?? "Recorded fuel discounts";
   // Overview summarizes spend; subscription access and budget editing live in My Card.
   const projectedSpend = metricValue(metrics, "Projected Spend", "Not set");
   const projectedHelper = "Manage in My Card";
@@ -346,6 +349,36 @@ function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
                 </span>
               </p>
             </button>
+          </Card>
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Card className="p-5 border-l-4 border-l-obligon-green">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold uppercase tracking-wider text-[#3f463d]">Fuel Discounts Saved</p>
+              <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-obligon-green">Exact Savings</span>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="font-display text-3xl font-extrabold text-obligon-green">{mtdSavings}</span>
+              <span className="text-xs font-semibold text-obligon-text">saved this month</span>
+            </div>
+            <p className="mt-2 text-xs text-obligon-text border-t border-obligon-border pt-2">
+              Lifetime fuel discount: <strong className="text-obligon-navy">{lifetimeSavings}</strong> · {lifetimeSavingsHelper}
+            </p>
+          </Card>
+
+          <Card className="p-5 border-l-4 border-l-amber-500">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold uppercase tracking-wider text-[#3f463d]">Cashback Rewards</p>
+              <Link href="/customer/benefits#cashback" className="text-xs font-bold text-obligon-green hover:underline">View Rewards →</Link>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="font-display text-3xl font-extrabold text-obligon-navy">5% Cashback</span>
+              <span className="text-xs font-semibold text-obligon-text">on eligible spend</span>
+            </div>
+            <p className="mt-2 text-xs text-obligon-text border-t border-obligon-border pt-2">
+              Earn exact monetary rewards on every completed fuel purchase and redeem directly to your wallet.
+            </p>
           </Card>
         </div>
 

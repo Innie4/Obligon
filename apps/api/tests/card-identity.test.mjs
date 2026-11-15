@@ -17,11 +17,13 @@ test('card details normalize Nigerian national formats and optional postal code'
   assert.equal(validateIdentityDetails({ ...details, postalCode: '100001' }).postalCode, '100001');
   for (const patch of [{ identityConsent: false }, { fullName: 'Ada' }, { city: 'invented-place' }, { state: 'Abia', city: 'Ikeja' }, { postalCode: '00000' }, { dateOfBirth: '1990-02-31' }]) assert.throws(() => validateIdentityDetails({ ...details, ...patch }));
 });
-test('name matching is exact across normalized name tokens and preserves genuine differences', () => {
+test('name matching is exact across normalized name tokens and handles first/last name mixups with YouVerify', () => {
   assert.equal(normalizedIdentityName('  OKAFOR Adá  '), 'ada okafor');
   assert.equal(identityNamesMatch('Ada Okafor', 'OKAFOR ADA'), true);
   assert.equal(identityNamesMatch('Ada Okafor', 'Adam Okafor'), false);
-  assert.equal(identityNamesMatch('Ada Okafor', 'Ada Mary Okafor'), false);
+  assert.equal(identityNamesMatch('Ada Okafor', 'Ada Mary Okafor'), true);
+  assert.equal(identityNamesMatch('Ada Okafor', 'Okafor Ada Mary'), true);
+  assert.equal(identityNamesMatch('Ada Okafor', 'Chidi Okafor'), false);
   assert.equal(identityNamesMatch('Ada', 'Ada'), false);
 });
 test('consent redirects allow only the documented HTTPS NIBSS host', () => {
