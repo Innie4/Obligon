@@ -1,5 +1,5 @@
 // `CustomerTransaction` is declared locally below, so it is not imported here.
-import type { CustomerActivityItem, SessionUser } from "@/lib/services/types";
+import type { CustomerActivityItem, SessionUser, Station } from "@/lib/services/types";
 
 export const sessionUser: SessionUser = {
   id: "usr_demo_001",
@@ -147,7 +147,7 @@ export const desktopTopUps = [
   ["Sep 28, 2023", "TRX-6509-C", "Bank Transfer", "+₦15,000.00"]
 ];
 
-export const stations = [
+export const stations: Station[] = [
   {
     name: "Obligon LTD Core Hub",
     distance: "0.8 mi",
@@ -163,12 +163,46 @@ export const stations = [
     name: "Metro Transit Station",
     distance: "1.2 mi",
     address: "45 Commerce Street, NY",
-    diesel: "₦4.15",
-    unleaded: "₦3.95",
+    diesel: "₦967.12",
+    dieselOriginal: "₦1,099.00",
+    dieselDiscountPercent: 12,
+    unleaded: "₦909.00",
+    unleadedOriginal: "₦1,010.00",
+    unleadedDiscountPercent: 10,
     fuels: ["PMS Petrol", "AGO Diesel", "LPG Gas"],
     hours: "Open 24/7",
     lat: 40.7128,
-    lng: -74.008
+    lng: -74.008,
+    hasDiscount: true,
+    discountBadge: "Up to 12% Station Discount",
+    prices: [
+      {
+        fuelType: "PMS Petrol",
+        priceLabel: "₦909.00",
+        originalPriceLabel: "₦1,010.00",
+        discountedPriceLabel: "₦909.00",
+        discountAmountLabel: "Save ₦101.00",
+        discountPercent: 10,
+        hasDiscount: true,
+        sellingUnit: "litre"
+      },
+      {
+        fuelType: "AGO Diesel",
+        priceLabel: "₦967.12",
+        originalPriceLabel: "₦1,099.00",
+        discountedPriceLabel: "₦967.12",
+        discountAmountLabel: "Save ₦131.88",
+        discountPercent: 12,
+        hasDiscount: true,
+        sellingUnit: "litre"
+      },
+      {
+        fuelType: "LPG Gas",
+        priceLabel: "₦750.00",
+        hasDiscount: false,
+        sellingUnit: "kg"
+      }
+    ]
   },
   {
     name: "Express Fueling",

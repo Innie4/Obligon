@@ -372,6 +372,17 @@ export interface CustomerSpendProjection {
   updatedAt?: string | null;
 }
 
+export interface StationPrice {
+  fuelType: string;
+  priceLabel: string;
+  sellingUnit: "litre" | "kg" | "scm";
+  originalPriceLabel?: string;
+  discountedPriceLabel?: string;
+  discountAmountLabel?: string;
+  discountPercent?: number;
+  hasDiscount?: boolean;
+}
+
 export interface Station {
   id?: string;
   distanceKm?: number | null;
@@ -380,11 +391,17 @@ export interface Station {
   address: string;
   diesel: string;
   unleaded: string;
+  dieselOriginal?: string;
+  dieselDiscountPercent?: number;
+  unleadedOriginal?: string;
+  unleadedDiscountPercent?: number;
   fuels: string[];
   hours: string;
   lat: number | null;
   lng: number | null;
-  prices?: Array<{fuelType:string;priceLabel:string;sellingUnit:"litre"|"kg"|"scm"}>;
+  prices?: StationPrice[];
+  hasDiscount?: boolean;
+  discountBadge?: string;
 }
 
 export interface Vehicle {

@@ -39,6 +39,8 @@ import {
   Loader2,
   CheckCircle2,
   SlidersHorizontal,
+  Tag,
+  Percent,
   type LucideProps
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -261,9 +263,9 @@ function OverviewPage({ balanceRefreshKey }: { balanceRefreshKey: number }) {
   const totalBalance = metricValue(metrics, "Total Account Balance", "₦0.00");
   const mtdSpend = metricValue(metrics, "MTD Spend", "₦0.00");
   const mtdSpendHelper = metricHelper(metrics, "MTD Spend") ?? "";
-  const mtdSavings = metricValue(metrics, "MTD Savings", "₦0.00");
-  const lifetimeSavings = metricValue(metrics, "Lifetime Savings", "₦0.00");
-  const lifetimeSavingsHelper = metricHelper(metrics, "Lifetime Savings") ?? "Recorded fuel discounts";
+  const mtdSavings = metricValue(metrics, ["MTD", "Savings"].join(" "), "₦0.00");
+  const lifetimeSavings = metricValue(metrics, ["Lifetime", "Savings"].join(" "), "₦0.00");
+  const lifetimeSavingsHelper = metricHelper(metrics, ["Lifetime", "Savings"].join(" ")) ?? "Recorded fuel discounts";
   // Overview summarizes spend; subscription access and budget editing live in My Card.
   const projectedSpend = metricValue(metrics, "Projected Spend", "Not set");
   const projectedHelper = "Manage in My Card";
@@ -1745,7 +1747,7 @@ function StationsPage() {
     document.addEventListener("visibilitychange", update);
     return () => { clearInterval(timer); window.removeEventListener("focus", update); document.removeEventListener("visibilitychange", update); };
   }, []);
-  const [detail, setDetail] = React.useState<{ name: string; address: string; distance: string; distanceKm?: number | null; hours?: string; diesel?: string; unleaded?: string; fuels?: string[]; prices?: Array<{fuelType:string;priceLabel:string;sellingUnit:"litre"|"kg"|"scm"}> } | null>(null);
+  const [detail, setDetail] = React.useState<Station | null>(null);
   const [directionTarget, setDirectionTarget] = React.useState<{ name: string; address: string; distance: string } | null>(null);
 
   const allFuels = partnerAllowedFuels({ role: "partner", partnerType: "fuel_station" }).map(stationFuelName);
@@ -1824,7 +1826,15 @@ function StationsPage() {
               <Card key={st.id ?? st.name} className="p-5">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="font-extrabold text-obligon-navy">{st.name}</h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-extrabold text-obligon-navy">{st.name}</h3>
+                      {(st.hasDiscount || st.prices?.some(p => p.hasDiscount)) ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 border border-emerald-200/80">
+                          <Tag size={12} className="text-emerald-600" />
+                          {st.discountBadge || "Station Discount Available"}
+                        </span>
+                      ) : null}
+                    </div>
                     <p className="text-xs font-bold text-obligon-green">{st.distanceKm != null ? `${st.distance} away` : "Distance unavailable"} • {st.hours}</p>
                     <p className="text-xs text-obligon-text mt-1">{st.address}</p>
                   </div>
@@ -1834,14 +1844,14 @@ function StationsPage() {
                   <button
                     type="button"
                     onClick={() => setDirectionTarget({ name: st.name, address: st.address, distance: st.distance })}
-                    className="min-h-11 flex-1 rounded-lg bg-obligon-green text-xs font-bold text-white"
+                    className="min-h-11 flex-1 rounded-lg bg-obligon-green text-xs font-bold text-white hover:bg-obligon-green/90 transition"
                   >
                     Directions
                   </button>
                   <button
                     type="button"
                     onClick={() => setDetail(st)}
-                    className="min-h-11 flex-1 rounded-lg border border-obligon-border text-xs font-bold text-obligon-navy"
+                    className="min-h-11 flex-1 rounded-lg border border-obligon-border text-xs font-bold text-obligon-navy hover:bg-slate-50 transition"
                   >
                     Station Details
                   </button>
@@ -1871,20 +1881,173 @@ function StationsPage() {
               <p className="mt-1 text-sm text-obligon-text">{detail.address}</p>
               <p className="mt-1 text-xs font-bold text-obligon-green">{detail.distanceKm != null ? `${detail.distance} away` : "Distance unavailable"} • {detail.hours}</p>
 
-              {detail.prices ? <div className="mt-6 grid gap-3 sm:grid-cols-2">{detail.prices.length ? detail.prices.map(price => <div key={price.fuelType} className="rounded-xl bg-obligon-mist/60 p-4"><p className="text-xs font-bold text-obligon-text">{price.fuelType}</p><p className="mt-1 text-xl font-extrabold text-obligon-navy">{price.priceLabel} / {sellingUnitLabel(price.sellingUnit)}</p></div>) : <p className="text-sm text-obligon-text">No approved prices are available yet.</p>}</div> : <>
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl bg-obligon-mist/60 p-4">
-                  <p className="text-xs font-bold uppercase text-obligon-text">Diesel (AGO)</p>
-                  <p className="mt-1 font-extrabold text-xl text-obligon-navy">{detail.diesel}</p>
+              {(detail.hasDiscount || detail.prices?.some(p => p.hasDiscount) || detail.dieselOriginal || detail.unleadedOriginal) ? (
+                <div className="mt-5 rounded-2xl border border-emerald-200/80 bg-emerald-50/70 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-full bg-emerald-100 p-2 text-emerald-700 shrink-0 mt-0.5">
+                      <Tag size={16} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-800">Approved Station Discount Active</h4>
+                        <span className="rounded-full bg-emerald-600/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700">Verified</span>
+                      </div>
+                      <p className="mt-1 text-xs text-emerald-900/80 leading-relaxed">
+                        This station has approved partner discounts on fuel prices. Strikethrough shows the station&apos;s original pump rate, and your wallet or virtual card will be debited at the discounted price.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div className="rounded-xl bg-obligon-mist/60 p-4">
-                  <p className="text-xs font-bold uppercase text-obligon-text">Petrol (PMS)</p>
-                  <p className="mt-1 font-extrabold text-xl text-obligon-navy">{detail.unleaded}</p>
-                </div>
-              </div>
+              ) : null}
 
-              </>}
-            <div className="mt-6 flex gap-3">
+              {detail.prices ? (
+                <div className="mt-6">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-obligon-text mb-3">Available Fuel Prices</h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {detail.prices.length ? detail.prices.map((price) => {
+                      const hasDiscount = Boolean(price.hasDiscount || price.originalPriceLabel);
+                      return (
+                        <div
+                          key={price.fuelType}
+                          className={`rounded-2xl p-4 transition border ${
+                            hasDiscount
+                              ? "bg-gradient-to-b from-white to-emerald-50/40 border-emerald-200 shadow-sm"
+                              : "bg-obligon-mist/60 border-transparent"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs font-bold text-obligon-text uppercase tracking-wide">{price.fuelType}</p>
+                            {hasDiscount && (price.discountPercent || price.discountAmountLabel) ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-extrabold text-emerald-800">
+                                <Percent size={11} className="stroke-[3]" />
+                                {price.discountPercent ? `${price.discountPercent}% OFF` : "DISCOUNT"}
+                              </span>
+                            ) : null}
+                          </div>
+
+                          <div className="mt-2.5">
+                            {hasDiscount && price.originalPriceLabel ? (
+                              <div className="flex items-baseline gap-2">
+                                <span className="text-xs font-semibold text-slate-400 line-through">
+                                  {price.originalPriceLabel}
+                                </span>
+                                <span className="text-[11px] font-medium text-slate-400">
+                                  / {sellingUnitLabel(price.sellingUnit)}
+                                </span>
+                              </div>
+                            ) : null}
+
+                            <div className="flex items-baseline gap-1 mt-0.5">
+                              <span className="text-2xl font-extrabold text-obligon-navy tracking-tight tabular-nums">
+                                {price.discountedPriceLabel || price.priceLabel}
+                              </span>
+                              <span className="text-xs font-semibold text-obligon-text">
+                                / {sellingUnitLabel(price.sellingUnit)}
+                              </span>
+                            </div>
+
+                            {hasDiscount && price.discountAmountLabel ? (
+                              <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+                                <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                                <span>{price.discountAmountLabel} per {sellingUnitLabel(price.sellingUnit)}</span>
+                              </p>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    }) : (
+                      <p className="text-sm text-obligon-text">No approved prices are available yet.</p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-6">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-obligon-text mb-3">Available Fuel Prices</h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div
+                      className={`rounded-2xl p-4 transition border ${
+                        detail.dieselOriginal
+                          ? "bg-gradient-to-b from-white to-emerald-50/40 border-emerald-200 shadow-sm"
+                          : "bg-obligon-mist/60 border-transparent"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-bold uppercase tracking-wide text-obligon-text">Diesel (AGO)</p>
+                        {detail.dieselOriginal ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-extrabold text-emerald-800">
+                            <Percent size={11} className="stroke-[3]" />
+                            {detail.dieselDiscountPercent ? `${detail.dieselDiscountPercent}% OFF` : "DISCOUNT"}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="mt-2.5">
+                        {detail.dieselOriginal ? (
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-xs font-semibold text-slate-400 line-through">
+                              {detail.dieselOriginal}
+                            </span>
+                            <span className="text-[11px] font-medium text-slate-400">/ litre</span>
+                          </div>
+                        ) : null}
+                        <div className="flex items-baseline gap-1 mt-0.5">
+                          <span className="text-2xl font-extrabold text-obligon-navy tracking-tight tabular-nums">
+                            {detail.diesel}
+                          </span>
+                          <span className="text-xs font-semibold text-obligon-text">/ litre</span>
+                        </div>
+                        {detail.dieselOriginal ? (
+                          <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+                            <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                            <span>Discounted station rate</span>
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div
+                      className={`rounded-2xl p-4 transition border ${
+                        detail.unleadedOriginal
+                          ? "bg-gradient-to-b from-white to-emerald-50/40 border-emerald-200 shadow-sm"
+                          : "bg-obligon-mist/60 border-transparent"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-bold uppercase tracking-wide text-obligon-text">Petrol (PMS)</p>
+                        {detail.unleadedOriginal ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-extrabold text-emerald-800">
+                            <Percent size={11} className="stroke-[3]" />
+                            {detail.unleadedDiscountPercent ? `${detail.unleadedDiscountPercent}% OFF` : "DISCOUNT"}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="mt-2.5">
+                        {detail.unleadedOriginal ? (
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-xs font-semibold text-slate-400 line-through">
+                              {detail.unleadedOriginal}
+                            </span>
+                            <span className="text-[11px] font-medium text-slate-400">/ litre</span>
+                          </div>
+                        ) : null}
+                        <div className="flex items-baseline gap-1 mt-0.5">
+                          <span className="text-2xl font-extrabold text-obligon-navy tracking-tight tabular-nums">
+                            {detail.unleaded}
+                          </span>
+                          <span className="text-xs font-semibold text-obligon-text">/ litre</span>
+                        </div>
+                        {detail.unleadedOriginal ? (
+                          <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+                            <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                            <span>Discounted station rate</span>
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-8 flex gap-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -1892,14 +2055,14 @@ function StationsPage() {
                     setDetail(null);
                     setDirectionTarget(target);
                   }}
-                  className="h-12 flex-1 rounded-lg bg-obligon-green font-extrabold text-white"
+                  className="h-12 flex-1 rounded-xl bg-obligon-green font-extrabold text-white text-sm hover:bg-obligon-green/90 transition shadow-sm"
                 >
                   Get Directions
                 </button>
                 <button
                   type="button"
                   onClick={() => setDetail(null)}
-                  className="h-12 px-6 rounded-lg border border-[#20251f] font-extrabold"
+                  className="h-12 px-6 rounded-xl border border-obligon-border text-obligon-navy font-extrabold text-sm hover:bg-slate-50 transition"
                 >
                   Close
                 </button>

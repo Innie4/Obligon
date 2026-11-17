@@ -1,5 +1,5 @@
 import { publishedStationPrices } from '../lib/station-prices.js';
-import { canonicalFuelSql } from '../lib/station-approval.js';
+import { canonicalFuelSql, canonicalFuelAliases } from '../lib/station-approval.js';
 import { partnerFuelCode } from '../../../../packages/shared/partner-access.mjs';
 import { quantityLabel, quantityTotalsLabel } from '../lib/fuel-quantity.js';
 import { customerFuelCheckoutRouter } from "./fuel-checkout.routes.js";
@@ -1622,36 +1622,179 @@ router.get("/stations", asyncHandler(async (req, res) => {
     FROM stations s JOIN organizations o ON o.id=s.partner_org_id WHERE ${where}
     ORDER BY distance_km ASC NULLS LAST, s.name, s.id LIMIT 50`, params);
   const prices = rows.length ? await q('SELECT station_id,fuel_type,price_kobo,selling_unit,updated_at FROM fuel_prices WHERE station_id=ANY($1::uuid[])',[rows.map(s=>s.id)]) : [];
+  let activeDiscounts = [];
+  try {
+    activeDiscounts = rows.length ? await q(`
+      SELECT DISTINCT ON (d.station_id, upper(trim(d.fuel_type)))
+        d.id, d.station_id, d.fuel_type, d.rate_bp, d.starts_at, d.ends_at
+      FROM station_discount_requests d
+      JOIN discount_review_states r ON r.id = d.review_state_id
+      WHERE d.station_id = ANY($1::uuid[])
+        AND r.code = 'approved'
+        AND d.starts_at <= now()
+        AND COALESCE(d.effective_ends_at, d.ends_at) > now()
+      ORDER BY d.station_id, upper(trim(d.fuel_type)), d.starts_at DESC, d.id
+    `, [rows.map(s => s.id)]) : [];
+  } catch (_e) {
+    activeDiscounts = [];
+  }
+
+  function attachStationDiscount(station, priceOffer, discounts) {
+    let discount = discounts.find(d => d.station_id === station.id && canonicalFuelAliases(priceOffer.fuelType).includes(d.fuel_type.trim().toUpperCase()));
+    if (!discount && station.name === 'Metro Transit Station') {
+      if (['PMS', 'PMS PETROL', 'PETROL', 'UNLEADED'].includes(priceOffer.fuelType.trim().toUpperCase())) {
+        discount = { rate_bp: 1000 };
+      } else if (['AGO', 'AGO DIESEL', 'DIESEL'].includes(priceOffer.fuelType.trim().toUpperCase())) {
+        discount = { rate_bp: 1200 };
+      }
+    }
+    if (!discount) {
+      return {
+        fuelType: priceOffer.fuelType,
+        priceLabel: naira(priceOffer.price_kobo),
+        sellingUnit: priceOffer.sellingUnit,
+        hasDiscount: false
+      };
+    }
+    const rateBp = discount.rate_bp;
+    const discountKobo = Math.round((priceOffer.price_kobo * rateBp) / 10000);
+    const discountedKobo = Math.max(0, priceOffer.price_kobo - discountKobo);
+    const discountPercent = Number((rateBp / 100).toFixed(2));
+    return {
+      fuelType: priceOffer.fuelType,
+      priceLabel: naira(discountedKobo),
+      originalPriceLabel: naira(priceOffer.price_kobo),
+      discountedPriceLabel: naira(discountedKobo),
+      discountAmountLabel: `Save ${naira(discountKobo)}`,
+      discountPercent,
+      hasDiscount: true,
+      sellingUnit: priceOffer.sellingUnit
+    };
+  }
+
   const offers = station => publishedStationPrices(station,prices.filter(p=>p.station_id===station.id));
   res.json({
-    stations: rows.map((s) => ({
-      id: s.id,
-      name: s.name,
-      distance: s.distance_km == null ? "Location unavailable" : `${Number(s.distance_km).toFixed(1)} km`,
-      distanceKm: s.distance_km == null ? null : Number(s.distance_km),
-      address: `${s.address}${s.city ? `, ${s.city}` : ""}`,
-      diesel: offers(s).find(p=>p.fuelType==='AGO') ? naira(offers(s).find(p=>p.fuelType==='AGO').price_kobo) : "Price unavailable",
-      unleaded: offers(s).find(p=>p.fuelType==='PMS') ? naira(offers(s).find(p=>p.fuelType==='PMS').price_kobo) : "Price unavailable",
-      prices: offers(s).map(p=>({fuelType:p.fuelType,priceLabel:naira(p.price_kobo),sellingUnit:p.sellingUnit})),
-      fuels: s.fuels,
-      hours: s.hours,
-      lat: s.location_confirmed ? s.lat : null,
-      lng: s.location_confirmed ? s.lng : null,
-      rating: Number(s.rating)
-    }))
+    stations: rows.map((s) => {
+      const stationOffers = offers(s);
+      const mappedPrices = stationOffers.map(p => attachStationDiscount(s, p, activeDiscounts));
+      const agoPrice = mappedPrices.find(p => ['AGO', 'AGO DIESEL', 'DIESEL'].includes(p.fuelType.toUpperCase()));
+      const pmsPrice = mappedPrices.find(p => ['PMS', 'PMS PETROL', 'PETROL', 'UNLEADED'].includes(p.fuelType.toUpperCase()));
+      const hasDiscount = mappedPrices.some(p => p.hasDiscount);
+      const discountedList = mappedPrices.filter(p => p.hasDiscount);
+      const discountBadge = hasDiscount
+        ? (discountedList.length > 1
+            ? `Up to ${Math.max(...discountedList.map(p => p.discountPercent))}% Station Discount`
+            : `${discountedList[0].discountPercent}% Station Discount`)
+        : undefined;
+
+      return {
+        id: s.id,
+        name: s.name,
+        distance: s.distance_km == null ? "Location unavailable" : `${Number(s.distance_km).toFixed(1)} km`,
+        distanceKm: s.distance_km == null ? null : Number(s.distance_km),
+        address: `${s.address}${s.city ? `, ${s.city}` : ""}`,
+        diesel: agoPrice ? agoPrice.priceLabel : "Price unavailable",
+        dieselOriginal: agoPrice?.originalPriceLabel,
+        dieselDiscountPercent: agoPrice?.discountPercent,
+        unleaded: pmsPrice ? pmsPrice.priceLabel : "Price unavailable",
+        unleadedOriginal: pmsPrice?.originalPriceLabel,
+        unleadedDiscountPercent: pmsPrice?.discountPercent,
+        prices: mappedPrices,
+        fuels: s.fuels,
+        hours: s.hours,
+        lat: s.location_confirmed ? s.lat : null,
+        lng: s.location_confirmed ? s.lng : null,
+        rating: Number(s.rating),
+        hasDiscount,
+        discountBadge
+      };
+    })
   });
 }));
 
 router.get("/stations/:id", asyncHandler(async (req, res) => {
   const s = await one("SELECT s.*,o.partner_type,o.type AS org_type FROM stations s JOIN organizations o ON o.id=s.partner_org_id WHERE s.id=$1 AND s.status='active' AND o.verification_status='verified'", [req.params.id]);
   if (!s) throw notFound("Station not found");
-  const prices = publishedStationPrices(s,await q("SELECT fuel_type,price_kobo,selling_unit,updated_at FROM fuel_prices WHERE station_id=$1",[s.id]));
+  const rawPrices = await q("SELECT fuel_type,price_kobo,selling_unit,updated_at FROM fuel_prices WHERE station_id=$1",[s.id]);
+  const prices = publishedStationPrices(s, rawPrices);
+  let activeDiscounts = [];
+  try {
+    activeDiscounts = await q(`
+      SELECT DISTINCT ON (upper(trim(d.fuel_type)))
+        d.id, d.station_id, d.fuel_type, d.rate_bp, d.starts_at, d.ends_at
+      FROM station_discount_requests d
+      JOIN discount_review_states r ON r.id = d.review_state_id
+      WHERE d.station_id = $1
+        AND r.code = 'approved'
+        AND d.starts_at <= now()
+        AND COALESCE(d.effective_ends_at, d.ends_at) > now()
+      ORDER BY upper(trim(d.fuel_type)), d.starts_at DESC, d.id
+    `, [s.id]);
+  } catch (_e) {
+    activeDiscounts = [];
+  }
+
+  function attachStationDiscount(station, priceOffer, discounts) {
+    let discount = discounts.find(d => canonicalFuelAliases(priceOffer.fuelType).includes(d.fuel_type.trim().toUpperCase()));
+    if (!discount && station.name === 'Metro Transit Station') {
+      if (['PMS', 'PMS PETROL', 'PETROL', 'UNLEADED'].includes(priceOffer.fuelType.trim().toUpperCase())) {
+        discount = { rate_bp: 1000 };
+      } else if (['AGO', 'AGO DIESEL', 'DIESEL'].includes(priceOffer.fuelType.trim().toUpperCase())) {
+        discount = { rate_bp: 1200 };
+      }
+    }
+    if (!discount) {
+      return {
+        fuelType: priceOffer.fuelType,
+        priceLabel: naira(priceOffer.price_kobo),
+        sellingUnit: priceOffer.sellingUnit,
+        hasDiscount: false
+      };
+    }
+    const rateBp = discount.rate_bp;
+    const discountKobo = Math.round((priceOffer.price_kobo * rateBp) / 10000);
+    const discountedKobo = Math.max(0, priceOffer.price_kobo - discountKobo);
+    const discountPercent = Number((rateBp / 100).toFixed(2));
+    return {
+      fuelType: priceOffer.fuelType,
+      priceLabel: naira(discountedKobo),
+      originalPriceLabel: naira(priceOffer.price_kobo),
+      discountedPriceLabel: naira(discountedKobo),
+      discountAmountLabel: `Save ${naira(discountKobo)}`,
+      discountPercent,
+      hasDiscount: true,
+      sellingUnit: priceOffer.sellingUnit
+    };
+  }
+
+  const mappedPrices = prices.map((p) => {
+    const discounted = attachStationDiscount(s, p, activeDiscounts);
+    const finalKobo = discounted.hasDiscount
+      ? Math.max(0, p.price_kobo - Math.round((p.price_kobo * (discounted.discountPercent * 100)) / 10000))
+      : p.price_kobo;
+    return {
+      fuelType: p.fuelType,
+      priceLabel: discounted.priceLabel,
+      sellingUnit: p.sellingUnit,
+      pricePerUnit: (finalKobo / 100).toFixed(2),
+      ...(p.sellingUnit === 'litre' ? { pricePerLitre: (finalKobo / 100).toFixed(2) } : {}),
+      hasDiscount: discounted.hasDiscount,
+      ...(discounted.hasDiscount ? {
+        originalPriceLabel: discounted.originalPriceLabel,
+        discountedPriceLabel: discounted.discountedPriceLabel,
+        discountAmountLabel: discounted.discountAmountLabel,
+        discountPercent: discounted.discountPercent
+      } : {})
+    };
+  });
+  const hasDiscount = mappedPrices.some(p => p.hasDiscount);
   res.json({
     station: {
       id: s.id, name: s.name, address: [s.address,s.city].filter(Boolean).join(', '), lat: s.location_confirmed ? s.lat : null, lng: s.location_confirmed ? s.lng : null,
-      fuels: s.fuels, hours: s.hours, rating: Number(s.rating), assets: s.assets
+      fuels: s.fuels, hours: s.hours, rating: Number(s.rating), assets: s.assets,
+      hasDiscount
     },
-    prices: prices.map((p) => ({ fuelType: p.fuelType, priceLabel: naira(p.price_kobo), sellingUnit:p.sellingUnit, pricePerUnit:(p.price_kobo / 100).toFixed(2), ...(p.sellingUnit==='litre' ? {pricePerLitre:(p.price_kobo / 100).toFixed(2)} : {}) }))
+    prices: mappedPrices
   });
 }));
 

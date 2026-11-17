@@ -168,6 +168,18 @@ async function main() {
   ]) {
     await q("INSERT INTO fuel_prices (station_id, fuel_type, price_kobo) VALUES ($1,$2,$3) ON CONFLICT (station_id, fuel_type) DO NOTHING", [st, type, price]);
   }
+
+  // Approved station discounts for Metro Transit Station
+  const approvedReviewState = await one("SELECT id FROM discount_review_states WHERE code='approved'");
+  if (approvedReviewState) {
+    await q(
+      `INSERT INTO station_discount_requests (station_id, fuel_type, rate_bp, starts_at, ends_at, review_state_id, requested_by, reviewed_by, reviewed_at)
+       VALUES ($1, 'PMS Petrol', 1000, now() - interval '1 day', now() + interval '30 days', $2, $3, $4, now()),
+              ($1, 'AGO Diesel', 1200, now() - interval '1 day', now() + interval '30 days', $2, $3, $4, now())
+       ON CONFLICT DO NOTHING`,
+      [station2.id, approvedReviewState.id, partnerId, adminId]
+    );
+  }
   await q(`INSERT INTO equipment (station_id, name, kind, status) VALUES
     ($1,'Pump 01 — AGO','pump','operational'),
     ($1,'Pump 02 — PMS','pump','operational'),
